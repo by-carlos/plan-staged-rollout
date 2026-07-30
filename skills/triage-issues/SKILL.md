@@ -51,9 +51,10 @@ same stages, same format, skimmable, no filler.
   repositories; this rule concerns GitHub Projects, not repository ownership.)
 - **Mode:** default runs are **incremental** — only *unsettled* issues get the
   expensive per-issue deep read (Stage 0). Passing `--full` at invocation restores
-  the exhaustive behavior: every eligible open issue is deep-read and deduped against the
-  entire board. Use `--full` when the board may have drifted or a fresh dedup
-  against the whole queue is wanted.
+  the exhaustive behavior: every eligible scoped open issue is deep-read and deduped against
+  the scoped open queue. Use `--full` when the open queue may have drifted or a
+  fresh dedup is wanted. Historical `Done` cards are not queue work; inspect them
+  only when an explicit history audit is requested.
 
 An issue is **settled** (skipped in incremental mode) when its board fields already
 exclude it from future queue work: `Status = Ready`, **or** `Effort = human`.
@@ -63,20 +64,27 @@ Everything else — not on the board, empty Status, empty Effort, `Backlog`,
 
 <process>
 Stage 0 — Gather
-- **Scoped open-issue snapshot (always, exactly once).** List every open issue in each
-  scoped repo with `gh issue list` (numbers, titles, labels), saving the raw response.
-  Check `gh api rate_limit --jq '.resources.graphql'` before fetching Project fields.
-  Retrieve every open issue's `projectItems` and single-select `fieldValues`, preferably
-  in one paginated GraphQL query. Retain every Project identity to classify eligibility;
-  for eligible issues, select only the target Project locally and save the raw field
-  response before parsing. Do **not** call `gh project item-list` during ordinary triage:
-  it retrieves completed history and its cost grows with every closed card.
+- **Scoped open-issue snapshot (always, exactly once).** List every open issue in
+  each scoped repo with `gh issue list` (numbers, titles, labels), saving the raw
+  response. Check `gh api rate_limit --jq '.resources.graphql'` before fetching
+  Project fields. Retrieve each open issue's `projectItems` and single-select
+  `fieldValues`, preferably in one paginated GraphQL query; exact per-issue GraphQL
+  reads are acceptable when the scoped set is small. Retain every Project identity first
+  to classify eligibility; for eligible issues, select only the target Project locally
+  and save the raw field response before parsing. `gh issue view --json
+  projectItems` exposes only Status, so use GraphQL when Priority, Size, or Effort
+  are required. Do **not** call `gh project item-list` during ordinary triage: it
+  retrieves completed history and its cost grows with every closed card.
+- **Historical audit (explicit only).** If the user explicitly asks to inspect
+  historical board hygiene, first query the Project item `totalCount`, then take one
+  `gh project item-list` snapshot with an exact sufficient bound and save it. Never
+  use this audit path merely to triage the current queue.
 - **Classify.** Identify target-board items first. Exclude an issue only when it lacks a
   target-board item and has another Project item, recording the issue number and Project
   name/URL. An issue with no Project items is eligible to add to the target board. Using
-  the target-Project fields for eligible issues, split them into **settled** (`Status = Ready`,
-  or `Effort = human`) and **unsettled** (everything else). In `--full` mode, treat every
-  eligible open issue as unsettled.
+  the matching target-Project fields for eligible issues, split them into **settled**
+  (`Status = Ready`, or `Effort = human`) and **unsettled** (everything else). In
+  `--full` mode, treat every eligible open issue as unsettled.
 - **Deep pass (unsettled only, unless `--full`).** For each unsettled issue, pull the
   full body, comments, and cross-references (`gh issue view <n> --comments`).
   **Resolve every cross-reference, and check whether the work already shipped.** For each
@@ -100,7 +108,8 @@ Stage 1 — Board & metadata hygiene
 Hygiene runs over **all eligible scoped open issues and their matching board items** using
 the cheap pass — no deep read needed, so incremental mode never hides a mis-set field.
 Externally assigned issues are reported as excluded only. Only the Stage 2 body-level
-analysis is scoped to unsettled issues.
+analysis is scoped to unsettled issues. Completed board history is excluded unless the
+user explicitly requested a historical audit.
 - Flag open issues missing from the board.
 - Flag `Ready` items that violate the readiness invariant (missing Priority/Size/Effort,
   or Effort = `human`).

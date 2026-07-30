@@ -43,9 +43,15 @@ same stages, same format, skimmable, no filler.
 - **Board:** the Projects v2 board named at invocation (URL or number + owner). If none
   is named, default to the board the in-scope issues already sit on. A single board may
   hold items from several repos — that is expected and fine.
+- **Project eligibility:** an issue is eligible when it is already on the target board
+  **or** has no `projectItems` at all. A target-board item stays eligible even when it
+  also appears on another Project. An issue is **externally assigned** only when it is
+  absent from the target board and has an item on another Project: report it as excluded,
+  do not deep-read it, and never add or edit its target-board item. (Issues belong to
+  repositories; this rule concerns GitHub Projects, not repository ownership.)
 - **Mode:** default runs are **incremental** — only *unsettled* issues get the
   expensive per-issue deep read (Stage 0). Passing `--full` at invocation restores
-  the exhaustive behavior: every open issue is deep-read and deduped against the
+  the exhaustive behavior: every eligible open issue is deep-read and deduped against the
   entire board. Use `--full` when the board may have drifted or a fresh dedup
   against the whole queue is wanted.
 
@@ -57,16 +63,20 @@ Everything else — not on the board, empty Status, empty Effort, `Backlog`,
 
 <process>
 Stage 0 — Gather
-- **Cheap pass (always).** Pull the board's items and their fields first —
-  `gh project item-list <number> --owner <owner> --format json --limit 500`
-  (raise `--limit` past the item count — it defaults to 30). Custom fields surface as
-  lowercased top-level keys (`status`, `priority`, `size`, `effort`); `content.type`
-  distinguishes `Issue` from `PullRequest`; `content.repository` is `owner/repo`. Then
-  list the open-issue set — `gh issue list` — for numbers, titles, and labels only.
-  This is cheap; it always runs in full.
-- **Classify.** Using the board fields just pulled, split open issues into **settled**
-  (`Status = Ready`, or `Effort = human`) and **unsettled** (everything else). In
-  `--full` mode, treat every open issue as unsettled.
+- **Scoped open-issue snapshot (always, exactly once).** List every open issue in each
+  scoped repo with `gh issue list` (numbers, titles, labels), saving the raw response.
+  Check `gh api rate_limit --jq '.resources.graphql'` before fetching Project fields.
+  Retrieve every open issue's `projectItems` and single-select `fieldValues`, preferably
+  in one paginated GraphQL query. Retain every Project identity to classify eligibility;
+  for eligible issues, select only the target Project locally and save the raw field
+  response before parsing. Do **not** call `gh project item-list` during ordinary triage:
+  it retrieves completed history and its cost grows with every closed card.
+- **Classify.** Identify target-board items first. Exclude an issue only when it lacks a
+  target-board item and has another Project item, recording the issue number and Project
+  name/URL. An issue with no Project items is eligible to add to the target board. Using
+  the target-Project fields for eligible issues, split them into **settled** (`Status = Ready`,
+  or `Effort = human`) and **unsettled** (everything else). In `--full` mode, treat every
+  eligible open issue as unsettled.
 - **Deep pass (unsettled only, unless `--full`).** For each unsettled issue, pull the
   full body, comments, and cross-references (`gh issue view <n> --comments`).
   **Resolve every cross-reference, and check whether the work already shipped.** For each
@@ -87,9 +97,10 @@ Stage 0 — Gather
   Never guess at unseen content.
 
 Stage 1 — Board & metadata hygiene
-Hygiene runs over **all** board items using the fields from the cheap pass — no deep
-read needed, so incremental mode never hides a mis-set field. Only the Stage 2
-body-level analysis is scoped to unsettled issues.
+Hygiene runs over **all eligible scoped open issues and their matching board items** using
+the cheap pass — no deep read needed, so incremental mode never hides a mis-set field.
+Externally assigned issues are reported as excluded only. Only the Stage 2 body-level
+analysis is scoped to unsettled issues.
 - Flag open issues missing from the board.
 - Flag `Ready` items that violate the readiness invariant (missing Priority/Size/Effort,
   or Effort = `human`).
@@ -161,6 +172,7 @@ smaller-size first:
 
 <rules>
 - Never batch-close, batch-edit, or write board fields without the Stage 2→3 go-ahead.
+- Never add to, remove from, or edit the target-board item of an externally assigned issue.
 - Never guess at unreadable content — state the limitation.
 - `Ready` is the only readiness signal; there is no separate readiness section.
 - Default runs are incremental: deep-read only unsettled issues (`Status ≠ Ready` **and**

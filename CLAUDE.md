@@ -19,6 +19,30 @@ Project instructions for agentic coding in this repository.
 - Merging is never unilateral: propose the merge and wait for the maintainer's OK.
   Never push directly to `main`.
 
+## Capturing follow-up work (GitHub issues)
+
+The generic contract — when to file, the issue body format, labels, and the
+Size/Effort discipline — lives in the maintainer's global `CLAUDE.md` /
+`AGENTS.md`. This section adds only what is specific to this repo.
+
+- **Tracker & board:** issues live in `by-carlos/claude-plugins` and go to the
+  **"Claude Plan Staged Rollout"** project (project 3). That board's priority
+  scale is **P0–P2 only** — it has no P3/P4, so don't try to set one.
+- **This repo is public.** Everything else in the estate is private; this one is
+  the marketplace source, so an issue body is published the moment it is filed —
+  and stays indexed even if edited or deleted afterwards.
+- **Scrub before filing.** No hostnames, LAN IPs or subnets, CT/VM/container
+  names, personal filesystem paths, email addresses, tokens, or raw log/console
+  pastes. Redact to generic placeholders (`<router>`, `<nas>`, `10.x.x.x`,
+  `/path/to/repo`) and keep the reproduction abstract enough to stand on its own.
+- **Show the rendered body and get an explicit OK before filing — every time.**
+  This gate is not waived by a general "capture these" from the maintainer;
+  public is a one-way door.
+- **Never cross-post homelab evidence here.** If a plugin bug was found while
+  working in `linux`/`openwrt`/`synology`, restate it from the plugin's side —
+  the behaviour, the inputs, the expected result — and leave the estate detail
+  in the private repo, cross-referenced by number rather than quoted.
+
 ## Secret scanning
 
 [gitleaks](https://github.com/gitleaks/gitleaks) runs in CI on every push/PR

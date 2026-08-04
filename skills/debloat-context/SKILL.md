@@ -27,15 +27,21 @@ files and transcripts, this session.
 Ask the user to run `/context` and paste the output (it is a user command; the
 model cannot run it). Record the total and per-category breakdown — this is the
 "before" for step 4. If the user declines, proceed on file-size estimates and
-say the final delta will be estimated, not measured.
+say the final delta will be estimated, not measured. Either way, resolve this
+**before the first edit in step 3** — a baseline captured after edits began is
+worthless, and the report must state which outcome happened.
 
 ## 1. Measure (read-only)
 
 **File sizes** (≈4 chars/token):
 
 ```bash
-wc -c ~/.claude/CLAUDE.md ./CLAUDE.md ~/.claude/projects/*/memory/MEMORY.md 2>/dev/null
+wc -c ~/.claude/CLAUDE.md ./CLAUDE.md ./AGENTS.md ~/.codex/AGENTS.md ~/.claude/projects/*/memory/MEMORY.md 2>/dev/null
 ```
+
+Include every harness's instruction files (`AGENTS.md`, `GEMINI.md`,
+`.cursorrules`, …) — other harnesses pay the same per-session rent, and a trim
+usually applies across all of them.
 
 **Actual usage** — histogram of tool calls and skill invocations across all
 transcripts. This is what separates "unused, safe to cut" from "load-bearing":
@@ -64,10 +70,11 @@ them.
 
 Fixed format, in this order:
 
-1. Conclusion, under 40 words.
-2. Bullets — one per audited item: name, applies / doesn't apply, reason under
+1. `Baseline: captured | declined` — one required line.
+2. Conclusion, under 40 words.
+3. Bullets — one per audited item: name, applies / doesn't apply, reason under
    20 words.
-3. Ranked action list — one line each with an estimated token impact, always
+4. Ranked action list — one line each with an estimated token impact, always
    labeled as an estimate. `/context` before/after is the only real
    measurement.
 
@@ -80,8 +87,9 @@ Standard actions and their guards:
 
 1. **`skillOverrides` for unused heavy skills** — `"user-invocable-only"`
    keeps the `/name` command while hiding the description from the model.
-   Verify the key format for plugin-scoped skills against current docs before
-   writing it.
+   Known limit from live runs: **plugin-provided skills may not be affected by
+   `skillOverrides` at all** — count savings only for skills the override
+   demonstrably reaches, and verify the listing actually shrank after restart.
 2. **Project CLAUDE.md trim** — on a new branch, presented as a diff, merged
    by the user's normal review flow.
 3. **User CLAUDE.md trim** — copy to `CLAUDE.md.bak-<date>` first; it is
@@ -89,8 +97,16 @@ Standard actions and their guards:
 4. **Settings flags** — attempt the edit; if a permission classifier blocks
    self-editing `settings.json`, output a paste-ready snippet and move on.
    Never retry the blocked call.
-5. **Memory index** — suggest `/consolidate-memory` rather than hand-pruning
-   entries.
+5. **Memory** — diagnose before choosing a tool. Memory rots on a predictable
+   trigger — referenced issues/PRs closing — so first extract every issue/PR
+   number from the memory files and check their state in one batched call
+   (`gh` REST). If claims drifted, that is **staleness, not duplication**:
+   hand-correct with this procedure — read each memory before editing, check
+   inbound `[[links]]` before deleting a file, update the index, then a final
+   integrity pass (every index link resolves, no orphans, no dangling links).
+   Reserve `/consolidate-memory` for genuine duplication; consolidating stale
+   memories preserves false claims in tidier prose. Accuracy may *lengthen*
+   entries — correct trade, report the real number.
 
 **CLAUDE.md trim rules** (the part a cheap model gets wrong):
 
@@ -107,6 +123,13 @@ The user restarts the session and runs `/context` again. Compare with the
 baseline and report the delta per category. If behavior degraded, restore from
 the `.bak` copy or the git branch.
 
+When a trim moved sections into on-demand pointer files, the failure mode is
+behavioral and invisible in any diff. End the report with a **watch-for
+list**: the specific behaviors that would show a pointer isn't holding (e.g.
+filing an issue without reading the referenced conventions doc, skipping a
+pre-flight check the trimmed section used to enforce). If the user observes
+one, that section comes back resident.
+
 ## Common mistakes
 
 | Mistake | Reality |
@@ -116,3 +139,6 @@ the `.bak` copy or the git branch.
 | Deleting "why"/settled markers from CLAUDE.md | They prevent repeated investigations; always keep |
 | Reporting estimates as measurements | Only `/context` before/after is real |
 | Batch-applying all trims at once | A bad trim surfaces late; one gated step isolates it |
+| Recommending `skillOverrides` for plugin skills | Plugin skills may ignore it; verify the listing shrank after restart |
+| Consolidating memories that are stale, not duplicated | Merging preserves false claims in tidier prose; verify issue-state claims first |
+| Treating token count as the only win | Live runs found stale/false claims worth more than the tokens saved |

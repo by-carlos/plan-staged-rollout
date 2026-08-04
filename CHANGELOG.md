@@ -6,6 +6,14 @@ plugin follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`/debloat-context`** — a standalone skill that audits the fixed per-session
+  context cost of a Claude Code setup (CLAUDE.md files, skill listings, memory
+  index, settings flags) against real usage measured from local transcripts,
+  reports ranked savings, and applies approved trims one gated step at a time,
+  verified with `/context` before/after. Designed to run on a cheaper model.
+
 ### Changed
 
 - **`/work-issue`** — tightened the board-status lifecycle: the issue moves to

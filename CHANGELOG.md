@@ -6,13 +6,24 @@ plugin follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-08-04
+
 ### Added
 
 - **`/debloat-context`** — a standalone skill that audits the fixed per-session
-  context cost of a Claude Code setup (CLAUDE.md files, skill listings, memory
-  index, settings flags) against real usage measured from local transcripts,
-  reports ranked savings, and applies approved trims one gated step at a time,
-  verified with `/context` before/after. Designed to run on a cheaper model.
+  context cost of a Claude Code setup (every harness's instruction files, skill
+  listings, memory index, settings flags) against real usage measured from local
+  transcripts, reports ranked savings, then applies approved trims one gated step
+  at a time, verified with `/context` before and after. It checks whether the
+  harness already defers tool schemas before recommending any `permissions.deny`
+  or `disable*` switch — under deferred loading those save close to nothing — and
+  it never removes a settled-decision marker from an instruction file. Sized for a
+  cheaper model; only a first deep rewrite of a large, dense instruction file is
+  escalated to a top-tier one.
+- **Secret scanning in CI** — [gitleaks](https://github.com/gitleaks/gitleaks) runs
+  on every push and pull request, with an empty baseline so this clean history stays
+  green while anything newly introduced still fails the check (#35).
+- **Dependabot** — weekly update checks for the `github-actions` ecosystem (#37, #40).
 
 ### Changed
 
@@ -28,6 +39,21 @@ plugin follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   issues (not `Ready`, not `Effort = human`), cutting tokens and wall-time on
   already-groomed boards. Pass `--full` for the previous exhaustive sweep (re-reads
   every issue and dedups against the whole board).
+- **`/triage-issues` leaves other boards alone.** An issue is eligible when it is
+  already on the target board **or** carries no Project items at all; one that lives
+  on a different Project is reported as externally assigned and excluded rather than
+  re-queued. Project identities and field values are gathered in a single paginated
+  GraphQL query, and `gh project item-list` is avoided during ordinary triage because
+  it walks the whole board and can exhaust the hourly GraphQL budget on its own.
+- **`plan-staged-rollout`** — documented that the bundled `SessionStart` hook is
+  cross-platform (#41).
+- **Repo conventions** — added this repository's GitHub issue conventions, including
+  the public-repo scrubbing rules, to `CLAUDE.md` (#47).
+
+### Fixed
+
+- **`/triage-issues`** — scoped the incremental gather to open issues, so historical
+  `Done` cards no longer make routine queue grooming progressively more expensive (#46).
 
 ## [0.2] — 2026-07-13
 
@@ -113,5 +139,6 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
+[0.3.0]: https://github.com/by-carlos/claude-plugins/releases/tag/v0.3.0
 [0.2]: https://github.com/by-carlos/claude-plugins/releases/tag/v0.2
 [0.1.0]: https://github.com/by-carlos/claude-plugins/releases/tag/v0.1.0

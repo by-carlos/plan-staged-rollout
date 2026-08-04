@@ -42,6 +42,18 @@ of any plugin — install one by copying its folder into `~/.claude/skills/`
 (Claude Code, where it's also invocable as a slash command), or upload the
 folder to claude.ai / Claude Desktop.
 
+### [/debloat-context](skills/debloat-context/SKILL.md)
+
+**Audit and trim per-session context overhead** — measure what actually loads
+(CLAUDE.md files, skill listings, memory index, settings flags) against real
+usage from local transcripts, report ranked savings, then apply approved trims
+one gated step at a time, verified with `/context` before/after. Sized to run
+on a cheaper model.
+
+```
+/debloat-context  →  audit, report, then gated trims for user level + current repo
+```
+
 ### [/triage-issues](skills/triage-issues/SKILL.md)
 
 **Triage issues into a burn-down queue** — sweep open issues across one or more

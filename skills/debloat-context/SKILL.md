@@ -10,6 +10,14 @@ findings, then apply approved trims one gated step at a time. Sized for a
 cheaper model (Sonnet tier, thinking off) — every judgment call below has an
 explicit rule so none is left to improvisation.
 
+**Model guidance:** the audit, report, settings, and incremental-trim steps run
+fine on Sonnet. The exception is a *first deep rewrite* of a large, dense
+CLAUDE.md (roughly 10 KB+ of interlocking rules): compression there risks
+silent semantic drift that a diff review can miss, so run that one step on a
+top-tier model (Opus class) — it is a one-off; later runs only trim increments.
+If staying on Sonnet anyway, trim in small sections across multiple gated
+steps, never one whole-file rewrite.
+
 **Core principle: measure, don't assume.** Numbers from a blog post, another
 machine, or a previous run are stale. Re-derive everything from this machine's
 files and transcripts, this session.

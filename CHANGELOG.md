@@ -6,6 +6,14 @@ plugin follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Added
+
+- **`/summary`** — a fixed, skimmable summary format (Context, numbered
+  findings, optional Conclusion, optional Notes), invoked only on explicit
+  request, not on generic "summarize" asks. Overrides default brevity rules
+  while active. Also packaged as a standalone `.zip` for upload to claude.ai
+  (Settings → Capabilities → Skills).
+
 ## [0.3.0] — 2026-08-04
 
 ### Added

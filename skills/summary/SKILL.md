@@ -42,8 +42,12 @@ full template.
 Emit sections in this exact order. Don't label them "Section 1/2/3/4" — use
 natural headers (or none) as shown below.
 
-1. **Context** — under 50 words. What this is a summary of, and why it
-   matters. No header needed, or a light one like "Context."
+1. **Context** — under 50 words. **The answer itself, compressed** — what the
+   solution looks like, what the verdict is, what was found. Not a recap of
+   the conversation, not "this is a summary of X and why it matters." If the
+   user read only this paragraph, they should already know the substance; the
+   numbered list is the detail behind it. No header needed, or a light one
+   like "Context."
 
 2. **Numbered list** — the substance. This is the required core of the format.
    Items are whatever the subject calls for: facts, reasons, alternatives,
@@ -71,8 +75,9 @@ them rather than leave a weak or empty version.
 GitHub Actions"
 
 > **Context**
-> Travis CI's free tier for open source ended; this repo's builds have been
-> failing silently for two weeks. Migrating to GitHub Actions restores CI.
+> Port `.travis.yml` to a GitHub Actions job matrix, re-add secrets by hand,
+> rewrite the cache config, swap the README badge. Four discrete changes; the
+> cache rewrite is the only non-mechanical one.
 >
 > 1. **Config format differs** — `.travis.yml` steps map to a YAML job matrix
 >    under `.github/workflows/`, not a 1:1 port.

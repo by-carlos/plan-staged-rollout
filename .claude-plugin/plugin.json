@@ -1,12 +1,12 @@
 {
   "name": "plan-staged-rollout",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "description": "Run big projects as many small sessions — not one huge one.",
   "author": {
     "name": "Carlos Eng",
     "url": "https://github.com/by-carlos"
   },
-  "homepage": "https://github.com/by-carlos/claude-plugins/tree/main/plan-staged-rollout",
-  "repository": "https://github.com/by-carlos/claude-plugins",
+  "homepage": "https://github.com/by-carlos/plan-staged-rollout",
+  "repository": "https://github.com/by-carlos/plan-staged-rollout",
   "license": "MIT"
 }

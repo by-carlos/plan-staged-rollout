@@ -1,10 +1,27 @@
 # Changelog
 
-All notable changes to this marketplace are documented here. The format is based on
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the `plan-staged-rollout`
+All notable changes to the `plan-staged-rollout` plugin are documented here. The
+format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the
 plugin follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+Entries before 0.4.0 were made while this repository was the `carlos-plugins`
+marketplace and therefore also cover the standalone skills that have since moved
+elsewhere. See 0.4.0 for the split.
+
+## [0.4.0] — 2026-08-15
+
+### Changed
+
+- **This repository is now the plugin's own home.** It was renamed from
+  `by-carlos/claude-plugins` to `by-carlos/plan-staged-rollout` and the plugin
+  directory was hoisted to the repo root; `.claude-plugin/marketplace.json` moved
+  to a new, catalog-only `by-carlos/claude-plugins` repo. Git history, tags,
+  releases and issues are unchanged — this was a rename, not an extraction (#56).
+- **Distribution moved from `main` to a `release` branch.** The catalog now
+  sources this plugin at `ref: release`, so merging to `main` no longer ships to
+  users; a release is an explicit fast-forward of `release` onto a tagged commit.
+  Install and update commands are unchanged
+  (`/plugin marketplace add by-carlos/claude-plugins`).
 
 ### Added
 
@@ -163,6 +180,7 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
-[0.3.0]: https://github.com/by-carlos/claude-plugins/releases/tag/v0.3.0
-[0.2]: https://github.com/by-carlos/claude-plugins/releases/tag/v0.2
-[0.1.0]: https://github.com/by-carlos/claude-plugins/releases/tag/v0.1.0
+[0.4.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.0
+[0.3.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.3.0
+[0.2]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.2
+[0.1.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.1.0

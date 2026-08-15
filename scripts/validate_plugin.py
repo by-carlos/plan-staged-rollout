@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
-"""Validate plugin manifests and structure: manifests parse, marketplace
-sources resolve, command/skill frontmatter is present, referenced templates
-exist, and README links resolve. No external services or dependencies."""
+"""Validate this plugin's manifest and structure: the manifest parses and
+carries the required fields, command/skill frontmatter is present, referenced
+templates exist, and README links resolve. No external services or
+dependencies."""
 
 import json
 import re
@@ -10,6 +11,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_FILES = ["PLAN.md", "LEDGER.md", "stage-N.md", "README.md"]
+MANIFEST_FIELDS = ["name", "version", "description"]
+SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 errors = []
@@ -56,43 +59,32 @@ def check_required(path, fields, required):
             err(f"{path.relative_to(ROOT)}: missing or empty '{key}' in frontmatter")
 
 
-def validate_marketplace():
-    mp_path = ROOT / ".claude-plugin" / "marketplace.json"
-    marketplace = load_json(mp_path)
-    if marketplace is None:
-        return []
-
-    plugin_dirs = []
-    for plugin in marketplace.get("plugins", []):
-        source = plugin.get("source")
-        name = plugin.get("name", "<unnamed>")
-        if not source:
-            err(f"marketplace.json: plugin '{name}' has no 'source'")
-            continue
-        plugin_dir = (ROOT / source).resolve()
-        if not plugin_dir.is_dir():
-            err(f"marketplace.json: source '{source}' for plugin '{name}' does not exist")
-            continue
-        plugin_dirs.append(plugin_dir)
-
-        plugin_json = plugin_dir / ".claude-plugin" / "plugin.json"
-        if plugin_json.exists():
-            load_json(plugin_json)
-    return plugin_dirs
+def validate_manifest():
+    manifest = load_json(ROOT / ".claude-plugin" / "plugin.json")
+    if manifest is None:
+        return
+    for key in MANIFEST_FIELDS:
+        if not manifest.get(key):
+            err(f"plugin.json: missing or empty '{key}'")
+    version = manifest.get("version", "")
+    if version and not SEMVER_RE.match(version):
+        err(f"plugin.json: version '{version}' is not x.y.z semver")
 
 
-def validate_commands(plugin_dir):
-    commands_dir = plugin_dir / "commands"
+def validate_commands():
+    commands_dir = ROOT / "commands"
     if not commands_dir.is_dir():
+        err("commands/: directory not found")
         return
     for path in sorted(commands_dir.glob("*.md")):
         fields = parse_frontmatter(path)
         check_required(path, fields, ["description"])
 
 
-def validate_skills(plugin_dir):
-    skills_dir = plugin_dir / "skills"
+def validate_skills():
+    skills_dir = ROOT / "skills"
     if not skills_dir.is_dir():
+        err("skills/: directory not found")
         return
     for skill_dir in sorted(p for p in skills_dir.iterdir() if p.is_dir()):
         skill_md = skill_dir / "SKILL.md"
@@ -127,19 +119,18 @@ def validate_readme_links():
 
 
 def main():
-    plugin_dirs = validate_marketplace()
-    for plugin_dir in plugin_dirs:
-        validate_commands(plugin_dir)
-        validate_skills(plugin_dir)
+    validate_manifest()
+    validate_commands()
+    validate_skills()
     validate_readme_links()
 
     if errors:
-        print(f"validate-plugins: {len(errors)} error(s):\n")
+        print(f"validate-plugin: {len(errors)} error(s):\n")
         for e in errors:
             print(f"  - {e}")
         sys.exit(1)
 
-    print("validate-plugins: OK")
+    print("validate-plugin: OK")
 
 
 if __name__ == "__main__":

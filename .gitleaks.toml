@@ -1,4 +1,4 @@
-# Gitleaks configuration for the `claude-plugins` repo.
+# Gitleaks configuration for the `plan-staged-rollout` repo.
 #
 # CRITICAL: `[extend] useDefault = true` keeps gitleaks' full upstream ruleset.
 # A custom config REPLACES the built-in rules unless it extends them, so without
@@ -10,7 +10,7 @@
 # .gitleaks-baseline.json, not here — this file is only for intentional
 # *.example template files (no [placeholder: ...] convention in this repo).
 
-title = "claude-plugins repo gitleaks config"
+title = "plan-staged-rollout repo gitleaks config"
 
 [extend]
 useDefault = true

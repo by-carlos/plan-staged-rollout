@@ -7,5 +7,5 @@
 ## Checklist
 
 - [ ] Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
-- [ ] READMEs / `CHANGELOG.md` updated if the change is user-facing
-- [ ] `claude plugin validate .` passes (for plugin or manifest changes)
+- [ ] `README.md` / `CHANGELOG.md` updated if the change is user-facing
+- [ ] `python3 scripts/validate_plugin.py` passes

@@ -1,4 +1,4 @@
 # Hook scripts must keep LF line endings: session-start is parsed by bash
 # (CRLF breaks it), and the polyglot run-hook.cmd is parsed by both cmd.exe
 # and bash. Never let autocrlf rewrite them on checkout.
-plan-staged-rollout/hooks/* text eol=lf
+hooks/* text eol=lf

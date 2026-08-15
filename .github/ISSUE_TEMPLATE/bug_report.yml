@@ -1,16 +1,19 @@
 name: Bug report
-description: Something in a plugin isn't working as expected.
+description: plan-staged-rollout isn't working as expected.
 labels: ["bug"]
 body:
   - type: dropdown
-    id: plugin
+    id: area
     attributes:
-      label: Plugin
-      description: Which plugin is affected?
+      label: Area
+      description: Which part is affected?
       options:
-        - plan-staged-rollout
-        - marketplace / install
-        - other / not sure
+        - /plan-stages (bootstrap)
+        - /plan-run (stage execution)
+        - /plan-close (closeout)
+        - SessionStart hook
+        - Install / marketplace
+        - Other / not sure
     validations:
       required: true
   - type: textarea
@@ -25,7 +28,7 @@ body:
     id: version
     attributes:
       label: Environment
-      description: Claude Code version and OS.
-      placeholder: "e.g. Claude Code 2.x on macOS 15"
+      description: Claude Code version, plugin version, and OS.
+      placeholder: "e.g. Claude Code 2.x, plugin 0.4.0, macOS 15"
     validations:
       required: false

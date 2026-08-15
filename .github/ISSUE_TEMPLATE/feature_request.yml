@@ -1,5 +1,5 @@
 name: Feature or idea
-description: Suggest a new plugin, command, or improvement.
+description: Suggest a new command, capability, or improvement.
 labels: ["enhancement"]
 body:
   - type: textarea

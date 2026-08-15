@@ -26,8 +26,11 @@ Size/Effort discipline — lives in the maintainer's global `CLAUDE.md` /
 `AGENTS.md`. This section adds only what is specific to this repo.
 
 - **Tracker & board:** issues live in `by-carlos/claude-plugins` and go to the
-  **"Claude Plan Staged Rollout"** project (project 3). That board's priority
-  scale is **P0–P2 only** — it has no P3/P4, so don't try to set one.
+  **"Claude Plugins"** project (project 3). Its priority scale is **P0–P4**.
+- **That board is shared across every Claude plugin repo**, not scoped to this
+  one — `by-carlos/daikenja` files there too. So don't read the board as a view
+  of this repo: filter by the Repository field before concluding anything about
+  what is open here, and don't assume a neighbouring item is ours.
 - **This repo is public.** Everything else in the estate is private; this one is
   the marketplace source, so an issue body is published the moment it is filed —
   and stays indexed even if edited or deleted afterwards.

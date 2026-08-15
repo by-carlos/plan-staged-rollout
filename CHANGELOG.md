@@ -21,6 +21,15 @@ plugin follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   acceptance before merge; automated and agent verification no longer count as
   a substitute.
 
+### Removed
+
+- **Standalone skills** (`debloat-context`, `summary`, `triage-issues`,
+  `work-issue`) — moved out of `skills/` into a private incubator repo
+  (`by-carlos/claude-lab`) so they can be developed and tested through the
+  real plugin install path instead of a manual copy into
+  `~/.claude/skills/`. They'll return here as a proper installable plugin
+  once ready.
+
 ## [0.3.0] — 2026-08-04
 
 ### Added

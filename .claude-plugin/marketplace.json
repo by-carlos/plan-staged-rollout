@@ -9,6 +9,15 @@
       "name": "plan-staged-rollout",
       "source": "./plan-staged-rollout",
       "description": "Run big projects as many small sessions — not one huge one."
+    },
+    {
+      "name": "daikenja",
+      "source": {
+        "source": "github",
+        "repo": "by-carlos/daikenja",
+        "ref": "release"
+      },
+      "description": "Skills for reading threads and documents, composing messages, and keeping a per-project markdown ledger of decisions and open items. Claude Code only."
     }
   ]
 }

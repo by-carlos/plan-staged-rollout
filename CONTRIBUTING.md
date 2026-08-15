@@ -1,11 +1,11 @@
 # Contributing
 
-Thanks for your interest in improving these plugins. This is a small, solo-maintained
-marketplace, so the workflow is deliberately lightweight.
+Thanks for your interest in improving this plugin. This is a small, solo-maintained
+project, so the workflow is deliberately lightweight.
 
 ## Workflow
 
-1. **Open an issue first** for anything non-trivial — a bug, a new plugin idea, or a
+1. **Open an issue first** for anything non-trivial — a bug, a feature idea, or a
    behavior change. It saves you from building something that won't be merged. Typo
    fixes and other small changes can skip straight to a PR.
 2. **Fork** the repo and branch off `main` (e.g. `fix/…`, `feat/…`, `docs/…`).
@@ -19,10 +19,10 @@ The maintainer ([Carlos Eng](https://github.com/by-carlos)) reviews and merges a
 ## Validation
 
 A GitHub Actions workflow (`.github/workflows/validate.yml`) runs on every PR and on
-pushes to `main`. It runs `scripts/validate_plugins.py`, which checks that:
+pushes to `main`. It runs `scripts/validate_plugin.py`, which checks that:
 
-- `.claude-plugin/marketplace.json` and each plugin's `.claude-plugin/plugin.json`
-  parse as JSON, and every marketplace `source` path exists.
+- `.claude-plugin/plugin.json` parses as JSON and carries `name`, `description` and
+  an `x.y.z` semver `version`.
 - `commands/*.md` have a `description` and `skills/*/SKILL.md` have `name` and
   `description` in their frontmatter.
 - The templates referenced by each `SKILL.md` (`PLAN.md`, `LEDGER.md`, `stage-N.md`,
@@ -33,11 +33,11 @@ The script is stdlib-only Python (no external dependencies). Run it locally befo
 pushing:
 
 ```
-python3 scripts/validate_plugins.py
+python3 scripts/validate_plugin.py
 ```
 
 ## Ground rules
 
-- Match the existing style and structure of the plugin you're touching.
+- Match the existing style and structure of the code you're touching.
 - Update the relevant README and `CHANGELOG.md` when your change is user-facing.
 - Be respectful and constructive — assume good faith on all sides.

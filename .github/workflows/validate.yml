@@ -1,4 +1,4 @@
-name: Validate plugins
+name: Validate plugin
 
 on:
   pull_request:
@@ -13,4 +13,4 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.x"
-      - run: python3 scripts/validate_plugins.py
+      - run: python3 scripts/validate_plugin.py

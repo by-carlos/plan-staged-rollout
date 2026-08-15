@@ -34,6 +34,12 @@ Installed plugin commands are namespaced — see the quickstart above for the
 exact commands to type. The rest of this README uses the short names
 (`plan-stages`, `plan-run`, `plan-close`) for readability.
 
+The plugin is distributed through the
+[`carlos-plugins`](https://github.com/by-carlos/claude-plugins) catalog, which
+serves it from this repository's `release` branch. `main` is where development
+happens; `release` is what installs. Run `/plugin marketplace update` to pick
+up a new version.
+
 ---
 
 ## The problem
@@ -357,16 +363,16 @@ earlier stage's assumptions were written down.
 
 ## Status
 
-**Shipped** (v0.1.0). This README is the method document; the skill, the three
+**Shipped.** This README is the method document; the skill, the three
 commands, and the templates are implemented. They were built with the method
 itself — decomposed into a `.plan/` and executed stage by stage in this repo
 (the plan folder was removed at closeout, as the method prescribes; its full
-history is in git).
+history is in git). See [`CHANGELOG.md`](CHANGELOG.md) for what shipped when.
 
 Layout:
 
 ```
-plan-staged-rollout/
+.
   .claude-plugin/plugin.json
   README.md                      ← you are here
   skills/staged-rollout/
@@ -384,3 +390,17 @@ plan-staged-rollout/
     run-hook.cmd                 # polyglot cmd/bash wrapper (Windows + Unix)
     session-start                # .plan/-aware nudge: next runnable stage
 ```
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Author
+
+Built by **Carlos Eng** —
+[GitHub](https://github.com/by-carlos) ·
+[LinkedIn](https://www.linkedin.com/in/carlos-eng/)
+
+## License
+
+[MIT](LICENSE) © Carlos Eng

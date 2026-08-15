@@ -48,6 +48,11 @@ main
 plan-<slug> → final PR → main       ← at /plan-close
 ```
 
+`.plan/` is **tracked** on the plan branch, and the plan branch is pushed with
+an upstream. Don't add `.plan/` to `.gitignore`: an untracked plan can't
+produce the per-stage commits and PRs this model runs on, and a local-only
+plan branch makes each session's sync a silent no-op.
+
 Every stage gets its own branch and PR into the plan branch — the only
 supported model, fixed at bootstrap. Branch names are flat (`plan-<slug>-s3`,
 not `plan/<slug>/s3`) because git refs can't nest a branch under an existing

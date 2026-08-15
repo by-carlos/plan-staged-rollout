@@ -140,6 +140,18 @@ main
 plan-<slug> → final PR → main         ← at closeout (normal merge)
 ```
 
+**`.plan/` must be tracked, and the plan branch must have an upstream.** Both
+are load-bearing invariants, not tidiness. An untracked (or `.gitignore`d)
+`.plan/` breaks the model in two ways at once: a stage whose only artifacts are
+decisions or documentation produces nothing to commit, so it can never open the
+PR that semantics 3–4 below require, and every stage depending on it deadlocks
+on an unsatisfiable gate; and the whole decision record lives only in a working
+directory that a `git clean` or a deleted worktree takes with it. A local-only
+plan branch is the quieter version of the same failure — the preflight's fetch
+and fast-forward both succeed and do nothing, forever. Bootstrap refuses to
+scaffold into an ignored path and pushes the plan branch with an upstream;
+every stage preflight re-checks both.
+
 Six frozen semantics:
 
 1. **One branch per stage**, cut from the plan branch (`plan-<slug>`) — no
@@ -147,7 +159,10 @@ Six frozen semantics:
    the classic failure where "one small commit" quietly becomes twenty commits
    of fixes bleeding into shared history.
 2. **Commits are compulsory and incremental** — commit at logical units as the
-   stage progresses, not a single commit at stage end.
+   stage progresses, not a single commit at stage end. Every stage has
+   something to commit: the ledger evidence and any frozen-decision amendment
+   are tracked files, so even a decision-only stage lands a real commit and a
+   real PR.
 3. **A stage PR into the plan branch is compulsory** — the finish protocol
    creates it; it is never "offered" as optional.
 4. **A stage cannot be closed (marked `done`) until its PR is merged** into
@@ -173,7 +188,8 @@ and the final PR to `main` is always yours to merge.
 **Preflight & sync — verify git state before trusting the ledger.** The
 ledger is canonical, but only after it's proven fresh: every stage session
 and the closeout start with a preflight block, defined once in the template
-`PLAN.md`'s operating protocol — fetch, fast-forward the plan branch (holds
+`PLAN.md`'s operating protocol — confirm `.plan/` is tracked and the plan
+branch has an upstream, fetch, fast-forward the plan branch (holds
 under both squash-merge and merge-commit remotes), require a clean tree and
 a sane HEAD position, and reconcile the ledger rows against actual branch
 and PR state. One state is self-healing (a `doing` row whose PR merged

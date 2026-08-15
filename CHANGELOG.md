@@ -14,6 +14,13 @@ plugin follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
   while active. Also packaged as a standalone `.zip` for upload to claude.ai
   (Settings → Capabilities → Skills).
 
+### Changed
+
+- **`/work-issue` pre-merge acceptance** — user-verifiable changes must leave
+  the exact PR head deployed for maintainer inspection and receive explicit
+  acceptance before merge; automated and agent verification no longer count as
+  a substitute.
+
 ## [0.3.0] — 2026-08-04
 
 ### Added

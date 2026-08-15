@@ -89,6 +89,18 @@ scope on `gh` (`gh auth refresh -s project`).
   merge") — must be complete *before* you merge. Never merge with steps
   outstanding: a mid-flight error after merging would auto-close an issue that
   isn't actually resolved. If any bundled task remains, finish it first.
+- **Complete user acceptance before presenting the merge gate** when the change
+  has a live, visual, interactive, or otherwise user-verifiable acceptance
+  surface. Obtain any live-system approval the repository requires, deploy the
+  exact PR head through its documented pre-merge test path, run basic health
+  checks, give the maintainer the exact location to inspect, and leave that
+  deployment available while awaiting explicit acceptance. Automated tests,
+  health checks, screenshots, and agent verification support this gate but do
+  not replace maintainer acceptance. If the deployment is reverted or
+  overwritten before acceptance, redeploy the same PR head before merging. If
+  it cannot be deployed safely, report the blocker and do not merge. “Looks
+  good, merge it” satisfies both acceptance and merge confirmation when the
+  merge risk has already been disclosed.
 - Present the PR link and ask for explicit confirmation to merge. **Never
   merge without it.** If confirmation doesn't come, leave the PR open (Status
   stays `In review`) and finish the session cleanly.

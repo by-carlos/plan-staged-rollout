@@ -94,11 +94,12 @@ warrants it:
 
 Every weight check (bootstrap's gate, a stage's `model` comparison) needs a
 mechanical rule for "is this session heavy enough" — not the model's own guess
-about itself. Maintain this tier list as model families evolve:
+about itself. Maintain this tier list as model families evolve, and place a new
+family by its capability and price, not by where its name sorts:
 
-- **Top tier ("Opus-class"):** the Opus generation (e.g. `claude-opus-*`).
-- **Mid tier ("Sonnet-class"):** the Sonnet generation (e.g. `claude-sonnet-*`),
-  and equivalently-positioned mid-tier models (e.g. `claude-fable-*`).
+- **Top tier ("Opus-class"):** the Opus generation (e.g. `claude-opus-*`), plus
+  any frontier family positioned at or above it (e.g. `claude-fable-*`).
+- **Mid tier ("Sonnet-class"):** the Sonnet generation (e.g. `claude-sonnet-*`).
 - **Light tier ("Haiku-class"):** the Haiku generation (e.g. `claude-haiku-*`).
 
 **Fail-safe:** if the session's disclosed model ID or name doesn't recognizably

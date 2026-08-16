@@ -42,6 +42,8 @@ stage (Operating protocol, finish step 3).
   `ok=False, status=None`. All timestamps are UTC ISO-8601.
 - **Output is a single static `public/index.html`** — no server, no JS.
 - **Git strategy:** branch-per-stage (fixed — the only supported model).
+  `.plan/` is **tracked** on the plan branch and the plan branch has an
+  **upstream** — both are load-bearing, not housekeeping (preflight step 0.0).
   `main` → `plan-uptime-page` (the plan branch; `.plan/` lives here) → one
   branch per stage `plan-uptime-page-s<N>` (flat names — git refs can't nest
   a branch under an existing branch), each landing as a **squash-merged** PR
@@ -88,6 +90,22 @@ model. Escalate only where a stage has genuine open design questions
    touching any branch. The ledger is canonical but may only be trusted
    *after* it passes — git state inherited from a previous session, a remote
    merge, or a crash is verified here, never assumed.
+   0. **Verify the plan is real git, not a loose directory.** Two checks,
+      both hard gates — the whole protocol rests on them:
+      - **`.plan/` is tracked:** `git ls-files --error-unmatch .plan/PLAN.md`.
+        If it fails, `.plan/` is untracked or ignored — stop. An untracked
+        plan produces no committable content, so stages that only amend
+        `PLAN.md`/`LEDGER.md` can never open a PR, which makes every
+        downstream dependency gate unsatisfiable; and the entire decision
+        record dies with the working directory. Fix by removing the ignore
+        rule (`git check-ignore -v .plan/PLAN.md` names it) and committing
+        `.plan/` on the plan branch before running any stage.
+      - **The plan branch has an upstream:**
+        `git rev-parse --abbrev-ref plan-uptime-page@{upstream}`. If it fails,
+        the branch is local-only — the fetch and fast-forward below would
+        succeed while doing nothing, forever. Push it (`git push -u origin
+        plan-uptime-page`) and continue; pushing a feature branch needs no
+        approval.
    1. **Fetch:** `git fetch origin`.
    2. **Sync the plan branch:** fast-forward local `plan-uptime-page` to
       `origin/plan-uptime-page` — `git merge --ff-only origin/plan-uptime-page`
@@ -132,7 +150,12 @@ model. Escalate only where a stage has genuine open design questions
    (`git fetch` first — the merge may be remote and not yet local). Both must
    hold. A `done` ledger row alone is not enough: a stage branched off the
    plan branch before a prerequisite's PR is merged will silently lack that
-   prerequisite's work. If either isn't true, stop and say so.
+   prerequisite's work. If either isn't true, stop and say so. This gate is
+   always satisfiable: **every** stage has repo artifacts, because `.plan/` is
+   tracked and every stage edits the ledger — a documentation- or
+   decision-only stage still commits its `PLAN.md`/`LEDGER.md` changes and
+   still opens a PR. A depends-stage with no PR means preflight step 0.0 was
+   skipped, not that the stage was exempt.
 4. **Branch:** create `plan-uptime-page-s<N>` from `plan-uptime-page` —
    preflight step 2 already brought it up to date (or use the stage branch if
    the human already made it). Work happens on the stage branch. **Redo:**
@@ -161,7 +184,11 @@ model. Escalate only where a stage has genuine open design questions
    3. If a decision changed or was added, amend **Frozen decisions in this
       file** — nowhere else.
    4. Commit on the stage branch throughout the stage at logical units
-      (conventional messages) — not one commit at the end. Push the branch
+      (conventional messages) — not one commit at the end. There is no such
+      thing as a stage with nothing to commit: steps 1–3 above always change
+      tracked files under `.plan/`, so a stage whose Artifacts are "no host or
+      secret changes" still lands its ledger evidence and any frozen-decision
+      amendment as a commit. Push the branch
       and **open the PR** into `plan-uptime-page` (compulsory, not offered),
       pinning the base explicitly — `gh pr create --base plan-uptime-page` —
       never relying on the default, which falls back to the repo's default

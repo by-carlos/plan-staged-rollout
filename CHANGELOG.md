@@ -8,6 +8,25 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Fixed
+
+- **The stage PR gate could deadlock a plan.** When `.plan/` was untracked or
+  `.gitignore`d, a decision- or documentation-only stage produced nothing to
+  commit and so could never open the stage PR that its dependents' gate
+  requires — the plan could not advance past S0 without overriding its own
+  rules. A local-only plan branch was the quieter half of the same failure:
+  the preflight's `git fetch` and fast-forward both succeeded while doing
+  nothing, forever. `.plan/` being tracked and the plan branch having an
+  upstream are now stated as load-bearing invariants and **checked**:
+  `/plan-stages` refuses to scaffold into an ignored path, pushes the plan
+  branch with `-u`, and verifies the scaffold is tracked; every stage
+  preflight re-checks both as a hard gate (protocol step 0.0). The finish
+  protocol and dependency gate now state explicitly that ledger evidence is
+  itself committable content, so no stage is ever exempt from producing a
+  commit and a PR (#43).
+
 ## [0.4.0] — 2026-08-15
 
 ### Changed

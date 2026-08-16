@@ -33,7 +33,7 @@ elsewhere. See 0.4.0 for the split.
   Both `/plan-stages` and `/plan-run` would then advise relaunching on a
   heavier session that does not exist, or abort a perfectly valid one. The
   family now sits in the top tier, and the rubric says to place a new family by
-  capability and price rather than by where its name sorts.
+  capability and price rather than by where its name sorts (#64).
 
 ### Documentation
 

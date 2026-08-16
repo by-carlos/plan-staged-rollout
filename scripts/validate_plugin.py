@@ -9,6 +9,8 @@ import re
 import sys
 from pathlib import Path
 
+import yaml
+
 ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_FILES = ["PLAN.md", "LEDGER.md", "stage-N.md", "README.md"]
 MANIFEST_FIELDS = ["name", "version", "description"]
@@ -35,21 +37,23 @@ def load_json(path):
 
 def parse_frontmatter(path):
     text = path.read_text(encoding="utf-8")
-    if not text.startswith("---"):
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
         err(f"{path.relative_to(ROOT)}: missing frontmatter block")
         return {}
-    parts = text.split("---", 2)
-    if len(parts) < 3:
+    try:
+        end_index = lines[1:].index("---") + 1
+    except ValueError:
         err(f"{path.relative_to(ROOT)}: unterminated frontmatter block")
         return {}
-    fields = {}
-    for line in parts[1].splitlines():
-        if not line.strip() or line.startswith(" ") or line.startswith("\t"):
-            continue
-        if ":" not in line:
-            continue
-        key, _, value = line.partition(":")
-        fields[key.strip()] = value.strip()
+    try:
+        fields = yaml.safe_load("\n".join(lines[1:end_index]))
+    except yaml.YAMLError as exc:
+        err(f"{path.relative_to(ROOT)}: invalid YAML frontmatter ({exc})")
+        return {}
+    if not isinstance(fields, dict):
+        err(f"{path.relative_to(ROOT)}: frontmatter must be a YAML mapping")
+        return {}
     return fields
 
 
@@ -93,6 +97,11 @@ def validate_skills():
             continue
         fields = parse_frontmatter(skill_md)
         check_required(skill_md, fields, ["name", "description"])
+        if fields.get("name") and fields["name"] != skill_dir.name:
+            err(
+                f"{skill_md.relative_to(ROOT)}: name '{fields['name']}' does not "
+                f"match directory '{skill_dir.name}'"
+            )
 
         templates_dir = skill_dir / "references" / "templates"
         if templates_dir.is_dir():

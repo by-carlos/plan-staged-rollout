@@ -35,6 +35,14 @@ elsewhere. See 0.4.0 for the split.
   protocol and dependency gate now state explicitly that ledger evidence is
   itself committable content, so no stage is ever exempt from producing a
   commit and a PR (#43).
+- **The weight check misread frontier sessions as mid-tier.** The Model weight
+  tiers rubric listed the `claude-fable-*` family as "Sonnet-class", so a
+  session on Anthropic's most capable widely released model — priced above the
+  Opus generation — was graded *lighter* than a stage flagged `model: opus`.
+  Both `/plan-stages` and `/plan-run` would then advise relaunching on a
+  heavier session that does not exist, or abort a perfectly valid one. The
+  family now sits in the top tier, and the rubric says to place a new family by
+  capability and price rather than by where its name sorts (#64).
 
 ### Documentation
 

@@ -8,6 +8,19 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Documentation
+
+- **Recorded why `model`/`effort` are launch hints rather than automation.**
+  The README's per-stage knobs section now states the platform constraint
+  behind the design: as of August 2026 no mechanism available to a session can
+  start another session at a chosen model or effort — an agent cannot switch
+  its own model, effort is not introspectable, and the desktop app's
+  suggested-task chips carry only title/prompt/cwd. The verify-model,
+  remind-effort split follows from that limit, so the rationale no longer has
+  to be re-derived.
+
 ## [0.4.0] — 2026-08-15
 
 ### Changed

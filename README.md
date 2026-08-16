@@ -283,6 +283,32 @@ Defaults are deliberately cheap: `direct`, `inline`, the cheaper capable
 model. Escalate only where a stage has genuine open design questions
 (`brainstorm`) or heavy iteration churn (`subagent`).
 
+### Why `model` / `effort` are hints, not automation
+
+Launching a stage at its recommended weight is **manual by design, because the
+platform gives no other option.** As of August 2026, nothing available to a
+Claude Code session can start another session at a chosen model or effort
+level:
+
+- an agent cannot switch its own model mid-session, so a stage that opens on
+  the wrong model can only report the mismatch, not correct it;
+- effort is not introspectable at all — a session cannot read its own setting,
+  which is why the protocol *reminds* rather than verifies;
+- the desktop app's suggested-task chips (the click-to-start notifications)
+  carry only a title, a prompt and a working directory — no model or effort
+  field — so even the one mechanism that can spawn a session inherits the
+  app's current selection rather than the stage's recommendation. Chips are
+  also app-only; they don't exist in the CLI.
+
+Hence the split the protocol actually uses: **verify the model** (readable from
+the session), **remind about effort** (not readable), and hand the human the
+exact command plus its recommended weight at every handoff. `.plan/` stays the
+carrier of that recommendation because it is the only channel that survives
+across sessions and works everywhere the plugin does.
+
+This is a platform limit, not a preference. If session spawning ever gains
+model/effort parameters, the handoff step is the place to revisit.
+
 ## The ledger, kept slim
 
 The ledger is read by *every* stage session, so its size taxes every future

@@ -10,6 +10,12 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Changed
+
+- **Pull requests now require maintainer approval.** Every tracked path is owned
+  by `@by-carlos`, allowing public contributions while ensuring the maintainer's
+  review is required before changes merge.
+
 ### Fixed
 
 - **The stage PR gate could deadlock a plan.** When `.plan/` was untracked or

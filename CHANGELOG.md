@@ -10,6 +10,15 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Changed
+
+- **Pull requests now require maintainer approval.** Every tracked path is owned
+  by `@by-carlos`, allowing public contributions while ensuring the maintainer's
+  review is required before changes merge.
+- **CI check names and plugin validation are stricter.** Required jobs now use
+  the shared `gitleaks` and `validate` names, while plugin validation parses
+  frontmatter as YAML and verifies every skill name matches its directory.
+
 ### Fixed
 
 - **The stage PR gate could deadlock a plan.** When `.plan/` was untracked or

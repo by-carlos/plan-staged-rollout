@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  scan:
+  gitleaks:
     runs-on: ubuntu-latest
     container:
       image: zricethezav/gitleaks:latest

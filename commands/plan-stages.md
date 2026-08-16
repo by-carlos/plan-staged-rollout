@@ -81,12 +81,26 @@ Then work through these steps **in order**:
    This is a bootstrap-time convenience only — it never changes the per-stage
    `model`/`effort` values in the stage index, which stay authoritative and are
    still checked individually by `/plan-run`'s weight gate. Skip the hint if
-   there's no strict majority (e.g. an even split). Then land the scaffold on
-   the plan branch: **propose creating the plan branch `plan-<slug>` off
-   `main`** and put the scaffold there — `.plan/` lives on the plan branch.
-   **Propose the scaffold commit** (conventional message, e.g.
-   `chore(plan): scaffold .plan/ for <slug>`) and wait for the user's OK — do
-   not create the branch or commit unilaterally.
+   there's no strict majority (e.g. an even split).
+
+   Before writing anything, check that `.plan/` is not ignored —
+   `git check-ignore -v .plan/PLAN.md`. If a rule matches, **stop and report
+   it**; do not scaffold into an ignored path. An untracked `.plan/` deadlocks
+   the plan: decision-only stages produce no commit and therefore no PR, which
+   makes their dependents' gates unsatisfiable, and the whole decision record
+   is lost with the working directory. Removing the ignore rule is the fix, and
+   it is the user's call.
+
+   Then land the scaffold on the plan branch: **propose creating the plan
+   branch `plan-<slug>` off `main`** and put the scaffold there — `.plan/`
+   lives on the plan branch and is **tracked** there. **Propose the scaffold
+   commit** (conventional message, e.g. `chore(plan): scaffold .plan/ for
+   <slug>`) and wait for the user's OK — do not create the branch or commit
+   unilaterally. Once committed, **push the plan branch with an upstream**
+   (`git push -u origin plan-<slug>`) — no approval needed for a feature
+   branch. A local-only plan branch makes every later preflight's fetch and
+   fast-forward a silent no-op. Then confirm the scaffold is really tracked:
+   `git ls-files .plan/` must list the files you just wrote.
 
 6. **End announcement.** State explicitly that **bootstrap is finished and no
    stage was executed.** Tell the user their next action, in a **fresh

@@ -10,6 +10,8 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+## [0.4.1] — 2026-08-17
+
 ### Changed
 
 - **Pull requests now require maintainer approval.** Every tracked path is owned
@@ -227,6 +229,7 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
+[0.4.1]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.1
 [0.4.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.0
 [0.3.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.3.0
 [0.2]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.2

@@ -1,0 +1,64 @@
+name: Follow-up work
+description: Capture work found during a task — a fix, a hardening, a "we should really…"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For a bug you hit as a user, or an idea you want to suggest, the other
+        templates fit better. This one is for capturing work that surfaced
+        while doing something else, in the shape a fresh session can pick up
+        cold.
+
+  - type: textarea
+    id: plain-terms
+    attributes:
+      label: In plain terms
+      description: >
+        What is wrong or wanted, who it affects, and what happens today. Three
+        to five sentences. NO file paths, line numbers, function or skill
+        names, or issue numbers — those all belong in Context. Stripped of
+        identifiers the only thing left to write is behaviour and consequence,
+        which is exactly what a reader needs months later. If it reads like a
+        shorter Context, rewrite it. Test: could someone who has never opened
+        this repo say what breaks and why it matters?
+      placeholder: >
+        Today, when someone points a setting at a file the tool cannot read, it
+        carries on with the built-in default instead of stopping. Nothing in the
+        output says which one was used, so the work looks correct and ships
+        wrong. Anyone whose setup drifts is affected, and they find out from the
+        result rather than from a warning.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: >
+        What was observed, when, and the evidence — file paths with line
+        numbers, command output, dates. Write it so it still makes sense months
+        later to someone who was not in the session.
+    validations:
+      required: true
+
+  - type: textarea
+    id: options
+    attributes:
+      label: Options
+      description: >
+        The candidate approaches with a recommendation, not just a problem
+        statement. Say which one you would pick and why, and name any option
+        you rejected and what rules it out.
+    validations:
+      required: true
+
+  - type: textarea
+    id: ai-prompt
+    attributes:
+      label: AI prompt
+      description: >
+        A self-contained brief a fresh session can act on cold: the paths, the
+        goal, the binding constraints, what NOT to touch, and how to verify.
+        This is the deliverable — it is what turns the issue back into work.
+    validations:
+      required: true

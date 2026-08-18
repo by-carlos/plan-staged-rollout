@@ -1,4 +1,13 @@
+# core.autocrlf cannot be relied on here: on the development machine a global
+# `false` overrides a system `true`, so with the effective value `false` git
+# normalises nothing on `add` and CRLF that reaches the working tree gets
+# committed verbatim. Normalise every text file to LF in the repo and on
+# checkout, regardless of platform or any per-machine autocrlf setting.
+* text=auto eol=lf
+
 # Hook scripts must keep LF line endings: session-start is parsed by bash
 # (CRLF breaks it), and the polyglot run-hook.cmd is parsed by both cmd.exe
-# and bash. Never let autocrlf rewrite them on checkout.
+# and bash. Never let autocrlf rewrite them on checkout. Redundant under the
+# wildcard above, but kept as documentation of a hard constraint that must
+# survive any later loosening of the wildcard.
 hooks/* text eol=lf

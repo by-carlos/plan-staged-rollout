@@ -25,6 +25,28 @@ elsewhere. See 0.4.0 for the split.
   warns against serialising `depends` beyond genuine prerequisites. Waves stay
   **derived** from `depends` — no `wave` or `parallel-group` column, because a
   stored copy of the graph is what drifts (#54).
+- **Concurrent stages are now safe to run, not just visible.** Reporting a
+  fan-out is useless if the protocol still assumes one stage is in flight, and
+  three rules broke the moment it wasn't. Preflight step 0.5 now classifies a
+  mismatch by *whose* stage it belongs to: drift on the stage this session is
+  running still halts it, but another stage's in-flight branch — previously
+  read as a crashed session, which would have stopped every parallel session —
+  is reported and stepped over, while a genuinely crashed stage stays visible
+  in later preflights and in closeout's gate. Finish step 4 specifies the
+  merge order for parallel stage PRs: the plan branch is the serialization
+  point, they merge one at a time, and the second merger merges the plan
+  branch *into* its stage branch and **re-runs the acceptance check** (never
+  rebasing or force-pushing — the squash merge discards the merge commit).
+  Finish step 5 resolves the race on the `done` ledger commit: edit after the
+  fast-forward, replay the commit if the push is rejected, keep both rows on
+  conflict, never force-push the plan branch. Write territory between
+  logically independent stages is modelled as a `depends` edge — there is
+  deliberately no separate field, and `/plan-stages` checks same-wave stages
+  for overlapping artifacts at decomposition time. `SKILL.md` also records the
+  verdict on `exec: subagent(<model>)` fan-out: viable *within* a stage,
+  never as a substitute for parallel sessions, because it collapses N stages
+  into one PR and one ledger row and makes per-session cost grow with the
+  width of the wave (#54).
 
 ## [0.4.1] — 2026-08-17
 

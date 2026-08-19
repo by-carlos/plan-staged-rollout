@@ -58,6 +58,16 @@ Then work through these steps **in order**:
    write, name the artifact the dependent stage actually consumes. If you
    cannot name one, drop the edge.
 
+   **Then check the other direction — shared write territory.** Two stages
+   with no logical dependency can still write the same files, which makes them
+   unsafe to run at the same time even though the graph says they are
+   independent. `depends` is the only place that can express this; there is
+   deliberately no separate territory field, because a second record of one
+   constraint is a second thing to drift. So where two stages that would land
+   in the same wave write the same file, add the edge. A small, genuinely
+   order-independent overlap may be left in one wave on purpose — say so
+   explicitly rather than leaving it implicit.
+
 4. **Git model (fixed, not a question).** Record the frozen git protocol in
    `PLAN.md`: **branch-per-stage** — `main` → `plan-<slug>` (the plan branch)
    → one `plan-<slug>-s<N>` branch and PR per stage, no exceptions, final PR

@@ -132,6 +132,45 @@ at once. Two rules keep that an advantage rather than a source of confusion:
   operator's action, one session per stage: a session cannot spawn independent
   top-level sessions, and nothing in this method pretends otherwise.
 
+Four semantics are what make concurrent sessions safe rather than merely
+possible. They are specified in full in the template `PLAN.md`, which owns the
+operating protocol; the reasoning behind them is the method:
+
+- **The plan branch is the serialization point.** Parallel stage PRs merge one
+  at a time, first come first served. The second merger syncs the plan branch
+  *into* its stage branch and re-runs the acceptance check — "mergeable" means
+  no textual conflict, not that the stage still passes. Squash merge makes
+  that free (the merge commit is discarded), which is why a stage branch is
+  never rebased or force-pushed.
+- **A sibling's stage branch is not drift.** Preflight classifies by *whose*
+  stage a mismatch belongs to instead of halting on any `todo` row with a
+  committed branch — otherwise every parallel session stops the moment a
+  second one starts. Real drift on the stage you are running still stops you,
+  and a genuinely crashed stage stays visible in every later preflight report
+  and in closeout's gate.
+- **Shared write territory is a `depends` edge, not a new field.** Two stages
+  that write the same files are not independent, whatever the feature graph
+  says, and `depends` is the only place that can say so. A dedicated
+  "territory" field would be a second record of one constraint — a second
+  thing to drift.
+- **The `done` ledger write races.** It is a direct commit on the plan branch,
+  so two sessions finishing together collide there: replay the commit on
+  rejection, keep both rows on conflict, never force-push the plan branch.
+
+**Is `exec: subagent(<model>)` fan-out an alternative to parallel sessions?**
+Only *inside* a stage — never as a substitute for them. Dispatching a whole
+wave from one orchestrator does sidestep git concurrency, but it collapses N
+stages into one: a single branch, PR, ledger row, and acceptance check
+covering work the decomposition deliberately kept separate (git semantics 1
+and 3) — and the orchestrator accumulates every subagent's return, so
+per-session cost stops being flat and principle 2, the mechanism the whole
+method rests on, goes with it. For a wave of cheap mechanical stages the
+honest options are therefore: run them as N sessions (the supported answer),
+or decide at **decomposition** time that they were really one stage, merge
+them, and let `exec: subagent(<model>)` absorb the churn within it. That is a
+decomposition decision, not an execution one — "group by effort, not just by
+feature" already points at it.
+
 ## Statuses and human-gated stages
 
 Statuses are `todo → doing → done`, plus `blocked` and `skipped` (full lifecycle
@@ -218,9 +257,10 @@ branch has an upstream, fetch, fast-forward the plan branch (holds
 under both squash-merge and merge-commit remotes), require a clean tree and
 a sane HEAD position, and reconcile the ledger rows against actual branch
 and PR state. One state is self-healing (a `doing` row whose PR merged
-remotely gets its `done` recorded); everything else is drift, and the
-preflight **reports and stops** — it never auto-stashes, resets, or deletes
-branches.
+remotely gets its `done` recorded); one is expected under concurrency (another
+stage's in-flight branch — reported, not fatal, see *Parallel stages*);
+everything else is drift, and the preflight **reports and stops** — it never
+auto-stashes, resets, or deletes branches.
 
 ## The final review stage
 

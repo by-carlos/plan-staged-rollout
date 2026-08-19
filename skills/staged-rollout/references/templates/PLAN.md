@@ -87,9 +87,38 @@ their own column. A stored copy is what drifts; the graph is the truth.
   because the index still looks correct.
 - **Concurrency is an operator action.** Nothing here launches sessions:
   running a wave in parallel means opening one session per stage yourself.
-  Note the current limit — the rest of this protocol still assumes a single
-  stage is in flight (preflight step 0.5 reads a sibling's stage branch as a
-  crashed session), so run concurrent stages knowingly.
+  What the protocol owes you is that doing so is safe — see *Concurrent
+  stages* below.
+
+### Concurrent stages (when the set fans out)
+
+Running two stages at once changes nothing about the git model: still one
+branch per stage, one PR per branch, one stage per session. It changes four
+things about timing, and each has a rule.
+
+- **A sibling's stage branch is expected state, not drift.** Two stage
+  branches cut from the same plan-branch tip is exactly what a fan-out looks
+  like. Preflight step 0.5 classifies by whose stage the mismatch belongs to:
+  drift on the stage *this* session is about to run still stops it, while
+  another stage's in-flight branch is reported and stepped over.
+- **The plan branch is the serialization point.** Parallel stage PRs merge
+  **one at a time, first come first served** — there is no queue to manage.
+  Whoever merges second re-syncs first (finish step 4): merge the plan branch
+  *into* the stage branch, resolve there, and re-run the acceptance checks. A
+  PR GitHub calls "mergeable" only means no textual conflict — not that this
+  stage still passes after the sibling's change landed.
+- **Shared write territory is a `depends` edge.** Two stages with no logical
+  relationship can still write the same files, and `Depends` is the only place
+  that can express it — so express it there and let the wave structure narrow
+  accordingly. There is deliberately **no** separate "territory" field: a
+  second place to record the same constraint is a second thing to drift. If
+  the overlap is small and genuinely order-independent, leaving both stages in
+  one wave is a legitimate choice, and the re-sync-and-re-verify rule above is
+  the net that catches it.
+- **The `done` ledger write can race.** It is a direct commit on the plan
+  branch (finish step 5), so two sessions finishing minutes apart collide
+  there. Finish step 5 says how: edit after the fast-forward, replay on
+  rejection, never force-push the plan branch.
 
 ## Operating protocol (every stage session)
 
@@ -129,13 +158,29 @@ their own column. A stored copy is what drifts; the graph is the truth.
    5. **Reconcile ledger vs reality:** cross-check the `LEDGER.md` status
       table against actual branch and PR state (`gh pr list --base
       plan-<slug> --state all`, `git branch -a --no-merged plan-<slug>`).
-      One mismatch is self-healing: a `doing` row whose stage PR is already
-      merged means the merge happened remotely — complete the finish
-      protocol's post-merge bookkeeping (finish step 5) by recording the row
-      `done` on the plan branch. Every other mismatch is drift — report each
-      one and stop: a `done` row with an open or unmerged stage PR; a `todo`
-      row with an existing stage branch that has commits (crashed session);
-      an open stage PR based on `main` instead of `plan-<slug>`.
+      Classify each mismatch by *whose* stage it belongs to — the stage this
+      session is about to run, or another one:
+      - **Self-healing:** a `doing` row whose stage PR is already merged
+        means the merge happened remotely — complete the finish protocol's
+        post-merge bookkeeping (finish step 5) by recording that row `done`
+        on the plan branch.
+      - **Drift — report and stop:** a `done` row with an open or unmerged
+        stage PR; an open stage PR based on `main` instead of
+        `plan-<slug>`; and **this session's own stage** showing a `todo` row
+        while its stage branch already exists with commits (a crashed
+        earlier attempt at the very stage you are starting — resume it or
+        discard it, don't run over it).
+      - **Report and continue:** *another* stage's `todo` row with an
+        existing stage branch that has commits. Under concurrent execution
+        that is the ordinary signature of a **live sibling** — a session
+        working that stage right now, whose `doing` flip and evidence are
+        still on its own unmerged branch and therefore invisible from here.
+        Halting would stop every parallel session, so list each one in the
+        preflight report (stage id, branch, whether it has an open PR) and
+        carry on. Detection is re-aimed, not weakened: the same signature
+        with no session behind it is a crashed stage, it reappears in every
+        later preflight report, the final review stage sees it, and closeout
+        still refuses to run while any stage PR is open or unmerged.
    6. **Report, don't repair:** on anything preflight can't fast-forward or
       reconcile, stop with an accurate report of the state and what would fix
       it — no auto-stash, no reset, no branch deletion.
@@ -201,6 +246,22 @@ their own column. A stored copy is what drifts; the graph is the truth.
       your own. Stage PRs are **squash-merged** (one commit per stage on the
       plan branch), and the merged stage branch is deleted. The stage cannot
       be marked `done` until this PR is merged.
+      **Merge order with a sibling in flight:** parallel stage PRs merge one
+      at a time, first come first served — the plan branch is the
+      serialization point, so there is no queue to coordinate. Before
+      offering the merge, `git fetch origin` and check whether
+      `origin/plan-<slug>` has moved past this stage branch's merge base. If
+      it has, a sibling merged while this stage was in flight: merge the plan
+      branch *into* the stage branch (`git merge origin/plan-<slug>`),
+      resolve any conflict there, push, and **re-run the Acceptance checks**,
+      replacing the evidence in the ledger notes with the output from the
+      merged result. GitHub reporting the PR as mergeable is not enough — it
+      means no textual conflict, not that this stage still passes after the
+      sibling's change. Never rebase or force-push a stage branch: resolving
+      with a merge commit on the stage branch costs the plan branch nothing,
+      because the squash merge discards it. If yet another sibling lands in
+      the window between the re-sync and the merge, repeat the check — it is
+      cheap, and a stale re-verify is worth less than none.
    5. **After the merge:** check out `plan-<slug>` and fast-forward it
       (`git fetch origin` + `git merge --ff-only origin/plan-<slug>`), then
       flip the stage's row to `done` as a direct commit on the plan branch
@@ -208,6 +269,16 @@ their own column. A stored copy is what drifts; the graph is the truth.
       never on the stage branch. If the merge doesn't happen this session,
       leave the row `doing` and end anyway; the next session's preflight
       (step 0.5) completes this bookkeeping when it finds the merged PR.
+      **If a sibling stage is running, this write races.** Both sessions
+      commit directly on the plan branch, so: make the edit *after* the
+      fast-forward (never before), touch only your own row, and push
+      immediately. If the push is rejected as non-fast-forward, the sibling
+      won the race by seconds — fetch and replay your single ledger commit on
+      top (`git pull --rebase origin plan-<slug>`), then push again. **Never
+      force-push the plan branch**: last-writer-wins would erase the
+      sibling's `done` row. If the replay conflicts, both rows are wanted —
+      the two edits touch adjacent lines of the same table, so resolve by
+      keeping **both**.
       End the session with HEAD on the plan branch.
    6. Announce: this stage is **finished**, then the **complete runnable
       set** — *every* `todo` stage whose `depends` are now all `done`, not

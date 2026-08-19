@@ -228,6 +228,36 @@ Two deliberate limits:
   sessions, so running a wave in parallel means opening one terminal per stage.
   The plugin tells you what *can* overlap; whether to is your call.
 
+Four rules keep the concurrent sessions from colliding:
+
+- **The plan branch is the serialization point.** Stage PRs merge one at a
+  time, first come first served. Whoever merges second re-syncs — merge the
+  plan branch *into* the stage branch, resolve there, and **re-run the
+  acceptance check**, because "mergeable" means no textual conflict, not that
+  the stage still passes after the sibling's change. Squash merge makes that
+  free, which is why stage branches are never rebased or force-pushed.
+- **A sibling's stage branch is not drift.** Preflight used to read any `todo`
+  row with a committed stage branch as a crashed session and halt — which
+  would stop every parallel session. It now classifies by whose stage the
+  mismatch is: drift on *your* stage still stops you; another stage's
+  in-flight branch is reported and stepped over.
+- **Shared write territory is a `depends` edge.** Two stages that write the
+  same files are not independent, whatever the feature graph says. There is no
+  separate territory field — a second record of one constraint is a second
+  thing to drift — so bootstrap checks for the overlap and adds the edge.
+- **The `done` ledger write can race.** Both sessions commit it directly on
+  the plan branch: edit after the fast-forward, replay with a rebase if the
+  push is rejected, keep both rows on conflict, and never force-push the plan
+  branch.
+
+**Subagent fan-out is not a substitute.** Running a whole wave from one
+orchestrator via `exec: subagent(<model>)` avoids git concurrency, but it
+collapses N stages into one branch, one PR, one ledger row and one acceptance
+check — and the orchestrator accumulates every subagent's return, so per-session
+cost stops being flat, which is the mechanism this whole method rests on. Use
+it *within* a stage for churn; if a wave really is one unit of work, merge
+those stages at decomposition time instead.
+
 ### 3. Git model (default)
 
 ```
@@ -417,7 +447,6 @@ earlier stage's assumptions were written down.
 ## Roadmap
 
 - Subagent fan-out for independent sub-steps within a stage
-- Parallel execution of independent stages
 - Progress dashboard rendered from the ledger
 - Skill evals (triggering accuracy, protocol adherence)
 

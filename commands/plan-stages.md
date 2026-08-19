@@ -50,6 +50,14 @@ Then work through these steps **in order**:
    `stage-f-review.md` — not a copy of `stage-N.md` — since it already bakes
    in the three-outcome checklist and acceptance check.
 
+   **Do not serialise `depends` out of habit.** `depends` means "cannot safely
+   start until", not "I wrote this stage after that one". Writing the chain
+   `S0 → S1 → S2 → S3` where the real graph is `S0 → {S1, S2, S3}` is the most
+   common decomposition error here: it reads as correct in the index and
+   silently forces three rounds of work where two would do. For every edge you
+   write, name the artifact the dependent stage actually consumes. If you
+   cannot name one, drop the edge.
+
 4. **Git model (fixed, not a question).** Record the frozen git protocol in
    `PLAN.md`: **branch-per-stage** — `main` → `plan-<slug>` (the plan branch)
    → one `plan-<slug>-s<N>` branch and PR per stage, no exceptions, final PR
@@ -108,4 +116,25 @@ Then work through these steps **in order**:
    **`/plan-staged-rollout:plan-run 0`** — and state **S0's recommended model
    and effort** from the stage index. If step 5 found a modal-model majority,
    repeat that recommendation here too (e.g. *"consider `/model opus` as your
-   session default — it covers 6 of 8 stages"*). Then stop.
+   session default — it covers 6 of 8 stages"*).
+
+   Then print the **wave structure and critical path**, derived from the
+   `Depends` column — never stored as a column of its own, since waves are a
+   view of the graph and a stored copy is what drifts. Wave 0 is every stage
+   with no `depends`; wave *k* is every stage whose deepest prerequisite sits
+   in wave *k−1*. Show it compactly:
+
+   ```
+   wave 0: S0
+   wave 1: S1, S2, S3     ← independent; one session each, concurrently
+   wave 2: S4
+   wave 3: SF
+   critical path: S0 → S1 → S4 → SF (4 stages)
+   ```
+
+   State the two facts that follow: the wave count is the fewest rounds this
+   plan can take, and the critical path is the floor on elapsed time that no
+   amount of parallelism removes. Name which waves fan out so the operator
+   knows where concurrency is available — but do **not** offer to launch those
+   sessions, because a session cannot start independent top-level sessions.
+   Then stop.

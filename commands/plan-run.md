@@ -66,11 +66,20 @@ Work through these steps **in order**:
 6. **End announcement.** When you stop, state explicitly:
    - The stage's outcome: **finished**, or `blocked`/`doing` — and if not
      finished, exactly what remains (which checkboxes, what it's waiting on).
-   - The **next runnable stage**: the first `todo` stage whose `depends` are all
-     `done`. Tell the user to continue in a fresh session with **"run stage
+   - The **complete runnable set**: *every* `todo` stage whose `depends` are
+     now all `done` — derived from the stage index's `Depends` column, per
+     `PLAN.md`'s *Runnable set & waves*. Never announce only the first one.
+     For each stage in the set, give the fresh-session prompt **"run stage
      \<N> of the plan"** — or the explicit command
      **`/plan-staged-rollout:plan-run <N>`** — and state its recommended
      **model and effort** from the stage index.
+   - **Whether they can overlap.** If the runnable set holds more than one
+     stage, say plainly that those stages are independent and can be launched
+     **concurrently, one stage per fresh session** — that launch is the
+     operator's action (N terminals); this session cannot start independent
+     sessions and must not try. If the set holds exactly one stage, say that
+     too, so "one stage next" reads as a fact about the graph rather than a
+     default.
    - If no stages remain runnable (all `done`/`skipped`), point the user at
      closeout — **"close out the plan"** or **`/plan-staged-rollout:plan-close`**
      — instead.

@@ -54,8 +54,8 @@ stage (Operating protocol, finish step 3).
 This table is the **single authoritative home** for every stage's `depends` /
 `mode` / `exec` / `model` / `effort`. Stage files never restate them (a copy is
 what drifts), and the tooling reads them from here: `/plan-run`'s weight check
-reads `model`/`effort` from this index, and the next-runnable-stage logic reads
-`depends` from it. A stage that isn't in this table is invisible to both — so
+reads `model`/`effort` from this index, and the runnable-set logic (below)
+reads `depends` from it. A stage that isn't in this table is invisible to both — so
 adding a new stage (including one the final review spawns) means adding its row
 here first.
 
@@ -64,6 +64,32 @@ Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
 Defaults are deliberately cheap — `direct`, `inline`, the cheaper capable
 model. Escalate only where a stage has genuine open design questions
 (`brainstorm`) or heavy iteration churn (`subagent`).
+
+### Runnable set & waves (derived, never stored)
+
+The `Depends` column is a full dependency graph, so everything about execution
+order is **derived from it** — waves and parallelism are never written down as
+their own column. A stored copy is what drifts; the graph is the truth.
+
+- **Runnable set:** every stage whose `LEDGER.md` status is `todo` and whose
+  `depends` are all `done`, plus any `doing` stage (resumable). This is a
+  *set*, not a single stage. When it holds more than one, those stages have no
+  dependency on each other and can be run **concurrently, one per fresh
+  session**.
+- **Waves:** wave 0 is every stage with no `depends`; wave *k* is every stage
+  whose deepest prerequisite sits in wave *k−1*. The number of waves is the
+  fewest rounds the plan can take, and the **critical path** — the longest
+  chain of `depends` edges — is the floor on elapsed time that no amount of
+  parallelism removes.
+- **`depends` means "cannot safely start until", not "written after".** List
+  only genuine prerequisites. Chaining `S0 → S1 → S2 → S3` when the real graph
+  is `S0 → {S1, S2, S3}` costs three rounds instead of two and hides the cost,
+  because the index still looks correct.
+- **Concurrency is an operator action.** Nothing here launches sessions:
+  running a wave in parallel means opening one session per stage yourself.
+  Note the current limit — the rest of this protocol still assumes a single
+  stage is in flight (preflight step 0.5 reads a sibling's stage branch as a
+  crashed session), so run concurrent stages knowingly.
 
 ## Operating protocol (every stage session)
 
@@ -183,6 +209,12 @@ model. Escalate only where a stage has genuine open design questions
       leave the row `doing` and end anyway; the next session's preflight
       (step 0.5) completes this bookkeeping when it finds the merged PR.
       End the session with HEAD on the plan branch.
-   6. Announce: this stage is **finished**; the next runnable stage (the first
-      `todo` whose `depends` are all `done`), the exact prompt/command to run
-      it, and its recommended model/effort. Then stop.
+   6. Announce: this stage is **finished**, then the **complete runnable
+      set** — *every* `todo` stage whose `depends` are now all `done`, not
+      just the first (see *Runnable set & waves* above). For each one, give
+      the exact prompt/command to run it and its recommended `model`/`effort`
+      from the stage index. If the set holds more than one stage, say so
+      plainly: they are independent and can be launched **concurrently, one
+      per fresh session**. If it is empty, say which it is — every stage
+      `done`/`skipped` (ready for closeout) or stalled on `blocked` rows and
+      unmet dependencies. Then stop.

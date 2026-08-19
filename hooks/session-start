@@ -162,6 +162,23 @@ deps_satisfied() {
     return 0
 }
 
+# Render one runnable stage as a single markdown bullet body: its id and name,
+# the exact plan-run command, and the launch hints from the stage index.
+describe_stage() {
+    local i="$1" id name num model="" effort="" weight="" pos
+    id="${ledger_ids[$i]}"
+    name="${ledger_names[$i]}"
+    num="$(printf '%s' "${id#S}" | tr '[:upper:]' '[:lower:]')"
+    if pos="$(index_pos_of "$id")"; then
+        model="${index_models[$pos]}"
+        effort="${index_efforts[$pos]}"
+    fi
+    case "$model" in ''|'—'|'-') ;; *) weight="$(printf 'model `%s`' "$model")" ;; esac
+    case "$effort" in ''|'—'|'-') ;; *) weight="${weight:+$weight, }$(printf 'effort `%s`' "$effort")" ;; esac
+    printf '**%s%s** — `/plan-staged-rollout:plan-run %s`%s' \
+        "$id" "${name:+ — $name}" "$num" "${weight:+ ($weight)}"
+}
+
 main() {
     local root
     root="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -176,44 +193,43 @@ main() {
     parse_index "$plan_dir/PLAN.md" || return 0
     [ "${#ledger_ids[@]}" -gt 0 ] || return 0
 
-    # Next runnable stage: a `doing` stage to resume, else the first `todo`
+    # Runnable set: every `doing` stage (resumable) plus every `todo` stage
     # whose depends (read from the PLAN.md stage index — a stage missing from
     # that index is invisible to this logic, per PLAN.md) are all `done`.
-    local next=-1 resume=0 i pos
+    # Reported in FULL, never truncated to the first: when the set holds more
+    # than one stage the graph fans out there, and those stages can be run
+    # concurrently, one fresh session each.
+    local runnable=() i pos
     for i in "${!ledger_ids[@]}"; do
-        if [ "${ledger_statuses[$i]}" = "doing" ]; then
-            next=$i
-            resume=1
-            break
-        fi
+        [ "${ledger_statuses[$i]}" = "doing" ] || continue
+        runnable+=("$i")
     done
-    if [ "$next" -lt 0 ]; then
-        for i in "${!ledger_ids[@]}"; do
-            [ "${ledger_statuses[$i]}" = "todo" ] || continue
-            pos="$(index_pos_of "${ledger_ids[$i]}")" || continue
-            deps_satisfied "${index_depends[$pos]}" || continue
-            next=$i
-            break
-        done
-    fi
+    for i in "${!ledger_ids[@]}"; do
+        [ "${ledger_statuses[$i]}" = "todo" ] || continue
+        pos="$(index_pos_of "${ledger_ids[$i]}")" || continue
+        deps_satisfied "${index_depends[$pos]}" || continue
+        runnable+=("$i")
+    done
 
     local context
-    if [ "$next" -ge 0 ]; then
-        local id="${ledger_ids[$next]}" name="${ledger_names[$next]}"
-        local num model="" effort="" weight="" action
-        num="$(printf '%s' "${id#S}" | tr '[:upper:]' '[:lower:]')"
-        if pos="$(index_pos_of "$id")"; then
-            model="${index_models[$pos]}"
-            effort="${index_efforts[$pos]}"
-        fi
-        case "$model" in ''|'—'|'-') ;; *) weight="model \`$model\`" ;; esac
-        case "$effort" in ''|'—'|'-') ;; *) weight="${weight:+$weight, }effort \`$effort\`" ;; esac
-        [ -n "$weight" ] && weight=" Recommended launch: $weight."
-        action="run"
-        [ "$resume" -eq 1 ] && action="resume (it is \`doing\` — a session left it partially complete)"
-        context="**Active staged rollout in this repo** (\`.plan/\` present). Next runnable stage: **$id${name:+ — $name}**, to $action.$weight
+    if [ "${#runnable[@]}" -eq 1 ]; then
+        local only="${runnable[0]}" action="run"
+        [ "${ledger_statuses[$only]}" = "doing" ] && action="resume — it is \`doing\`, so a session left it partially complete"
+        context="**Active staged rollout in this repo** (\`.plan/\` present). Exactly one stage is runnable; every other stage is \`done\`, \`skipped\`, or still waiting on a dependency. Next: $(describe_stage "$only"), to $action.
 
-Offer to continue it via the plan-run command for stage $num — \`/plan-staged-rollout:plan-run $num\` — but do NOT auto-run it: surface this to the user and wait for their go-ahead. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
+Offer it to the user but do NOT auto-run it: surface this and wait for their go-ahead. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
+    elif [ "${#runnable[@]}" -gt 1 ]; then
+        local list="" j suffix
+        for j in "${runnable[@]}"; do
+            suffix=""
+            [ "${ledger_statuses[$j]}" = "doing" ] && suffix=" — \`doing\`, resume it"
+            list="$list
+- $(describe_stage "$j")$suffix"
+        done
+        context="**Active staged rollout in this repo** (\`.plan/\` present). **${#runnable[@]} stages are runnable right now** — their \`depends\` are all satisfied and none of them depends on another, so they can be run **concurrently, one per fresh session**:
+$list
+
+Surface all of them to the user and wait for their go-ahead — do NOT auto-run any. Running more than one at a time is the user's action, one session per stage; you cannot launch independent sessions from here. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
     else
         local open=0 st
         for st in "${ledger_statuses[@]}"; do

@@ -19,8 +19,13 @@ the same thing with ergonomics (it also runs the model/effort weight check
 for you). The `.plan/` folder works standalone either way; the plugin is
 convenience, not a dependency.
 
-Run stages in any order allowed by their `depends`. The next runnable stage is
-the first `todo` row in `LEDGER.md` whose dependencies are all `done`.
+Run stages in any order allowed by their `depends`. The **runnable set** is
+every `todo` row in `LEDGER.md` whose dependencies are all `done` — often more
+than one. Stages in that set do not depend on each other, so you can run them
+**concurrently, one per fresh session** (one terminal each). `PLAN.md`'s
+*Runnable set & waves* defines the set and shows how waves and the critical
+path are derived from the `Depends` column — they are never stored as a column
+of their own.
 
 3 of 4 stages recommend `sonnet` — setting it as your session default means
 the weight gate only prompts on the exceptions.

@@ -110,6 +110,9 @@ not as a separate spec that would become a second source of truth. Then it:
 - decomposes the work into the smallest sensible stages with explicit
   `depends`, putting the keystone (the piece everything needs) as S0;
 - appends a standing **final review stage** (see below);
+- prints the **wave structure and critical path** derived from `depends`, so
+  a fan-out is visible before you start — and so is a plan accidentally
+  decomposed into a chain;
 - asks your git strategy (default: branch-per-stage, below);
 - scaffolds `.plan/` and commits it. **No stage is executed during
   bootstrap.** It finishes by saying so explicitly and telling you exactly
@@ -157,8 +160,8 @@ The session follows the operating protocol in `PLAN.md`:
 7. **Finish protocol.** Run the acceptance check and record the *real output*;
    update the ledger row and notes; amend frozen decisions in `PLAN.md` (and
    nowhere else) if one changed; open the stage PR; announce the stage is
-   finished and name the next runnable stage — exact command plus its
-   recommended model/effort; stop.
+   finished and name **every** stage that is runnable now — each with its exact
+   command and recommended model/effort, and whether they can overlap; stop.
 
 **Subtasks and interruption.** Stage steps are checkboxes. If a session must
 stop mid-stage (blocked, context getting long, you interrupt), it marks the
@@ -176,9 +179,11 @@ normal, resumable state, not a failure.
 The real friction of a multi-day rollout isn't typing a long command — it's
 that a fresh session doesn't know a rollout exists. A `SessionStart` hook
 closes that gap: when the repo has a `.plan/` directory, every new session
-starts already knowing the next runnable stage — a `doing` stage to resume,
-else the first `todo` whose `depends` are all `done` — plus its recommended
-model/effort from the stage index, and offers the exact `/plan-run` command.
+starts already knowing every runnable stage — any `doing` stage to resume, plus
+every `todo` whose `depends` are all `done` — with each stage's recommended
+model/effort from the stage index and its exact `/plan-run` command. When more
+than one stage is runnable it says so, so a fan-out is visible from the first
+line of the session.
 
 Deliberately narrow by design:
 
@@ -193,6 +198,35 @@ Deliberately narrow by design:
   dependency is `bash`; a Windows box without it simply gets no nudge — the
   rest of the plugin is unaffected, since the commands are model-driven, not
   shell scripts.
+
+### Parallel stages — reported, not launched
+
+`depends` is a real dependency graph, so a plan often has several stages
+runnable at the same time. Every surface that answers "what's next" reports the
+whole **runnable set** — every `todo` stage whose dependencies are satisfied —
+never just the first:
+
+```
+3 stages are runnable right now — none depends on another, so they can be
+run concurrently, one per fresh session:
+
+- S1 — Parser       /plan-run 1   (model sonnet, effort low)
+- S2 — Renderer     /plan-run 2   (model sonnet, effort med)
+- S3 — CLI flags    /plan-run 3   (model haiku,  effort low)
+```
+
+Bootstrap prints the wave structure and critical path for the same reason: the
+wave count is the fewest rounds the plan can take, and the critical path is the
+floor on elapsed time that no amount of parallelism removes.
+
+Two deliberate limits:
+
+- **Waves are derived, never stored.** There is no `wave` or `parallel-group`
+  column in the stage index. Waves are a view of `depends`, and a stored copy
+  of a single source of truth is exactly what this method exists to prevent.
+- **Launching is yours.** A session cannot spawn independent top-level
+  sessions, so running a wave in parallel means opening one terminal per stage.
+  The plugin tells you what *can* overlap; whether to is your call.
 
 ### 3. Git model (default)
 

@@ -10,6 +10,22 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **Parallel stages are now reported.** The stage index's `depends` column has
+  always been a full dependency DAG, but every surface that answered "what's
+  next" collapsed it to a single stage, so a plan whose real graph is
+  `S0 → {S1, S2, S3}` was executed serially and the operator only noticed by
+  reading the index by hand. `PLAN.md`'s finish step 6, `/plan-run`'s end
+  announcement, and the `SessionStart` hook now report the **complete runnable
+  set** — every `todo` stage whose `depends` are all `done` — each with its
+  launch command and recommended model/effort, stating plainly when those
+  stages can be run concurrently in separate sessions. `/plan-stages` prints
+  the derived **wave structure and critical path** after decomposition and
+  warns against serialising `depends` beyond genuine prerequisites. Waves stay
+  **derived** from `depends` — no `wave` or `parallel-group` column, because a
+  stored copy of the graph is what drifts (#54).
+
 ## [0.4.1] — 2026-08-17
 
 ### Changed

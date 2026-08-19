@@ -66,6 +66,13 @@ context a long session would carry).
   units can be one stage; a single design-heavy unit deserves its own.
 - **Keystone as S0.** Identify the piece with no prerequisites that everything
   else needs, make it S0, and gate the rest behind it.
+- **`depends` is a graph, not a queue.** An edge means "cannot safely start
+  until", not "written after". Serialising by habit — writing
+  `S0 → S1 → S2 → S3` where the truth is `S0 → {S1, S2, S3}` — is the most
+  expensive decomposition mistake available here, because the index still
+  reads as correct while the plan takes three rounds instead of two. For every
+  edge, name the artifact the dependent stage consumes; if you can't name one,
+  drop the edge.
 - **Standing final review stage.** Always append `SF: plan review` as the last
   stage (see below), scaffolded from `stage-f-review.md`. Bootstrap adds it;
   it's not optional.
@@ -107,6 +114,23 @@ match a tier above — an unfamiliar family, a third-party model, a future renam
 do not guess which tier it belongs to. State the exact model ID/name from the
 system prompt and ask the user which tier applies, rather than silently passing
 or failing the gate.
+
+## Parallel stages
+
+`depends` is a real dependency graph, so more than one stage is often runnable
+at once. Two rules keep that an advantage rather than a source of confusion:
+
+- **Derive, never store.** The runnable set, the waves, and the critical path
+  are *views* of the `depends` column, computed on demand — by bootstrap's
+  post-decomposition summary and by every stage's end announcement. Do **not**
+  add a `wave` or `parallel-group` column to the stage index: that would be a
+  second copy of the graph, and principle 1 exists precisely because copies
+  drift.
+- **Report the set; don't launch it.** The deliverable is telling the operator
+  what *can* overlap — every `todo` stage whose `depends` are all `done`, each
+  with its command and recommended model/effort. Starting them is the
+  operator's action, one session per stage: a session cannot spawn independent
+  top-level sessions, and nothing in this method pretends otherwise.
 
 ## Statuses and human-gated stages
 

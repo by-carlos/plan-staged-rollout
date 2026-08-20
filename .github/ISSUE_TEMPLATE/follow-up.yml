@@ -38,6 +38,11 @@ body:
         What was observed, when, and the evidence — file paths with line
         numbers, command output, dates. Write it so it still makes sense months
         later to someone who was not in the session.
+
+        End with one provenance line saying where this came from, e.g.
+        `_Surfaced while working on #12 — Claude Code session `<id>`, 20 Aug 2026._`
+        An agent records its session identifier there; a human records what they
+        were doing. Mentioning the origin issue by number is what links the two.
     validations:
       required: true
 

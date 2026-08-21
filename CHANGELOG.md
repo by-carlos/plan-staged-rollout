@@ -12,6 +12,16 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Releases are now cut by GitHub Actions.** `release-prepare.yml` is run by
+  hand from the Actions tab, bumps `version` in `.claude-plugin/plugin.json`,
+  rotates `## [Unreleased]` into a dated section with its tag link, and opens
+  the release pull request. Merging that pull request triggers
+  `release-publish.yml`, which tags the version, cuts the GitHub release using
+  that version's changelog section as the notes, and fast-forwards `release`.
+  The manual four-step sequence this replaces was easy to half-complete — most
+  damagingly by moving `release` without bumping the version, which ships
+  nothing and fails silently.
+
 - **Parallel stages are now reported.** The stage index's `depends` column has
   always been a full dependency DAG, but every surface that answered "what's
   next" collapsed it to a single stage, so a plan whose real graph is
@@ -267,6 +277,7 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
+[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.4.1...HEAD
 [0.4.1]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.1
 [0.4.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.0
 [0.3.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.3.0

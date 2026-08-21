@@ -41,10 +41,13 @@ Work through these steps **in order**:
    distillation or cleanup.
 
    **Stage worktrees are part of this gate.** `git worktree list` must show
-   only the clone. A surviving stage worktree means some stage never finished
-   its teardown (finish step 5) — report each path and what it holds, and
-   refuse to close until they are resolved. Removing one is the operator's
-   call, never automatic, and never with `--force`.
+   only the clone plus worktrees whose branch matches `plan-<slug>-s*` — an
+   operator's unrelated worktree (any other branch) is none of this plan's
+   business and does not block closeout. A surviving worktree on a matching
+   branch means some stage never finished its teardown (finish step 5) —
+   report each path and what it holds, and refuse to close until they are
+   resolved. Removing one is the operator's call, never automatic, and never
+   with `--force`.
 
 3. **Distill the story.** Read `.plan/PLAN.md` (architecture, frozen
    decisions) and the full `.plan/LEDGER.md` (status table + every notes

@@ -64,11 +64,12 @@ stage (Operating protocol, finish step 3).
   committable at any moment without disturbing an in-flight stage. Each stage
   branch is checked out **only** in its own sibling worktree,
   `../uptime-page-s<N>` (`-redo-<K>` for a redo), created from the plan branch
-  tip. Provisioning prefers the harness's native worktree mechanism and falls
-  back to `git worktree add`; it never degrades to checking a stage branch out
-  in the clone (Operating protocol, step 4). Teardown is part of finishing: a
-  clean, fully-pushed worktree is removed with its merged branch, and anything
-  else is left alone and reported (finish step 5).
+  tip. Provisioning prefers the harness's native worktree mechanism, but only
+  when it honors this convention's exact branch and path names, and falls
+  back to `git worktree add` otherwise; it never degrades to checking a stage
+  branch out in the clone (Operating protocol, step 4). Teardown is part of
+  finishing: a clean, fully-pushed worktree is removed with its merged
+  branch, and anything else is left alone and reported (finish step 5).
 - **Final review stage:** the last stage (`SF`) is a standing plan review. It
   catalogs loose ends — each becomes a new in-plan stage, a spin-off
   candidate, or an explicit "accepted, won't fix" — and NEVER implements.
@@ -234,13 +235,17 @@ structural fact and four rules about timing.
         while any stage PR is open or unmerged.
 
       Then reconcile **worktrees** by the same rule, from `git worktree list
-      --porcelain`. A worktree belonging to *this* session's stage that this
-      session did not create is the crashed-attempt case — stop, resume or
-      discard it, don't run over it. A worktree for *another* `todo`/`doing`
-      stage is the ordinary live sibling — list it and carry on. A worktree
-      whose stage branch is already merged or gone is an **orphan** from an
-      interrupted teardown — report its path and offer removal; never remove
-      it unasked, and never assume it is empty.
+      --porcelain` — but only worktrees whose branch matches
+      `plan-uptime-page-s*`. An operator's unrelated worktree (any other
+      branch) is none of this plan's business: it is ignored entirely, never
+      classified into any bucket below and never offered for removal. A
+      worktree belonging to *this* session's stage that this session did not
+      create is the crashed-attempt case — stop, resume or discard it, don't
+      run over it. A worktree for *another* `todo`/`doing` stage is the
+      ordinary live sibling — list it and carry on. A worktree whose stage
+      branch is already merged or gone is an **orphan** from an interrupted
+      teardown — report its path and offer removal; never remove it unasked,
+      and never assume it is empty.
    6. **Report, don't repair:** on anything preflight can't fast-forward or
       reconcile, stop with an accurate report of the state and what would fix
       it — no auto-stash, no reset, no branch deletion, no `git worktree
@@ -274,7 +279,12 @@ structural fact and four rules about timing.
    brought up to date — or use them as-is if the human already made them:
    - **Prefer the harness's native mechanism** where there is one (Claude
      Code's `EnterWorktree`, or the `superpowers:using-git-worktrees` skill
-     when installed).
+     when installed) — but only if it honors this protocol's naming
+     convention (branch `plan-uptime-page-s<N>`, path `../uptime-page-s<N>`).
+     A mechanism that picks its own path or branch name breaks the ledger's
+     path references, the teardown command, and the next session's resume
+     lookup — none of them can find a worktree under any name but this one.
+     If it can't be pointed at this exact name and path, don't use it.
    - **Otherwise:** `git worktree add ../uptime-page-s<N> -b
      plan-uptime-page-s<N> plan-uptime-page`, then work there by absolute
      path for the rest of the stage.
@@ -352,19 +362,30 @@ structural fact and four rules about timing.
       PR. **If a sibling stage is running, this write races.** Both sessions
       commit directly on the plan branch, so: make the edit *after* the
       fast-forward (never before), touch only your own row, and push
-      immediately. If the push is rejected as non-fast-forward, the sibling
-      won the race by seconds — fetch and replay your single ledger commit on
-      top (`git pull --rebase origin plan-uptime-page`), then push again.
+      immediately. If the clone is dirty on arrival and the change isn't
+      yours — a sibling's session is mid-edit in this same clone — wait and
+      retry rather than committing on top of it or folding it into your own
+      commit; that is the one case the push-race handling below doesn't cover,
+      because it happens before either side has pushed. If the push is
+      rejected as non-fast-forward, the sibling won the race by seconds —
+      fetch and replay your single ledger commit on top (`git pull --rebase
+      origin plan-uptime-page`), then push again.
       **Never force-push the plan branch**: last-writer-wins would erase the
       sibling's `done` row. If the replay conflicts, both rows are wanted —
       the two edits touch adjacent lines of the same table, so resolve by
       keeping **both**.
 
       **Then tear the worktree down, from the clone.** If the stage worktree
-      is clean and fully pushed, remove it and delete the merged stage branch
-      (`git worktree remove ../uptime-page-s<N>`). If it holds anything
-      uncommitted, unpushed, or stashed, **leave it** and report its path and
-      what is in it — a worktree is a real directory and its contents are not
+      is clean and fully pushed, remove it and delete the merged stage branch:
+      `git worktree remove ../uptime-page-s<N>`, then `git branch -D
+      plan-uptime-page-s<N>`. Use `-D`, not `-d` — the stage PR was
+      squash-merged, so git's own merge-tracking never sees this branch as
+      merged into `plan-uptime-page` and `-d` refuses with "not fully merged"
+      even though the squash commit already carries the work safely onto the
+      plan branch, which is exactly what makes `-D` safe here. If the
+      worktree holds anything uncommitted, unpushed, or stashed, **leave it**
+      and report its path and what is in it — a worktree is a real directory
+      and its contents are not
       recoverable from git. Never `--force`, never `prune` to tidy up; an
       orphan left behind is reported by every later preflight and gates
       closeout, which is the safe failure. If the merge did not happen this

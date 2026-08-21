@@ -86,6 +86,15 @@ Then work through these steps **in order**:
    here — stage branches (`plan-<slug>-s<N>`) are proposed and created at
    stage time by `/plan-staged-rollout:plan-run`, never at bootstrap.
 
+   **Worktree model (also fixed, also not a question).** Record it alongside
+   the git model: the clone is parked on `plan-<slug>` for the life of the
+   plan, and every stage branch is checked out only in its own sibling
+   worktree `../<repo-dirname>-s<N>`, provisioned at stage time and torn down
+   after its PR merges. It is what makes a fanned-out wave physically
+   runnable rather than merely safe on paper. As with stage branches, create
+   **no** worktree here — bootstrap leaves the clone on the plan branch and
+   nothing else.
+
 5. **Scaffold and commit.** Copy the templates into `<repo>/.plan/`, copying
    `stage-N.md` **once per stage** and renaming each to `stage-<N>-<slug>.md`,
    and copying `stage-f-review.md` **once**, renamed to `stage-f-review.md`

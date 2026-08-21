@@ -20,7 +20,10 @@ Work through these steps **in order**:
    you may simply be on `main` while the plan lives on its branch. Run
    `git fetch origin`, then look for `plan-*` branches: local first, then
    remote. If a plan branch exists, offer to check it out (that makes
-   `.plan/` appear) and continue from there. Only when no plan branch exists
+   `.plan/` appear) and continue from there — the clone then **stays** on the
+   plan branch for the life of the plan, because stage work happens in
+   per-stage worktrees, never in the clone (`PLAN.md`, protocol step 4).
+   Only when no plan branch exists
    anywhere, stop and tell the user to bootstrap one — "bootstrap a plan for
    \<idea>", or the explicit command `/plan-staged-rollout:plan-stages <idea>`.
    Then resolve `$ARGUMENTS` to the stage file `.plan/stage-<N>-<slug>.md` by
@@ -56,9 +59,11 @@ Work through these steps **in order**:
    not start the stage.
 
 5. **Resume support.** Check the stage's ledger status in `.plan/LEDGER.md`. If
-   it is already `doing`, this is a resume: pick up from the **unticked**
-   checkboxes in the stage file's Steps and honor the handoff note in the
-   stage's ledger notes block. If it is `done`, confirm with the user before
+   it is already `doing`, this is a resume: enter that stage's existing
+   worktree (preflight step 0.4 names it — never check the stage branch out
+   in the clone), then pick up from the **unticked** checkboxes in the stage
+   file's Steps and honor the handoff note in the stage's ledger notes
+   block. If it is `done`, confirm with the user before
    redoing anything — a redo follows the protocol's redo rule (a fresh
    `-redo-<K>` branch from the plan branch tip, never the merged stage
    branch). Otherwise run it fresh.
@@ -77,7 +82,10 @@ Work through these steps **in order**:
      stage, say plainly that those stages are independent and can be launched
      **concurrently, one stage per fresh session** — that launch is the
      operator's action (N terminals); this session cannot start independent
-     sessions and must not try. If the set holds exactly one stage, say that
+     sessions and must not try. Say that each one runs in **its own
+     worktree** (`../<repo-dirname>-s<N>`, created by that session at
+     protocol step 4) while the clone stays on the plan branch — that
+     isolation is what makes the overlap safe to launch. If the set holds exactly one stage, say that
      too, so "one stage next" reads as a fact about the graph rather than a
      default.
    - If no stages remain runnable (all `done`/`skipped`), point the user at

@@ -17,7 +17,9 @@ Work through these steps **in order**:
    you may simply be on `main` while the plan lives on its branch. Run
    `git fetch origin`, then look for `plan-*` branches: local first, then
    remote. If a plan branch exists, offer to check it out (that makes
-   `.plan/` appear) and continue from there. Only when no plan branch exists
+   `.plan/` appear) and continue from there. Closeout runs **in the main
+   clone**, on the plan branch — never inside a stage worktree.
+   Only when no plan branch exists
    anywhere, stop and tell the user there is nothing to close (or that they
    may want to bootstrap one — "bootstrap a plan for \<idea>", or the
    explicit command `/plan-staged-rollout:plan-stages <idea>` — if they meant
@@ -37,6 +39,12 @@ Work through these steps **in order**:
    command `/plan-staged-rollout:plan-run <N>`, for `todo`/`doing`, or
    resolve the `blocked` runbook first. Stop there — do not proceed to
    distillation or cleanup.
+
+   **Stage worktrees are part of this gate.** `git worktree list` must show
+   only the clone. A surviving stage worktree means some stage never finished
+   its teardown (finish step 5) — report each path and what it holds, and
+   refuse to close until they are resolved. Removing one is the operator's
+   call, never automatic, and never with `--force`.
 
 3. **Distill the story.** Read `.plan/PLAN.md` (architecture, frozen
    decisions) and the full `.plan/LEDGER.md` (status table + every notes

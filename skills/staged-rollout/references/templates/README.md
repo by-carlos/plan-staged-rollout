@@ -75,8 +75,8 @@ produce the per-stage commits and PRs this model runs on, and a local-only
 plan branch makes each session's sync a silent no-op.
 
 When two stages run at once, nothing above changes — there are simply two
-stage branches open in two worktrees, both cut from the same plan-branch tip. The plan branch
-is the serialization point: their PRs merge one at a time, and whoever merges
+stage branches open in two worktrees, both cut from the same plan-branch tip.
+The plan branch is the serialization point: their PRs merge one at a time, and whoever merges
 second first merges the plan branch into their stage branch and re-runs the
 stage's acceptance check. `PLAN.md`'s *Concurrent stages* has the full rules,
 including the one race worth knowing about — the `done` ledger write is a

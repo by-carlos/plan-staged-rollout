@@ -311,8 +311,9 @@ branch has an upstream, fetch, fast-forward the plan branch (holds
 under both squash-merge and merge-commit remotes), require a clean tree in
 both the clone and this worktree, apply the **two-tree rule** to HEAD (the
 clone on the plan branch, the stage on its own worktree), and reconcile the
-ledger rows against actual branch, PR, and worktree state. One state is self-healing (a `doing` row whose PR merged
-remotely gets its `done` recorded); one is expected under concurrency (another
+ledger rows against actual branch, PR, and worktree state. One state is
+self-healing (a `doing` row whose PR merged remotely gets its `done`
+recorded); one is expected under concurrency (another
 stage's in-flight branch — reported, not fatal, see *Parallel stages*);
 everything else is drift, and the preflight **reports and stops** — it never
 auto-stashes, resets, or deletes branches.

@@ -85,9 +85,9 @@ Work through these steps **in order**:
      sessions and must not try. Say that each one runs in **its own
      worktree** (`../<repo-dirname>-s<N>`, created by that session at
      protocol step 4) while the clone stays on the plan branch — that
-     isolation is what makes the overlap safe to launch. If the set holds exactly one stage, say that
-     too, so "one stage next" reads as a fact about the graph rather than a
-     default.
+     isolation is what makes the overlap safe to launch. If the set holds
+     exactly one stage, say that too, so "one stage next" reads as a fact
+     about the graph rather than a default.
    - If no stages remain runnable (all `done`/`skipped`), point the user at
      closeout — **"close out the plan"** or **`/plan-staged-rollout:plan-close`**
      — instead.

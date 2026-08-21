@@ -8,6 +8,15 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Changed
+
+- **License changed from MIT to FSL-1.1-ALv2** (Functional Source License).
+  Every use stays free except offering the plugin in a competing commercial
+  product, and each release automatically becomes Apache-2.0 two years after it
+  is made available. Versions released before this change remain MIT.
+
 ## [0.5.0] - 2026-08-21
 
 ### Changed

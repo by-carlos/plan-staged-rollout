@@ -10,6 +10,17 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Changed
+
+- **`/plan-close` delegates story distillation to a subagent.** Step 3 used to
+  read the full `.plan/PLAN.md` and `.plan/LEDGER.md` — the largest material
+  the command touches — directly into the closeout session, where it then sat
+  resident through cleanup, the final PR proposal, and the end announcement,
+  even though nothing after step 3 needs it. The distillation now runs in a
+  dispatched `sonnet` subagent that returns PR body text only (no file writes,
+  no `git`, no `gh`); every write stays in the parent, and dispatch happens
+  only after step 2's completion gate has passed (#73).
+
 ### Added
 
 - **Releases are now cut by GitHub Actions.** `release-prepare.yml` is run by

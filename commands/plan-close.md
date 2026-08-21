@@ -38,17 +38,29 @@ Work through these steps **in order**:
    resolve the `blocked` runbook first. Stop there — do not proceed to
    distillation or cleanup.
 
-3. **Distill the story.** Read `.plan/PLAN.md` (architecture, frozen
-   decisions) and the full `.plan/LEDGER.md` (status table + every notes
-   block, including the `SF` review stage's catalog of spin-off candidates and
-   accepted-won't-fix items). Compose the final PR body from this material so
-   the *why* and the as-built story survive on `main` after `.plan/` is gone:
-   - what was built and why (from `PLAN.md`'s opening + frozen decisions)
-   - the stage-by-stage as-built summary (from the ledger notes)
-   - any spin-off candidates and accepted-won't-fix items the review stage
-     recorded, called out explicitly as follow-up work
-   Do not just paste the raw files — summarize them into a readable PR
-   description.
+3. **Distill the story — dispatch a subagent.** `.plan/PLAN.md` and the full
+   `.plan/LEDGER.md` are the largest material this command touches, and
+   nothing after this step needs them once the PR body exists — so don't keep
+   them resident. Dispatch a `sonnet` subagent (not a cheaper tier: turning
+   the ledger's raw notes into a readable summary rather than a paste is a
+   judgment call on register, the same call the issue-body contract makes for
+   its plain-language section — a cheaper tier tends to paste, and the failure
+   is only visible to someone who reads the source material it was built from,
+   which is exactly the reader who no longer exists after closeout) carrying:
+   - the paths to `.plan/PLAN.md` and `.plan/LEDGER.md`;
+   - the required body shape — what was built and why (from `PLAN.md`'s
+     opening + frozen decisions), the stage-by-stage as-built summary (from
+     the ledger notes), and any spin-off candidates and accepted-won't-fix
+     items the `SF` review stage recorded, called out explicitly as follow-up
+     work;
+   - the instruction not to just paste the raw files, but to summarize them
+     into a readable PR description.
+
+   The subagent returns **PR body text only** — it must not write files, run
+   git, or call `gh`. Every write stays here in the parent: the `.plan/`
+   cleanup commit (step 4), the branch push and the final PR proposal
+   (step 5). Only dispatch after step 2's gate has passed — a gate failure is
+   a decision that cannot leave this session.
 
 4. **Clean up `.plan/`.** Offer the user a choice: delete `.plan/` as the last
    commit on the plan branch (the default — nothing is lost, the full plan

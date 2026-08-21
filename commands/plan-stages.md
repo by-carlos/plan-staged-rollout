@@ -96,39 +96,61 @@ Then work through these steps **in order**:
    **no** worktree here — bootstrap leaves the clone on the plan branch and
    nothing else.
 
-5. **Scaffold and commit.** Copy the templates into `<repo>/.plan/`, copying
-   `stage-N.md` **once per stage** and renaming each to `stage-<N>-<slug>.md`,
-   and copying `stage-f-review.md` **once**, renamed to `stage-f-review.md`
-   (no slug needed — it's the standing final stage), and fill every
-   placeholder (frozen decisions, stage index, ledger rows, per-stage files).
-   After the stage index is filled, compute the **modal `model`** across all
-   stage rows (including SF); if one model is recommended by a strict majority
-   of stages, note it in `.plan/README.md`'s "How to run a stage" section as a
-   one-line hint (e.g. *"6 of 8 stages recommend `opus` — setting it as your
-   session default means the weight gate only prompts on the exceptions."*).
-   This is a bootstrap-time convenience only — it never changes the per-stage
-   `model`/`effort` values in the stage index, which stay authoritative and are
-   still checked individually by `/plan-run`'s weight gate. Skip the hint if
-   there's no strict majority (e.g. an even split).
+5. **Scaffold — dispatch a subagent, then commit.** By this point the design,
+   the stage index, the git model, and the worktree model are all frozen;
+   nothing left in this step is a decision, so don't keep the templates
+   resident to do it.
 
-   Before writing anything, check that `.plan/` is not ignored —
-   `git check-ignore -v .plan/PLAN.md`. If a rule matches, **stop and report
-   it**; do not scaffold into an ignored path. An untracked `.plan/` deadlocks
-   the plan: decision-only stages produce no commit and therefore no PR, which
-   makes their dependents' gates unsatisfiable, and the whole decision record
-   is lost with the working directory. Removing the ignore rule is the fix, and
-   it is the user's call.
+   First, **check that `.plan/` is not ignored — yourself, before dispatching
+   anything**: `git check-ignore -v .plan/PLAN.md`. If a rule matches, **stop
+   and report it**; do not scaffold into an ignored path. An untracked
+   `.plan/` deadlocks the plan: decision-only stages produce no commit and
+   therefore no PR, which makes their dependents' gates unsatisfiable, and the
+   whole decision record is lost with the working directory. Removing the
+   ignore rule is the fix, and it is the user's call — this check cannot leave
+   the session.
 
-   Then land the scaffold on the plan branch: **propose creating the plan
-   branch `plan-<slug>` off `main`** and put the scaffold there — `.plan/`
-   lives on the plan branch and is **tracked** there. **Propose the scaffold
-   commit** (conventional message, e.g. `chore(plan): scaffold .plan/ for
-   <slug>`) and wait for the user's OK — do not create the branch or commit
-   unilaterally. Once committed, **push the plan branch with an upstream**
-   (`git push -u origin plan-<slug>`) — no approval needed for a feature
-   branch. A local-only plan branch makes every later preflight's fetch and
-   fast-forward a silent no-op. Then confirm the scaffold is really tracked:
-   `git ls-files .plan/` must list the files you just wrote.
+   Then dispatch a `sonnet` subagent (not a cheaper tier: the final review
+   stage must be scaffolded from `stage-f-review.md`, **never** from a copy of
+   `stage-N.md`, because that template already bakes in the three-outcome
+   checklist and its acceptance check — a cheaper tier copying the obvious
+   template produces a scaffold that looks right, commits clean, and fails
+   only much later when the review stage runs and its checklist is missing)
+   carrying:
+   - the frozen decisions from step 2;
+   - the completed stage index from step 3, including the standing `SF: plan
+     review` row;
+   - the frozen git model and worktree model from step 4;
+   - the path to `skills/staged-rollout/references/templates/`
+     (`PLAN.md`, `LEDGER.md`, `README.md`, `stage-N.md`, `stage-f-review.md`).
+
+   Instruct it to copy the templates into `<repo>/.plan/` and fill every
+   placeholder: `stage-N.md` **once per stage**, each renamed to
+   `stage-<N>-<slug>.md`, and `stage-f-review.md` **once**, renamed to
+   `stage-f-review.md` (no slug — it's the standing final stage; state this
+   explicitly rather than trusting it to infer from the template name). After
+   the stage index is filled, compute the **modal `model`** across all stage
+   rows (including SF); if one model is recommended by a strict majority, note
+   it in `.plan/README.md`'s "How to run a stage" section as a one-line hint
+   (e.g. *"6 of 8 stages recommend `opus` — setting it as your session default
+   means the weight gate only prompts on the exceptions."*) — a
+   bootstrap-time convenience only, it never changes the per-stage
+   `model`/`effort` values, which stay authoritative and are still checked
+   individually by `/plan-run`'s weight gate. Skip the hint if there's no
+   strict majority (e.g. an even split). The subagent returns a **manifest of
+   files written** — nothing else.
+
+   **The subagent runs no git command.** Every write stays here in the
+   parent: **propose creating the plan branch `plan-<slug>` off `main`** and
+   put the scaffold there — `.plan/` lives on the plan branch and is
+   **tracked** there. **Propose the scaffold commit** (conventional message,
+   e.g. `chore(plan): scaffold .plan/ for <slug>`) and wait for the user's
+   OK — do not create the branch or commit unilaterally. Once committed,
+   **push the plan branch with an upstream** (`git push -u origin
+   plan-<slug>`) — no approval needed for a feature branch. A local-only plan
+   branch makes every later preflight's fetch and fast-forward a silent
+   no-op. Then confirm the scaffold is really tracked: `git ls-files .plan/`
+   must list the files the manifest said were written.
 
 6. **End announcement.** State explicitly that **bootstrap is finished and no
    stage was executed.** Tell the user their next action, in a **fresh

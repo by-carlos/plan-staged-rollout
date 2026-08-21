@@ -57,6 +57,18 @@ stage (Operating protocol, finish step 3).
   until its PR is merged into the plan branch; the `done` edit itself is
   committed on the plan branch *after* the merge (Operating protocol, finish
   step 5), never on the stage branch.
+- **Worktree strategy:** worktree-per-stage (fixed — the only supported
+  model). *The clone holds the plan; worktrees hold the work.* The clone stays
+  parked on `plan-uptime-page` for the life of the plan — the only branch ever
+  checked out there, which keeps `.plan/` readable and the `done` write
+  committable at any moment without disturbing an in-flight stage. Each stage
+  branch is checked out **only** in its own sibling worktree,
+  `../uptime-page-s<N>` (`-redo-<K>` for a redo), created from the plan branch
+  tip. Provisioning prefers the harness's native worktree mechanism and falls
+  back to `git worktree add`; it never degrades to checking a stage branch out
+  in the clone (Operating protocol, step 4). Teardown is part of finishing: a
+  clean, fully-pushed worktree is removed with its merged branch, and anything
+  else is left alone and reported (finish step 5).
 - **Final review stage:** the last stage (`SF`) is a standing plan review. It
   catalogs loose ends — each becomes a new in-plan stage, a spin-off
   candidate, or an explicit "accepted, won't fix" — and NEVER implements.
@@ -112,9 +124,13 @@ their own column. A stored copy is what drifts; the graph is the truth.
 ### Concurrent stages (when the set fans out)
 
 Running two stages at once changes nothing about the git model: still one
-branch per stage, one PR per branch, one stage per session. It changes four
-things about timing, and each has a rule.
+branch per stage, one PR per branch, one stage per session. It adds one
+structural fact and four rules about timing.
 
+- **Separate working trees are what make concurrency physical.** Each stage
+  runs in its own worktree, so two sessions never contend for `HEAD` and
+  neither can see the other's uncommitted work. The rules below are about
+  what happens when their *branches* meet at the plan branch.
 - **A sibling's stage branch is expected state, not drift.** Two stage
   branches cut from the same plan-branch tip is exactly what a fan-out looks
   like. Preflight step 0.5 classifies by whose stage the mismatch belongs to:
@@ -169,11 +185,27 @@ things about timing, and each has a rule.
       remote squash-merge and merge-commit: either way the remote plan branch
       only moves forward. If it won't fast-forward, the branch has diverged —
       stop and report.
-   3. **Verify the tree:** clean working tree required. If dirty, stop and
-      list exactly what is uncommitted — never auto-stash.
-   4. **Verify position:** HEAD must be on the plan branch (fresh stage) or
-      on the stage branch being resumed. Detached HEAD or any other branch →
-      stop and report.
+   3. **Verify the trees:** a clean working tree is required in *this* tree
+      **and** in the main clone. The clone matters even when the stage runs
+      elsewhere: the `done` write (finish step 5) is a commit there, so a
+      dirty clone blocks the stage from ever closing. If either is dirty,
+      stop and list exactly what is uncommitted — never auto-stash.
+   4. **Verify position (the two-tree rule):** the clone is parked on
+      `plan-uptime-page`; stage branches live only in sibling worktrees.
+      Establish which tree this session is in — inside a worktree `git
+      rev-parse --git-dir` and `--git-common-dir` differ; in the clone they
+      match — then check:
+      - **The clone's HEAD must be `plan-uptime-page`.** A stage branch
+        checked out there is drift: stop and report. The fix is to check the
+        plan branch back out in the clone and give that stage its own
+        worktree — never run the stage in the clone.
+      - **A fresh stage starts in the clone**, which is where step 4 creates
+        its worktree.
+      - **A resumed stage must run inside that stage's worktree.** If the
+        worktree exists but this session is in the clone, print its path and
+        enter it (step 4's provisioning rule) — do not check the branch out.
+      - Detached HEAD anywhere, or a worktree whose HEAD is not its own stage
+        branch → stop and report.
    5. **Reconcile ledger vs reality:** cross-check the `LEDGER.md` status
       table against actual branch and PR state (`gh pr list --base
       plan-uptime-page --state all`, `git branch -a --no-merged
@@ -200,9 +232,19 @@ things about timing, and each has a rule.
         it is a crashed stage, it reappears in every later preflight report,
         the final review stage sees it, and closeout still refuses to run
         while any stage PR is open or unmerged.
+
+      Then reconcile **worktrees** by the same rule, from `git worktree list
+      --porcelain`. A worktree belonging to *this* session's stage that this
+      session did not create is the crashed-attempt case — stop, resume or
+      discard it, don't run over it. A worktree for *another* `todo`/`doing`
+      stage is the ordinary live sibling — list it and carry on. A worktree
+      whose stage branch is already merged or gone is an **orphan** from an
+      interrupted teardown — report its path and offer removal; never remove
+      it unasked, and never assume it is empty.
    6. **Report, don't repair:** on anything preflight can't fast-forward or
       reconcile, stop with an accurate report of the state and what would fix
-      it — no auto-stash, no reset, no branch deletion.
+      it — no auto-stash, no reset, no branch deletion, no `git worktree
+      remove --force`, and no automatic `git worktree prune`.
 1. **Read only:** this file + the target stage file + the `LEDGER.md` status
    table + the notes blocks of the stages this one `depends` on + any docs the
    stage file names. Do NOT scan the rest of the repo. (Exception: the final
@@ -226,12 +268,29 @@ things about timing, and each has a rule.
    decision-only stage still commits its `PLAN.md`/`LEDGER.md` changes and
    still opens a PR. A depends-stage with no PR means preflight step 0.0 was
    skipped, not that the stage was exempt.
-4. **Branch:** create `plan-uptime-page-s<N>` from `plan-uptime-page` —
-   preflight step 2 already brought it up to date (or use the stage branch if
-   the human already made it). Work happens on the stage branch. **Redo:**
-   re-running a `done` stage cuts a fresh `plan-uptime-page-s<N>-redo-<K>`
-   branch from the current plan branch tip — never reuse a merged stage
-   branch.
+4. **Branch & worktree:** the stage runs in its own sibling worktree and the
+   clone stays on the plan branch (frozen decision above). Create branch and
+   worktree together from `plan-uptime-page`, which preflight step 2 already
+   brought up to date — or use them as-is if the human already made them:
+   - **Prefer the harness's native mechanism** where there is one (Claude
+     Code's `EnterWorktree`, or the `superpowers:using-git-worktrees` skill
+     when installed).
+   - **Otherwise:** `git worktree add ../uptime-page-s<N> -b
+     plan-uptime-page-s<N> plan-uptime-page`, then work there by absolute
+     path for the rest of the stage.
+   - **If the harness refuses to work outside its starting directory:** stop,
+     print the worktree path, and tell the operator to relaunch this stage
+     with that path as the working directory. **Never** fall back to checking
+     the stage branch out in the clone — that closes the ledger window and
+     breaks every concurrent session.
+   - **A fresh worktree holds only tracked files.** Untracked local setup the
+     stage needs — `.env`, local config, build caches, dependency directories
+     — is not there. Copy what it needs and record in the ledger notes what
+     you copied, because the next session starts from the same blank slate.
+   **Redo:** re-running a `done` stage cuts a fresh
+   `plan-uptime-page-s<N>-redo-<K>` branch in its **own** worktree
+   (`../uptime-page-s<N>-redo-<K>`) from the current plan branch tip — never
+   reuse a merged stage branch or its worktree.
 5. **Honor `mode` / `exec`:**
    - `mode: direct` → state a one-line plan, then implement.
    - `mode: brainstorm` → run a design pass scoped to THIS stage first,
@@ -282,7 +341,8 @@ things about timing, and each has a rule.
       it. If yet another sibling lands in the window between the re-sync and
       the merge, repeat the check — it is cheap, and a stale re-verify is
       worth less than none.
-   5. **After the merge:** check out `plan-uptime-page` and fast-forward it
+   5. **After the merge:** return to the main clone — it is already on
+      `plan-uptime-page`, so there is no checkout to do — and fast-forward it
       (`git fetch origin` + `git merge --ff-only origin/plan-uptime-page`),
       then flip the stage's row to `done` as a direct commit on the plan
       branch and push. The `done` edit lives on the plan branch, after the
@@ -298,7 +358,19 @@ things about timing, and each has a rule.
       **Never force-push the plan branch**: last-writer-wins would erase the
       sibling's `done` row. If the replay conflicts, both rows are wanted —
       the two edits touch adjacent lines of the same table, so resolve by
-      keeping **both**. End the session with HEAD on the plan branch.
+      keeping **both**.
+
+      **Then tear the worktree down, from the clone.** If the stage worktree
+      is clean and fully pushed, remove it and delete the merged stage branch
+      (`git worktree remove ../uptime-page-s<N>`). If it holds anything
+      uncommitted, unpushed, or stashed, **leave it** and report its path and
+      what is in it — a worktree is a real directory and its contents are not
+      recoverable from git. Never `--force`, never `prune` to tidy up; an
+      orphan left behind is reported by every later preflight and gates
+      closeout, which is the safe failure. If the merge did not happen this
+      session, the worktree stays — teardown belongs with the `done` write.
+
+      End the session in the clone, on the plan branch.
    6. Announce: this stage is **finished**, then the **complete runnable
       set** — *every* `todo` stage whose `depends` are now all `done`, not
       just the first (see *Runnable set & waves* above). For each one, give

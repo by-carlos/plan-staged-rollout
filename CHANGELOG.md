@@ -12,6 +12,16 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
+- **`/plan-stages` delegates `.plan/` scaffolding to a subagent.** Step 5 used
+  to copy the templates and fill every placeholder directly in the bootstrap
+  session — the session already gated on Opus-class for the design work in
+  steps 1–4, and by step 5 nothing left is a decision. The scaffolding now
+  runs in a dispatched `sonnet` subagent that writes `.plan/` and returns a
+  manifest of files written; the `.plan/` ignore check and every git action
+  (branch, commit, push, `git ls-files` confirmation) stay in the parent,
+  since the ignore check gates on a fix that's the user's call and cannot
+  leave the session (#74).
+
 - **`/plan-close` delegates story distillation to a subagent.** Step 3 used to
   read the full `.plan/PLAN.md` and `.plan/LEDGER.md` — the largest material
   the command touches — directly into the closeout session, where it then sat

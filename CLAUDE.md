@@ -80,14 +80,32 @@ No local pre-commit hook — dev environments vary, so this is CI-only by design
   under an `## [Unreleased]` heading as changes land. This records *what* changed
   without declaring a version. Never write a dated/versioned heading or bump
   `plugin.json` mid-batch — that recreates version drift.
-- **A release is one atomic change**, done all together (own commit/PR):
-  1. Bump `version` in `.claude-plugin/plugin.json` (semver).
-  2. Rename `## [Unreleased]` → `## [x.y.z] — YYYY-MM-DD` and add the
-     `[x.y.z]: …/releases/tag/vx.y.z` link at the bottom.
-  3. Tag `vx.y.z` and cut the matching GitHub release.
-  4. Fast-forward `release` to that tagged commit.
+- **A release is one atomic change, and GitHub Actions performs it.** Don't do
+  these steps by hand — the sequence was easy to half-complete, most
+  damagingly by moving `release` without bumping the version.
+  1. Run **`release-prepare.yml`** from the Actions tab, choosing a bump of
+     `auto`, `patch` or `minor`. It bumps `version` in
+     `.claude-plugin/plugin.json`, renames `## [Unreleased]` to
+     `## [x.y.z] - YYYY-MM-DD`, adds the `[x.y.z]: …/releases/tag/vx.y.z` link
+     and rewrites the `[Unreleased]` compare link, then opens the release pull
+     request. It never tags and never touches `release`.
+  2. Review and merge that pull request. Merging it pushes to `main`, which
+     triggers **`release-publish.yml`**: it notices the version changed, tags
+     `vx.y.z`, cuts the GitHub release with that version's changelog section as
+     the notes, and fast-forwards `release` to the tagged commit.
+- **`release-publish.yml` runs on every push to `main` and does nothing unless
+  the version changed**, so ordinary merges are unaffected.
+- **Both workflows need the `RELEASE_TOKEN` repository secret** — a personal
+  access token with repository write access. The default `GITHUB_TOKEN` cannot
+  be used: pushes it makes do not trigger other workflows, so the release pull
+  request would never reach `release-publish.yml`.
 - **Semver:** a `feat` in the batch ⇒ **minor** bump; only `fix`/`docs`/`chore` ⇒
-  **patch**. Pre-1.0, breaking changes go in a minor.
+  **patch**. Pre-1.0, breaking changes go in a minor. The `auto` bump infers
+  this by looking for a `feat` commit since the last tag, so pass an explicit
+  `minor` or `patch` when you disagree with it.
+- **Version headings now use a plain hyphen** — `## [x.y.z] - YYYY-MM-DD` — because
+  that is the separator the release scripts write and read. Sections dated
+  before this change use an em dash and are left as they are.
 - **Tag per released version** (not per commit, not major-only) — the `CHANGELOG.md`
   release links assume a tag exists for each version. Keep the two consistent.
 - **Historical wart:** the `v0.2` tag is malformed — it should have been

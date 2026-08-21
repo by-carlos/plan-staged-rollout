@@ -1,0 +1,62 @@
+name: release-publish
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: check whether the plugin version changed
+        id: check
+        run: |
+          set -euo pipefail
+
+          NEW=$(python3 -c "import json; print(json.load(open('.claude-plugin/plugin.json'))['version'])")
+          OLD=$(git show "HEAD^:.claude-plugin/plugin.json" 2>/dev/null | python3 -c "import json,sys; print(json.load(sys.stdin)['version'])" 2>/dev/null || echo "")
+
+          echo "version=$NEW" >> "$GITHUB_OUTPUT"
+          if [ "$NEW" != "$OLD" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: extract this version's changelog section
+        if: steps.check.outputs.changed == 'true'
+        run: >
+          python3 scripts/changelog_section.py
+          --version "${{ steps.check.outputs.version }}"
+          --output-file release-notes.md
+
+      - name: tag, cut the release, and fast-forward release
+        if: steps.check.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          VERSION: ${{ steps.check.outputs.version }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "plan-staged-rollout-release-bot"
+          git config user.email "plan-staged-rollout-release-bot@users.noreply.github.com"
+
+          TAG="v${VERSION}"
+          git tag -a "$TAG" -m "$TAG"
+          git push origin "$TAG"
+
+          gh release create "$TAG" \
+            --repo "${{ github.repository }}" \
+            --title "$TAG" \
+            --notes-file release-notes.md
+
+          # Tags here are annotated: pushing "$TAG:release" directly points a
+          # branch at a tag object and GitHub rejects it. Peel to the commit
+          # first (see CLAUDE.md "Releasing").
+          COMMIT=$(git rev-parse "${TAG}^{}")
+          git push origin "${COMMIT}:release"

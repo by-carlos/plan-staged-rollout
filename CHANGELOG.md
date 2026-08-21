@@ -10,6 +10,17 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Changed
+
+- **`/plan-close` delegates story distillation to a subagent.** Step 3 used to
+  read the full `.plan/PLAN.md` and `.plan/LEDGER.md` — the largest material
+  the command touches — directly into the closeout session, where it then sat
+  resident through cleanup, the final PR proposal, and the end announcement,
+  even though nothing after step 3 needs it. The distillation now runs in a
+  dispatched `sonnet` subagent that returns PR body text only (no file writes,
+  no `git`, no `gh`); every write stays in the parent, and dispatch happens
+  only after step 2's completion gate has passed (#73).
+
 ### Added
 
 - **Worktree-per-stage is now part of the frozen git model.** The clone stays
@@ -31,7 +42,15 @@ elsewhere. See 0.4.0 for the split.
   5 — a clean, fully-pushed worktree is removed with its merged branch, while
   anything uncommitted, unpushed, or stashed is left alone and reported.
   `/plan-close` refuses to close while a stage worktree survives.
-
+- **Releases are now cut by GitHub Actions.** `release-prepare.yml` is run by
+  hand from the Actions tab, bumps `version` in `.claude-plugin/plugin.json`,
+  rotates `## [Unreleased]` into a dated section with its tag link, and opens
+  the release pull request. Merging that pull request triggers
+  `release-publish.yml`, which tags the version, cuts the GitHub release using
+  that version's changelog section as the notes, and fast-forwards `release`.
+  The manual four-step sequence this replaces was easy to half-complete — most
+  damagingly by moving `release` without bumping the version, which ships
+  nothing and fails silently.
 - **Parallel stages are now reported.** The stage index's `depends` column has
   always been a full dependency DAG, but every surface that answered "what's
   next" collapsed it to a single stage, so a plan whose real graph is
@@ -287,6 +306,7 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
+[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.4.1...HEAD
 [0.4.1]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.1
 [0.4.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.0
 [0.3.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.3.0

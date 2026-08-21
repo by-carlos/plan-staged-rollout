@@ -1,0 +1,7 @@
+# Python bytecode from scripts/prepare_release.py and scripts/validate_plugin.py.
+__pycache__/
+
+# OS
+Thumbs.db
+desktop.ini
+.DS_Store

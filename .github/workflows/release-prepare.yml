@@ -1,0 +1,66 @@
+name: release-prepare
+
+on:
+  workflow_dispatch:
+    inputs:
+      bump:
+        description: "Version bump (auto infers minor from a feat commit since the last tag, else patch)"
+        type: choice
+        options: [auto, patch, minor]
+        default: auto
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.RELEASE_TOKEN }}
+
+      - name: bump version and rotate the Unreleased sections
+        id: release
+        run: >
+          python3 scripts/prepare_release.py
+          --bump "${{ inputs.bump }}"
+          --github-output "$GITHUB_OUTPUT"
+
+      - name: open release pull request
+        env:
+          GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
+          VERSION: ${{ steps.release.outputs.version }}
+          BUMP: ${{ steps.release.outputs.bump }}
+        run: |
+          set -euo pipefail
+
+          git config user.name "plan-staged-rollout-release-bot"
+          git config user.email "plan-staged-rollout-release-bot@users.noreply.github.com"
+
+          BRANCH="chore/release-${VERSION}"
+          git switch -c "$BRANCH"
+          git add .claude-plugin/plugin.json CHANGELOG.md
+          # This repository has no docs/upgrading.md today. Adding it
+          # unconditionally would fail the step; the release scripts already
+          # treat its absence as the normal case.
+          if [ -f docs/upgrading.md ]; then
+            git add docs/upgrading.md
+          fi
+          git commit -m "chore(release): ${VERSION}"
+          git push origin "$BRANCH"
+
+          cat > release-pr-body.md <<EOF
+          Release ${VERSION} (${BUMP} bump), prepared by \`release-prepare.yml\`.
+
+          - Bumps \`version\` in \`.claude-plugin/plugin.json\` to ${VERSION}.
+          - Renames \`## [Unreleased]\` to \`## [${VERSION}] - $(date -u +%Y-%m-%d)\` in \`CHANGELOG.md\` and adds the tag link.
+          - Does the same in \`docs/upgrading.md\` if that file exists and has an \`## [Unreleased]\` heading. This repository has no such file, so that step does nothing today.
+
+          Merging this PR pushes to \`main\`, which triggers \`release-publish.yml\`: it tags \`v${VERSION}\`, cuts the GitHub release from this version's CHANGELOG.md section, and fast-forwards \`release\`.
+          EOF
+
+          gh pr create \
+            --repo "${{ github.repository }}" \
+            --base main \
+            --head "$BRANCH" \
+            --title "chore(release): ${VERSION}" \
+            --body-file release-pr-body.md

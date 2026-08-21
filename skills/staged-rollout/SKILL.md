@@ -287,8 +287,10 @@ than a suggestion:
   checkout no matter how correct the merge rules are.
 - **Provisioning prefers the harness, falls back to git.** Use the harness's
   native worktree mechanism when there is one (Claude Code's `EnterWorktree`,
-  or `superpowers:using-git-worktrees` when installed); otherwise
-  `git worktree add`. What it must **never** do is degrade to checking the
+  or `superpowers:using-git-worktrees` when installed) — but only when it
+  honors the exact branch and path names above (the template `PLAN.md` owns
+  the full rule); otherwise `git worktree add`. What it must **never** do is
+  degrade to checking the
   stage branch out in the clone — if the harness refuses to work outside its
   original directory, the honest move is to stop and hand the operator the
   path to relaunch in.

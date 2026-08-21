@@ -118,7 +118,7 @@ or failing the gate.
 ## Parallel stages
 
 `depends` is a real dependency graph, so more than one stage is often runnable
-at once. Two rules keep that an advantage rather than a source of confusion:
+at once. Three rules keep that an advantage rather than a source of confusion:
 
 - **Derive, never store.** The runnable set, the waves, and the critical path
   are *views* of the `depends` column, computed on demand — by bootstrap's
@@ -131,6 +131,10 @@ at once. Two rules keep that an advantage rather than a source of confusion:
   with its command and recommended model/effort. Starting them is the
   operator's action, one session per stage: a session cannot spawn independent
   top-level sessions, and nothing in this method pretends otherwise.
+- **Separate working trees are what make it physical.** The semantics below
+  make concurrent sessions *safe*; worktree-per-stage (see *Git model*) makes
+  them *possible*. Two sessions sharing one working tree fight over `HEAD`
+  whatever the merge rules say.
 
 Four semantics are what make concurrent sessions safe rather than merely
 possible. They are specified in full in the template `PLAN.md`, which owns the
@@ -192,8 +196,9 @@ review stage catch them.
 
 ## Git model
 
-**Branch-per-stage is the only supported model** — it's the model this plugin
-was built with, and there is no alternative to choose at bootstrap:
+**Branch-per-stage in a worktree-per-stage is the only supported model** —
+it's the model this plugin was built with, and there is no alternative to
+choose at bootstrap:
 
 ```
 main
@@ -216,7 +221,7 @@ and fast-forward both succeed and do nothing, forever. Bootstrap refuses to
 scaffold into an ignored path and pushes the plan branch with an upstream;
 every stage preflight re-checks both.
 
-Six frozen semantics:
+Seven frozen semantics:
 
 1. **One branch per stage**, cut from the plan branch (`plan-<slug>`) — no
    exceptions. Uniformity keeps each unit reviewable in isolation and contains
@@ -240,6 +245,10 @@ Six frozen semantics:
    branch); the final PR from the plan branch into `main` is a **normal
    (non-squash) merge**, so every stage lands on `main` as its own distinct
    commit and the as-built history survives.
+7. **One worktree per stage, and the clone never leaves the plan branch.** A
+   stage branch is checked out only in its own sibling worktree
+   (`../<repo>-s<N>`); the main clone stays parked on `plan-<slug>` for the
+   life of the plan. See *Worktree-per-stage* below.
 
 Also: **flat branch names** (`plan-<slug>-s3`, not `plan/<slug>/s3`) — git
 refs can't nest a branch under an existing branch name. And **push freely,
@@ -248,6 +257,50 @@ creates and **pushes** them without asking, and **opens** the stage PR into
 the plan branch as part of the compulsory finish protocol, but **offers** the
 merge for your OK — it never merges without your OK, never pushes to `main`,
 and the final PR to `main` is always yours to merge.
+
+### Worktree-per-stage
+
+**The clone holds the plan; worktrees hold the work.** The main clone is
+permanently parked on `plan-<slug>` — that is the only branch ever checked out
+there. Every stage branch lives in its own sibling worktree, created from the
+plan branch tip:
+
+```
+~/src/
+  hive/        ← main clone, always on plan-<slug>, holds .plan/
+  hive-s1/     ← worktree, branch plan-<slug>-s1
+  hive-s3/     ← worktree, branch plan-<slug>-s3   (concurrent)
+```
+
+This is fixed, not a choice — the same register as branch-per-stage. Three
+things follow from it, and they are why it is worth a frozen semantic rather
+than a suggestion:
+
+- **The ledger is always readable and always writable.** Because the clone
+  never moves off the plan branch, `.plan/` there is the synced plan-branch
+  copy at every moment. The `done` write (finish step 5) is a commit in the
+  clone that needs no checkout and cannot disturb an in-flight stage.
+- **Concurrency stops contending for `HEAD`.** *Parallel stages* above makes
+  concurrent sessions semantically safe; separate working trees are what make
+  them physically possible. Two sessions in one directory fight over the
+  checkout no matter how correct the merge rules are.
+- **Provisioning prefers the harness, falls back to git.** Use the harness's
+  native worktree mechanism when there is one (Claude Code's `EnterWorktree`,
+  or `superpowers:using-git-worktrees` when installed); otherwise
+  `git worktree add`. What it must **never** do is degrade to checking the
+  stage branch out in the clone — if the harness refuses to work outside its
+  original directory, the honest move is to stop and hand the operator the
+  path to relaunch in.
+
+Two honest costs, named where they bite rather than discovered later. A fresh
+worktree contains only tracked files, so untracked local setup a stage needs
+(`.env`, local config, build caches, `node_modules`) is not there — copy what
+the stage needs and note it in the ledger. And a worktree is a real directory
+that outlives a crashed session, so teardown is part of the protocol: after
+the merge, a clean and fully-pushed worktree is removed along with its merged
+branch, while anything uncommitted, unpushed, or stashed is left alone and
+reported. Preflight reports orphans; closeout refuses to run while one
+survives.
 
 **Preflight & sync — verify git state before trusting the ledger.** The
 ledger is canonical, but only after it's proven fresh: every stage session
@@ -309,3 +362,5 @@ the human to review and merge.
 - Silent scope creep — "while I'm here…"; note it, spin a stage, move on.
 - Editing decisions in two places — frozen decisions change in `PLAN.md` only.
 - Skipping the dependency gate — building on an unbuilt prerequisite.
+- Checking a stage branch out in the main clone — the clone is the plan's
+  window; moving it hides the ledger and breaks every concurrent session.

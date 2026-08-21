@@ -236,8 +236,9 @@ Seven frozen semantics:
    creates it; it is never "offered" as optional.
 4. **A stage cannot be closed (marked `done`) until its PR is merged** into
    the plan branch.
-5. **After the merge, check out the plan branch and fast-forward** before the
-   session ends — and record the stage `done` in the ledger there: the `done`
+5. **After the merge, return to the clone and fast-forward** the plan branch
+   before the session ends — the clone is already on it, so there is no
+   checkout — and record the stage `done` in the ledger there: the `done`
    edit is committed on the plan branch after the merge, never on the stage
    branch, so a `done` row is always visible from a synced plan branch.
 6. **Merge type is fixed by position:** each stage PR is **squash-merged** into
@@ -307,9 +308,10 @@ ledger is canonical, but only after it's proven fresh: every stage session
 and the closeout start with a preflight block, defined once in the template
 `PLAN.md`'s operating protocol — confirm `.plan/` is tracked and the plan
 branch has an upstream, fetch, fast-forward the plan branch (holds
-under both squash-merge and merge-commit remotes), require a clean tree and
-a sane HEAD position, and reconcile the ledger rows against actual branch
-and PR state. One state is self-healing (a `doing` row whose PR merged
+under both squash-merge and merge-commit remotes), require a clean tree in
+both the clone and this worktree, apply the **two-tree rule** to HEAD (the
+clone on the plan branch, the stage on its own worktree), and reconcile the
+ledger rows against actual branch, PR, and worktree state. One state is self-healing (a `doing` row whose PR merged
 remotely gets its `done` recorded); one is expected under concurrency (another
 stage's in-flight branch — reported, not fatal, see *Parallel stages*);
 everything else is drift, and the preflight **reports and stops** — it never

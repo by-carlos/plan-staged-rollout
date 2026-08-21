@@ -77,8 +77,9 @@ Then work through these steps **in order**:
    logical units as the stage progresses, not once at the end; (3) a stage PR
    into the plan branch is compulsory — the finish protocol creates it, it is
    not offered; (4) a stage cannot be marked `done` until its PR is merged
-   into the plan branch; (5) after the merge, check out the plan branch and
-   fast-forward before the session ends; (6) merge type is fixed by position —
+   into the plan branch; (5) after the merge, return to the clone (already on
+   the plan branch) and fast-forward before the session ends; (6) merge type
+   is fixed by position —
    stage PRs are **squash-merged** into the plan branch (merged branch
    deleted), and the final PR from the plan branch into `main` is a **normal
    (non-squash) merge** so each stage keeps its own commit on `main`. Do

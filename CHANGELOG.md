@@ -12,6 +12,26 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Worktree-per-stage is now part of the frozen git model.** The clone stays
+  parked on the plan branch for the life of the plan — *the clone holds the
+  plan; worktrees hold the work* — and every stage branch is checked out only
+  in its own sibling worktree (`../<repo>-s<N>`). Parallel stages were already
+  semantically safe, but two concurrent sessions still shared one working tree
+  and contended for `HEAD`; separate worktrees are what make a fanned-out wave
+  physically runnable. It also keeps `.plan/` readable and the `done` write
+  committable at any moment, without disturbing an in-flight stage.
+  `SKILL.md`, the template `PLAN.md`, and both READMEs record it as a fixed
+  decision, not a bootstrap question. The protocol gains: a **two-tree rule**
+  in preflight (the clone's `HEAD` must be the plan branch; a stage branch
+  checked out there is drift), worktree reconciliation that classifies live
+  siblings, crashed attempts, and orphans the same way branches are already
+  classified, worktree provisioning at protocol step 4 (native harness
+  mechanism first, `git worktree add` as fallback, and never a silent
+  degradation to checking out in the clone), and **teardown** at finish step
+  5 — a clean, fully-pushed worktree is removed with its merged branch, while
+  anything uncommitted, unpushed, or stashed is left alone and reported.
+  `/plan-close` refuses to close while a stage worktree survives.
+
 - **Parallel stages are now reported.** The stage index's `depends` column has
   always been a full dependency DAG, but every surface that answered "what's
   next" collapsed it to a single stage, so a plan whose real graph is

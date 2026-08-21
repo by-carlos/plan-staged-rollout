@@ -22,10 +22,10 @@ convenience, not a dependency.
 Run stages in any order allowed by their `depends`. The **runnable set** is
 every `todo` row in `LEDGER.md` whose dependencies are all `done` — often more
 than one. Stages in that set do not depend on each other, so you can run them
-**concurrently, one per fresh session** (one terminal each). `PLAN.md`'s
-*Runnable set & waves* defines the set and shows how waves and the critical
-path are derived from the `Depends` column — they are never stored as a column
-of their own.
+**concurrently, one per fresh session** (one terminal each) — each one works
+in its own worktree, so they never collide. `PLAN.md`'s *Runnable set & waves*
+defines the set and shows how waves and the critical path are derived from the
+`Depends` column — they are never stored as a column of their own.
 
 3 of 4 stages recommend `sonnet` — setting it as your session default means
 the weight gate only prompts on the exceptions.
@@ -39,7 +39,7 @@ the weight gate only prompts on the exceptions.
   changes as you execute; the resume point and cross-session memory.
 - `stage-<N>-<slug>.md` — one small, self-contained stage each.
 
-## Git model
+## Git & worktree model
 
 ```
 main
@@ -50,13 +50,29 @@ main
 plan-uptime-page → final PR → main       ← at /plan-close
 ```
 
+**The clone holds the plan; worktrees hold the work.** This clone stays on
+`plan-uptime-page` for the whole plan — that is the only branch checked out
+here, which is why `.plan/` is always in front of you. Each stage branch is
+checked out only in its own sibling directory, created when the stage starts
+and removed once its PR merges:
+
+```
+../uptime-page-s1/     ← worktree, branch plan-uptime-page-s1
+../uptime-page-s3/     ← worktree, branch plan-uptime-page-s3   (concurrent)
+```
+
+A fresh worktree has only tracked files, so a stage that needs untracked local
+setup (`.env`, local config, caches) copies it in and says so in the ledger. A
+worktree with uncommitted or unpushed work is never removed automatically — it
+is reported, shows up in every later preflight, and blocks closeout.
+
 `.plan/` is **tracked** on the plan branch, and the plan branch is pushed with
 an upstream. Don't add `.plan/` to `.gitignore`: an untracked plan can't
 produce the per-stage commits and PRs this model runs on, and a local-only
 plan branch makes each session's sync a silent no-op.
 
 When two stages run at once, nothing above changes — there are simply two
-stage branches open, both cut from the same plan-branch tip. The plan branch
+stage branches open in two worktrees, both cut from the same plan-branch tip. The plan branch
 is the serialization point: their PRs merge one at a time, and whoever merges
 second first merges the plan branch into their stage branch and re-runs the
 stage's acceptance check. `PLAN.md`'s *Concurrent stages* has the full rules,

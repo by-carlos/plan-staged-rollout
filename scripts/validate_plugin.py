@@ -12,7 +12,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parent.parent
-TEMPLATE_FILES = ["PLAN.md", "LEDGER.md", "stage-N.md", "README.md"]
+TEMPLATE_FILES = ["PLAN.md", "LEDGER.md", "stage-N.md", "stage-f-review.md", "README.md"]
 MANIFEST_FIELDS = ["name", "version", "description"]
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")

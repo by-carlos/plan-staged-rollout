@@ -77,8 +77,9 @@ Then work through these steps **in order**:
    logical units as the stage progresses, not once at the end; (3) a stage PR
    into the plan branch is compulsory — the finish protocol creates it, it is
    not offered; (4) a stage cannot be marked `done` until its PR is merged
-   into the plan branch; (5) after the merge, check out the plan branch and
-   fast-forward before the session ends; (6) merge type is fixed by position —
+   into the plan branch; (5) after the merge, return to the clone (already on
+   the plan branch) and fast-forward before the session ends; (6) merge type
+   is fixed by position —
    stage PRs are **squash-merged** into the plan branch (merged branch
    deleted), and the final PR from the plan branch into `main` is a **normal
    (non-squash) merge** so each stage keeps its own commit on `main`. Do
@@ -86,9 +87,19 @@ Then work through these steps **in order**:
    here — stage branches (`plan-<slug>-s<N>`) are proposed and created at
    stage time by `/plan-staged-rollout:plan-run`, never at bootstrap.
 
+   **Worktree model (also fixed, also not a question).** Record it alongside
+   the git model: the clone is parked on `plan-<slug>` for the life of the
+   plan, and every stage branch is checked out only in its own sibling
+   worktree `../<repo-dirname>-s<N>`, provisioned at stage time and torn down
+   after its PR merges. It is what makes a fanned-out wave physically
+   runnable rather than merely safe on paper. As with stage branches, create
+   **no** worktree here — bootstrap leaves the clone on the plan branch and
+   nothing else.
+
 5. **Scaffold — dispatch a subagent, then commit.** By this point the design,
-   the stage index and the git model are all frozen; nothing left in this step
-   is a decision, so don't keep the templates resident to do it.
+   the stage index, the git model, and the worktree model are all frozen;
+   nothing left in this step is a decision, so don't keep the templates
+   resident to do it.
 
    First, **check that `.plan/` is not ignored — yourself, before dispatching
    anything**: `git check-ignore -v .plan/PLAN.md`. If a rule matches, **stop
@@ -109,7 +120,7 @@ Then work through these steps **in order**:
    - the frozen decisions from step 2;
    - the completed stage index from step 3, including the standing `SF: plan
      review` row;
-   - the frozen git model from step 4;
+   - the frozen git model and worktree model from step 4;
    - the path to `skills/staged-rollout/references/templates/`
      (`PLAN.md`, `LEDGER.md`, `README.md`, `stage-N.md`, `stage-f-review.md`).
 

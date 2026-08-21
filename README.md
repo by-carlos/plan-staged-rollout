@@ -76,9 +76,12 @@ Invert it. Make the *session* the unit of work, and make it small:
 4. **An evidence ledger.** A stage is done when its acceptance check *ran* and
    the real output is recorded — not when the model claims success.
    `LEDGER.md` is both the resume point and the cross-session memory.
-5. **A branch per stage.** Each stage lands as its own PR into the plan
-   branch. Reviewing is small, undoing is a branch delete, and one stage's
-   "quick fix" can never contaminate another's history.
+5. **A branch per stage, in a worktree per stage.** Each stage lands as its
+   own PR into the plan branch. Reviewing is small, undoing is a branch
+   delete, and one stage's "quick fix" can never contaminate another's
+   history. Your clone stays parked on the plan branch the whole time — the
+   work happens in sibling worktrees, so the ledger is always in front of you
+   and two stages can run at once without fighting over a checkout.
 
 Sessions stay cheap, the plan stays true, progress stays visible, and you can
 stop and resume whenever you have time.
@@ -113,7 +116,8 @@ not as a separate spec that would become a second source of truth. Then it:
 - prints the **wave structure and critical path** derived from `depends`, so
   a fan-out is visible before you start — and so is a plan accidentally
   decomposed into a chain;
-- asks your git strategy (default: branch-per-stage, below);
+- records the fixed git and worktree model (branch-per-stage, worktree-per-stage
+  — below); it is not a choice you are asked to make;
 - scaffolds `.plan/` and commits it. **No stage is executed during
   bootstrap.** It finishes by saying so explicitly and telling you exactly
   what to run next: the first stage's command and its recommended
@@ -228,7 +232,10 @@ Two deliberate limits:
   sessions, so running a wave in parallel means opening one terminal per stage.
   The plugin tells you what *can* overlap; whether to is your call.
 
-Four rules keep the concurrent sessions from colliding:
+What makes that physically safe is worktree-per-stage: each session works in
+its own directory on its own branch, so nothing contends for a checkout and no
+session can see another's uncommitted work. Four further rules keep the
+branches from colliding when they meet at the plan branch:
 
 - **The plan branch is the serialization point.** Stage PRs merge one at a
   time, first come first served. Whoever merges second re-syncs — merge the
@@ -258,7 +265,7 @@ cost stops being flat, which is the mechanism this whole method rests on. Use
 it *within* a stage for churn; if a wave really is one unit of work, merge
 those stages at decomposition time instead.
 
-### 3. Git model (default)
+### 3. Git & worktree model (fixed)
 
 ```
 main
@@ -267,6 +274,15 @@ main
       ├── plan-<slug>-s1  → PR → plan-<slug>
       └── ...
 plan-<slug> → final PR → main       ← at /plan-close
+```
+
+On disk, that means your clone and one sibling directory per running stage:
+
+```
+~/src/
+  myrepo/        ← your clone, always on plan-<slug>, holds .plan/
+  myrepo-s1/     ← worktree, branch plan-<slug>-s1
+  myrepo-s3/     ← worktree, branch plan-<slug>-s3   (running concurrently)
 ```
 
 - **Every stage gets its own branch and PR into the plan branch** — no
@@ -289,8 +305,20 @@ plan-<slug> → final PR → main       ← at /plan-close
   request title and commit details"; merge-commit message = "Pull request
   title and description" (so the distilled final-PR body lands in the merge
   commit on `main`).
-- Branch-per-stage is the only supported model — it is recorded as a frozen
-  decision at bootstrap, not a choice offered at that time.
+- **The clone never leaves the plan branch.** *The clone holds the plan;
+  worktrees hold the work.* A stage branch is checked out only in its own
+  sibling worktree (`../<repo>-s<N>`), created at stage time from the plan
+  branch tip and removed after its PR merges — so `.plan/` stays readable in
+  the clone at every moment and the `done` write needs no checkout. If a
+  stage worktree still holds uncommitted or unpushed work, it is left alone
+  and reported rather than removed; the leftover is flagged by every later
+  preflight and blocks closeout.
+- **A fresh worktree contains only tracked files.** Untracked local setup a
+  stage needs (`.env`, local config, caches, dependency directories) has to be
+  copied in — the stage does that and records what it copied in the ledger.
+- Branch-per-stage and worktree-per-stage are the only supported model — both
+  are recorded as frozen decisions at bootstrap, not choices offered at that
+  time.
 
 ### 4. Review — the standing final stage
 

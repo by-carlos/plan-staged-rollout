@@ -466,6 +466,8 @@ def build_command(args: argparse.Namespace, row: IndexRow) -> tuple[list[str], l
     argv += ["--permission-mode", args.permission_mode]
     if args.allowed_tools:
         argv += ["--allowedTools", *args.allowed_tools]
+    for plugin_dir in args.plugin_dir or []:
+        argv += ["--plugin-dir", str(plugin_dir)]
     if args.max_budget_usd is not None:
         argv += ["--max-budget-usd", str(args.max_budget_usd)]
     return argv, warnings
@@ -694,6 +696,19 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--plugin-dir",
+        action="append",
+        metavar="PATH",
+        help=(
+            "load a plugin from a directory or .zip in every stage session "
+            "(repeatable), passed straight through to `claude --plugin-dir`. The "
+            "reason it exists: a stage session resolves "
+            "`/plan-staged-rollout:plan-run` against the *installed* plugin, so "
+            "testing an unreleased change to this plugin - or to this driver - "
+            "means pointing the stage sessions at the working tree instead"
+        ),
+    )
+    parser.add_argument(
         "--max-budget-usd",
         type=float,
         default=None,
@@ -765,11 +780,32 @@ def main(argv: list[str] | None = None) -> int:
         fail(f"`{args.claude_bin}` is not on PATH; use --claude-bin or --dry-run")
         return 2
 
+    # A mistyped --plugin-dir is the one failure the driver must not pass on: the
+    # stage sessions would silently fall back to the *installed* plugin and the
+    # run would look fine while testing the wrong code.
+    resolved_plugin_dirs = []
+    for raw in args.plugin_dir or []:
+        path = Path(raw).expanduser().resolve()
+        if path.is_dir():
+            if not (path / ".claude-plugin" / "plugin.json").is_file():
+                fail(
+                    f"--plugin-dir {path} has no .claude-plugin/plugin.json - "
+                    "stage sessions would silently use the installed plugin instead"
+                )
+                return 2
+        elif not (path.is_file() and path.suffix == ".zip"):
+            fail(f"--plugin-dir {path} is neither a plugin directory nor a .zip")
+            return 2
+        resolved_plugin_dirs.append(path)
+    args.plugin_dir = resolved_plugin_dirs
+
     notify_cmd = args.notify if args.notify is not None else os.environ.get(NOTIFY_ENV, "")
 
     log(f"repo {root}")
     log(f"branch {branch}")
     log(f"plan {plan_dir}")
+    for plugin_dir in args.plugin_dir or []:
+        log(f"plugin {plugin_dir} (side-loaded into every stage session)")
     if args.dry_run:
         log("dry run - nothing is launched and the ledger is not written")
     if not notify_cmd:

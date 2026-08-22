@@ -505,7 +505,7 @@ The driver therefore passes an explicit profile, which you can override:
 --allowedTools Bash Edit Write Read Glob Grep Task Skill TodoWrite WebFetch WebSearch NotebookEdit
 ```
 
-Two consequences worth knowing before the first unattended run:
+Three consequences worth knowing before the first unattended run:
 
 - **`permissions.ask` on `gh pr merge` breaks `merge: auto`.** If your settings
   ask before a merge — as a branch-protection or merge-gate policy usually
@@ -518,6 +518,29 @@ Two consequences worth knowing before the first unattended run:
   merge is asking a person, and unattended mode turns every would-be question
   into `blocked`. The driver says so on startup when it reads `merge: manual`.
   A plan you intend to drive wants `merge: auto` on its plan-flags line.
+- **`bypassPermissions` does not bypass your hooks.** A `PreToolUse` hook still
+  runs headless and its `deny` is still honoured, `bypassPermissions` or not.
+  That cuts both ways: a hook-based branch guard keeps protecting you during an
+  unattended run, and a hook that refuses something a stage needs will stall
+  that stage no matter which permission mode you pass.
+
+### Driving an unreleased plugin — `--plugin-dir`
+
+A stage session resolves `/plan-staged-rollout:plan-run` against the **installed**
+plugin, not the working tree the driver was launched from. Testing an unreleased
+change — to the plugin or to the driver itself — therefore needs the stage
+sessions pointed at the tree under test:
+
+```bash
+python scripts/plan_driver.py --plugin-dir /path/to/plan-staged-rollout
+```
+
+The value is passed straight through to `claude --plugin-dir`, which loads a
+plugin **for that session only** — no marketplace entry, no global install, and
+nothing to undo afterwards. It is repeatable, and it takes a plugin directory or
+a `.zip`. A directory has to contain `.claude-plugin/plugin.json` or the driver
+refuses to start: silently falling back to the installed plugin would produce a
+run that looks fine and tested the wrong code.
 
 ### Being told about it
 

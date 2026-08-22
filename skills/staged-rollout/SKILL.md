@@ -109,11 +109,11 @@ cheap — escalate only where a stage genuinely warrants it:
   stages. Most staged work is `low`/`med` effort.
 - `gate: auto` by default. `gate` says whether a stage may be **launched
   unattended** — by a driver that runs stages back-to-back with nobody
-  watching (built separately; this flag is the contract it reads). A
-  `gate: human` stage is never launched unattended: the driver stops in front
-  of it and notifies, and a session that finds itself running one unattended
-  (see *Statuses and human-gated stages*) reports and stops rather than
-  starting it. Mark `human` where a person must be present for the stage to
+  watching (`scripts/plan_driver.py` in this repo; this flag is the contract
+  it reads). A `gate: human` stage is never launched unattended: the driver
+  stops in front of it and notifies, and a session that finds itself running
+  one unattended (see *Statuses and human-gated stages*) reports and stops
+  rather than starting it. Mark `human` where a person must be present for the stage to
   get anywhere: every `mode: brainstorm` stage (a design pass is a
   conversation), and any stage whose acceptance needs a human's eyes or hands
   (a visual check, a GUI-only action, a credential). **Why `auto` is the

@@ -12,6 +12,34 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **`scripts/plan_driver.py` — an unattended stage driver** (#82). Runs a plan
+  without a person at the keyboard: a re-scanning loop that reads
+  `.plan/LEDGER.md` and `.plan/PLAN.md`'s stage index, recomputes the runnable
+  set exactly as `/plan-run` does, launches the next stage as its own
+  `claude -p "/plan-staged-rollout:plan-run <N> --unattended"` session at the
+  stage's `model`/`effort`, waits, re-reads the ledger, and repeats. The ledger
+  is the only state, so the driver can be stopped and restarted at any point.
+  It stops — and calls a notify command — in front of a `gate: human` stage, on
+  a stage that comes back `blocked`, when nothing is runnable, and when the
+  plan is complete. `--dry-run` prints the whole order, with the model, effort
+  and exact command per stage, launching nothing. Guardrails: it refuses to run
+  on a protected branch (`main`, `master`, `release`, `trunk`, `develop`, or
+  the remote default) with no override; a stage that fails to reach `done`
+  within `--max-attempts` (default 2) is written `blocked` with a runbook,
+  committed, and never retried; model and effort are printed before every
+  launch, with an optional `--max-budget-usd` ceiling passed through to each
+  session. It never merges anything itself — stage PRs are merged by their own
+  sessions under the plan's `merge` flag, and the plan→main PR stays manual in
+  every mode. Notify is configured through the `PLAN_DRIVER_NOTIFY`
+  environment variable rather than a `.plan/` setting, because `.plan/` is
+  tracked and shared on the plan branch while a notify target is personal and
+  machine-local. Sequential only; parallel waves and any live relay of
+  in-flight questions are deliberately out of scope. README gains an
+  **Unattended runs** section documenting the `--permission-mode` /
+  `--allowedTools` profile a `-p` session needs, that a `permissions.ask` entry
+  acts as a denial headless (so `merge: auto` is incompatible with a merge-gate
+  policy), and that `merge: manual` means no stage reaches `done` unattended.
+
 - **`merge: auto|manual` plan flag and `gate: auto|human` stage flag** — the
   contract an unattended runner needs, without the runner itself (#81; the
   runner is separate work under #80). `gate` is a new last column of the

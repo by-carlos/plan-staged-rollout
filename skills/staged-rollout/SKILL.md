@@ -73,17 +73,28 @@ context a long session would carry).
   reads as correct while the plan takes three rounds instead of two. For every
   edge, name the artifact the dependent stage consumes; if you can't name one,
   drop the edge.
+- **Group by gate.** Alongside "group by effort": put the `gate: human`
+  stages — the ones where frozen decisions get settled or amended, or whose
+  acceptance needs a person — at the **front** of the dependency graph, and
+  the review stage at the **end**; keep the middle mechanical, `gate: auto`
+  and (when the plan opts in) `merge: auto`. Never interleave a human gate
+  between two auto stages unless a dependency edge genuinely forces it: an
+  unattended runner stops at every `human` stage, so a human gate in the
+  middle of an auto run cuts the run in two for no reason. Decisions that only
+  surface mid-build still go through `blocked` (see *Statuses and human-gated
+  stages*) — the rule shapes the graph, it doesn't forbid surprises.
 - **Standing final review stage.** Always append `SF: plan review` as the last
   stage (see below), scaffolded from `stage-f-review.md`. Bootstrap adds it;
   it's not optional.
 
 ## Flag heuristics
 
-Each stage declares `depends` / `mode` / `exec` / `model` / `effort` in the
-**PLAN.md stage index** — the single authoritative home for these flags, read
-by `/plan-run`'s weight check and next-runnable logic. Stage files never restate
-them. Defaults are deliberately cheap — escalate only where a stage genuinely
-warrants it:
+Each stage declares `depends` / `mode` / `exec` / `model` / `effort` / `gate`
+in the **PLAN.md stage index** — the single authoritative home for these
+flags, read by `/plan-run`'s weight check and next-runnable logic. The plan as
+a whole declares one more, `merge`, on the **plan flags** line directly under
+that index. Stage files never restate any of them. Defaults are deliberately
+cheap — escalate only where a stage genuinely warrants it:
 
 - `mode: direct` by default (state a one-line plan, implement). Use `brainstorm`
   only where the stage has real open design choices. A full brainstorm on a
@@ -96,6 +107,38 @@ warrants it:
   (not introspectable — never claim to verify it). Default to the cheaper capable
   model; reserve the top model for the keystone and the one or two design-heavy
   stages. Most staged work is `low`/`med` effort.
+- `gate: auto` by default. `gate` says whether a stage may be **launched
+  unattended** — by a driver that runs stages back-to-back with nobody
+  watching (built separately; this flag is the contract it reads). A
+  `gate: human` stage is never launched unattended: the driver stops in front
+  of it and notifies, and a session that finds itself running one unattended
+  (see *Statuses and human-gated stages*) reports and stops rather than
+  starting it. Mark `human` where a person must be present for the stage to
+  get anywhere: every `mode: brainstorm` stage (a design pass is a
+  conversation), and any stage whose acceptance needs a human's eyes or hands
+  (a visual check, a GUI-only action, a credential). **Why `auto` is the
+  default and not `human`:** the flag changes nothing until something runs
+  stages unattended — today, and for any plan that never adopts a driver,
+  `merge: manual` already stops at every merge whatever `gate` says, so an
+  `auto` default costs existing plans nothing and keeps a fresh plan closest
+  to today's fully-manual experience. The conservative alternative (`human`
+  by default, opt stages *into* unattended) would make bootstrap upgrade
+  every mechanical stage by hand instead of downgrading the few that need a
+  person; it was considered and is the right call only if unattended runs
+  turn out to misfire on stages that looked mechanical at decomposition. An
+  **absent** `gate` column reads as `auto` — plans written before the flag
+  existed need no edit.
+- `merge: manual` by default — **plan-level, not per-stage.** `merge` says
+  what happens to a stage PR once it is open: under `manual` the session
+  offers the merge and waits for your OK (today's behaviour, unchanged);
+  under `auto` it merges the stage PR into the plan branch itself — still a
+  squash, still only after the sibling re-sync check, and only once every
+  required check is green — then carries straight on to the `done` write and
+  teardown. `auto` is opt-in because any other default would silently change
+  the merge behaviour of every plan that predates the flag, and it governs
+  **stage PRs only**: the plan→main PR is manual in every mode, with no
+  override (see *Git model*). An **absent** plan-flags line reads as
+  `merge: manual`.
 
 ## Model weight tiers
 
@@ -128,9 +171,11 @@ at once. Three rules keep that an advantage rather than a source of confusion:
   drift.
 - **Report the set; don't launch it.** The deliverable is telling the operator
   what *can* overlap — every `todo` stage whose `depends` are all `done`, each
-  with its command and recommended model/effort. Starting them is the
-  operator's action, one session per stage: a session cannot spawn independent
-  top-level sessions, and nothing in this method pretends otherwise.
+  with its command, recommended model/effort and `gate`. Starting them is the
+  operator's action, one session per stage — or a driver's, running outside
+  any session and honouring `gate` — because a session cannot spawn
+  independent top-level sessions, and nothing in this method pretends
+  otherwise.
 - **Separate working trees are what make it physical.** The semantics below
   make concurrent sessions *safe*; worktree-per-stage (see *Git model*) makes
   them *possible*. Two sessions sharing one working tree fight over `HEAD`
@@ -186,6 +231,20 @@ out as method, not just vocabulary:
   an approval) is best written as a **runbook**: produce exact step-by-step
   instructions plus the verification check, mark the stage `blocked`/`doing`, and
   let the human complete it. Never fake progress past a gate.
+- **Unattended mode turns every would-be question into `blocked`.** A session
+  is unattended when nobody can answer it — it was launched by a driver, or
+  `/plan-run` was told so explicitly (its `--unattended` argument; see the
+  command). In that mode, anything the agent would normally **ask a person
+  about** — a design choice the frozen decisions don't settle, a weight-check
+  mismatch, a redo confirmation, an ambiguous acceptance result — becomes:
+  mark the stage `blocked` with a runbook stating the question and what would
+  unblock it, commit that, and stop. This is the existing state and the
+  existing mechanism, not new machinery; the only new rule is that waiting on
+  an answer is not an option, because there is nobody to give one. The human
+  answers later by amending the frozen decisions or the ledger and relaunching
+  the stage. A `gate: human` stage reached unattended is the degenerate case:
+  it is *known* to need a person, so the session reports that and stops
+  **before** starting it rather than discovering the fact halfway through.
 - **`skipped`** records a one-line reason for work decided against, so the gap is
   a decision, not a silent hole.
 
@@ -258,6 +317,21 @@ creates and **pushes** them without asking, and **opens** the stage PR into
 the plan branch as part of the compulsory finish protocol, but **offers** the
 merge for your OK — it never merges without your OK, never pushes to `main`,
 and the final PR to `main` is always yours to merge.
+
+**The one carve-out: `merge: auto`.** A plan that sets `merge: auto` on its
+plan-flags line (see *Flag heuristics*) has given that OK **in advance, for
+stage PRs only** — so under `auto` the session squash-merges its own stage PR
+into the plan branch once the sibling re-sync check has run and every required
+check is green, and continues to the `done` write and teardown without
+stopping. Nothing else loosens: the merge is still a squash, the re-sync rule
+still applies, and a merge that GitHub refuses (a red or missing check, a
+branch-protection rule the plan branch carries) is **not** retried or forced —
+the session leaves the row `doing`, reports the refusal and why, and ends; the
+next preflight completes the bookkeeping once a person merges it, exactly as
+when a merge is declined today. **The plan→main PR is manual in every mode.**
+`merge` is never read at closeout, and no value of it — nor any future flag —
+creates a path that merges into `main` without a person's explicit OK. That is
+the one human gate that survives even a fully unattended plan.
 
 ### Worktree-per-stage
 

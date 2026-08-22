@@ -484,7 +484,7 @@ and `2` for a usage or guardrail refusal.
   through to `claude` if you want a hard stop as well. Budget for a fixed
   floor per session: measured on the first end-to-end run, a stage session
   loads roughly 50k tokens of system prompt and plugin surface before doing
-  any work — about $0.20 on Sonnet — so a plan of many tiny stages is
+  any work — $0.20–0.35 on Sonnet — so a plan of many tiny stages is
   overhead-dominated, and the driver pays off on a few substantial stages
   rather than many trivial ones. The driver does not report what a run cost;
   stage sessions inherit the terminal, so there is no usage total to read back.

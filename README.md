@@ -295,7 +295,11 @@ On disk, that means your clone and one sibling directory per running stage:
   and plan branches without asking, and **opens the stage PR** into the plan
   branch as a compulsory part of finishing a stage. Merges are **offered** and
   happen only on your OK — it never merges on its own, and never pushes to
-  `main`. A stage cannot be marked `done` until its PR is merged.
+  `main`. The one carve-out is a plan that sets `merge: auto` (see *Per-stage
+  knobs*): that is your OK given in advance for **stage PRs only**, so the
+  session squash-merges its own stage PR once checks are green; the plan→main
+  PR stays yours in every mode. A stage cannot be marked `done` until its PR
+  is merged.
 - Merge type is fixed by position: stage PRs into the plan branch are
   **squash-merged** (one commit per stage, merged branch deleted); the final PR
   from the plan branch into `main` is a **normal (non-squash) merge**, so each
@@ -370,10 +374,21 @@ work — and don't skimp on the hard parts:
 | `mode` | `direct` \| `brainstorm` | whether the stage needs a design pass first |
 | `exec` | `inline` \| `subagent(<model>)` | where the implementation churn lives |
 | `model` / `effort` | launch hints | recommended session weight; checked, not faked |
+| `gate` | `auto` \| `human` | may the stage be launched with nobody watching? `human` means never — an unattended runner stops in front of it |
 
-Defaults are deliberately cheap: `direct`, `inline`, the cheaper capable
-model. Escalate only where a stage has genuine open design questions
-(`brainstorm`) or heavy iteration churn (`subagent`).
+And one flag for the plan as a whole, on the **plan flags** line under the
+stage index:
+
+| Flag | Values | Meaning |
+|---|---|---|
+| `merge` | `manual` \| `auto` | under `auto` the session squash-merges its own stage PR into the plan branch once checks are green, instead of offering it; stage PRs only — the plan→main PR is manual in every mode |
+
+Defaults are deliberately cheap and reproduce the fully-manual flow: `direct`,
+`inline`, the cheaper capable model, `gate: auto`, `merge: manual` — a plan
+that predates these flags needs no edit. Escalate only where a stage has
+genuine open design questions (`brainstorm`, which also makes it
+`gate: human`) or heavy iteration churn (`subagent`); opt into `merge: auto`
+only for a plan you intend to run unattended.
 
 ### Why `model` / `effort` are hints, not automation
 

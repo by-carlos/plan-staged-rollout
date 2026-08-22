@@ -10,6 +10,28 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **`merge: auto|manual` plan flag and `gate: auto|human` stage flag** — the
+  contract an unattended runner needs, without the runner itself (#81; the
+  runner is separate work under #80). `gate` is a new last column of the
+  `PLAN.md` stage index: `human` marks a stage that must never be launched
+  with nobody watching. `merge` lives on a new **plan flags** line directly
+  under that index: `auto` lets the finish protocol squash-merge a stage PR
+  into the plan branch itself once checks are green, instead of offering it.
+  The plan→main PR is manual in every mode — `merge` is never read at
+  closeout. Defaults are `gate: auto` and `merge: manual`, and an absent
+  column or line means the default, so every existing plan behaves exactly as
+  before. With them come the **group by gate** decomposition rule (`human`
+  stages at the front of the graph, the review stage at the end, the
+  mechanical middle `auto`), the rule that in unattended mode any would-be
+  question becomes `blocked` + runbook rather than a wait, a `--unattended`
+  argument on `/plan-run` that declares that mode (`gate: human` stage →
+  report and stop; questions → `blocked`), and `/plan-stages` setting `gate`
+  per stage from the decomposition and writing `merge: manual` unless the
+  user asked otherwise. The `gate` column is appended last so the
+  session-start hook's positional parsing of the index is unaffected.
+
 ### Changed
 
 - **License changed from MIT to FSL-1.1-ALv2** (Functional Source License).

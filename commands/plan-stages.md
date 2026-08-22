@@ -68,6 +68,20 @@ Then work through these steps **in order**:
    order-independent overlap may be left in one wave on purpose — say so
    explicitly rather than leaving it implicit.
 
+   **Then set `gate` per stage, and group by it.** `gate` says whether a
+   stage may be launched with nobody watching (the skill's *Flag heuristics*
+   define it; an unattended runner, built separately, reads it). Decide it
+   here, from the decomposition, never by asking the user row by row:
+   `human` for every `mode: brainstorm` stage and for any stage whose
+   acceptance needs a person's eyes or hands; `auto` for everything else —
+   it is the default, and the flag changes nothing until a plan is actually
+   run unattended. Then apply the skill's **group by gate** rule to the
+   graph: `human` stages go at the **front** (where frozen decisions get
+   settled or amended) and the review stage at the **end**, with the
+   mechanical `auto` stages in between — never a `human` stage wedged between
+   two `auto` ones unless a dependency edge genuinely forces it. When that
+   rule and the graph disagree, the graph wins and you say so.
+
 4. **Git model (fixed, not a question).** Record the frozen git protocol in
    `PLAN.md`: **branch-per-stage** — `main` → `plan-<slug>` (the plan branch)
    → one `plan-<slug>-s<N>` branch and PR per stage, no exceptions, final PR
@@ -86,6 +100,18 @@ Then work through these steps **in order**:
    **not** create any *stage* branch
    here — stage branches (`plan-<slug>-s<N>`) are proposed and created at
    stage time by `/plan-staged-rollout:plan-run`, never at bootstrap.
+
+   **The plan-level `merge` flag — decide it, don't ask.** Write
+   `merge: manual` on the plan flags line under the stage index unless the
+   user's idea or the design pass explicitly asked for stage PRs to merge on
+   their own, in which case write `merge: auto` and name it in the end
+   announcement. `manual` is today's behaviour exactly — the session opens
+   each stage PR and offers the merge; `auto` squash-merges a stage PR into
+   the plan branch once its checks are green (stage PRs only — the plan→main
+   PR is manual in every mode, and nothing here may change that). Don't turn
+   it into a bootstrap question: the flag only bites when a plan is run
+   unattended, so asking every bootstrap about it is ceremony for a default
+   the user can flip in `PLAN.md` in one line the day they want it.
 
    **Worktree model (also fixed, also not a question).** Record it alongside
    the git model: the clone is parked on `plan-<slug>` for the life of the
@@ -119,8 +145,9 @@ Then work through these steps **in order**:
    carrying:
    - the frozen decisions from step 2;
    - the completed stage index from step 3, including the standing `SF: plan
-     review` row;
-   - the frozen git model and worktree model from step 4;
+     review` row and every stage's `gate`;
+   - the frozen git model and worktree model from step 4, and the plan flags
+     line (`merge: manual` or `merge: auto`) it decided;
    - the path to `skills/staged-rollout/references/templates/`
      (`PLAN.md`, `LEDGER.md`, `README.md`, `stage-N.md`, `stage-f-review.md`).
 

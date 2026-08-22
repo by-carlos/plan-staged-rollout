@@ -230,7 +230,10 @@ Two deliberate limits:
   of a single source of truth is exactly what this method exists to prevent.
 - **Launching is yours.** A session cannot spawn independent top-level
   sessions, so running a wave in parallel means opening one terminal per stage.
-  The plugin tells you what *can* overlap; whether to is your call.
+  The plugin tells you what *can* overlap; whether to is your call. The
+  [unattended driver](#unattended-runs--scriptsplan_driverpy) removes the
+  keyboard from *sequential* runs, not from this — it takes a multi-stage
+  runnable set one stage at a time.
 
 What makes that physically safe is worktree-per-stage: each session works in
 its own directory on its own branch, so nothing contends for a checkout and no
@@ -416,6 +419,133 @@ across sessions and works everywhere the plugin does.
 This is a platform limit, not a preference. If session spawning ever gains
 model/effort parameters, the handoff step is the place to revisit.
 
+The limit is on what a *session* can do, and that is why the unattended driver
+below is a script rather than a skill: outside any session, `claude -p --model
+… --effort …` sets both freely. The hint in `.plan/` is still the carrier — the
+driver reads the same stage-index columns a person reads, and prints them
+before every launch.
+
+## Unattended runs — `scripts/plan_driver.py`
+
+Everything above assumes you are at the keyboard, launching one session per
+stage. [`scripts/plan_driver.py`](scripts/plan_driver.py) does that launching
+for you: it runs stages back to back until nothing is runnable or something
+genuinely needs a person.
+
+```bash
+python scripts/plan_driver.py --dry-run
+```
+
+Run it from the **plan branch clone** (the clone stays parked there for the
+life of the plan). It is a re-scanning loop, not a schedule: each round it
+reads `.plan/LEDGER.md` and `.plan/PLAN.md`'s stage index, recomputes the
+runnable set exactly as `/plan-run` does, launches the next stage as its own
+`claude -p "/plan-staged-rollout:plan-run <N> --unattended"` session, waits for
+it, and re-reads the ledger. **The ledger is the only state.** Stop the driver
+whenever you like and start it again later; it picks up from what is written
+down, exactly as a person would.
+
+`--dry-run` computes and prints the whole order — which stages, in which
+sequence, at what model and effort, and the exact command each would get —
+without launching anything:
+
+```
+[plan-driver] launching S1 - CLI runner (model sonnet, effort low, gate auto) - attempt 1 of 2
+[plan-driver]   $ claude -p "/plan-staged-rollout:plan-run 1 --unattended" --model sonnet --effort low ...
+```
+
+### What stops it
+
+| Stop | What the driver does |
+|---|---|
+| `gate: human` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a person |
+| a stage comes back `blocked` | reports it and stops; the session's own runbook is in the ledger, and the driver never retries a deliberate block |
+| a stage does not reach `done` within `--max-attempts` (default 2) | writes `blocked` plus a runbook into the ledger, commits it on the plan branch (`--no-commit` writes without committing), and stops |
+| nothing runnable, stages still open | reports which stages are waiting and stops |
+| every stage `done`/`skipped` | reports the plan is ready for [`/plan-close`](commands/plan-close.md) and exits 0 |
+
+Exit code is `0` for a completed plan, `1` for any stop that wants a person,
+and `2` for a usage or guardrail refusal.
+
+### Guardrails
+
+- **It refuses to run on a protected branch** — `main`, `master`, `release`,
+  `trunk`, `develop`, or the remote's default — regardless of what the repo's
+  own policy allows. Stage branches are cut from whatever is checked out and,
+  under `merge: auto`, merged back into it; a driver pointed at `main` would
+  merge stage work straight into it. This refusal has no override flag.
+- **The retry cap is a cap, not a hint.** A stage gets `--max-attempts`
+  launches (default 2) and is then marked `blocked`. The driver never loops on
+  a failing stage, and it never retries a stage its own session marked
+  `blocked`.
+- **Model and effort are printed before every launch.** Headless spend with
+  nobody watching is the real risk here, so the weight of each session is on
+  the stream before it starts. `--max-budget-usd` passes a per-session ceiling
+  through to `claude` if you want a hard stop as well.
+- **`--plan-dir` is for dry runs only.** Stage sessions run in the checked-out
+  repo, so a real run pointed at another repo's `.plan/` would work the wrong
+  tree. The driver refuses that combination outright; `--dry-run` still reads
+  any plan you point it at.
+- **It never merges anything itself.** Stage PRs are merged by their own
+  sessions under the plan's `merge` flag; the plan→main PR is manual in every
+  mode, driver or no driver.
+
+### The permission profile under `-p`
+
+A `-p` session has nobody to answer a permission prompt, so **any rule that
+would prompt resolves as a denial** — including a `permissions.ask` entry in
+your own settings. A stage session that cannot run `git`, `gh` or an edit does
+not fail loudly; it stalls and comes back not-`done`, which is what the retry
+cap is there to catch.
+
+The driver therefore passes an explicit profile, which you can override:
+
+```
+--permission-mode acceptEdits
+--allowedTools Bash Edit Write Read Glob Grep Task Skill TodoWrite WebFetch WebSearch NotebookEdit
+```
+
+Two consequences worth knowing before the first unattended run:
+
+- **`permissions.ask` on `gh pr merge` breaks `merge: auto`.** If your settings
+  ask before a merge — as a branch-protection or merge-gate policy usually
+  does — that ask is a denial headless, so every stage stalls at its own PR
+  and the driver stops at the first one with nothing merged.
+  `--permission-mode bypassPermissions` is the blunt way through; deciding
+  whether your policy should be bypassed is not the driver's call, which is
+  why it is not the default.
+- **`merge: manual` means no stage ever reaches `done` unattended.** Offering a
+  merge is asking a person, and unattended mode turns every would-be question
+  into `blocked`. The driver says so on startup when it reads `merge: manual`.
+  A plan you intend to drive wants `merge: auto` on its plan-flags line.
+
+### Being told about it
+
+The driver calls a notify command on every stop, on `blocked`, and on
+finishing the plan. Set it with the `PLAN_DRIVER_NOTIFY` environment variable
+(or `--notify`):
+
+```bash
+PLAN_DRIVER_NOTIFY='curl -s -d' python scripts/plan_driver.py
+```
+
+The message is appended as one argument, and `PLAN_DRIVER_EVENT`,
+`PLAN_DRIVER_MESSAGE`, `PLAN_DRIVER_STAGE` and `PLAN_DRIVER_PLAN` are exported
+into the command's environment, so both a one-liner and a script work without
+a wrapper. **An environment variable rather than a `.plan/` setting**, because
+`.plan/` is tracked and shared on the plan branch: a notify target is usually
+a personal webhook or a machine-local notifier, and committing it would both
+leak it and force everyone working the plan onto one channel.
+
+### Deliberately out of scope
+
+- **Parallel waves.** The driver is sequential. When more than one stage is
+  runnable it says so and takes them in stage-index order; running a wave
+  concurrently is still one terminal per stage, as above.
+- **Relaying questions to you mid-flight.** A stage that needs an answer
+  becomes `blocked` with a runbook and the driver notifies you. That is the
+  whole mechanism — there is no live chat relay.
+
 ## The ledger, kept slim
 
 The ledger is read by *every* stage session, so its size taxes every future
@@ -489,6 +619,7 @@ earlier stage's assumptions were written down.
 
 ## Roadmap
 
+- Parallel waves in the unattended driver (it is sequential today)
 - Subagent fan-out for independent sub-steps within a stage
 - Progress dashboard rendered from the ledger
 - Skill evals (triggering accuracy, protocol adherence)
@@ -521,6 +652,8 @@ Layout:
     hooks.json                   # SessionStart registration
     run-hook.cmd                 # polyglot cmd/bash wrapper (Windows + Unix)
     session-start                # .plan/-aware nudge: next runnable stage
+  scripts/
+    plan_driver.py               # unattended driver: one claude -p per stage
 ```
 
 ## Contributing

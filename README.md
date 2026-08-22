@@ -540,10 +540,11 @@ Three consequences worth knowing before the first unattended run:
 
   That is a blunt instrument, not a scalpel. Dropping `user` drops **everything**
   in it — your hooks (including any branch guard), your user `CLAUDE.md`, and the
-  rest of your permission rules — for every stage session. Prefer restructuring
-  the plan so no unattended stage needs the gated command: `merge: manual` plus a
-  person doing the merges costs less than running headless sessions with your
-  safety rules switched off.
+  rest of your permission rules — for every stage session. If you will not drop
+  `user`, be honest that the plan is then **semi-attended, not unattended**: set
+  `merge: manual`, let the driver run each stage up to its PR and stop (the next
+  bullet), merge it yourself, restart the driver. That costs you one click per
+  stage; the alternative costs you every safety rule you have, per session.
 - **`merge: manual` means no stage ever reaches `done` unattended.** Offering a
   merge is asking a person, and unattended mode turns every would-be question
   into `blocked`. The driver says so on startup when it reads `merge: manual`.

@@ -37,7 +37,7 @@ The discipline the [plugin README](../README.md) describes, in practice:
   steps ticked, and its ledger notes say exactly what is left and where to
   resume. A fresh session picks up from the first unticked box.
 - **Flags live only in the PLAN.md stage index.** No stage file restates its
-  `depends` / `mode` / `exec` / `model` / `effort` — a copy is what drifts.
+  `depends` / `mode` / `exec` / `model` / `effort` / `gate` — a copy is what drifts.
   The [`PLAN.md`](uptime-page/.plan/PLAN.md) index is the single authoritative
   home the tooling reads.
 - **Decisions live only in Frozen decisions.** Stage files and ledger notes

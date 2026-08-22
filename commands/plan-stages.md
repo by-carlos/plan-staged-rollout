@@ -101,17 +101,19 @@ Then work through these steps **in order**:
    here — stage branches (`plan-<slug>-s<N>`) are proposed and created at
    stage time by `/plan-staged-rollout:plan-run`, never at bootstrap.
 
-   **The plan-level `merge` flag — decide it, don't ask.** Write
-   `merge: manual` on the plan flags line under the stage index unless the
-   user's idea or the design pass explicitly asked for stage PRs to merge on
-   their own, in which case write `merge: auto` and name it in the end
-   announcement. `manual` is today's behaviour exactly — the session opens
-   each stage PR and offers the merge; `auto` squash-merges a stage PR into
-   the plan branch once its checks are green (stage PRs only — the plan→main
-   PR is manual in every mode, and nothing here may change that). Don't turn
-   it into a bootstrap question: the flag only bites when a plan is run
-   unattended, so asking every bootstrap about it is ceremony for a default
-   the user can flip in `PLAN.md` in one line the day they want it.
+   **The plan-level `merge` flag — the one thing here that IS a question.**
+   Ask it explicitly, as a single multiple-choice question (`AskUserQuestion`
+   where available), with `manual` as the recommended default: *"Stage PRs
+   into the plan branch — offer each merge for your OK (`manual`,
+   recommended), or let the stage session squash-merge its own PR once checks
+   are green (`auto`)?"* Skip the question only if `$ARGUMENTS` or the design
+   pass already answered it. Write the answer on the plan flags line under
+   the stage index (`merge: manual` or `merge: auto`) and repeat it in the
+   end announcement. `manual` is today's behaviour exactly — the session
+   opens each stage PR and offers the merge; `auto` squash-merges a stage PR
+   into the plan branch once its checks are green (stage PRs only — the
+   plan→main PR is manual in every mode, and nothing here may change that).
+   Either way the user can flip it later in `PLAN.md` in one line.
 
    **Worktree model (also fixed, also not a question).** Record it alongside
    the git model: the clone is parked on `plan-<slug>` for the life of the

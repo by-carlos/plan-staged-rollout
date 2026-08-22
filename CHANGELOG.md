@@ -28,8 +28,8 @@ elsewhere. See 0.4.0 for the split.
   question becomes `blocked` + runbook rather than a wait, a `--unattended`
   argument on `/plan-run` that declares that mode (`gate: human` stage →
   report and stop; questions → `blocked`), and `/plan-stages` setting `gate`
-  per stage from the decomposition and writing `merge: manual` unless the
-  user asked otherwise. The `gate` column is appended last so the
+  per stage from the decomposition and asking one explicit multiple-choice
+  question for `merge` (`manual` recommended). The `gate` column is appended last so the
   session-start hook's positional parsing of the index is unaffected.
 
 ### Changed

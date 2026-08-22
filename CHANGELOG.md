@@ -12,6 +12,30 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **`--plugin-dir` on `scripts/plan_driver.py`** (#85). Passes `claude
+  --plugin-dir` through to every stage session, so a rollout can be driven
+  against a plugin directory or `.zip` instead of the installed plugin.
+  Repeatable. It exists because a stage session resolves
+  `/plan-staged-rollout:plan-run` against the **installed** plugin regardless of
+  where the driver was launched from — so before this flag there was no way to
+  exercise an unreleased change to the plugin, or to the driver itself, without
+  releasing it first. A directory that has no `.claude-plugin/plugin.json` is
+  refused at startup rather than passed on, because the failure it prevents is
+  a run that silently uses the installed plugin and looks like it passed. The
+  side-loaded path is printed on the driver's own stream before the first
+  launch.
+
+- **`--setting-sources` on `scripts/plan_driver.py`** (#85). Passes
+  `claude --setting-sources` through to every stage session. A `permissions.ask`
+  entry in your own settings resolves as a denial in a headless session, which
+  stalls `merge: auto` at the first stage PR; measured against a real `ask` rule,
+  neither `--allowedTools`, nor `--permission-mode bypassPermissions`, nor a
+  matching `permissions.allow` supplied via `--settings` gets past it. Omitting
+  `user` from the setting sources does, because the rule is then never loaded —
+  along with your user hooks and user `CLAUDE.md`, which is why the driver logs a
+  warning when `user` is absent and the README recommends `merge: manual` over
+  reaching for it.
+
 - **`scripts/plan_driver.py` — an unattended stage driver** (#82). Runs a plan
   without a person at the keyboard: a re-scanning loop that reads
   `.plan/LEDGER.md` and `.plan/PLAN.md`'s stage index, recomputes the runnable

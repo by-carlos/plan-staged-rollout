@@ -481,7 +481,13 @@ and `2` for a usage or guardrail refusal.
 - **Model and effort are printed before every launch.** Headless spend with
   nobody watching is the real risk here, so the weight of each session is on
   the stream before it starts. `--max-budget-usd` passes a per-session ceiling
-  through to `claude` if you want a hard stop as well.
+  through to `claude` if you want a hard stop as well. Budget for a fixed
+  floor per session: measured on the first end-to-end run, a stage session
+  loads roughly 50k tokens of system prompt and plugin surface before doing
+  any work — $0.20–0.35 on Sonnet — so a plan of many tiny stages is
+  overhead-dominated, and the driver pays off on a few substantial stages
+  rather than many trivial ones. The driver does not report what a run cost;
+  stage sessions inherit the terminal, so there is no usage total to read back.
 - **`--plan-dir` is for dry runs only.** Stage sessions run in the checked-out
   repo, so a real run pointed at another repo's `.plan/` would work the wrong
   tree. The driver refuses that combination outright; `--dry-run` still reads
@@ -505,19 +511,69 @@ The driver therefore passes an explicit profile, which you can override:
 --allowedTools Bash Edit Write Read Glob Grep Task Skill TodoWrite WebFetch WebSearch NotebookEdit
 ```
 
-Two consequences worth knowing before the first unattended run:
+Three consequences worth knowing before the first unattended run:
 
-- **`permissions.ask` on `gh pr merge` breaks `merge: auto`.** If your settings
-  ask before a merge — as a branch-protection or merge-gate policy usually
-  does — that ask is a denial headless, so every stage stalls at its own PR
-  and the driver stops at the first one with nothing merged.
-  `--permission-mode bypassPermissions` is the blunt way through; deciding
-  whether your policy should be bypassed is not the driver's call, which is
-  why it is not the default.
+- **Any `permissions.ask` entry a session needs is a hard stop — `gh pr merge`
+  is just the one `merge: auto` guarantees to hit.** If your settings ask
+  before a merge — as a branch-protection or merge-gate policy usually does —
+  that ask is a denial headless, so every stage stalls at its own PR and the
+  driver stops at the first one with nothing merged. But it is not only the
+  merge: in the first end-to-end run, closeout was stopped cold by an `ask` on
+  `rm -rf` when it tried to clear a build cache, a rule nobody had thought of
+  as part of the plan. Go through your `ask` list with the plan's commands in
+  mind before driving it. **An `ask` entry is close to unbeatable
+  per-command.** Measured, each against a real user-level `ask` rule and a
+  real tool call:
+
+  | Attempt | Result |
+  |---|---|
+  | `--allowedTools Bash` | still denied |
+  | `--permission-mode bypassPermissions` | still denied |
+  | `--settings` with a matching `permissions.allow` | still denied |
+  | `--setting-sources project,local` | **allowed** |
+
+  Only the last works, and it works by never loading your user settings at all:
+
+  ```bash
+  python scripts/plan_driver.py --setting-sources project,local
+  ```
+
+  That is a blunt instrument, not a scalpel. Dropping `user` drops **everything**
+  in it — your hooks (including any branch guard), your user `CLAUDE.md`, and the
+  rest of your permission rules — for every stage session. If you will not drop
+  `user`, be honest that the plan is then **semi-attended, not unattended**: set
+  `merge: manual`, let the driver run each stage up to its PR and stop (the next
+  bullet), merge it yourself, restart the driver. That costs you one click per
+  stage; the alternative costs you every safety rule you have, per session.
 - **`merge: manual` means no stage ever reaches `done` unattended.** Offering a
   merge is asking a person, and unattended mode turns every would-be question
   into `blocked`. The driver says so on startup when it reads `merge: manual`.
   A plan you intend to drive wants `merge: auto` on its plan-flags line.
+- **`bypassPermissions` bypasses less than the name suggests.** Measured: a
+  `PreToolUse` hook still runs headless and its `deny` is still honoured under
+  it, and so is a `permissions.ask` entry. That cuts both ways — a hook-based
+  branch guard keeps protecting you through an unattended run, and neither a
+  hook nor an `ask` rule that refuses something a stage needs is escapable by
+  changing permission mode. The only measured way past an `ask` is the
+  `--setting-sources` route above, with the cost it carries.
+
+### Driving an unreleased plugin — `--plugin-dir`
+
+A stage session resolves `/plan-staged-rollout:plan-run` against the **installed**
+plugin, not the working tree the driver was launched from. Testing an unreleased
+change — to the plugin or to the driver itself — therefore needs the stage
+sessions pointed at the tree under test:
+
+```bash
+python scripts/plan_driver.py --plugin-dir /path/to/plan-staged-rollout
+```
+
+The value is passed straight through to `claude --plugin-dir`, which loads a
+plugin **for that session only** — no marketplace entry, no global install, and
+nothing to undo afterwards. It is repeatable, and it takes a plugin directory or
+a `.zip`. A directory has to contain `.claude-plugin/plugin.json` or the driver
+refuses to start: silently falling back to the installed plugin would produce a
+run that looks fine and tested the wrong code.
 
 ### Being told about it
 

@@ -1,6 +1,6 @@
 ---
 description: Execute one stage of a staged-rollout .plan/ — locate the stage, follow the project's own PLAN.md protocol, verify launch weight, and hand off to the next stage.
-argument-hint: <stage number, or f for the review stage>
+argument-hint: <stage number, or f for the review stage> [--unattended]
 ---
 
 # /plan-run — execute one stage
@@ -12,6 +12,15 @@ works standalone via the one-line prompt "Follow the instructions in
 locate the stage, defer to `PLAN.md`, and add only the ergonomics below.
 
 Stage to run: **$ARGUMENTS**
+
+If `$ARGUMENTS` carries the token **`--unattended`**, this session has nobody
+to answer it — it was launched by an unattended runner, or the user is
+walking away. Strip the token before resolving the stage, and honour it in
+steps 3 and 6 below: a `gate: human` stage is never started, and every
+question the protocol would put to a person becomes `blocked` + runbook
+instead (the `staged-rollout` skill, *Statuses and human-gated stages*).
+Without the token, nothing changes — every gate and offer below works exactly
+as it always has.
 
 Work through these steps **in order**:
 
@@ -39,7 +48,12 @@ Work through these steps **in order**:
    Read-scope, dependency gate,
    `mode`/`exec` handling, scope discipline, and the finish protocol all come
    from that file, not from this command. `PLAN.md` is the single source of
-   truth; this wrapper never overrides it.
+   truth; this wrapper never overrides it. That includes the plan-level
+   `merge` flag on the plan flags line under the stage index: the finish
+   protocol offers the stage PR's merge under `merge: manual` (or when the
+   line is absent) and squash-merges it itself under `merge: auto` once checks
+   are green — stage PRs only; the plan→main PR is never this command's to
+   merge in any mode.
 
 3. **Weight check (ergonomic add).** Before doing any stage work, compare the
    session against the stage's `model` and `effort` flags in `.plan/PLAN.md`'s
@@ -52,6 +66,17 @@ Work through these steps **in order**:
    relaunch on a heavier session before any work begins. If the disclosed
    model doesn't recognizably match a tier in the rubric, don't guess — state
    the exact model ID/name and ask the user which tier applies.
+
+   **Gate check (same step, unattended only).** Read the stage's `gate`
+   column from the same index row (an absent column reads as `auto`). Under
+   `--unattended`, a `gate: human` stage is not started: say plainly that it
+   needs a person present, name it, and stop — a runner reading the previous
+   stage's end announcement should already have stopped in front of it, so
+   this is the backstop, not the mechanism. For a `gate: auto` stage run
+   unattended, the weight check's continue/abort offer and the tier question
+   have no one to answer them: mark the row `blocked` with the mismatch as
+   the runbook, commit it, and stop. Without `--unattended`, `gate` is
+   announced and nothing more — the person at the keyboard *is* the gate.
 
 4. **Dependency gate (ergonomic surfacing of the protocol's rule).** Apply
    `PLAN.md`'s dependency gate for every stage this one `depends` on. If a
@@ -77,7 +102,10 @@ Work through these steps **in order**:
      For each stage in the set, give the fresh-session prompt **"run stage
      \<N> of the plan"** — or the explicit command
      **`/plan-staged-rollout:plan-run <N>`** — and state its recommended
-     **model and effort** from the stage index.
+     **model and effort** and its **`gate`** from the stage index. A
+     `gate: human` stage in the set needs a person at the keyboard — say so,
+     because an unattended runner reading this announcement stops in front
+     of it rather than launching it.
    - **Whether they can overlap.** If the runnable set holds more than one
      stage, say plainly that those stages are independent and can be launched
      **concurrently, one stage per fresh session** — that launch is the

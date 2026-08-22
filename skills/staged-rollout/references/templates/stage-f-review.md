@@ -1,6 +1,6 @@
 # SF — Plan review
 
-<!-- This stage's flags (depends / mode / exec / model / effort) live ONLY in
+<!-- This stage's flags (depends / mode / exec / model / effort / gate) live ONLY in
 the PLAN.md stage index — the single authoritative home. Do not restate them
 here; a copy is what drifts. -->
 
@@ -22,7 +22,7 @@ and records them.
   shortcut, and known gap surfaced across all stages.
 - [ ] For each loose end, resolve it into exactly one outcome:
   - **New stage in this plan** — add a **PLAN.md stage index row** (with its
-    `depends` / `mode` / `exec` / `model` / `effort` flags — the index is the
+    `depends` / `mode` / `exec` / `model` / `effort` / `gate` flags — the index is the
     authoritative home, so `/plan-run`'s weight check and next-runnable logic
     can see the stage), a ledger row, and a stage file; it runs later as a
     normal stage in its own fresh session and branch.

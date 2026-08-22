@@ -53,7 +53,11 @@ stage (Operating protocol, finish step 3).
   units as the stage progresses, not one commit at the end). The agent
   creates and pushes stage and plan branches without asking, and **opens**
   the stage PR as a compulsory part of finishing a stage — never merging
-  without your OK, never pushing to `main`. A stage cannot be marked `done`
+  without your OK, never pushing to `main`. The one carve-out is the
+  plan-level `merge: auto` flag (Stage index, plan flags line): it gives that
+  OK in advance for **stage PRs only**, so the session squash-merges its own
+  stage PR once checks are green; the plan→main PR is manual in every mode.
+  A stage cannot be marked `done`
   until its PR is merged into the plan branch; the `done` edit itself is
   committed on the plan branch *after* the merge (Operating protocol, finish
   step 5), never on the stage branch.
@@ -76,26 +80,36 @@ stage (Operating protocol, finish step 3).
 
 ## Stage index & dependencies
 
-| Stage | File | Depends | mode | exec | model | effort |
-|---|---|---|---|---|---|---|
-| S0 Checker core | `stage-0-checker-core.md` | — | direct | inline | opus | high |
-| S1 CLI runner | `stage-1-cli.md` | S0 | direct | inline | sonnet | low |
-| S2 Status page | `stage-2-status-page.md` | S0, S1 | direct | inline | sonnet | med |
-| SF Plan review | `stage-f-review.md` | S2 | direct | inline | sonnet | med |
+| Stage | File | Depends | mode | exec | model | effort | gate |
+|---|---|---|---|---|---|---|---|
+| S0 Checker core | `stage-0-checker-core.md` | — | direct | inline | opus | high | auto |
+| S1 CLI runner | `stage-1-cli.md` | S0 | direct | inline | sonnet | low | auto |
+| S2 Status page | `stage-2-status-page.md` | S0, S1 | direct | inline | sonnet | med | auto |
+| SF Plan review | `stage-f-review.md` | S2 | direct | inline | sonnet | med | auto |
+
+Plan flags: `merge: manual`
 
 This table is the **single authoritative home** for every stage's `depends` /
-`mode` / `exec` / `model` / `effort`. Stage files never restate them (a copy is
-what drifts), and the tooling reads them from here: `/plan-run`'s weight check
-reads `model`/`effort` from this index, and the runnable-set logic (below)
-reads `depends` from it. A stage that isn't in this table is invisible to both — so
-adding a new stage (including one the final review spawns) means adding its row
-here first.
+`mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line
+under it is the home of the plan-level `merge` flag. Stage files never restate
+them (a copy is what drifts), and the tooling reads them from here:
+`/plan-run`'s weight check reads `model`/`effort` from this index, the
+runnable-set logic (below) reads `depends` from it, and an unattended runner
+reads `gate` and `merge`. A stage that isn't in this table is invisible to all
+of them — so adding a new stage (including one the final review spawns) means
+adding its row here first.
 
 Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
-`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked).
-Defaults are deliberately cheap — `direct`, `inline`, the cheaper capable
-model. Escalate only where a stage has genuine open design questions
-(`brainstorm`) or heavy iteration churn (`subagent`).
+`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
+`gate` = `auto` \| `human` (may the stage be launched with nobody watching? —
+`human` means never); `merge` = `manual` \| `auto` (does the session merge its
+own stage PR into the plan branch once checks are green, or offer it for your
+OK?). Defaults are deliberately cheap and preserve the fully-manual flow —
+`direct`, `inline`, the cheaper capable model, `gate: auto`, `merge: manual`;
+a missing `gate` column or plan-flags line means those defaults. Escalate only
+where a stage has genuine open design questions (`brainstorm`, which also
+makes it `gate: human`) or heavy iteration churn (`subagent`). `merge` governs
+stage PRs only — the plan→main PR at closeout is manual in every mode.
 
 ### Runnable set & waves (derived, never stored)
 
@@ -118,9 +132,11 @@ their own column. A stored copy is what drifts; the graph is the truth.
   is `S0 → {S1, S2, S3}` costs three rounds instead of two and hides the cost,
   because the index still looks correct.
 - **Concurrency is an operator action.** Nothing here launches sessions:
-  running a wave in parallel means opening one session per stage yourself.
-  What the protocol owes you is that doing so is safe — see *Concurrent
-  stages* below.
+  running a wave in parallel means opening one session per stage yourself —
+  or leaving it to an unattended runner outside any session, which launches
+  only `gate: auto` stages and stops in front of a `gate: human` one. What
+  the protocol owes you is that doing so is safe — see *Concurrent stages*
+  below.
 
 ### Concurrent stages (when the set fans out)
 
@@ -262,6 +278,15 @@ structural fact and four rules about timing.
    recommended, say so and offer continue/abort before doing anything. If the
    disclosed model doesn't recognizably match a tier in the rubric, don't
    guess — state the exact model ID/name and ask the user which tier applies.
+   **Unattended?** If this session was launched with nobody to answer it (an
+   unattended runner, or `/plan-run`'s `--unattended` argument), check the
+   stage's `gate` first: a `gate: human` stage is never started unattended —
+   report that and stop here. For a `gate: auto` stage, every offer or
+   question in this step and the ones below has no one to answer it, so it
+   becomes `blocked` + runbook instead (see the `staged-rollout` skill,
+   *Statuses and human-gated stages*): a lighter-than-recommended model or an
+   unrecognised tier marks the row `blocked` with the mismatch as the
+   runbook, commits, and stops.
 3. **Dependency gate:** for every `depends` stage, confirm it is `done` in
    `LEDGER.md` **AND its stage branch/PR is merged into the plan branch**
    (`git fetch` first — the merge may be remote and not yet local). Both must
@@ -334,7 +359,17 @@ structural fact and four rules about timing.
       Then **offer** to merge it once reviewed — never merge on your own.
       Stage PRs are **squash-merged** (one commit per stage on the plan
       branch), and the merged stage branch is deleted. The stage cannot be
-      marked `done` until this PR is merged. **Merge order with a sibling in
+      marked `done` until this PR is merged.
+      **Under `merge: auto`** (plan flags line): the OK is given in advance
+      for stage PRs, so once the sibling re-sync check below has run and
+      every required check on the PR is green, squash-merge it yourself
+      (`gh pr merge --squash --delete-branch`) and continue straight to step
+      5. Never force or retry past a refusal — a red or missing check, or a
+      protection rule on the plan branch, means the merge did not happen this
+      session: leave the row `doing`, report the refusal and why, and end;
+      the next preflight (step 0.5) finishes the bookkeeping once someone
+      merges it. `merge` never applies to the plan→main PR.
+      **Merge order with a sibling in
       flight:** parallel stage PRs merge one at a time, first come first
       served — the plan branch is the serialization point, so there is no
       queue to coordinate. Before offering the merge, `git fetch origin` and
@@ -395,8 +430,10 @@ structural fact and four rules about timing.
    6. Announce: this stage is **finished**, then the **complete runnable
       set** — *every* `todo` stage whose `depends` are now all `done`, not
       just the first (see *Runnable set & waves* above). For each one, give
-      the exact prompt/command to run it and its recommended `model`/`effort`
-      from the stage index. If the set holds more than one stage, say so
+      the exact prompt/command to run it, its recommended `model`/`effort`
+      and its `gate` from the stage index — a `gate: human` stage needs a
+      person at the keyboard, so an unattended runner reading this stops
+      there. If the set holds more than one stage, say so
       plainly: they are independent and can be launched **concurrently, one
       per fresh session**. If it is empty, say which it is — every stage
       `done`/`skipped` (ready for closeout) or stalled on `blocked` rows and

@@ -86,7 +86,8 @@ Work through these steps **in order**:
    (which are squash-merged), this final PR is a **normal (non-squash) merge**,
    so each stage's squashed commit lands on `main` as its own distinct commit
    and the as-built history survives. Wait for the user to review and merge —
-   never merge into `main` unilaterally.
+   never merge into `main` unilaterally. The plan's `merge` flag does not
+   apply here: it governs stage PRs only, and closeout never reads it.
 
 6. **End announcement.** State explicitly: the plan is **closed**, the final
    PR has been proposed (or opened, if the user acted on it during this

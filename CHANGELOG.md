@@ -12,6 +12,44 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **One unattended mode, honoured at every decision point** (#86). `--unattended`
+  is now a single contract across the whole plan lifecycle rather than a property
+  of `/plan-run` alone. Every question the protocol can put to a person is
+  classified once — it either has a **declared default** written on `PLAN.md`'s
+  plan flags line, or it is a **hard stop** — and `--unattended` is the switch
+  that selects default-over-ask. Interactive sessions keep asking exactly as
+  before, and the skills are not forked into two bodies. The classification table
+  lives in the `staged-rollout` skill, *Unattended mode*.
+
+- **`/plan-close --unattended`** (#86). Closeout had no unattended behaviour at
+  all: headless it asked prose questions that each ended the session, which cost
+  four relaunches to reach the plan→main PR in the #85 validation run. It now
+  applies the plan flags, clears finished stage worktrees, opens the plan→main PR
+  and stops. **It still never merges that PR** — that gate survives every mode and
+  has no flag.
+
+- **`plan-dir: delete | keep` on the plan flags line** (#86). The plan's declared
+  answer to closeout's "delete `.plan/` or keep it?" question. `delete` is the
+  default and is what `/plan-close` already recommended, so an absent flag is
+  today's behaviour; bootstrap writes it without asking, and an interactive
+  closeout still puts the choice to you with this value as its recommendation.
+
+- **The driver closes the plan out itself** (#86). Once every stage is `done` or
+  `skipped`, `scripts/plan_driver.py` launches
+  `/plan-staged-rollout:plan-close --unattended` as one more session instead of
+  telling the operator to. A rollout now runs from bootstrapped `.plan/` to an
+  open plan→main PR with exactly two human gates: a `gate: human` stage, and the
+  final merge. New flags: `--no-close` (stop at "plan complete" as before) and
+  `--close-model` / `--close-effort`, since closeout has no stage-index row to
+  read a weight from. The outcome is confirmed with `gh pr list` and reported
+  three ways — PR URL, no PR (closeout stopped at a gate, exit 1), or `gh` unable
+  to answer.
+
+- **`AskUserQuestion` in the driver's default `--allowedTools`** (#86). Not
+  because an unattended session asks anything, but because the same profile is
+  what an operator copies to launch a session by hand — without the tool, that
+  session falls back to asking in prose.
+
 - **`--plugin-dir` on `scripts/plan_driver.py`** (#85). Passes `claude
   --plugin-dir` through to every stage session, so a rollout can be driven
   against a plugin directory or `.zip` instead of the installed plugin.
@@ -85,6 +123,15 @@ elsewhere. See 0.4.0 for the split.
   session-start hook's positional parsing of the index is unaffected.
 
 ### Changed
+
+- **Closeout clears finished stage worktrees instead of refusing to close over
+  them** (#86). One rule, two modes: a stage worktree whose branch is merged with
+  nothing unpushed is finished work — interactive closeout now **offers** to
+  remove it, and unattended closeout removes it. Anything holding unpushed
+  commits, a stash, an unmerged branch or a modified tracked file is still a hard
+  stop in both modes, still reported with its path and contents, and still never
+  removed with `--force`. Previously a surviving worktree of any kind refused
+  closeout outright and had to be cleared by hand.
 
 - **License changed from MIT to FSL-1.1-ALv2** (Functional Source License).
   Every use stays free except offering the plugin in a competing commercial

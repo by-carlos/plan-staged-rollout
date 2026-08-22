@@ -15,12 +15,13 @@ Stage to run: **$ARGUMENTS**
 
 If `$ARGUMENTS` carries the token **`--unattended`**, this session has nobody
 to answer it — it was launched by an unattended runner, or the user is
-walking away. Strip the token before resolving the stage, and honour it in
-steps 3 and 6 below: a `gate: human` stage is never started, and every
-question the protocol would put to a person becomes `blocked` + runbook
-instead (the `staged-rollout` skill, *Statuses and human-gated stages*).
-Without the token, nothing changes — every gate and offer below works exactly
-as it always has.
+walking away. The token selects **declared default over ask**, never "proceed
+anyway". Strip it before resolving the stage, and honour it in steps 3 and 6
+below: a `gate: human` stage is never started, and every question the protocol
+would put to a person either has a declared default on `PLAN.md`'s plan flags
+line (`merge`) or becomes `blocked` + runbook (the `staged-rollout` skill,
+*Unattended mode*, classifies each one). Without the token, nothing changes —
+every gate and offer below works exactly as it always has.
 
 Work through these steps **in order**:
 
@@ -35,6 +36,9 @@ Work through these steps **in order**:
    Only when no plan branch exists
    anywhere, stop and tell the user to bootstrap one — "bootstrap a plan for
    \<idea>", or the explicit command `/plan-staged-rollout:plan-stages <idea>`.
+   **Unattended**, the checkout is the declared default when exactly one
+   `plan-*` branch matches, so take it without asking; two or more is a hard
+   stop, because there is no way to guess which plan was meant.
    Then resolve `$ARGUMENTS` to the stage file `.plan/stage-<N>-<slug>.md` by
    matching the leading `stage-<$ARGUMENTS>-` token — a digit for an
    implementation stage, or `f` for the final review stage
@@ -118,5 +122,7 @@ Work through these steps **in order**:
      about the graph rather than a default.
    - If no stages remain runnable (all `done`/`skipped`), point the user at
      closeout — **"close out the plan"** or **`/plan-staged-rollout:plan-close`**
-     — instead.
+     — instead. Under `--unattended`, name it as
+     **`/plan-staged-rollout:plan-close --unattended`**: closeout runs
+     headless too, and an unattended runner picks it up from here.
    Then stop.

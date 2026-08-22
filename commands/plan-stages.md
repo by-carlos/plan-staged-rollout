@@ -13,6 +13,15 @@ formats. Do not restate the protocol here or in the scaffold — reference it.
 
 Project idea: **$ARGUMENTS**
 
+**Bootstrap has no `--unattended` mode, and that is deliberate.** Every other
+command in this plugin honours one (see the `staged-rollout` skill, *Unattended
+mode*); this one does not, because decomposition and frozen decisions are
+design questions with no defensible defaults to declare in advance, and a badly
+decomposed plan costs far more than the session it saved. Where a plan must be
+bootstrapped headless anyway, a fully-specified brief that says to make every
+decision and ask nothing works as an ordinary prompt — it needs no contract
+behind it, and the weight gate below still applies.
+
 First, load the method: invoke the **`staged-rollout`** skill (via the Skill
 tool) and follow its decomposition guidance, flag heuristics, and git model.
 The templates to copy live at
@@ -116,6 +125,17 @@ Then work through these steps **in order**:
    plan→main PR is manual in every mode, and nothing here may change that).
    Either way the user can flip it later in `PLAN.md` in one line.
 
+   **The `plan-dir` flag — written, not asked.** The same line also carries
+   `plan-dir: delete` \| `keep`, the plan's declared answer to closeout's
+   "delete `.plan/` or keep it?" question. Write **`plan-dir: delete`** unless
+   `$ARGUMENTS` or the design pass says the plan doubles as the project's
+   documentation, in which case write `keep`. Don't ask: `delete` is what
+   `/plan-close` already recommends, an interactive closeout still puts the
+   choice to the user with this value as its recommendation, and one more
+   bootstrap question buys nothing. So the finished line reads
+   ``Plan flags: `merge: manual` · `plan-dir: delete``` (with whichever values
+   this plan chose).
+
    **Worktree model (also fixed, also not a question).** Record it alongside
    the git model: the clone is parked on `plan-<slug>` for the life of the
    plan, and every stage branch is checked out only in its own sibling
@@ -149,8 +169,8 @@ Then work through these steps **in order**:
    - the frozen decisions from step 2;
    - the completed stage index from step 3, including the standing `SF: plan
      review` row and every stage's `gate`;
-   - the frozen git model and worktree model from step 4, and the plan flags
-     line (`merge: manual` or `merge: auto`) it decided;
+   - the frozen git model and worktree model from step 4, and the complete
+     plan flags line it decided (both `merge` and `plan-dir`);
    - the path to `skills/staged-rollout/references/templates/`
      (`PLAN.md`, `LEDGER.md`, `README.md`, `stage-N.md`, `stage-f-review.md`).
 

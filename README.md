@@ -319,7 +319,9 @@ On disk, that means your clone and one sibling directory per running stage:
   the clone at every moment and the `done` write needs no checkout. If a
   stage worktree still holds uncommitted or unpushed work, it is left alone
   and reported rather than removed; the leftover is flagged by every later
-  preflight and blocks closeout.
+  preflight, and closeout stops on it. A worktree that is merely *left over* —
+  its branch merged, nothing unpushed — is cleared by closeout instead of
+  blocking it.
 - **A fresh worktree contains only tracked files.** Untracked local setup a
   stage needs (`.env`, local config, caches, dependency directories) has to be
   copied in — the stage does that and records what it copied in the ledger.
@@ -359,10 +361,17 @@ stages the review spawned). Then it:
 
 1. distills `PLAN.md` + the ledger into the final PR body, so the *why* and
    the as-built story survive on `main`;
-2. deletes `.plan/` as the last commit on the plan branch (nothing is lost —
-   the full plan history remains in git; keeping `.plan/` is an option for
-   projects where the plan doubles as documentation);
-3. proposes the PR from `plan-<slug>` to `main`. You review and merge.
+2. clears the stage worktrees that are finished — merged branch, nothing
+   unpushed — and stops on any that still holds work git cannot recover;
+3. deletes `.plan/` as the last commit on the plan branch (nothing is lost —
+   the full plan history remains in git; keeping it is the `plan-dir: keep`
+   option, for a project where the plan doubles as documentation);
+4. proposes the PR from `plan-<slug>` to `main`. You review and merge.
+
+It runs headless too — `/plan-close --unattended` applies the plan flags
+instead of asking, and the [unattended driver](#unattended-runs--scriptsplan_driverpy)
+launches it for you once every stage is settled. Merging that final PR is
+yours in every mode.
 
 ---
 
@@ -379,19 +388,27 @@ work — and don't skimp on the hard parts:
 | `model` / `effort` | launch hints | recommended session weight; checked, not faked |
 | `gate` | `auto` \| `human` | may the stage be launched with nobody watching? `human` means never — an unattended runner stops in front of it |
 
-And one flag for the plan as a whole, on the **plan flags** line under the
+And two flags for the plan as a whole, on the **plan flags** line under the
 stage index:
 
 | Flag | Values | Meaning |
 |---|---|---|
 | `merge` | `manual` \| `auto` | under `auto` the session squash-merges its own stage PR into the plan branch once checks are green, instead of offering it; stage PRs only — the plan→main PR is manual in every mode |
+| `plan-dir` | `delete` \| `keep` | what closeout does with `.plan/`: remove it as the last commit on the plan branch, or leave it in place for a plan that doubles as documentation |
+
+These two are the plan's **declared defaults** — the answers a session applies
+when there is nobody to ask. An interactive session still puts each one to
+you, with the declared value as its recommendation; `--unattended` is what
+selects the default over the question. The full classification of which
+questions have a default and which are hard stops in every mode is in the
+skill (*Unattended mode*).
 
 Defaults are deliberately cheap and reproduce the fully-manual flow: `direct`,
-`inline`, the cheaper capable model, `gate: auto`, `merge: manual` — a plan
-that predates these flags needs no edit. Escalate only where a stage has
-genuine open design questions (`brainstorm`, which also makes it
-`gate: human`) or heavy iteration churn (`subagent`); opt into `merge: auto`
-only for a plan you intend to run unattended.
+`inline`, the cheaper capable model, `gate: auto`, `merge: manual`,
+`plan-dir: delete` — a plan that predates these flags needs no edit. Escalate
+only where a stage has genuine open design questions (`brainstorm`, which also
+makes it `gate: human`) or heavy iteration churn (`subagent`); opt into
+`merge: auto` only for a plan you intend to run unattended.
 
 ### Why `model` / `effort` are hints, not automation
 
@@ -429,8 +446,13 @@ before every launch.
 
 Everything above assumes you are at the keyboard, launching one session per
 stage. [`scripts/plan_driver.py`](scripts/plan_driver.py) does that launching
-for you: it runs stages back to back until nothing is runnable or something
-genuinely needs a person.
+for you: it runs stages back to back, closes the plan out when they are all
+settled, and stops when something genuinely needs a person.
+
+**One unattended run covers the whole lifecycle bar two gates.** From a
+bootstrapped `.plan/` the driver reaches an open plan→main PR by itself; the
+only two places it hands back are a `gate: human` stage and the final merge,
+which is yours in every mode.
 
 ```bash
 python scripts/plan_driver.py --dry-run
@@ -462,10 +484,35 @@ without launching anything:
 | a stage comes back `blocked` | reports it and stops; the session's own runbook is in the ledger, and the driver never retries a deliberate block |
 | a stage does not reach `done` within `--max-attempts` (default 2) | writes `blocked` plus a runbook into the ledger, commits it on the plan branch (`--no-commit` writes without committing), and stops |
 | nothing runnable, stages still open | reports which stages are waiting and stops |
-| every stage `done`/`skipped` | reports the plan is ready for [`/plan-close`](commands/plan-close.md) and exits 0 |
+| every stage `done`/`skipped` | launches [`/plan-close --unattended`](commands/plan-close.md) as one more session, then reports the plan→main PR's URL and exits 0 |
+| closeout hits one of its own gates | reports that no PR was opened and stops — a stage worktree holding unpushed work is the usual cause |
 
 Exit code is `0` for a completed plan, `1` for any stop that wants a person,
 and `2` for a usage or guardrail refusal.
+
+### Closeout, unattended
+
+Once every row is `done` or `skipped` the driver launches one final session,
+`claude -p "/plan-staged-rollout:plan-close --unattended"`, in the same clone
+and with the same profile as the stage sessions. That session applies the
+plan's declared defaults instead of asking: it removes any stage worktree
+whose branch is merged with nothing unpushed (and stops on any that holds work
+git cannot recover), deletes or keeps `.plan/` per the `plan-dir` flag, and
+**opens** the plan→main PR. It never merges it.
+
+Closeout has no stage-index row, so its weight comes from the CLI:
+
+```bash
+python scripts/plan_driver.py --close-model opus --close-effort medium
+```
+
+`--no-close` restores the old behaviour — the driver stops at "plan complete"
+and you run `/plan-close` yourself.
+
+The driver confirms the outcome with `gh pr list` against the plan branch, and
+distinguishes three results: a URL (closeout succeeded, go and merge it), no
+open PR (closeout stopped at a gate — exit 1), and `gh` unable to answer
+(reported as unconfirmed rather than as either).
 
 ### Guardrails
 
@@ -508,8 +555,13 @@ The driver therefore passes an explicit profile, which you can override:
 
 ```
 --permission-mode acceptEdits
---allowedTools Bash Edit Write Read Glob Grep Task Skill TodoWrite WebFetch WebSearch NotebookEdit
+--allowedTools Bash Edit Write Read Glob Grep Task Skill TodoWrite AskUserQuestion WebFetch WebSearch NotebookEdit
 ```
+
+`AskUserQuestion` is in that list even though an unattended session never asks
+anything: the same profile is what you copy to launch a session by hand, and
+without the tool a session falls back to asking in prose, which is worse in
+every mode.
 
 Three consequences worth knowing before the first unattended run:
 

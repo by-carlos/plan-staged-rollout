@@ -468,6 +468,8 @@ def build_command(args: argparse.Namespace, row: IndexRow) -> tuple[list[str], l
         argv += ["--allowedTools", *args.allowed_tools]
     for plugin_dir in args.plugin_dir or []:
         argv += ["--plugin-dir", str(plugin_dir)]
+    if args.settings:
+        argv += ["--settings", str(args.settings)]
     if args.max_budget_usd is not None:
         argv += ["--max-budget-usd", str(args.max_budget_usd)]
     return argv, warnings
@@ -709,6 +711,18 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--settings",
+        type=Path,
+        metavar="FILE",
+        help=(
+            "a settings JSON file handed to every stage session as `claude "
+            "--settings`. The use it exists for: an explicit `permissions.allow` "
+            "entry here outranks a `permissions.ask` in your own settings, which "
+            "is the only way to let stage sessions past a merge gate without "
+            "editing your global config"
+        ),
+    )
+    parser.add_argument(
         "--max-budget-usd",
         type=float,
         default=None,
@@ -799,6 +813,13 @@ def main(argv: list[str] | None = None) -> int:
         resolved_plugin_dirs.append(path)
     args.plugin_dir = resolved_plugin_dirs
 
+    if args.settings is not None:
+        settings_path = args.settings.expanduser().resolve()
+        if not settings_path.is_file():
+            fail(f"--settings {settings_path} is not a file")
+            return 2
+        args.settings = settings_path
+
     notify_cmd = args.notify if args.notify is not None else os.environ.get(NOTIFY_ENV, "")
 
     log(f"repo {root}")
@@ -806,6 +827,8 @@ def main(argv: list[str] | None = None) -> int:
     log(f"plan {plan_dir}")
     for plugin_dir in args.plugin_dir or []:
         log(f"plugin {plugin_dir} (side-loaded into every stage session)")
+    if args.settings:
+        log(f"settings {args.settings} (handed to every stage session)")
     if args.dry_run:
         log("dry run - nothing is launched and the ledger is not written")
     if not notify_cmd:

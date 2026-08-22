@@ -510,19 +510,30 @@ Three consequences worth knowing before the first unattended run:
 - **`permissions.ask` on `gh pr merge` breaks `merge: auto`.** If your settings
   ask before a merge — as a branch-protection or merge-gate policy usually
   does — that ask is a denial headless, so every stage stalls at its own PR
-  and the driver stops at the first one with nothing merged.
-  `--permission-mode bypassPermissions` is the blunt way through; deciding
-  whether your policy should be bypassed is not the driver's call, which is
-  why it is not the default.
+  and the driver stops at the first one with nothing merged. The way through is
+  `--settings`, which hands every stage session a settings file whose explicit
+  `permissions.allow` entry outranks the `ask` in your own settings:
+
+  ```bash
+  echo '{"permissions":{"allow":["Bash(gh pr merge:*)"]}}' > /tmp/plan-run.json
+  python scripts/plan_driver.py --settings /tmp/plan-run.json
+  ```
+
+  It grants exactly one rule to the stage sessions and leaves your own settings
+  untouched, so the gate is still there for every interactive session.
+  **`--permission-mode bypassPermissions` does not do this** — measured, not
+  assumed: a `permissions.ask` entry still resolves as a denial under
+  `bypassPermissions`. Reaching for it instead will not unstick a merge gate.
 - **`merge: manual` means no stage ever reaches `done` unattended.** Offering a
   merge is asking a person, and unattended mode turns every would-be question
   into `blocked`. The driver says so on startup when it reads `merge: manual`.
   A plan you intend to drive wants `merge: auto` on its plan-flags line.
-- **`bypassPermissions` does not bypass your hooks.** A `PreToolUse` hook still
-  runs headless and its `deny` is still honoured, `bypassPermissions` or not.
-  That cuts both ways: a hook-based branch guard keeps protecting you during an
-  unattended run, and a hook that refuses something a stage needs will stall
-  that stage no matter which permission mode you pass.
+- **`bypassPermissions` bypasses less than the name suggests.** Measured: a
+  `PreToolUse` hook still runs headless and its `deny` is still honoured under
+  it, and so is a `permissions.ask` entry. That cuts both ways — a hook-based
+  branch guard keeps protecting you through an unattended run, and neither a
+  hook nor an `ask` rule that refuses something a stage needs is escapable by
+  changing permission mode. Grant the specific rule with `--settings` instead.
 
 ### Driving an unreleased plugin — `--plugin-dir`
 

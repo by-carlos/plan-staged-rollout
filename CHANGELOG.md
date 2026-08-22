@@ -25,6 +25,13 @@ elsewhere. See 0.4.0 for the split.
   side-loaded path is printed on the driver's own stream before the first
   launch.
 
+- **`--settings` on `scripts/plan_driver.py`** (#85). Hands a settings JSON file
+  to every stage session as `claude --settings`. It exists because a
+  `permissions.ask` entry in your own settings resolves as a denial in a
+  headless session, which stalls `merge: auto` at the first stage PR — and an
+  explicit `permissions.allow` supplied this way outranks that `ask`, so one
+  rule can be granted to stage sessions without editing global config.
+
 - **`scripts/plan_driver.py` — an unattended stage driver** (#82). Runs a plan
   without a person at the keyboard: a re-scanning loop that reads
   `.plan/LEDGER.md` and `.plan/PLAN.md`'s stage index, recomputes the runnable

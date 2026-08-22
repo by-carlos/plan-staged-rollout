@@ -25,12 +25,16 @@ elsewhere. See 0.4.0 for the split.
   side-loaded path is printed on the driver's own stream before the first
   launch.
 
-- **`--settings` on `scripts/plan_driver.py`** (#85). Hands a settings JSON file
-  to every stage session as `claude --settings`. It exists because a
-  `permissions.ask` entry in your own settings resolves as a denial in a
-  headless session, which stalls `merge: auto` at the first stage PR — and an
-  explicit `permissions.allow` supplied this way outranks that `ask`, so one
-  rule can be granted to stage sessions without editing global config.
+- **`--setting-sources` on `scripts/plan_driver.py`** (#85). Passes
+  `claude --setting-sources` through to every stage session. A `permissions.ask`
+  entry in your own settings resolves as a denial in a headless session, which
+  stalls `merge: auto` at the first stage PR; measured against a real `ask` rule,
+  neither `--allowedTools`, nor `--permission-mode bypassPermissions`, nor a
+  matching `permissions.allow` supplied via `--settings` gets past it. Omitting
+  `user` from the setting sources does, because the rule is then never loaded —
+  along with your user hooks and user `CLAUDE.md`, which is why the driver logs a
+  warning when `user` is absent and the README recommends `merge: manual` over
+  reaching for it.
 
 - **`scripts/plan_driver.py` — an unattended stage driver** (#82). Runs a plan
   without a person at the keyboard: a re-scanning loop that reads

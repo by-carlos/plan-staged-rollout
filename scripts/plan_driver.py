@@ -468,8 +468,8 @@ def build_command(args: argparse.Namespace, row: IndexRow) -> tuple[list[str], l
         argv += ["--allowedTools", *args.allowed_tools]
     for plugin_dir in args.plugin_dir or []:
         argv += ["--plugin-dir", str(plugin_dir)]
-    if args.settings:
-        argv += ["--settings", str(args.settings)]
+    if args.setting_sources:
+        argv += ["--setting-sources", args.setting_sources]
     if args.max_budget_usd is not None:
         argv += ["--max-budget-usd", str(args.max_budget_usd)]
     return argv, warnings
@@ -711,15 +711,14 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         ),
     )
     parser.add_argument(
-        "--settings",
-        type=Path,
-        metavar="FILE",
+        "--setting-sources",
+        metavar="SOURCES",
         help=(
-            "a settings JSON file handed to every stage session as `claude "
-            "--settings`. The use it exists for: an explicit `permissions.allow` "
-            "entry here outranks a `permissions.ask` in your own settings, which "
-            "is the only way to let stage sessions past a merge gate without "
-            "editing your global config"
+            "comma-separated setting sources for every stage session (`user`, "
+            "`project`, `local`), passed through to `claude --setting-sources`. "
+            "Dropping `user` is the only measured way past a `permissions.ask` "
+            "entry in your own settings - but it drops your user hooks and user "
+            "CLAUDE.md with it, so read the README before reaching for it"
         ),
     )
     parser.add_argument(
@@ -813,12 +812,17 @@ def main(argv: list[str] | None = None) -> int:
         resolved_plugin_dirs.append(path)
     args.plugin_dir = resolved_plugin_dirs
 
-    if args.settings is not None:
-        settings_path = args.settings.expanduser().resolve()
-        if not settings_path.is_file():
-            fail(f"--settings {settings_path} is not a file")
+    if args.setting_sources is not None:
+        valid = {"user", "project", "local"}
+        given = [s.strip() for s in args.setting_sources.split(",") if s.strip()]
+        unknown = [s for s in given if s not in valid]
+        if not given or unknown:
+            fail(
+                "--setting-sources takes a comma-separated subset of "
+                f"user/project/local; got `{args.setting_sources}`"
+            )
             return 2
-        args.settings = settings_path
+        args.setting_sources = ",".join(given)
 
     notify_cmd = args.notify if args.notify is not None else os.environ.get(NOTIFY_ENV, "")
 
@@ -827,8 +831,14 @@ def main(argv: list[str] | None = None) -> int:
     log(f"plan {plan_dir}")
     for plugin_dir in args.plugin_dir or []:
         log(f"plugin {plugin_dir} (side-loaded into every stage session)")
-    if args.settings:
-        log(f"settings {args.settings} (handed to every stage session)")
+    if args.setting_sources:
+        log(f"setting-sources {args.setting_sources} (for every stage session)")
+        if "user" not in args.setting_sources.split(","):
+            log(
+                "  note: `user` is omitted, so stage sessions run without your "
+                "user settings - no user hooks, no user CLAUDE.md, no user "
+                "permission rules"
+            )
     if args.dry_run:
         log("dry run - nothing is launched and the ledger is not written")
     if not notify_cmd:

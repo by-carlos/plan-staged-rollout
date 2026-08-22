@@ -510,20 +510,29 @@ Three consequences worth knowing before the first unattended run:
 - **`permissions.ask` on `gh pr merge` breaks `merge: auto`.** If your settings
   ask before a merge — as a branch-protection or merge-gate policy usually
   does — that ask is a denial headless, so every stage stalls at its own PR
-  and the driver stops at the first one with nothing merged. The way through is
-  `--settings`, which hands every stage session a settings file whose explicit
-  `permissions.allow` entry outranks the `ask` in your own settings:
+  and the driver stops at the first one with nothing merged. **An `ask` entry is
+  close to unbeatable per-command.** Measured, each against a real user-level
+  `ask` rule and a real tool call:
+
+  | Attempt | Result |
+  |---|---|
+  | `--allowedTools Bash` | still denied |
+  | `--permission-mode bypassPermissions` | still denied |
+  | `--settings` with a matching `permissions.allow` | still denied |
+  | `--setting-sources project,local` | **allowed** |
+
+  Only the last works, and it works by never loading your user settings at all:
 
   ```bash
-  echo '{"permissions":{"allow":["Bash(gh pr merge:*)"]}}' > /tmp/plan-run.json
-  python scripts/plan_driver.py --settings /tmp/plan-run.json
+  python scripts/plan_driver.py --setting-sources project,local
   ```
 
-  It grants exactly one rule to the stage sessions and leaves your own settings
-  untouched, so the gate is still there for every interactive session.
-  **`--permission-mode bypassPermissions` does not do this** — measured, not
-  assumed: a `permissions.ask` entry still resolves as a denial under
-  `bypassPermissions`. Reaching for it instead will not unstick a merge gate.
+  That is a blunt instrument, not a scalpel. Dropping `user` drops **everything**
+  in it — your hooks (including any branch guard), your user `CLAUDE.md`, and the
+  rest of your permission rules — for every stage session. Prefer restructuring
+  the plan so no unattended stage needs the gated command: `merge: manual` plus a
+  person doing the merges costs less than running headless sessions with your
+  safety rules switched off.
 - **`merge: manual` means no stage ever reaches `done` unattended.** Offering a
   merge is asking a person, and unattended mode turns every would-be question
   into `blocked`. The driver says so on startup when it reads `merge: manual`.

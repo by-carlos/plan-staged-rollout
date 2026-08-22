@@ -460,7 +460,7 @@ without launching anything:
 |---|---|
 | `gate: human` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a person |
 | a stage comes back `blocked` | reports it and stops; the session's own runbook is in the ledger, and the driver never retries a deliberate block |
-| a stage does not reach `done` within `--max-attempts` (default 2) | writes `blocked` plus a runbook into the ledger, commits it on the plan branch, and stops |
+| a stage does not reach `done` within `--max-attempts` (default 2) | writes `blocked` plus a runbook into the ledger, commits it on the plan branch (`--no-commit` writes without committing), and stops |
 | nothing runnable, stages still open | reports which stages are waiting and stops |
 | every stage `done`/`skipped` | reports the plan is ready for [`/plan-close`](commands/plan-close.md) and exits 0 |
 
@@ -482,6 +482,10 @@ and `2` for a usage or guardrail refusal.
   nobody watching is the real risk here, so the weight of each session is on
   the stream before it starts. `--max-budget-usd` passes a per-session ceiling
   through to `claude` if you want a hard stop as well.
+- **`--plan-dir` is for dry runs only.** Stage sessions run in the checked-out
+  repo, so a real run pointed at another repo's `.plan/` would work the wrong
+  tree. The driver refuses that combination outright; `--dry-run` still reads
+  any plan you point it at.
 - **It never merges anything itself.** Stage PRs are merged by their own
   sessions under the plan's `merge` flag; the plan→main PR is manual in every
   mode, driver or no driver.
@@ -498,7 +502,7 @@ The driver therefore passes an explicit profile, which you can override:
 
 ```
 --permission-mode acceptEdits
---allowedTools Bash Edit Write Read Glob Grep Task TodoWrite WebFetch WebSearch NotebookEdit
+--allowedTools Bash Edit Write Read Glob Grep Task Skill TodoWrite WebFetch WebSearch NotebookEdit
 ```
 
 Two consequences worth knowing before the first unattended run:

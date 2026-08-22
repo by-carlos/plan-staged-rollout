@@ -72,6 +72,7 @@ DEFAULT_ALLOWED_TOOLS = [
     "Glob",
     "Grep",
     "Task",
+    "Skill",
     "TodoWrite",
     "WebFetch",
     "WebSearch",
@@ -649,7 +650,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser.add_argument(
         "--plan-dir",
         type=Path,
-        help="path to the .plan/ directory (default: <repo root>/.plan)",
+        help=(
+            "path to the .plan/ directory (default: <repo root>/.plan). Intended "
+            "for inspecting a plan with --dry-run; a real run drives the repo it "
+            "is standing in, so pointing this elsewhere runs stage sessions "
+            "against the wrong tree"
+        ),
     )
     parser.add_argument(
         "--dry-run",
@@ -741,8 +747,15 @@ def main(argv: list[str] | None = None) -> int:
             "Continuing, but check you are where you meant to be."
         )
 
-    plan_dir = args.plan_dir if args.plan_dir else root / ".plan"
-    plan_dir = plan_dir.resolve()
+    plan_dir = (args.plan_dir if args.plan_dir else root / ".plan").resolve()
+    if plan_dir != (root / ".plan").resolve() and not args.dry_run:
+        fail(
+            f"--plan-dir points at {plan_dir}, which is not this repo's own .plan/. "
+            "Stage sessions run in the checked-out repo, so a real run against "
+            "another plan would work the wrong tree. Use --dry-run to inspect a "
+            "plan from outside it."
+        )
+        return 2
     for required in ("PLAN.md", "LEDGER.md"):
         if not (plan_dir / required).is_file():
             fail(f"{plan_dir / required} not found - is this the plan branch?")

@@ -481,7 +481,13 @@ and `2` for a usage or guardrail refusal.
 - **Model and effort are printed before every launch.** Headless spend with
   nobody watching is the real risk here, so the weight of each session is on
   the stream before it starts. `--max-budget-usd` passes a per-session ceiling
-  through to `claude` if you want a hard stop as well.
+  through to `claude` if you want a hard stop as well. Budget for a fixed
+  floor per session: measured on the first end-to-end run, a stage session
+  loads roughly 50k tokens of system prompt and plugin surface before doing
+  any work — about $0.20 on Sonnet — so a plan of many tiny stages is
+  overhead-dominated, and the driver pays off on a few substantial stages
+  rather than many trivial ones. The driver does not report what a run cost;
+  stage sessions inherit the terminal, so there is no usage total to read back.
 - **`--plan-dir` is for dry runs only.** Stage sessions run in the checked-out
   repo, so a real run pointed at another repo's `.plan/` would work the wrong
   tree. The driver refuses that combination outright; `--dry-run` still reads
@@ -507,12 +513,17 @@ The driver therefore passes an explicit profile, which you can override:
 
 Three consequences worth knowing before the first unattended run:
 
-- **`permissions.ask` on `gh pr merge` breaks `merge: auto`.** If your settings
-  ask before a merge — as a branch-protection or merge-gate policy usually
-  does — that ask is a denial headless, so every stage stalls at its own PR
-  and the driver stops at the first one with nothing merged. **An `ask` entry is
-  close to unbeatable per-command.** Measured, each against a real user-level
-  `ask` rule and a real tool call:
+- **Any `permissions.ask` entry a session needs is a hard stop — `gh pr merge`
+  is just the one `merge: auto` guarantees to hit.** If your settings ask
+  before a merge — as a branch-protection or merge-gate policy usually does —
+  that ask is a denial headless, so every stage stalls at its own PR and the
+  driver stops at the first one with nothing merged. But it is not only the
+  merge: in the first end-to-end run, closeout was stopped cold by an `ask` on
+  `rm -rf` when it tried to clear a build cache, a rule nobody had thought of
+  as part of the plan. Go through your `ask` list with the plan's commands in
+  mind before driving it. **An `ask` entry is close to unbeatable
+  per-command.** Measured, each against a real user-level `ask` rule and a
+  real tool call:
 
   | Attempt | Result |
   |---|---|
@@ -542,7 +553,8 @@ Three consequences worth knowing before the first unattended run:
   it, and so is a `permissions.ask` entry. That cuts both ways — a hook-based
   branch guard keeps protecting you through an unattended run, and neither a
   hook nor an `ask` rule that refuses something a stage needs is escapable by
-  changing permission mode. Grant the specific rule with `--settings` instead.
+  changing permission mode. The only measured way past an `ask` is the
+  `--setting-sources` route above, with the cost it carries.
 
 ### Driving an unreleased plugin — `--plugin-dir`
 

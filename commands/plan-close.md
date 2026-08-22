@@ -17,7 +17,7 @@ closeout itself once every stage is settled), or the user is walking away.
 The token selects **declared default over ask**, never "proceed anyway": every
 question below either has an answer already written on `PLAN.md`'s plan flags
 line or is a hard stop, per the `staged-rollout` skill's *Unattended mode*.
-Honour it in steps 1, 2, 4 and 5. Without the token nothing changes — every
+Honour it in steps 1, 2, 4, 5 and 6. Without the token nothing changes — every
 gate and offer below works exactly as it always has. **In neither mode does
 this command merge the plan→main PR**; that gate survives every mode and has
 no flag.
@@ -130,7 +130,14 @@ Work through these steps **in order**:
    so each stage's squashed commit lands on `main` as its own distinct commit
    and the as-built history survives. Wait for the user to review and merge —
    never merge into `main` unilaterally. The plan's `merge` flag does not
-   apply here: it governs stage PRs only, and closeout never reads it.
+   apply here: it governs stage PRs only, and closeout never reads it —
+   `plan-dir` is the only plan flag closeout does read.
+
+   **A PR from this branch may already be open** — closeout run twice, or a
+   stop part-way through a previous pass. Check first (`gh pr list --head
+   plan-<slug> --state open`) and report the existing URL rather than trying
+   to create a second one; update its body from step 3's distillation if it
+   is out of date.
 
    **Unattended:** open the PR rather than offering to — an open PR is what
    the operator is coming back to, and opening it changes nothing on `main`.

@@ -297,7 +297,7 @@ two kinds:
 | Checking out the plan branch to reach `.plan/` | offered | default: check it out when exactly one plan branch matches; two or more is a **hard stop** |
 | A stage worktree still present at closeout | offered for removal when its branch is merged and nothing is unpushed | removed on that same condition; anything else is a **hard stop** |
 | Deleting `.plan/` at closeout | asked | `plan-dir` flag |
-| Merging the plan→main PR | offered | **never**, in any mode — no flag, no override |
+| Merging the plan→main PR | the PR is proposed; you merge it | the PR is opened; you merge it — **no session merges it in any mode**, no flag, no override |
 
 **What no mode loosens.** The plan→main PR is opened by closeout and merged
 by a person, always. A `gate: human` stage is never launched unattended. A

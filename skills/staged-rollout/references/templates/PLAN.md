@@ -417,7 +417,11 @@ structural fact and four rules about timing.
       contents are not
       recoverable from git. Never `--force`, never `prune` to tidy up; an
       orphan left behind is reported by every later preflight and gates
-      closeout, which is the safe failure. If the merge did not happen this
+      closeout, which is the safe failure. **The two thresholds differ on
+      purpose:** a stage leaves anything it is unsure about, and closeout
+      sweeps up whichever of those turn out to be merged with nothing
+      unpushed. Erring towards leaving costs a line in a report; erring
+      towards removing costs a directory git cannot give back. If the merge did not happen this
       session, the worktree stays — teardown belongs with the `done` write.
 
       End the session in the clone, on the plan branch.

@@ -601,7 +601,9 @@ def close_out(
     message = (
         "closeout ran but no open PR from the plan branch was found, so it stopped "
         "at one of its own gates - a stage worktree holding unpushed work is the "
-        "usual one. Read the closeout session's output above and .plan/LEDGER.md."
+        "usual one. Read the closeout session's output above; under "
+        "`plan-dir: delete` the ledger may already be gone from the working tree, "
+        "and the plan branch's history is where to look for it."
     )
     log(message)
     notify(notify_cmd, "stop", message, "", plan_dir)
@@ -1003,7 +1005,7 @@ def main(argv: list[str] | None = None) -> int:
         log(f"setting-sources {args.setting_sources} (for every session launched)")
         if "user" not in args.setting_sources.split(","):
             log(
-                "  note: `user` is omitted, so stage sessions run without your "
+                "  note: `user` is omitted, so launched sessions run without your "
                 "user settings - no user hooks, no user CLAUDE.md, no user "
                 "permission rules"
             )

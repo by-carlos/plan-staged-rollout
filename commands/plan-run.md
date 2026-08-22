@@ -36,6 +36,9 @@ Work through these steps **in order**:
    Only when no plan branch exists
    anywhere, stop and tell the user to bootstrap one — "bootstrap a plan for
    \<idea>", or the explicit command `/plan-staged-rollout:plan-stages <idea>`.
+   **Unattended**, the checkout is the declared default when exactly one
+   `plan-*` branch matches, so take it without asking; two or more is a hard
+   stop, because there is no way to guess which plan was meant.
    Then resolve `$ARGUMENTS` to the stage file `.plan/stage-<N>-<slug>.md` by
    matching the leading `stage-<$ARGUMENTS>-` token — a digit for an
    implementation stage, or `f` for the final review stage

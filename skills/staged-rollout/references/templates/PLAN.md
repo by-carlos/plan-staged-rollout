@@ -69,26 +69,35 @@ stage (Operating protocol, finish step 3).
 | ... | ... | ... | ... | ... | ... | ... | ... |
 | SF Plan review | `stage-f-review.md` | <last impl stage> | direct | inline | <model> | <effort> | auto |
 
-Plan flags: `merge: manual`
+Plan flags: `merge: manual` · `plan-dir: delete`
 
 This table is the **single authoritative home** for every stage's `depends` /
 `mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line
-under it is the home of the plan-level `merge` flag. Stage files never restate
-them (a copy is what drifts), and the tooling reads them from here:
-`/plan-run`'s weight check reads `model`/`effort` from this index, the
-runnable-set logic (below) reads `depends` from it, and an unattended runner
-reads `gate` and `merge`. A stage that isn't in this table is invisible to all
-of them — so adding a new stage (including one the final review spawns) means
-adding its row here first.
+under it is the home of the plan-level `merge` and `plan-dir` flags. Stage
+files never restate them (a copy is what drifts), and the tooling reads them
+from here: `/plan-run`'s weight check reads `model`/`effort` from this index,
+the runnable-set logic (below) reads `depends` from it, an unattended runner
+reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
+isn't in this table is invisible to all of them — so adding a new stage
+(including one the final review spawns) means adding its row here first.
+
+The two plan flags are this plan's **declared defaults**: the answers a
+session applies when there is nobody to ask (`--unattended`). An interactive
+session still asks, taking the declared value as its recommendation. See the
+`staged-rollout` skill, *Unattended mode*, for the full classification of
+which questions have a default and which are hard stops in every mode.
 
 Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
 `subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
 `gate` = `auto` \| `human` (may the stage be launched with nobody watching? —
 `human` means never); `merge` = `manual` \| `auto` (does the session merge its
 own stage PR into the plan branch once checks are green, or offer it for your
-OK?). Defaults are deliberately cheap and preserve the fully-manual flow —
-`direct`, `inline`, the cheaper capable model, `gate: auto`, `merge: manual`;
-a missing `gate` column or plan-flags line means those defaults. Escalate only
+OK?); `plan-dir` = `delete` \| `keep` (at closeout, is `.plan/` removed as the
+last commit on the plan branch, or left in place because the plan doubles as
+documentation?). Defaults are deliberately cheap and preserve the fully-manual
+flow — `direct`, `inline`, the cheaper capable model, `gate: auto`,
+`merge: manual`, `plan-dir: delete`; a missing `gate` column, a missing
+plan-flags line, or a missing entry on it means those defaults. Escalate only
 where a stage has genuine open design questions (`brainstorm`, which also
 makes it `gate: human`) or heavy iteration churn (`subagent`). `merge` governs
 stage PRs only — the plan→main PR at closeout is manual in every mode.
@@ -264,11 +273,13 @@ structural fact and four rules about timing.
    unattended runner, or `/plan-run`'s `--unattended` argument), check the
    stage's `gate` first: a `gate: human` stage is never started unattended —
    report that and stop here. For a `gate: auto` stage, every offer or
-   question in this step and the ones below has no one to answer it, so it
-   becomes `blocked` + runbook instead (see the `staged-rollout` skill,
-   *Statuses and human-gated stages*): a lighter-than-recommended model or an
-   unrecognised tier marks the row `blocked` with the mismatch as the
-   runbook, commits, and stops.
+   question in this step and the ones below either has a **declared default**
+   on the plan flags line or is a **hard stop** — there is no third option
+   and nothing waits for an answer (see the `staged-rollout` skill,
+   *Unattended mode*, for the full classification). Nothing in this step has a
+   declared default, so a lighter-than-recommended model or an unrecognised
+   tier marks the row `blocked` with the mismatch as the runbook, commits,
+   and stops.
 3. **Dependency gate:** for every `depends` stage, confirm it is `done` in
    `LEDGER.md` **AND its stage branch/PR is merged into the plan branch**
    (`git fetch` first — the merge may be remote and not yet local). Both must

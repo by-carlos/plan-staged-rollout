@@ -102,8 +102,14 @@ message = "Pull request title and description").
 ## Closeout
 
 When every ledger row is `done` or `skipped`, close out the plan — ask to
-**"close out the plan"**, run the explicit command
-`/plan-staged-rollout:plan-close`, or follow the closeout steps in `PLAN.md`
-directly: it distills `PLAN.md` + the ledger into the final PR body, deletes
-`.plan/` as the last commit (keeping it is an option), and proposes the PR
-from `plan-<slug>` to `main`.
+**"close out the plan"**, or run the explicit command
+`/plan-staged-rollout:plan-close`, which is where the closeout steps live. It
+distills `PLAN.md` + the ledger into the final PR body, removes any stage
+worktree that is merged and fully pushed (anything holding unpushed work stops
+it instead), deletes `.plan/` as the last commit — or keeps it, per the
+`plan-dir` flag on `PLAN.md`'s plan flags line — and proposes the PR from
+`plan-<slug>` to `main`.
+
+**Closeout runs unattended too:** `/plan-staged-rollout:plan-close
+--unattended` applies the plan flags instead of asking and opens the PR.
+Merging that PR into `main` is always a person's job, in every mode.

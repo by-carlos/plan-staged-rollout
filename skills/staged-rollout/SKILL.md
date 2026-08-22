@@ -92,9 +92,11 @@ context a long session would carry).
 Each stage declares `depends` / `mode` / `exec` / `model` / `effort` / `gate`
 in the **PLAN.md stage index** — the single authoritative home for these
 flags, read by `/plan-run`'s weight check and next-runnable logic. The plan as
-a whole declares one more, `merge`, on the **plan flags** line directly under
-that index. Stage files never restate any of them. Defaults are deliberately
-cheap — escalate only where a stage genuinely warrants it:
+a whole declares two more, `merge` and `plan-dir`, on the **plan flags** line
+directly under that index — those two are the plan's *declared defaults*, the
+answers an unattended session applies where an interactive one would ask (see
+*Unattended mode*). Stage files never restate any of them. Defaults are
+deliberately cheap — escalate only where a stage genuinely warrants it:
 
 - `mode: direct` by default (state a one-line plan, implement). Use `brainstorm`
   only where the stage has real open design choices. A full brainstorm on a
@@ -139,6 +141,16 @@ cheap — escalate only where a stage genuinely warrants it:
   **stage PRs only**: the plan→main PR is manual in every mode, with no
   override (see *Git model*). An **absent** plan-flags line reads as
   `merge: manual`.
+- `plan-dir: delete` by default — **plan-level, and read only at closeout.**
+  `plan-dir` says what happens to `.plan/` when the plan is closed: under
+  `delete` it goes as the last commit on the plan branch (nothing is lost —
+  the full plan history stays in git, and the final PR shows the removal);
+  under `keep` it stays, for a project where the plan doubles as its
+  documentation. This is the answer `/plan-close` already calls its default,
+  written down in advance so an unattended closeout has it — an interactive
+  closeout still asks, with this value as the recommendation. An **absent**
+  `plan-dir` entry reads as `delete`, so nothing changes for a plan that
+  predates the flag.
 
 ## Model weight tiers
 
@@ -231,20 +243,15 @@ out as method, not just vocabulary:
   an approval) is best written as a **runbook**: produce exact step-by-step
   instructions plus the verification check, mark the stage `blocked`/`doing`, and
   let the human complete it. Never fake progress past a gate.
-- **Unattended mode turns every would-be question into `blocked`.** A session
-  is unattended when nobody can answer it — it was launched by a driver, or
-  `/plan-run` was told so explicitly (its `--unattended` argument; see the
-  command). In that mode, anything the agent would normally **ask a person
-  about** — a design choice the frozen decisions don't settle, a weight-check
-  mismatch, a redo confirmation, an ambiguous acceptance result — becomes:
-  mark the stage `blocked` with a runbook stating the question and what would
-  unblock it, commit that, and stop. This is the existing state and the
-  existing mechanism, not new machinery; the only new rule is that waiting on
-  an answer is not an option, because there is nobody to give one. The human
-  answers later by amending the frozen decisions or the ledger and relaunching
-  the stage. A `gate: human` stage reached unattended is the degenerate case:
-  it is *known* to need a person, so the session reports that and stops
-  **before** starting it rather than discovering the fact halfway through.
+- **Unattended, a stage question that has no declared default becomes
+  `blocked`.** Mark the stage `blocked` with a runbook stating the question
+  and what would unblock it, commit that, and stop. This is the existing
+  state and the existing mechanism, not new machinery; the only rule
+  unattended mode adds is that waiting on an answer is not an option, because
+  there is nobody to give one. The human answers later by amending the frozen
+  decisions or the ledger and relaunching the stage. Which questions have a
+  declared default and which are hard stops is the table in *Unattended
+  mode*, below.
 - **`skipped`** records a one-line reason for work decided against, so the gap is
   a decision, not a silent hole.
 
@@ -252,6 +259,58 @@ Track known gaps and latent hazards explicitly in the ledger notes (things not
 under version control, footguns, "this script would delete X if run") — writing
 them down is what stops them becoming surprises, and it's what lets the final
 review stage catch them.
+
+## Unattended mode
+
+**One mode, one rule, honoured at every decision point.** A session is
+unattended when nobody can answer it: it was launched by a driver
+(`scripts/plan_driver.py`), or a command was told so explicitly with its
+`--unattended` argument. That argument is a single switch selecting **declared
+default over ask** — never "proceed anyway". Interactive sessions keep asking
+exactly as they always have, and one body of skill text serves both modes. A
+fork into interactive and unattended copies is the anti-pattern this contract
+exists to prevent: two bodies means every protocol change made twice, and the
+seams between the modes are subtle enough that the second copy would be the
+one that rots.
+
+Every question the protocol can put to a person is classified once, as one of
+two kinds:
+
+- **Declared default.** The answer is fixed ahead of the run — written on
+  `PLAN.md`'s **plan flags** line (`merge`, `plan-dir`), or a mechanical rule
+  that needs no answer at all. An unattended session applies it and carries
+  on; an interactive one still asks, with the declared value as the
+  recommendation.
+- **Hard stop.** There is no defensible default, so an unattended session
+  does not invent one. It records the question where the next session will
+  find it — the stage row marked `blocked` with a runbook, or, where no stage
+  row owns the question, a report naming the exact state and the command that
+  clears it — and ends. Nothing is faked past a gate and nothing is retried.
+
+| Decision point | Interactive | Unattended |
+|---|---|---|
+| A `gate: human` stage | announced — the person at the keyboard *is* the gate | **hard stop**, never started |
+| Weight check: lighter model than recommended, or an unrecognised tier | offer continue/abort | **hard stop** — `blocked` + runbook |
+| A mid-stage question the frozen decisions don't settle | asked | **hard stop** — `blocked` + runbook |
+| Redo of a `done` stage | confirmed first | **hard stop** — `blocked` + runbook |
+| A stage PR's merge | offered | `merge` flag — `auto` merges it, `manual` is a **hard stop** |
+| Checking out the plan branch to reach `.plan/` | offered | default: check it out when exactly one plan branch matches; two or more is a **hard stop** |
+| A stage worktree still present at closeout | offered for removal when its branch is merged and nothing is unpushed | removed on that same condition; anything else is a **hard stop** |
+| Deleting `.plan/` at closeout | asked | `plan-dir` flag |
+| Merging the plan→main PR | offered | **never**, in any mode — no flag, no override |
+
+**What no mode loosens.** The plan→main PR is opened by closeout and merged
+by a person, always. A `gate: human` stage is never launched unattended. A
+worktree holding real uncommitted or unpushed work is never removed, and never
+with `--force`. A merge the platform refuses is never forced or retried.
+
+**Bootstrap has no unattended mode, deliberately.** `/plan-stages` is design
+work — decomposition, frozen decisions, the `merge` question — and those have
+no defensible defaults to declare. A plan decomposed badly costs far more than
+the session it would have saved. Where a plan genuinely needs to be bootstrapped
+headless, a fully-specified brief that says to make every decision and ask
+nothing does the job as an ordinary prompt; that route needs no contract behind
+it.
 
 ## Git model
 
@@ -376,8 +435,9 @@ the stage needs and note it in the ledger. And a worktree is a real directory
 that outlives a crashed session, so teardown is part of the protocol: after
 the merge, a clean and fully-pushed worktree is removed along with its merged
 branch, while anything uncommitted, unpushed, or stashed is left alone and
-reported. Preflight reports orphans; closeout refuses to run while one
-survives.
+reported. Preflight reports orphans; closeout gates on any that survive —
+removing the ones that are merged and fully pushed, and refusing to close
+while one holds work git cannot recover (see *Closeout*).
 
 **Preflight & sync — verify git state before trusting the ledger.** The
 ledger is canonical, but only after it's proven fresh: every stage session
@@ -423,9 +483,24 @@ open or unmerged — a `done` row alone is not enough; the preflight's
 reconcile runs first and treats that mismatch as a gate failure. Then it: distills `PLAN.md` + the ledger into the
 final PR body so the *why* and the as-built story survive on `main`; deletes
 `.plan/` as the last commit on the plan branch (nothing is lost — the full plan
-history remains in git; keeping `.plan/` is an offered option where the plan
-doubles as documentation); and proposes the PR from `plan-<slug>` to `main` for
-the human to review and merge.
+history remains in git; keeping `.plan/` is the `plan-dir: keep` option, for a
+plan that doubles as documentation); and proposes the PR from `plan-<slug>` to
+`main` for the human to review and merge.
+
+**Stage worktrees are part of closeout's gate, under one rule in both modes.**
+A surviving worktree whose branch matches `plan-<slug>-s*` means some stage
+never finished its teardown. If that worktree's branch is merged into the plan
+branch and it holds nothing unpushed, it is finished work and removal is safe:
+interactive closeout offers to remove it, unattended closeout removes it.
+Anything else — unpushed commits, an unmerged branch, work that is not
+recoverable from git — stops closeout in both modes, with the path and what it
+holds reported. An operator's unrelated worktree (any other branch) is none of
+the plan's business and never blocks.
+
+**Closeout runs unattended too** (`/plan-close --unattended`), and the driver
+launches it once every stage is `done` or `skipped`, so a plan can go from
+bootstrap to an open plan→main PR with exactly two human gates: a `gate: human`
+stage, and the final merge. See *Unattended mode*.
 
 ## Anti-patterns this exists to prevent
 

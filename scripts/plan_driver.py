@@ -9,10 +9,13 @@ exactly as `commands/plan-run.md` step 6 does, launches the next stage as its ow
 state; the driver holds none of its own between rounds.
 
 It stops - and calls the notify command - on a `gate: human` stage, on a stage
-that comes back anything other than `done` after the retry cap, and on finishing
-the whole plan. It never targets a protected branch, and it never merges anything
-itself: merges belong to the stage sessions under the plan's `merge` flag, and the
-plan-to-main PR is manual in every mode.
+that comes back anything other than `done` after the retry cap, and when closeout
+is finished. Once every stage is `done` or `skipped` it launches one more session,
+`/plan-close --unattended`, which applies the plan flags instead of asking and
+opens the plan-to-main PR (`--no-close` stops before that instead). It never
+targets a protected branch, and it never merges anything itself: merges belong to
+the stage sessions under the plan's `merge` flag, and the plan-to-main PR is
+manual in every mode - no flag, no argument and no runner may take that gate.
 
 Sequential only. Parallel waves are deliberate future work - see README.
 
@@ -47,6 +50,7 @@ LEDGER_STATUSES = {"todo", "doing", "done", "blocked", "skipped"}
 EMPTY_CELLS = {"", "-", "—", "–"}
 PLAN_FLAGS_RE = re.compile(r"^\**\s*Plan flags:", re.IGNORECASE)
 MERGE_FLAG_RE = re.compile(r"merge:\s*`?(auto|manual)`?", re.IGNORECASE)
+PLAN_DIR_FLAG_RE = re.compile(r"plan-dir:\s*`?(delete|keep)`?", re.IGNORECASE)
 
 # `model`/`effort` in the stage index are launch hints written for humans;
 # `--effort` on the CLI takes a fixed vocabulary. Map what the templates use and
@@ -64,6 +68,9 @@ EFFORT_ALIASES = {
 # runs: with nobody to answer a prompt, any rule that would ask resolves as a
 # denial, so the tools a stage actually uses have to be allowed up front.
 DEFAULT_PERMISSION_MODE = "acceptEdits"
+# `AskUserQuestion` is in the list even though an unattended session never asks:
+# the profile is also what an operator copies to launch a session by hand, and a
+# session that cannot offer buttons falls back to asking in prose.
 DEFAULT_ALLOWED_TOOLS = [
     "Bash",
     "Edit",
@@ -74,6 +81,7 @@ DEFAULT_ALLOWED_TOOLS = [
     "Task",
     "Skill",
     "TodoWrite",
+    "AskUserQuestion",
     "WebFetch",
     "WebSearch",
     "NotebookEdit",
@@ -127,6 +135,7 @@ class Plan:
     ledger: list[LedgerRow] = field(default_factory=list)
     index: list[IndexRow] = field(default_factory=list)
     merge_flag: str = "manual"
+    plan_dir_flag: str = "delete"
 
 
 def split_row(line: str) -> list[str] | None:
@@ -186,14 +195,18 @@ def parse_ledger(path: Path) -> list[LedgerRow]:
     return rows
 
 
-def parse_plan(path: Path) -> tuple[list[IndexRow], str]:
+def parse_plan(path: Path) -> tuple[list[IndexRow], str, str]:
     rows: list[IndexRow] = []
     merge_flag = "manual"
+    plan_dir_flag = "delete"
     for _, line in section_lines(path.read_text(encoding="utf-8"), "Stage index"):
         if PLAN_FLAGS_RE.match(line.strip()):
             match = MERGE_FLAG_RE.search(line)
             if match:
                 merge_flag = match.group(1).lower()
+            match = PLAN_DIR_FLAG_RE.search(line)
+            if match:
+                plan_dir_flag = match.group(1).lower()
             continue
         cells = split_row(line)
         if not cells or len(cells) < 3:
@@ -224,15 +237,16 @@ def parse_plan(path: Path) -> tuple[list[IndexRow], str]:
                 gate=(cell(7) or "auto").lower(),
             )
         )
-    return rows, merge_flag
+    return rows, merge_flag, plan_dir_flag
 
 
 def load_plan(plan_dir: Path) -> Plan:
-    index, merge_flag = parse_plan(plan_dir / "PLAN.md")
+    index, merge_flag, plan_dir_flag = parse_plan(plan_dir / "PLAN.md")
     return Plan(
         ledger=parse_ledger(plan_dir / "LEDGER.md"),
         index=index,
         merge_flag=merge_flag,
+        plan_dir_flag=plan_dir_flag,
     )
 
 
@@ -440,30 +454,11 @@ def mark_blocked(plan_dir: Path, row: LedgerRow, attempts: int, last_status: str
 # --------------------------------------------------------------------------
 
 
-def build_command(args: argparse.Namespace, row: IndexRow) -> tuple[list[str], list[str]]:
-    """The `claude -p` argv for one stage, plus any warnings worth printing."""
-    warnings: list[str] = []
-    prompt = f"/plan-staged-rollout:plan-run {stage_argument(row.stage_id)} --unattended"
-    argv = [args.claude_bin, "-p", prompt]
-
-    if row.model:
-        argv += ["--model", row.model]
-    else:
-        warnings.append("no `model` in the stage index - launching on the CLI default")
-
-    if row.effort:
-        effort = EFFORT_ALIASES.get(row.effort.lower())
-        if effort:
-            argv += ["--effort", effort]
-        else:
-            warnings.append(
-                f"effort `{row.effort}` is not one of "
-                f"{'/'.join(sorted(set(EFFORT_ALIASES.values())))} - omitting --effort"
-            )
-    else:
-        warnings.append("no `effort` in the stage index - launching on the CLI default")
-
-    argv += ["--permission-mode", args.permission_mode]
+def session_profile(args: argparse.Namespace) -> list[str]:
+    """The permission/plugin/budget flags every session the driver launches gets -
+    stage sessions and the closeout session alike, so one `--plugin-dir` or
+    `--setting-sources` covers the whole run rather than the stages only."""
+    argv = ["--permission-mode", args.permission_mode]
     if args.allowed_tools:
         argv += ["--allowedTools", *args.allowed_tools]
     for plugin_dir in args.plugin_dir or []:
@@ -472,7 +467,50 @@ def build_command(args: argparse.Namespace, row: IndexRow) -> tuple[list[str], l
         argv += ["--setting-sources", args.setting_sources]
     if args.max_budget_usd is not None:
         argv += ["--max-budget-usd", str(args.max_budget_usd)]
+    return argv
+
+
+def weight_argv(model: str, effort: str, source: str) -> tuple[list[str], list[str]]:
+    """`--model`/`--effort` for one session, plus warnings for what was missing.
+    `source` names where the values came from, so the warning says what to fix."""
+    argv: list[str] = []
+    warnings: list[str] = []
+
+    if model:
+        argv += ["--model", model]
+    else:
+        warnings.append(f"no `model` {source} - launching on the CLI default")
+
+    if effort:
+        resolved = EFFORT_ALIASES.get(effort.lower())
+        if resolved:
+            argv += ["--effort", resolved]
+        else:
+            warnings.append(
+                f"effort `{effort}` is not one of "
+                f"{'/'.join(sorted(set(EFFORT_ALIASES.values())))} - omitting --effort"
+            )
+    else:
+        warnings.append(f"no `effort` {source} - launching on the CLI default")
     return argv, warnings
+
+
+def build_command(args: argparse.Namespace, row: IndexRow) -> tuple[list[str], list[str]]:
+    """The `claude -p` argv for one stage, plus any warnings worth printing."""
+    prompt = f"/plan-staged-rollout:plan-run {stage_argument(row.stage_id)} --unattended"
+    weight, warnings = weight_argv(row.model, row.effort, "in the stage index")
+    return [args.claude_bin, "-p", prompt, *weight, *session_profile(args)], warnings
+
+
+def build_close_command(args: argparse.Namespace) -> tuple[list[str], list[str]]:
+    """The `claude -p` argv for the closeout session. Closeout has no stage-index
+    row to read a weight from, so it takes `--close-model`/`--close-effort` and
+    falls back to the CLI default."""
+    prompt = "/plan-staged-rollout:plan-close --unattended"
+    weight, warnings = weight_argv(
+        args.close_model or "", args.close_effort or "", "for closeout (--close-model/--close-effort)"
+    )
+    return [args.claude_bin, "-p", prompt, *weight, *session_profile(args)], warnings
 
 
 def describe(row: IndexRow) -> str:
@@ -489,11 +527,95 @@ def describe(row: IndexRow) -> str:
 
 
 # --------------------------------------------------------------------------
+# Closeout - the one session the driver launches that is not a stage
+# --------------------------------------------------------------------------
+
+
+def open_plan_pr(root: Path, branch: str, base: str) -> str | None:
+    """The URL of the open PR from the plan branch, "" when there is none, and
+    None when `gh` cannot answer (missing, unauthenticated, offline). The three
+    cases are deliberately distinct: "no PR" is a failed closeout, "cannot tell"
+    is not."""
+    if shutil.which("gh") is None:
+        return None
+    argv = ["gh", "pr", "list", "--head", branch, "--state", "open", "--json", "url"]
+    if base:
+        argv += ["--base", base]
+    result = subprocess.run(argv, cwd=str(root), capture_output=True, text=True)
+    if result.returncode != 0:
+        return None
+    urls = re.findall(r'"url"\s*:\s*"([^"]+)"', result.stdout)
+    return urls[0] if urls else ""
+
+
+def close_out(
+    args: argparse.Namespace,
+    root: Path,
+    plan_dir: Path,
+    notify_cmd: str,
+    branch: str,
+    stages_run: int,
+) -> int:
+    """Launch `/plan-close --unattended` and report where it got to.
+
+    This is the last thing the driver does: under `plan-dir: delete` the plan
+    directory this driver has been reading is gone once the session ends, so
+    there is nothing left to re-scan and no round after this one.
+    """
+    argv, warnings = build_close_command(args)
+    log("")
+    log("every stage is done or skipped - launching closeout")
+    for warning in warnings:
+        log(f"  warning: {warning}")
+    log(f"  $ {' '.join(shell_quote(part) for part in argv)}")
+
+    if args.dry_run:
+        log("dry run - closeout is not launched")
+        return 0
+
+    result = subprocess.run(argv, cwd=str(root))
+    log(f"closeout session exited {result.returncode}")
+
+    base = default_branch(root)
+    url = open_plan_pr(root, branch, base)
+    if url:
+        message = (
+            f"plan complete - {stages_run} stage(s) run this pass, closeout done, and "
+            f"the plan->main PR is open at {url}. Review and merge it yourself: "
+            "merging into the default branch is the one gate no mode takes."
+        )
+        log(message)
+        notify(notify_cmd, "complete", message, "", plan_dir)
+        return 0
+
+    if url is None:
+        message = (
+            f"plan complete - {stages_run} stage(s) run this pass and the closeout "
+            "session finished, but `gh` could not be asked whether the plan->main PR "
+            "is open. Check the branch yourself before assuming the plan is closed."
+        )
+        log(message)
+        notify(notify_cmd, "complete", message, "", plan_dir)
+        return 0
+
+    message = (
+        "closeout ran but no open PR from the plan branch was found, so it stopped "
+        "at one of its own gates - a stage worktree holding unpushed work is the "
+        "usual one. Read the closeout session's output above and .plan/LEDGER.md."
+    )
+    log(message)
+    notify(notify_cmd, "stop", message, "", plan_dir)
+    return 1
+
+
+# --------------------------------------------------------------------------
 # The loop
 # --------------------------------------------------------------------------
 
 
-def drive(args: argparse.Namespace, root: Path, plan_dir: Path, notify_cmd: str) -> int:
+def drive(
+    args: argparse.Namespace, root: Path, plan_dir: Path, notify_cmd: str, branch: str
+) -> int:
     attempts: dict[str, int] = {}
     simulated: dict[str, str] = {}
     launched: list[str] = []
@@ -506,7 +628,17 @@ def drive(args: argparse.Namespace, root: Path, plan_dir: Path, notify_cmd: str)
         fail(f"{plan_dir / 'PLAN.md'} has no recognizable stage index")
         return 2
 
-    log(f"plan flags: merge {plan.merge_flag}")
+    log(f"plan flags: merge {plan.merge_flag}, plan-dir {plan.plan_dir_flag}")
+    if args.close:
+        log(
+            "closeout will run unattended when every stage is settled; `.plan/` is "
+            + (
+                "deleted as its last commit"
+                if plan.plan_dir_flag == "delete"
+                else "kept"
+            )
+            + " and the plan->main PR is opened, never merged"
+        )
     if plan.merge_flag == "manual":
         log(
             "merge is `manual`, so a stage session stops at its own PR instead of "
@@ -532,9 +664,14 @@ def drive(args: argparse.Namespace, root: Path, plan_dir: Path, notify_cmd: str)
                 if status not in ("done", "skipped")
             ]
             if not open_stages:
+                if args.close:
+                    return close_out(
+                        args, root, plan_dir, notify_cmd, branch, len(launched)
+                    )
                 message = (
                     f"plan complete - {len(launched)} stage(s) run this pass; every "
-                    "stage is done or skipped. Close it out with /plan-close."
+                    "stage is done or skipped. --no-close was passed, so close it "
+                    "out yourself with /plan-close."
                 )
                 log(message)
                 notify(notify_cmd, "complete", message, "", plan_dir)
@@ -684,7 +821,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--permission-mode",
         default=DEFAULT_PERMISSION_MODE,
         help=(
-            "--permission-mode passed to every stage session "
+            "--permission-mode passed to every session the driver launches "
             f"(default: {DEFAULT_PERMISSION_MODE})"
         ),
     )
@@ -693,7 +830,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         nargs="*",
         default=DEFAULT_ALLOWED_TOOLS,
         help=(
-            "--allowedTools passed to every stage session; pass with no values to "
+            "--allowedTools passed to every session the driver launches; pass with "
+            "no values to "
             "omit the flag entirely (default: " + " ".join(DEFAULT_ALLOWED_TOOLS) + ")"
         ),
     )
@@ -702,7 +840,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="append",
         metavar="PATH",
         help=(
-            "load a plugin from a directory or .zip in every stage session "
+            "load a plugin from a directory or .zip in every session the driver "
+            "launches "
             "(repeatable), passed straight through to `claude --plugin-dir`. The "
             "reason it exists: a stage session resolves "
             "`/plan-staged-rollout:plan-run` against the *installed* plugin, so "
@@ -714,7 +853,8 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--setting-sources",
         metavar="SOURCES",
         help=(
-            "comma-separated setting sources for every stage session (`user`, "
+            "comma-separated setting sources for every session the driver launches "
+            "(`user`, "
             "`project`, `local`), passed through to `claude --setting-sources`. "
             "Dropping `user` is the only measured way past a `permissions.ask` "
             "entry in your own settings - but it drops your user hooks and user "
@@ -726,8 +866,36 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         type=float,
         default=None,
         help=(
-            "optional --max-budget-usd ceiling per stage session; unattended spend "
+            "optional --max-budget-usd ceiling per session; unattended spend "
             "with nobody watching is the real risk here"
+        ),
+    )
+    parser.add_argument(
+        "--no-close",
+        dest="close",
+        action="store_false",
+        help=(
+            "stop when every stage is done or skipped instead of launching "
+            "`/plan-close --unattended`. Closeout opens the plan->main PR and never "
+            "merges it, so the default is to run it"
+        ),
+    )
+    parser.add_argument(
+        "--close-model",
+        metavar="MODEL",
+        help=(
+            "--model for the closeout session (default: the CLI default). Closeout "
+            "has no stage-index row to read a weight from, so this is the only place "
+            "to set one"
+        ),
+    )
+    parser.add_argument(
+        "--close-effort",
+        metavar="EFFORT",
+        help=(
+            "--effort for the closeout session, one of "
+            + "/".join(sorted(set(EFFORT_ALIASES.values())))
+            + " (default: the CLI default)"
         ),
     )
     parser.add_argument(
@@ -741,7 +909,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         action="store_false",
         help="write the `blocked` row but do not commit or push it",
     )
-    parser.set_defaults(commit=True)
+    parser.set_defaults(commit=True, close=True)
     return parser.parse_args(argv)
 
 
@@ -830,9 +998,9 @@ def main(argv: list[str] | None = None) -> int:
     log(f"branch {branch}")
     log(f"plan {plan_dir}")
     for plugin_dir in args.plugin_dir or []:
-        log(f"plugin {plugin_dir} (side-loaded into every stage session)")
+        log(f"plugin {plugin_dir} (side-loaded into every session launched)")
     if args.setting_sources:
-        log(f"setting-sources {args.setting_sources} (for every stage session)")
+        log(f"setting-sources {args.setting_sources} (for every session launched)")
         if "user" not in args.setting_sources.split(","):
             log(
                 "  note: `user` is omitted, so stage sessions run without your "
@@ -844,7 +1012,7 @@ def main(argv: list[str] | None = None) -> int:
     if not notify_cmd:
         log(f"no ${NOTIFY_ENV} set - stops will only be reported on this stream")
 
-    return drive(args, root, plan_dir, notify_cmd)
+    return drive(args, root, plan_dir, notify_cmd, branch)
 
 
 if __name__ == "__main__":

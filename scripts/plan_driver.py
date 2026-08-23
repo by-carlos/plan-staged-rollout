@@ -397,12 +397,15 @@ def commit_driver_block(root: Path, plan_dir: Path, stage_id: str) -> None:
 BLOCKED_HEADER = [
     "# Driver blocks",
     "",
-    "Stages the unattended driver could not land in `LEDGER.md`, because the "
-    "stage's own branch might already hold unmerged edits to it. A driver "
-    "round treats every stage id listed below as `blocked` - never retried - "
-    "even though its `LEDGER.md` row may still read `todo` or `doing`. "
-    "Resolving a stage does not clear its section automatically: delete it "
-    "once the stage reaches `done`.",
+    *textwrap.wrap(
+        "Stages the unattended driver could not land in `LEDGER.md`, because the "
+        "stage's own branch might already hold unmerged edits to it. A driver "
+        "round treats every stage id listed below as `blocked` - never retried - "
+        "even though its `LEDGER.md` row may still read `todo` or `doing`. "
+        "Resolving a stage does not clear its section automatically: delete it "
+        "once the stage reaches `done`.",
+        width=79,
+    ),
 ]
 
 

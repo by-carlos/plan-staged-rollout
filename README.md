@@ -494,9 +494,9 @@ and `2` for a usage or guardrail refusal.
 of attempts has usually already committed its own edits to `LEDGER.md`'s row
 and notes, on its own branch — real acceptance evidence, or a PR that opened
 but couldn't merge. Writing the driver's block into those same lines on the
-plan branch would diverge from that unmerged commit and leave the stage's own
-pull request unmergeable — the runbook naming a merge the conflict it just
-created has just made impossible. `.plan/BLOCKED.md` is a sibling file the
+plan branch would diverge from that unmerged commit, leaving the stage's own
+pull request unmergeable — the runbook would then be naming a merge its own
+write had just made impossible. `.plan/BLOCKED.md` is a sibling file the
 stage branch never edits, so the driver's write and the stage's write never
 contend for the same lines. Every driver round treats a stage id listed there
 as blocked and never retries it, even across a restart, regardless of what its

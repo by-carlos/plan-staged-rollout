@@ -368,7 +368,10 @@ or explicitly closed.
 ### 5. Closeout — `/plan-close`
 
 Refuses to run until every ledger row is `done` or `skipped` (including the
-stages the review spawned). Then it:
+stages the review spawned) and `.plan/BLOCKED.md` holds no leftover `### S<N>`
+section from a stage that was later resolved by hand — nothing clears that
+file automatically, so closeout checks it instead of trusting the ledger
+alone. Then it:
 
 1. distills `PLAN.md` + the ledger into the final PR body, so the *why* and
    the as-built story survive on `main`;

@@ -175,6 +175,18 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **Closeout's completion gate now reads `.plan/BLOCKED.md`, not just the
+  ledger and open PRs** (#101). A stage the driver blocked at the retry cap
+  and that a person then finished by hand ends up with a `done` `LEDGER.md`
+  row and no open PR — but its `### S<N>` section in `.plan/BLOCKED.md` is
+  cleared only by deliberate deletion, and closeout's step 2 never looked at
+  that file. A leftover section could ship as permanent documentation of a
+  block that no longer exists (`plan-dir: keep`), or a restarted driver could
+  refuse an already-finished stage with no clue why. `commands/plan-close.md`
+  step 2 now treats any surviving `### S<N>` section as a gate failure in
+  both modes, names the stage and what its ledger row and PR say, and tells
+  the operator to delete the section — closeout never deletes it itself.
+
 - **The driver no longer declares a plan complete over a stage that never ran.**
   `scripts/plan_driver.py` counted open stages from `LEDGER.md` rows only, so a
   stage present in `PLAN.md`'s stage index with no ledger row (the shape a

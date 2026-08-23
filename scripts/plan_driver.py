@@ -357,68 +357,105 @@ def default_branch(root: Path) -> str:
     return result.stdout.strip().rsplit("/", 1)[-1]
 
 
-def commit_ledger(root: Path, plan_dir: Path, stage_id: str) -> None:
+def commit_driver_block(root: Path, plan_dir: Path, stage_id: str) -> None:
     """Commit (and push, when the branch has an upstream) the driver's own
-    `blocked` write, so the state survives the operator's absence."""
-    rel = (plan_dir / "LEDGER.md").relative_to(root).as_posix()
+    block note in `.plan/BLOCKED.md`, so the state survives the operator's
+    absence. Never touches `.plan/LEDGER.md` - see record_driver_block."""
+    rel = (plan_dir / "BLOCKED.md").relative_to(root).as_posix()
     if git(root, "add", "--", rel).returncode != 0:
-        fail("could not stage LEDGER.md; the blocked row is written but uncommitted")
+        fail("could not stage BLOCKED.md; the block note is written but uncommitted")
         return
-    message = f"chore(plan): mark {stage_id} blocked - driver retry cap reached"
+    message = f"chore(plan): record {stage_id} blocked - driver retry cap reached"
     result = git(root, "commit", "-m", message, "--", rel)
     if result.returncode != 0:
-        fail(f"could not commit LEDGER.md: {result.stderr.strip() or result.stdout.strip()}")
+        fail(f"could not commit BLOCKED.md: {result.stderr.strip() or result.stdout.strip()}")
         return
-    log(f"committed the blocked row for {stage_id}")
+    log(f"committed the block note for {stage_id}")
     if git(root, "rev-parse", "--abbrev-ref", "@{upstream}").returncode != 0:
-        log("plan branch has no upstream - the blocked row is committed locally only")
+        log("plan branch has no upstream - the block note is committed locally only")
         return
     push = git(root, "push")
     if push.returncode != 0:
-        fail(f"could not push the blocked row: {push.stderr.strip()}")
+        fail(f"could not push the block note: {push.stderr.strip()}")
     else:
-        log("pushed the blocked row to the plan branch")
+        log("pushed the block note to the plan branch")
 
 
 # --------------------------------------------------------------------------
-# Ledger write - the one file the driver edits
+# Driver block file - deliberately NOT `.plan/LEDGER.md`
 # --------------------------------------------------------------------------
+#
+# By the time the driver hits the retry cap, the stage has usually already
+# committed its own edits to LEDGER.md's row and notes on its own branch -
+# real acceptance evidence, or a PR that opened but couldn't merge. Writing
+# the driver's block into those same lines on the plan branch would diverge
+# from that unmerged commit and leave the stage's own pull request
+# unmergeable, which is exactly the failure this file exists to avoid (#89).
+# `.plan/BLOCKED.md` is a sibling the stage branch never edits, so the two
+# writers never contend for the same lines.
+
+BLOCKED_HEADER = [
+    "# Driver blocks",
+    "",
+    "Stages the unattended driver could not land in `LEDGER.md`, because the "
+    "stage's own branch might already hold unmerged edits to it. A driver "
+    "round treats every stage id listed below as `blocked` - never retried - "
+    "even though its `LEDGER.md` row may still read `todo` or `doing`. "
+    "Resolving a stage does not clear its section automatically: delete it "
+    "once the stage reaches `done`.",
+]
 
 
-def mark_blocked(plan_dir: Path, row: LedgerRow, attempts: int, last_status: str) -> None:
-    """Set the stage's status cell to `blocked` and append a runbook to its notes
-    block, so the operator finds a stage that reads as a task, not a failure."""
-    path = plan_dir / "LEDGER.md"
-    lines = path.read_text(encoding="utf-8").splitlines()
+def read_driver_blocked_ids(plan_dir: Path) -> set[str]:
+    """Stage ids with a section in `.plan/BLOCKED.md` - see record_driver_block."""
+    path = plan_dir / "BLOCKED.md"
+    if not path.exists():
+        return set()
+    ids: set[str] = set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.startswith("### "):
+            continue
+        stage_id = stage_id_of(line[len("### ") :])
+        if stage_id:
+            ids.add(stage_id)
+    return ids
+
+
+def record_driver_block(
+    plan_dir: Path,
+    row: LedgerRow,
+    attempts: int,
+    last_status: str,
+    plan_branch: str,
+) -> None:
+    """Append (or refresh) this stage's section in `.plan/BLOCKED.md`, instead of
+    editing `.plan/LEDGER.md`'s row and notes - see the module note above."""
+    path = plan_dir / "BLOCKED.md"
     today = datetime.now().astimezone().strftime("%Y-%m-%d")
+    lines = (
+        path.read_text(encoding="utf-8").splitlines() if path.exists() else list(BLOCKED_HEADER)
+    )
 
-    cells = list(row.cells)
-    cells[1] = "blocked"
-    if len(cells) > 3:
-        cells[3] = today
-    if len(cells) > 4:
-        cells[4] = (
-            f"Driver stopped after {attempts} attempt(s); last status "
-            f"`{last_status}` — see notes"
-        )
-    lines[row.line_no] = "| " + " | ".join(cells) + " |"
-
-    # Wrapped to match the hand-written prose around it; an unwrapped paragraph
-    # in the middle of the ledger reads as machine spill.
+    stage_branch = f"{plan_branch}-s{stage_argument(row.stage_id)}"
+    # Wrapped to match the hand-written prose elsewhere in `.plan/`; an
+    # unwrapped paragraph reads as machine spill.
     runbook = [
+        f"Driver runbook ({today}): the unattended driver launched "
+        f"{row.stage_id} {attempts} time(s) and it did not reach `done` — the "
+        f"last status read back from `LEDGER.md` was `{last_status}`. Recorded "
+        f"here rather than in `LEDGER.md`, because {row.stage_id}'s own branch "
+        "may already hold unmerged ledger edits.",
         "",
-        f"Driver runbook ({today}): the unattended driver launched this stage "
-        f"{attempts} time(s) and it did not reach `done` — the last status it read "
-        f"back was `{last_status}`. The driver marked the row `blocked` and stopped "
-        "rather than retrying, so nothing here is a failed acceptance check on its "
-        "own; it is a stage that needs a person to look at it.",
-        "",
-        "To unblock: read the unticked Steps checkboxes in this stage's file and any "
-        "handoff note above, then run "
-        f"`/plan-staged-rollout:plan-run {stage_argument(row.stage_id)}` in a fresh "
-        "session with someone at the keyboard. If the stage should go back to the "
-        "driver afterwards, reset this row to `todo` (or `doing` to resume) before "
-        "starting the driver again — it will not pick up a `blocked` row.",
+        f"To unblock: check for an open pull request from `{stage_branch}` "
+        f"(`gh pr list --head {stage_branch}`). If one exists, resolve whatever "
+        "stopped it merging — a permission gate, a failing check — and merge it "
+        "yourself. If none exists, run "
+        f"`/plan-staged-rollout:plan-run {stage_argument(row.stage_id)}` in a "
+        "fresh session with someone at the keyboard, to pick the stage back up "
+        "from its unticked Steps. Either way, once the stage reads `done` in "
+        f"`LEDGER.md`, delete this file's `### {row.stage_id}` section — the "
+        "driver will not retry a stage listed here while its section remains, "
+        "no matter what `LEDGER.md` says.",
     ]
     runbook = [
         "\n".join(textwrap.wrap(part, width=79)) if part else part for part in runbook
@@ -434,19 +471,15 @@ def mark_blocked(plan_dir: Path, row: LedgerRow, attempts: int, last_status: str
         None,
     )
     if start is None:
-        lines.extend(["", f"### {row.stage_id} {row.name}".rstrip(), *runbook])
+        if lines and lines[-1].strip():
+            lines.append("")
+        lines.extend([f"### {row.stage_id} {row.name}".rstrip(), "", *runbook])
     else:
         end = next(
             (i for i in range(start + 1, len(lines)) if lines[i].startswith("### ")),
             len(lines),
         )
-        block = lines[start + 1 : end]
-        # An untouched block is the literal `_(empty)_` placeholder; replace it
-        # rather than leaving the runbook under a claim that there is nothing here.
-        block = [line for line in block if line.strip() != "_(empty)_"]
-        while block and not block[-1].strip():
-            block.pop()
-        lines[start + 1 : end] = block + runbook + [""]
+        lines[start + 1 : end] = ["", *runbook, ""]
 
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
@@ -659,6 +692,12 @@ def drive(
         plan = load_plan(plan_dir)
         statuses = {row.stage_id: row.status for row in plan.ledger}
         statuses.update(simulated)
+        # A stage recorded in BLOCKED.md is never retried, even across a driver
+        # restart, regardless of what its LEDGER.md row still reads - the whole
+        # point of keeping the block out of the ledger is that the row may be
+        # stale until a human resolves the stage branch's own unmerged edit.
+        for stage_id in read_driver_blocked_ids(plan_dir):
+            statuses[stage_id] = "blocked"
         runnable = runnable_set(plan, statuses)
 
         if not runnable:
@@ -684,7 +723,7 @@ def drive(
             verb = "is" if len(open_stages) == 1 else "are"
             message = (
                 f"nothing runnable - {open_list} {verb} blocked or waiting on unmet "
-                "dependencies. See .plan/LEDGER.md."
+                "dependencies. See .plan/LEDGER.md and .plan/BLOCKED.md."
             )
             log(message)
             notify(notify_cmd, "stop", message, open_list, plan_dir)
@@ -758,16 +797,16 @@ def drive(
 
         message = (
             f"{row.stage_id} did not reach `done` in {attempt} attempt(s) (last status "
-            f"`{status}`). Marked `blocked` with a runbook so the driver never loops "
-            "on it."
+            f"`{status}`). Recorded as blocked in .plan/BLOCKED.md with a runbook so "
+            "the driver never retries it."
         )
         log(message)
         if after is not None:
-            mark_blocked(plan_dir, after, attempt, status)
+            record_driver_block(plan_dir, after, attempt, status, branch)
             if args.commit:
-                commit_ledger(root, plan_dir, row.stage_id)
+                commit_driver_block(root, plan_dir, row.stage_id)
             else:
-                log("--no-commit: the blocked row is written but left uncommitted")
+                log("--no-commit: the block note is written but left uncommitted")
         notify(notify_cmd, "blocked", message, row.stage_id, plan_dir)
         return 1
 
@@ -912,7 +951,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         "--no-commit",
         dest="commit",
         action="store_false",
-        help="write the `blocked` row but do not commit or push it",
+        help="write the block note in `.plan/BLOCKED.md` but do not commit or push it",
     )
     parser.set_defaults(commit=True, close=True)
     return parser.parse_args(argv)

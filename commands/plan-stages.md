@@ -96,7 +96,8 @@ Then work through these steps **in order**:
    `PLAN.md`: **branch-per-stage** — `main` → `plan-<slug>` (the plan branch)
    → one `plan-<slug>-s<N>` branch and PR per stage, no exceptions, final PR
    to `main` at closeout. It is the only supported model — do not ask the
-   user to choose. Six frozen semantics: (1) one branch per stage, cut from
+   user to choose. Seven frozen semantics — six here, the seventh (worktree-per-stage)
+   just below: (1) one branch per stage, cut from
    the plan branch; (2) commits are compulsory and incremental — commit at
    logical units as the stage progresses, not once at the end; (3) a stage PR
    into the plan branch is compulsory — the finish protocol creates it, it is

@@ -59,6 +59,19 @@ Work through these steps **in order**:
    unattended, it has no default to fall back on, so report the same way and
    end.
 
+   **`.plan/BLOCKED.md` is part of this gate too.** A stage can reach `done`
+   in `LEDGER.md` with its PR merged, and still leave behind a `### S<N>`
+   section from an earlier mid-stage stop or retry-cap block that was later
+   resolved by hand — nothing clears that section automatically (*Recording a
+   block*, `PLAN.md`). Read the file if it exists: any surviving `### S<N>`
+   section is a gate failure, in both modes, exactly like a pending ledger
+   row. For each one, name the stage and state what its `LEDGER.md` row and
+   stage PR currently say, then tell the operator to delete the section once
+   satisfied the stage is genuinely resolved. **Never delete the section
+   yourself** — clearing it is a deliberate human act by design (*Recording a
+   block*), and unattended closeout has nobody watching to catch a wrong
+   deletion.
+
    **Stage worktrees are part of this gate — one rule, two modes.**
    `git worktree list` must show only the clone plus worktrees whose branch
    matches `plan-<slug>-s*`; an operator's unrelated worktree (any other

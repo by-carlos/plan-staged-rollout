@@ -424,7 +424,10 @@ BLOCKED_HEADER = [
 
 
 def read_driver_blocked_ids(plan_dir: Path) -> set[str]:
-    """Stage ids with a section in `.plan/BLOCKED.md` - see record_driver_block."""
+    """Stage ids with a section in `.plan/BLOCKED.md`, whichever writer put them
+    there - the driver (see record_driver_block) or a stage session that blocked
+    after its stage branch existed. The name is historical; the file is not the
+    driver's alone."""
     path = plan_dir / "BLOCKED.md"
     if not path.exists():
         return set()

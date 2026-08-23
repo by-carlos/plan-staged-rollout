@@ -39,10 +39,13 @@ the weight gate only prompts on the exceptions.
 - `LEDGER.md` — status table + per-stage as-built notes. The tracker that
   changes as you execute; the resume point and cross-session memory.
 - `stage-<N>-<slug>.md` — one small, self-contained stage each.
-- `BLOCKED.md` — only present after an unattended driver ran out of attempts
-  on a stage: the driver's own block record and runbook, kept out of
-  `LEDGER.md` so it never collides with a stage branch's unmerged ledger
-  edits. Delete a stage's section there once that stage is resolved.
+- `BLOCKED.md` — only present once a stage has been blocked outside the
+  ledger: by an unattended driver that ran out of attempts, or by a stage
+  session that blocked after its stage branch existed (`PLAN.md`, *Recording
+  a block*). Either way it is kept out of `LEDGER.md` so it never collides
+  with a stage branch's unmerged ledger edits, and a session's section points
+  at the stage branch and PR that hold the full runbook. Delete a stage's
+  section there once that stage is resolved.
 
 ## Git & worktree model
 

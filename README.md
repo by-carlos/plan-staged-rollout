@@ -515,7 +515,8 @@ driver and a stage session write there**, for the same reason and in the same
 format: the driver when the retry cap is reached, and a session when it blocks
 after its stage branch exists (`PLAN.md`, *Recording a block*). Every driver
 round treats a stage id listed there as blocked and never retries it, even
-across a restart, regardless of what its `LEDGER.md` row still reads. Resolving the stage — merging its PR, or running
+across a restart, regardless of what its `LEDGER.md` row still reads.
+Resolving the stage — merging its PR, or running
 `/plan-run` by hand — does not clear the entry on its own; the file's own
 runbook says to delete that stage's `### S<N>` section once the stage is
 resolved and then start the driver again. After a hand merge the row keeps

@@ -16,7 +16,7 @@ Stage to run: **$ARGUMENTS**
 If `$ARGUMENTS` carries the token **`--unattended`**, this session has nobody
 to answer it — it was launched by an unattended runner, or the user is
 walking away. The token selects **declared default over ask**, never "proceed
-anyway". Strip it before resolving the stage, and honour it in steps 3 and 6
+anyway". Strip it before resolving the stage, and honour it in steps 3, 5 and 6
 below: a `gate: human` stage is never started, and every question the protocol
 would put to a person either has a declared default on `PLAN.md`'s plan flags
 line (`merge`) or becomes `blocked` + runbook (the `staged-rollout` skill,

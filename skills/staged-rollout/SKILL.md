@@ -248,8 +248,9 @@ out as method, not just vocabulary:
   protocol under *Recording a block* — on the plan branch directly when the
   block predates the stage branch, and on the stage branch plus a
   `.plan/BLOCKED.md` section on the plan branch once it exists. That is the
-  single source of truth for the rule; nothing here or in `/plan-run` restates
-  it.
+  single source of truth for the rule. Neither this skill nor `/plan-run`
+  restates it — they only name which side of it a given decision point falls
+  on.
 - **Unattended, a stage question that has no declared default becomes
   `blocked`.** Mark the stage `blocked` with a runbook stating the question
   and what would unblock it, commit that where *Recording a block* says, and

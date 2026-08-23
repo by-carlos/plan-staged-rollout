@@ -87,7 +87,7 @@ elsewhere. See 0.4.0 for the split.
   and exact command per stage, launching nothing. Guardrails: it refuses to run
   on a protected branch (`main`, `master`, `release`, `trunk`, `develop`, or
   the remote default) with no override; a stage that fails to reach `done`
-  within `--max-attempts` (default 2) is written `blocked` with a runbook,
+  within `--max-attempts` (default 2) is recorded as `blocked` with a runbook,
   committed, and never retried; model and effort are printed before every
   launch, with an optional `--max-budget-usd` ceiling passed through to each
   session. It never merges anything itself — stage PRs are merged by their own
@@ -151,10 +151,15 @@ elsewhere. See 0.4.0 for the split.
   sibling file, `.plan/BLOCKED.md`, that the stage branch never edits, so the
   two writers never contend for the same lines; every driver round still
   treats a stage listed there as `blocked` and never retries it, even across a
-  restart, regardless of what its `LEDGER.md` row reads. Verified with a git
-  fixture reproducing #85's exact shape (a stage branch with its own unmerged
-  `LEDGER.md` commit): the old write conflicted on merge as reported, the new
-  one merges clean.
+  restart, regardless of what its `LEDGER.md` row reads. The runbook now also
+  says what happens after a hand merge — the row keeps reading `doing` until a
+  session's preflight records it `done` — and `/plan-run` (step 5) and the
+  template `PLAN.md` (protocol step 0.5) now state that a row the session's
+  own preflight just self-healed is a finished stage, not a redo, so relaunching
+  it unattended no longer risks a spurious `blocked`. The `.plan/README.md`
+  template lists the new file. Verified with a git fixture reproducing #85's
+  exact shape (a stage branch with its own unmerged `LEDGER.md` commit): the
+  old write conflicted on merge as reported, the new one merges clean.
 
 - **A `skipped` stage no longer deadlocks the stages that depend on it** (#87).
   `deps_satisfied()` in `scripts/plan_driver.py` required a dependency to be

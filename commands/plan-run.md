@@ -95,7 +95,12 @@ Work through these steps **in order**:
    block. If it is `done`, confirm with the user before
    redoing anything — a redo follows the protocol's redo rule (a fresh
    `-redo-<K>` branch from the plan branch tip, never the merged stage
-   branch). Otherwise run it fresh.
+   branch). **One exception:** if this session's own preflight (protocol
+   step 0.5) has just recorded this very stage `done` — its PR had been
+   merged remotely and the row was still `doing` — the stage is finished, not
+   a redo and not a resume: go straight to the end announcement. That holds
+   under `--unattended` too, where it is not a hard stop. Otherwise run it
+   fresh.
 
 6. **End announcement.** When you stop, state explicitly:
    - The stage's outcome: **finished**, or `blocked`/`doing` — and if not

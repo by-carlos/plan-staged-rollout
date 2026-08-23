@@ -403,7 +403,7 @@ BLOCKED_HEADER = [
         "round treats every stage id listed below as `blocked` - never retried - "
         "even though its `LEDGER.md` row may still read `todo` or `doing`. "
         "Resolving a stage does not clear its section automatically: delete it "
-        "once the stage reaches `done`.",
+        "once the stage is resolved (its PR merged, or its row `done`).",
         width=79,
     ),
 ]
@@ -452,13 +452,17 @@ def record_driver_block(
         f"To unblock: check for an open pull request from `{stage_branch}` "
         f"(`gh pr list --head {stage_branch}`). If one exists, resolve whatever "
         "stopped it merging — a permission gate, a failing check — and merge it "
-        "yourself. If none exists, run "
-        f"`/plan-staged-rollout:plan-run {stage_argument(row.stage_id)}` in a "
-        "fresh session with someone at the keyboard, to pick the stage back up "
-        "from its unticked Steps. Either way, once the stage reads `done` in "
-        f"`LEDGER.md`, delete this file's `### {row.stage_id}` section — the "
-        "driver will not retry a stage listed here while its section remains, "
-        "no matter what `LEDGER.md` says.",
+        "yourself. The row keeps reading `doing` after that merge: the `done` "
+        "write belongs to the finish protocol the stage session never reached, "
+        "and the next session's preflight records it (`PLAN.md`, protocol step "
+        "0.5) — do not wait for it to change on its own. If no pull request "
+        f"exists, run `/plan-staged-rollout:plan-run {stage_argument(row.stage_id)}` "
+        "in a fresh session with someone at the keyboard, to pick the stage "
+        "back up from its unticked Steps. Either way, once the stage is resolved "
+        "— its PR merged, or its row `done` in `LEDGER.md` — delete this file's "
+        f"`### {row.stage_id}` section and start the driver again; it will not "
+        "retry a stage listed here while its section remains, no matter what "
+        "`LEDGER.md` says.",
     ]
     runbook = [
         "\n".join(textwrap.wrap(part, width=79)) if part else part for part in runbook

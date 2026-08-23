@@ -257,6 +257,16 @@ structural fact and four rules about timing.
       branch is already merged or gone is an **orphan** from an interrupted
       teardown — report its path and offer removal; never remove it unasked,
       and never assume it is empty.
+
+      Finally, read `.plan/BLOCKED.md` if it exists. A `### S<N>` section there
+      records a stage a previous session or an unattended runner marked
+      `blocked` while its `LEDGER.md` row still reads `todo` or `doing` — so
+      the row alone will not tell you. List each one in the preflight report,
+      and where the section belongs to **this session's own stage**, state what
+      it was waiting on before starting, so the stage is not walked straight
+      back into the same gate. Relaunching by hand is itself the operator's
+      answer, so this does not stop the session; deleting the section is theirs
+      to do, not yours (*Recording a block*, below).
    6. **Report, don't repair:** on anything preflight can't fast-forward or
       reconcile, stop with an accurate report of the state and what would fix
       it — no auto-stash, no reset, no branch deletion, no `git worktree
@@ -282,8 +292,9 @@ structural fact and four rules about timing.
    and nothing waits for an answer (see the `staged-rollout` skill,
    *Unattended mode*, for the full classification). Nothing in this step has a
    declared default, so a lighter-than-recommended model or an unrecognised
-   tier marks the row `blocked` with the mismatch as the runbook, commits,
-   and stops.
+   tier marks the row `blocked` with the mismatch as the runbook, commits it
+   per *Recording a block* below — this step runs before step 4, so that is a
+   direct commit on the plan branch — and stops.
 3. **Dependency gate:** for every `depends` stage, confirm it is `done` or
    `skipped` in `LEDGER.md` **AND its stage branch/PR is merged into the plan
    branch** (`git fetch` first — the merge may be remote and not yet local).
@@ -345,7 +356,9 @@ structural fact and four rules about timing.
       result — but the status stays `doing` here. `done` is recorded only
       after the PR merges (step 5 below), so a `done` row is always visible
       from a synced plan branch. Detail goes in the notes block, never the
-      table.
+      table. A stage stopping `blocked` instead of finishing never reaches
+      step 5 at all — *Recording a block* below says where its row and runbook
+      are committed, and it still opens its PR at step 4.
    3. If a decision changed or was added, amend **Frozen decisions in this
       file** — nowhere else.
    4. Commit on the stage branch throughout the stage at logical units
@@ -371,7 +384,9 @@ structural fact and four rules about timing.
       protection rule on the plan branch, means the merge did not happen this
       session: leave the row `doing`, report the refusal and why, and end;
       the next preflight (step 0.5) finishes the bookkeeping once someone
-      merges it. `merge` never applies to the plan→main PR.
+      merges it. `merge` never applies to the plan→main PR, and it never
+      reaches a stage that is stopping `blocked` — that PR is opened and left
+      for a person (*Recording a block* below).
       **Merge order with a sibling in flight:** parallel stage PRs merge one
       at a time, first come first served — the plan branch is the
       serialization point, so there is no queue to coordinate. Before
@@ -445,3 +460,56 @@ structural fact and four rules about timing.
       per fresh session**. If it is empty, say which it is — every stage
       `done`/`skipped` (ready for closeout) or stalled on `blocked` rows and
       unmet dependencies. Then stop.
+
+### Recording a block (wherever it happens)
+
+A `blocked` record is only worth writing if the next reader — a person, or an
+unattended runner — can find it **without waiting for a merge**. Where the
+session commits it depends on one thing and nothing else: whether this stage's
+branch exists yet.
+
+- **Before the stage branch exists** — preflight, the weight check (step 2),
+  the `gate: human` backstop, the dependency gate (step 3). This session is in
+  the clone, on the plan branch, and no stage branch can be holding unmerged
+  edits to this stage's row. Set the row `blocked` in `LEDGER.md`, write the
+  runbook in its notes block, and commit that **directly on the plan branch,
+  then push** — the same write as the `done` edit of finish step 5, with the
+  same race handling: edit after the fast-forward, touch only your own row,
+  replay on a rejected push, never force-push.
+- **After the stage branch exists** — any block from step 4 onwards, including
+  a mid-stage question the frozen decisions don't settle. The row and its notes
+  may already carry this stage's own committed evidence on the stage branch, so
+  the plan branch must not be edited into conflict with it. Two writes, in this
+  order:
+  1. **In the worktree, on the stage branch:** set the row `blocked`, write the
+     full runbook in the stage's notes block, commit, push, and **open the
+     stage PR** into `plan-<slug>` (compulsory at finish step 4 in every case)
+     so the runbook is reviewable there. Never merge it — a blocked stage is
+     not a finished one, and `merge: auto` does not reach it.
+  2. **In the clone, on the plan branch:** append a `### S<N>` section to
+     `.plan/BLOCKED.md` — **never** the ledger row — carrying one line on what
+     is being waited for, the stage branch name, and the stage PR's URL. Commit
+     and push it. Point at the PR for the detail rather than restating the
+     runbook: a copy is what drifts.
+
+  Leave the plan branch's ledger row reading `doing`. It becomes `blocked`
+  there only once the stage PR is merged, and that is a person's call.
+
+**Not every unattended stop is a block.** A stage that did its work and stopped
+only because `merge: manual` withheld the merge — or because a required check
+was red — is not `blocked`: it leaves the row `doing` with its PR open, exactly
+as finish step 4 says, and writes nothing here. This record is for a question
+or a gate the stage cannot get past at all.
+
+**Why the sibling file and not the row.** `.plan/BLOCKED.md` is the one file no
+stage branch ever edits, so a write to it on the plan branch cannot contend
+with the stage branch's own ledger edits. Writing the block into `LEDGER.md` on
+the plan branch instead would diverge from the stage branch's unmerged commit
+and leave that stage's own PR unmergeable — the runbook would be naming a merge
+its own write had just made impossible.
+
+**Both readers see it.** Preflight step 0.5 reads `.plan/BLOCKED.md` alongside
+the ledger, and an unattended runner treats any stage id with a `### S<N>`
+section there as `blocked` and never retries it, whatever the `LEDGER.md` row
+still reads. Nothing clears a section automatically: delete that stage's
+section by hand once the stage is resolved — its PR merged, or its row `done`.

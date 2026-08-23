@@ -184,7 +184,7 @@ The real friction of a multi-day rollout isn't typing a long command — it's
 that a fresh session doesn't know a rollout exists. A `SessionStart` hook
 closes that gap: when the repo has a `.plan/` directory, every new session
 starts already knowing every runnable stage — any `doing` stage to resume, plus
-every `todo` whose `depends` are all `done` — with each stage's recommended
+every `todo` whose `depends` are all `done` or `skipped` — with each stage's recommended
 model/effort from the stage index and its exact `/plan-run` command. When more
 than one stage is runnable it says so, so a fan-out is visible from the first
 line of the session.
@@ -382,7 +382,7 @@ work — and don't skimp on the hard parts:
 
 | Flag | Values | Meaning |
 |---|---|---|
-| `depends` | stage id(s) or `—` | prerequisites that must be `done` first |
+| `depends` | stage id(s) or `—` | prerequisites that must be `done` or `skipped` first |
 | `mode` | `direct` \| `brainstorm` | whether the stage needs a design pass first |
 | `exec` | `inline` \| `subagent(<model>)` | where the implementation churn lives |
 | `model` / `effort` | launch hints | recommended session weight; checked, not faked |

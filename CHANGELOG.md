@@ -10,6 +10,8 @@ elsewhere. See 0.4.0 for the split.
 
 ## [0.6.0] - 2026-08-23
 
+**Codename:** Frenacho AFK
+
 ### Added
 
 - **The protocol now says where a stage session commits its own `blocked` row**

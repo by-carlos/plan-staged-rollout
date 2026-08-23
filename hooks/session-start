@@ -143,8 +143,9 @@ index_pos_of() {
 }
 
 # A Depends cell is satisfied when empty/"—" or every listed stage id is
-# `done` in the ledger. Anything unrecognized counts as NOT satisfied — the
-# nudge must never claim a stage is runnable on a guess.
+# `done` or `skipped` in the ledger — a skip is a settled outcome, not an
+# unmet one, so it must not deadlock a dependent. Anything unrecognized counts
+# as NOT satisfied — the nudge must never claim a stage is runnable on a guess.
 deps_satisfied() {
     local deps d dep_status
     deps="$(trim "${1//,/ }")"
@@ -157,7 +158,10 @@ deps_satisfied() {
             *) return 1 ;;
         esac
         dep_status="$(status_of "$d")" || return 1
-        [ "$dep_status" = "done" ] || return 1
+        case "$dep_status" in
+            done|skipped) ;;
+            *) return 1 ;;
+        esac
     done
     return 0
 }
@@ -195,7 +199,8 @@ main() {
 
     # Runnable set: every `doing` stage (resumable) plus every `todo` stage
     # whose depends (read from the PLAN.md stage index — a stage missing from
-    # that index is invisible to this logic, per PLAN.md) are all `done`.
+    # that index is invisible to this logic, per PLAN.md) are all `done` or
+    # `skipped`.
     # Reported in FULL, never truncated to the first: when the set holds more
     # than one stage the graph fans out there, and those stages can be run
     # concurrently, one fresh session each.

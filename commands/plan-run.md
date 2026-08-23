@@ -20,7 +20,8 @@ anyway". Strip it before resolving the stage, and honour it in steps 3 and 6
 below: a `gate: human` stage is never started, and every question the protocol
 would put to a person either has a declared default on `PLAN.md`'s plan flags
 line (`merge`) or becomes `blocked` + runbook (the `staged-rollout` skill,
-*Unattended mode*, classifies each one). Without the token, nothing changes —
+*Unattended mode*, classifies each one; `PLAN.md`'s *Recording a block* says
+where that runbook is committed). Without the token, nothing changes —
 every gate and offer below works exactly as it always has.
 
 Work through these steps **in order**:
@@ -79,7 +80,9 @@ Work through these steps **in order**:
    this is the backstop, not the mechanism. For a `gate: auto` stage run
    unattended, the weight check's continue/abort offer and the tier question
    have no one to answer them: mark the row `blocked` with the mismatch as
-   the runbook, commit it, and stop. Without `--unattended`, `gate` is
+   the runbook, and commit it per `PLAN.md`'s *Recording a block* — this step
+   runs before the stage branch exists, so that is a direct commit on the plan
+   branch, pushed — then stop. Without `--unattended`, `gate` is
    announced and nothing more — the person at the keyboard *is* the gate.
 
 4. **Dependency gate (ergonomic surfacing of the protocol's rule).** Apply
@@ -87,7 +90,12 @@ Work through these steps **in order**:
    prerequisite is not satisfied, stop and say exactly which one and why — do
    not start the stage.
 
-5. **Resume support.** Check the stage's ledger status in `.plan/LEDGER.md`. If
+5. **Resume support.** Check the stage's ledger status in `.plan/LEDGER.md` —
+   and, because a mid-stage block never changes that row on the plan branch,
+   the `### S<N>` sections of `.plan/BLOCKED.md` too (preflight step 0.5 reads
+   both). A `doing` row with a section there is a stage that stopped at a gate:
+   its runbook is on the stage branch and its PR, so read those before picking
+   the stage back up, and leave the section for the operator to delete. If
    it is already `doing`, this is a resume: enter that stage's existing
    worktree (preflight step 0.4 names it — never check the stage branch out
    in the clone), then pick up from the **unticked** checkboxes in the stage
@@ -95,7 +103,11 @@ Work through these steps **in order**:
    block. If it is `done`, confirm with the user before
    redoing anything — a redo follows the protocol's redo rule (a fresh
    `-redo-<K>` branch from the plan branch tip, never the merged stage
-   branch). **One exception:** if this session's own preflight (protocol
+   branch). Under `--unattended` that confirmation has no one to give it, so
+   the redo is a hard stop: mark the row `blocked` with the redo request as
+   the runbook and commit it per *Recording a block* — the redo branch does
+   not exist yet, so that is a direct commit on the plan branch — then stop.
+   **One exception:** if this session's own preflight (protocol
    step 0.5) has just recorded this very stage `done` — its PR had been
    merged remotely and the row was still `doing` — the stage is finished, not
    a redo and not a resume: go straight to the end announcement. That holds
@@ -105,6 +117,10 @@ Work through these steps **in order**:
 6. **End announcement.** When you stop, state explicitly:
    - The stage's outcome: **finished**, or `blocked`/`doing` — and if not
      finished, exactly what remains (which checkboxes, what it's waiting on).
+     For a `blocked` outcome, name **where the record was committed** — the
+     plan branch's ledger row, or the stage branch plus the plan branch's
+     `.plan/BLOCKED.md` section and the stage PR — so whoever reads this knows
+     which branch to look at.
    - The **complete runnable set**: *every* `todo` stage whose `depends` are
      now all `done` or `skipped` — derived from the stage index's `Depends`
      column, per `PLAN.md`'s *Runnable set & waves*. Never announce only the

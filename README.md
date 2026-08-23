@@ -179,6 +179,16 @@ external gate — the stage becomes a runbook with exact steps for you) and
 `skipped` (decided against, one-line reason recorded). Partial completion is a
 normal, resumable state, not a failure.
 
+**Where a `blocked` record lands** depends on whether the stage's branch exists
+yet, and the plan's own `PLAN.md` states the rule (*Operating protocol →
+Recording a block*). A block that fires before the branch exists — the weight
+check, a `gate: human` backstop, a refused redo — is committed straight onto
+the plan branch, so it is readable the moment it happens. A block that fires
+mid-stage lands on the stage branch, where its runbook rides the stage PR, and
+is announced on the plan branch through a `### S<N>` section in
+`.plan/BLOCKED.md`. That second write is what makes a mid-stage block visible
+without waiting for a merge.
+
 ### Session-start nudge
 
 The real friction of a multi-day rollout isn't typing a long command — it's
@@ -482,7 +492,8 @@ without launching anything:
 | Stop | What the driver does |
 |---|---|
 | `gate: human` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a person |
-| a stage comes back `blocked` | reports it and stops; the session's own runbook is in the ledger, and the driver never retries a deliberate block |
+| a stage comes back `blocked` before its branch existed | reports it and stops; the session committed its own runbook to `LEDGER.md` on the plan branch, and the driver never retries a deliberate block |
+| a stage blocks mid-stage | same stop, read from the `### S<N>` section the session wrote to `.plan/BLOCKED.md` on the plan branch; the full runbook is on the stage branch and its PR, and the `LEDGER.md` row still reads `doing` until someone merges it |
 | a stage does not reach `done` within `--max-attempts` (default 2) | records the stage as blocked, with a runbook, in `.plan/BLOCKED.md` — never in `LEDGER.md`, which the stage's own branch may still be editing unmerged (see below) — commits it on the plan branch (`--no-commit` writes without committing), and stops |
 | nothing runnable, stages still open | reports which stages are waiting and stops |
 | every stage `done`/`skipped` | launches [`/plan-close --unattended`](commands/plan-close.md) as one more session, then reports the plan→main PR's URL and exits 0 |
@@ -491,17 +502,20 @@ without launching anything:
 Exit code is `0` for a completed plan, `1` for any stop that wants a person,
 and `2` for a usage or guardrail refusal.
 
-**`.plan/BLOCKED.md` — the driver's own block record.** A stage that ran out
-of attempts has usually already committed its own edits to `LEDGER.md`'s row
-and notes, on its own branch — real acceptance evidence, or a PR that opened
-but couldn't merge. Writing the driver's block into those same lines on the
-plan branch would diverge from that unmerged commit, leaving the stage's own
-pull request unmergeable — the runbook would then be naming a merge its own
-write had just made impossible. `.plan/BLOCKED.md` is a sibling file the
-stage branch never edits, so the driver's write and the stage's write never
-contend for the same lines. Every driver round treats a stage id listed there
-as blocked and never retries it, even across a restart, regardless of what its
-`LEDGER.md` row still reads. Resolving the stage — merging its PR, or running
+**`.plan/BLOCKED.md` — the block record that isn't the ledger.** A stage that
+ran out of attempts, or that stopped itself at a mid-stage gate, has usually
+already committed its own edits to `LEDGER.md`'s row and notes, on its own
+branch — real acceptance evidence, or a PR that opened but couldn't merge.
+Writing a block into those same lines on the plan branch would diverge from
+that unmerged commit, leaving the stage's own pull request unmergeable — the
+runbook would then be naming a merge its own write had just made impossible.
+`.plan/BLOCKED.md` is a sibling file the stage branch never edits, so a write
+to it and the stage's own write never contend for the same lines. **Both the
+driver and a stage session write there**, for the same reason and in the same
+format: the driver when the retry cap is reached, and a session when it blocks
+after its stage branch exists (`PLAN.md`, *Recording a block*). Every driver
+round treats a stage id listed there as blocked and never retries it, even
+across a restart, regardless of what its `LEDGER.md` row still reads. Resolving the stage — merging its PR, or running
 `/plan-run` by hand — does not clear the entry on its own; the file's own
 runbook says to delete that stage's `### S<N>` section once the stage is
 resolved and then start the driver again. After a hand merge the row keeps
@@ -618,8 +632,10 @@ Three consequences worth knowing before the first unattended run:
   bullet), merge it yourself, restart the driver. That costs you one click per
   stage; the alternative costs you every safety rule you have, per session.
 - **`merge: manual` means no stage ever reaches `done` unattended.** Offering a
-  merge is asking a person, and unattended mode turns every would-be question
-  into `blocked`. The driver says so on startup when it reads `merge: manual`.
+  merge is asking a person, and unattended mode never waits for an answer. The
+  stage is not marked `blocked` for it — it ends at `doing` with its PR open,
+  which is why the driver's retry cap is what eventually stops the run. The
+  driver says so on startup when it reads `merge: manual`.
   A plan you intend to drive wants `merge: auto` on its plan-flags line.
 - **`bypassPermissions` bypasses less than the name suggests.** Measured: a
   `PreToolUse` hook still runs headless and its `deny` is still honoured under

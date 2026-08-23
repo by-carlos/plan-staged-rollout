@@ -243,10 +243,18 @@ out as method, not just vocabulary:
   only a human or an external system can clear (a GUI-only action, a credential,
   an approval) is best written as a **runbook**: produce exact step-by-step
   instructions plus the verification check, mark the stage `blocked`/`doing`, and
-  let the human complete it. Never fake progress past a gate.
+  let the human complete it. Never fake progress past a gate. **Where that
+  record is committed** is settled once, in the template `PLAN.md`'s operating
+  protocol under *Recording a block* — on the plan branch directly when the
+  block predates the stage branch, and on the stage branch plus a
+  `.plan/BLOCKED.md` section on the plan branch once it exists. That is the
+  single source of truth for the rule. Neither this skill nor `/plan-run`
+  restates it — they only name which side of it a given decision point falls
+  on.
 - **Unattended, a stage question that has no declared default becomes
   `blocked`.** Mark the stage `blocked` with a runbook stating the question
-  and what would unblock it, commit that, and stop. This is the existing
+  and what would unblock it, commit that where *Recording a block* says, and
+  stop. This is the existing
   state and the existing mechanism, not new machinery; the only rule
   unattended mode adds is that waiting on an answer is not an option, because
   there is nobody to give one. The human answers later by amending the frozen
@@ -289,9 +297,11 @@ two kinds:
   recommendation.
 - **Hard stop.** There is no defensible default, so an unattended session
   does not invent one. It records the question where the next session will
-  find it — the stage row marked `blocked` with a runbook, or, where no stage
-  row owns the question, a report naming the exact state and the command that
-  clears it — and ends. Nothing is faked past a gate and nothing is retried.
+  find it — the stage row marked `blocked` with a runbook, committed where
+  *Recording a block* says so it is readable without waiting for a merge, or,
+  where no stage row owns the question, a report naming the exact state and the
+  command that clears it — and ends. Nothing is faked past a gate and nothing
+  is retried.
 
 | Decision point | Interactive | Unattended |
 |---|---|---|
@@ -304,6 +314,14 @@ two kinds:
 | A stage worktree still present at closeout | offered for removal when its branch is merged and nothing is unpushed | removed on that same condition; anything else is a **hard stop** |
 | Deleting `.plan/` at closeout | asked | `plan-dir` flag |
 | Merging the plan→main PR | the PR is proposed; you merge it | the PR is opened; you merge it — **no session merges it in any mode**, no flag, no override |
+
+Every **`blocked` + runbook** cell above means the record *Recording a block*
+defines. The weight-check and redo hard stops fire before the stage branch
+exists, so they commit straight onto the plan branch; a mid-stage question
+fires after it does, so it lands on the stage branch and is announced on the
+plan branch through `.plan/BLOCKED.md`. The distinction matters more unattended
+than anywhere else: a runbook left on an unmerged branch with nothing on the
+plan branch pointing at it is one the next pass never reads.
 
 **What no mode loosens.** The plan→main PR is opened by closeout and merged
 by a person, always. A `gate: human` stage is never launched unattended. A

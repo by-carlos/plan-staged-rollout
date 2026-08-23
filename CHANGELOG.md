@@ -12,6 +12,30 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **The protocol now says where a stage session commits its own `blocked` row**
+  (#98). It had always said to record the block and stop, never on which branch,
+  and under worktree-per-stage that gap made the record invisible: a mid-stage
+  block landed on the stage branch, so the driver re-read `doing` from the plan
+  branch, relaunched a stage that had deliberately stopped, burned its retry cap,
+  and only then wrote its own generic runbook — while the session's specific one
+  sat unread on an unmerged branch. The rule is now stated once, in the template
+  `PLAN.md`'s operating protocol under **Recording a block**, and referenced (not
+  restated) from the skill, `/plan-run`, `LEDGER.md`, the README and the worked
+  example. It turns on one thing: whether the stage branch exists yet. Before it
+  does — the weight check, the `gate: human` backstop, a refused redo — the
+  `blocked` row and runbook are committed straight onto the plan branch. After it
+  does, they go on the stage branch and ride its PR, and the block is announced
+  on the plan branch through a `### S<N>` section in `.plan/BLOCKED.md`, the
+  sibling file from #89 that no stage branch ever edits. A stage that merely
+  stopped at a withheld merge is explicitly **not** a block.
+
+- **Preflight and the session-start hook read `.plan/BLOCKED.md`** (#98). A
+  mid-stage block leaves the plan branch's ledger row reading `doing`, so the row
+  alone cannot show it. Preflight step 0.5 now reports any `### S<N>` section
+  alongside its ledger reconciliation, and the hook tells a fresh session to read
+  the file before offering a stage as an ordinary resume. Neither deletes a
+  section — that stays the operator's deliberate act.
+
 - **One unattended mode, honoured at every decision point** (#86). `--unattended`
   is now a single contract across the whole plan lifecycle rather than a property
   of `/plan-run` alone. Every question the protocol can put to a person is
@@ -123,6 +147,17 @@ elsewhere. See 0.4.0 for the split.
   session-start hook's positional parsing of the index is unaffected.
 
 ### Changed
+
+- **The driver reports a session's own mid-stage block instead of shrugging at
+  it** (#98). A session that writes its own `### S<N>` section to
+  `.plan/BLOCKED.md` is now recognised the moment its session exits: the driver
+  names the block, the stage branch and its PR, and stops. Previously that stage
+  simply vanished from the next round's runnable set and the run ended on the
+  generic "nothing runnable" message. No retry behaviour changed — the round-start
+  override from #89 already kept a listed stage from being relaunched, and the
+  retry cap is untouched. `.plan/BLOCKED.md`'s own header now says both the driver
+  and a stage session write there; existing files keep the header they were
+  created with.
 
 - **Closeout clears finished stage worktrees instead of refusing to close over
   them** (#86). One rule, two modes: a stage worktree whose branch is merged with

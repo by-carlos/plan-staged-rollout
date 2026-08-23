@@ -37,7 +37,12 @@ _(empty)_
   doing     — tick the completed Steps checkboxes in the stage file; write a
               handoff note here (what's left, where to resume).
   blocked   — record exactly what human/external action unblocks it, as a
-              runbook the human can follow; no faked progress.
+              runbook the human can follow; no faked progress. Where that row
+              and runbook get committed depends on whether the stage branch
+              exists yet — see PLAN.md, Operating protocol, "Recording a
+              block". A mid-stage block lands on the stage branch, so this
+              file's copy on the plan branch keeps reading `doing` and the
+              block is recorded in BLOCKED.md instead.
   skipped   — one-line reason; if this stage owned acceptance/verification
               work nothing else covers, say so here too, so SF sees it.
   follow-up — a shortcut or scope-creep item spotted here that became (or

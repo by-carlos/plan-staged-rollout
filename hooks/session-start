@@ -246,8 +246,20 @@ Surface all of them to the user and wait for their go-ahead — do NOT auto-run 
         if [ "$open" -eq 0 ]; then
             context="**Active staged rollout in this repo** (\`.plan/\` present) — every stage is \`done\` or \`skipped\`, so the plan is ready for closeout. Offer to close it out via \`/plan-staged-rollout:plan-close\`, but do NOT auto-run it: surface this to the user and wait for their go-ahead."
         else
-            context="**Active staged rollout in this repo** (\`.plan/\` present), but no stage is currently runnable — the remaining stages are \`blocked\` or waiting on unmet dependencies. Surface this to the user and point them at \`.plan/LEDGER.md\` — and at \`.plan/BLOCKED.md\` if it exists, which is where an unattended driver records a stage it gave up on — for the details. Do not run any stage."
+            context="**Active staged rollout in this repo** (\`.plan/\` present), but no stage is currently runnable — the remaining stages are \`blocked\` or waiting on unmet dependencies. Surface this to the user and point them at \`.plan/LEDGER.md\` — and at \`.plan/BLOCKED.md\` if it exists, which is where an unattended driver, or a stage session that blocked after its stage branch existed, records a block that cannot go in the ledger — for the details. Do not run any stage."
         fi
+    fi
+
+    # A stage that blocked mid-stage left its `blocked` row on its own unmerged
+    # stage branch, so the LEDGER.md copy read above still says `doing` and the
+    # runnable set just built cannot know. `.plan/BLOCKED.md` is where that
+    # block is announced on the plan branch (PLAN.md, "Recording a block"), so
+    # say it exists rather than letting a stage be offered as an ordinary
+    # resume.
+    if [ -f "$plan_dir/BLOCKED.md" ]; then
+        context="$context
+
+\`.plan/BLOCKED.md\` exists: read it before offering anything above. A \`### S<N>\` section there means that stage is blocked even where \`LEDGER.md\` still reads \`todo\` or \`doing\` — say what it is waiting on, and do not present it as an ordinary resume. The section is deleted by the user once the stage is resolved, never automatically."
     fi
 
     local escaped

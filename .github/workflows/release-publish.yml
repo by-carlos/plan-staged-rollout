@@ -29,17 +29,20 @@ jobs:
           fi
 
       - name: extract this version's changelog section
+        id: notes
         if: steps.check.outputs.changed == 'true'
         run: >
           python3 scripts/changelog_section.py
           --version "${{ steps.check.outputs.version }}"
           --output-file release-notes.md
+          --github-output "$GITHUB_OUTPUT"
 
       - name: tag, cut the release, and fast-forward release
         if: steps.check.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.RELEASE_TOKEN }}
           VERSION: ${{ steps.check.outputs.version }}
+          CODENAME: ${{ steps.notes.outputs.codename }}
         run: |
           set -euo pipefail
 
@@ -50,9 +53,14 @@ jobs:
           git tag -a "$TAG" -m "$TAG"
           git push origin "$TAG"
 
+          TITLE="$TAG"
+          if [ -n "$CODENAME" ]; then
+            TITLE="$TAG ($CODENAME)"
+          fi
+
           gh release create "$TAG" \
             --repo "${{ github.repository }}" \
-            --title "$TAG" \
+            --title "$TITLE" \
             --notes-file release-notes.md
 
           # Tags here are annotated: pushing "$TAG:release" directly points a

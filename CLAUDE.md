@@ -80,6 +80,13 @@ No local pre-commit hook — dev environments vary, so this is CI-only by design
   under an `## [Unreleased]` heading as changes land. This records *what* changed
   without declaring a version. Never write a dated/versioned heading or bump
   `plugin.json` mid-batch — that recreates version drift.
+- **Optional codename, hand-added per release.** After `release-prepare.yml` dates
+  a section, a `**Codename:** <name>` line may be added as the first line of that
+  section's body, before merging the release PR. `release-publish.yml` strips it
+  from the release notes and folds it into the release title as `vX.Y.Z (<name>)`.
+  This never touches the tag, the heading, or `plugin.json` — those stay plain
+  semver — and it's a one-off per release, not something `release-prepare.yml`
+  prompts for.
 - **A release is one atomic change, and GitHub Actions performs it.** Don't do
   these steps by hand — the sequence was easy to half-complete, most
   damagingly by moving `release` without bumping the version.

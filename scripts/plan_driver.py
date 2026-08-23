@@ -256,12 +256,14 @@ def load_plan(plan_dir: Path) -> Plan:
 
 
 def deps_satisfied(depends: list[str], statuses: dict[str, str]) -> bool:
-    """Every listed dependency is `done`. Anything unrecognized counts as NOT
-    satisfied - the driver must never launch a stage on a guess."""
+    """Every listed dependency is `done` or `skipped` - a skip is a settled
+    outcome (decided against), not an unmet one, so it must not deadlock a
+    dependent. Anything unrecognized counts as NOT satisfied - the driver must
+    never launch a stage on a guess."""
     for dep in depends:
         if not STAGE_ID_RE.match(dep):
             return False
-        if statuses.get(dep) != "done":
+        if statuses.get(dep) not in ("done", "skipped"):
             return False
     return True
 
@@ -678,13 +680,14 @@ def drive(
                 log(message)
                 notify(notify_cmd, "complete", message, "", plan_dir)
                 return 0
+            open_list = ", ".join(sorted(open_stages))
+            verb = "is" if len(open_stages) == 1 else "are"
             message = (
-                "nothing runnable - "
-                f"{', '.join(sorted(open_stages))} are blocked or waiting on unmet "
+                f"nothing runnable - {open_list} {verb} blocked or waiting on unmet "
                 "dependencies. See .plan/LEDGER.md."
             )
             log(message)
-            notify(notify_cmd, "stop", message, "", plan_dir)
+            notify(notify_cmd, "stop", message, open_list, plan_dir)
             return 1
 
         if len(runnable) > 1:

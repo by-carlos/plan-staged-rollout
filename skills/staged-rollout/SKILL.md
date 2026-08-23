@@ -182,7 +182,8 @@ at once. Three rules keep that an advantage rather than a source of confusion:
   second copy of the graph, and principle 1 exists precisely because copies
   drift.
 - **Report the set; don't launch it.** The deliverable is telling the operator
-  what *can* overlap — every `todo` stage whose `depends` are all `done`, each
+  what *can* overlap — every `todo` stage whose `depends` are all `done` or
+  `skipped`, each
   with its command, recommended model/effort and `gate`. Starting them is the
   operator's action, one session per stage — or a driver's, running outside
   any session and honouring `gate` — because a session cannot spawn
@@ -253,7 +254,12 @@ out as method, not just vocabulary:
   declared default and which are hard stops is the table in *Unattended
   mode*, below.
 - **`skipped`** records a one-line reason for work decided against, so the gap is
-  a decision, not a silent hole.
+  a decision, not a silent hole. It satisfies a dependent's `depends` exactly
+  like `done` — the runnable set never deadlocks on a stage that was
+  deliberately dropped. If the skipped stage owned acceptance or verification
+  work (a check nothing else covers), say so in the same note: that coverage
+  is now unowned, and the final review stage (`SF`) is where it gets
+  reassigned or explicitly accepted as a gap — never silently lost.
 
 Track known gaps and latent hazards explicitly in the ledger notes (things not
 under version control, footguns, "this script would delete X if run") — writing

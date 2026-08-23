@@ -385,7 +385,7 @@ def commit_driver_block(root: Path, plan_dir: Path, stage_id: str) -> None:
 
 
 # --------------------------------------------------------------------------
-# Driver block file - deliberately NOT `.plan/LEDGER.md`
+# Block file - deliberately NOT `.plan/LEDGER.md`
 # --------------------------------------------------------------------------
 #
 # By the time the driver hits the retry cap, the stage has usually already
@@ -396,17 +396,28 @@ def commit_driver_block(root: Path, plan_dir: Path, stage_id: str) -> None:
 # unmergeable, which is exactly the failure this file exists to avoid (#89).
 # `.plan/BLOCKED.md` is a sibling the stage branch never edits, so the two
 # writers never contend for the same lines.
+#
+# The driver is not the only writer. A stage session that blocks *after* its
+# stage branch exists writes its own `### S<N>` section here, on the plan
+# branch, while the full runbook rides its stage branch and PR - the protocol
+# rule is `PLAN.md`, Operating protocol, "Recording a block" (#98). Both
+# writers use the same heading format, and `read_driver_blocked_ids` does not
+# distinguish them: a listed stage is blocked, whoever listed it.
 
 BLOCKED_HEADER = [
-    "# Driver blocks",
+    "# Blocked stages",
     "",
     *textwrap.wrap(
-        "Stages the unattended driver could not land in `LEDGER.md`, because the "
-        "stage's own branch might already hold unmerged edits to it. A driver "
-        "round treats every stage id listed below as `blocked` - never retried - "
-        "even though its `LEDGER.md` row may still read `todo` or `doing`. "
-        "Resolving a stage does not clear its section automatically: delete it "
-        "once the stage is resolved (its PR merged, or its row `done`).",
+        "Stages blocked outside `LEDGER.md`, because the stage's own branch may "
+        "already hold unmerged edits to it. Written either by the unattended "
+        "driver, when a stage runs out of attempts, or by a stage session that "
+        "blocked after its stage branch existed - in that case the full runbook "
+        "is on that branch and its pull request, and this section points at it. "
+        "A driver round treats every stage id listed below as `blocked` - never "
+        "retried - even though its `LEDGER.md` row may still read `todo` or "
+        "`doing`. Resolving a stage does not clear its section automatically: "
+        "delete it once the stage is resolved (its PR merged, or its row "
+        "`done`).",
         width=79,
     ),
 ]
@@ -812,11 +823,31 @@ def drive(
             log(f"{row.stage_id} was skipped by its session; carrying on")
             continue
 
+        # A block the session recorded itself, mid-stage. Its LEDGER.md row on
+        # the plan branch still reads `doing` - the `blocked` row and runbook
+        # are on the stage branch, unmerged - so this section is the only
+        # signal here (`PLAN.md`, "Recording a block"). Checked before the row
+        # below, and never reachable with a stale entry: the round-start
+        # override already excludes a listed stage from the runnable set, so a
+        # stage that got launched cannot have been listed before it ran.
+        if row.stage_id in read_driver_blocked_ids(plan_dir):
+            message = (
+                f"{row.stage_id} recorded its own block in .plan/BLOCKED.md - its "
+                "session hit something only a person or an external system can clear "
+                "after its stage branch existed, so the `blocked` row and the full "
+                "runbook are on that branch and its pull request while the LEDGER.md "
+                f"row here still reads `{status}`. Not retried."
+            )
+            log(message)
+            notify(notify_cmd, "blocked", message, row.stage_id, plan_dir)
+            return 1
+
         if status == "blocked":
             message = (
                 f"{row.stage_id} came back `blocked` - its session hit something only a "
-                "person or an external system can clear. The runbook is in "
-                ".plan/LEDGER.md. Not retried."
+                "person or an external system can clear before its stage branch "
+                "existed, so it committed the row and runbook straight to "
+                ".plan/LEDGER.md on the plan branch. Not retried."
             )
             log(message)
             notify(notify_cmd, "blocked", message, row.stage_id, plan_dir)

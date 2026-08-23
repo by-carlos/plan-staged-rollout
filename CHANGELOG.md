@@ -140,6 +140,21 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **The driver no longer declares a plan complete over a stage that never ran.**
+  `scripts/plan_driver.py` counted open stages from `LEDGER.md` rows only, so a
+  stage present in `PLAN.md`'s stage index with no ledger row (the shape a
+  review stage leaves when it adds the index row and forgets the ledger row)
+  was neither runnable nor open — with that as the last stage, the driver
+  reported "plan complete" and launched closeout. The reverse shape, a ledger
+  row with no index row, stalled forever as "nothing runnable" with no hint
+  why. Open stages are now the union of both tables, and the stop message
+  names each half-registered stage and which row to add. Also: the Windows
+  branch of the driver's shell quoting mangled a value ending in a backslash
+  (it reached the real notify command, not only the log) and now uses
+  `subprocess.list2cmdline`; and the default `--allowedTools` profile names the
+  subagent tool `Agent`, its current name, instead of the retired `Task` — the
+  README copy of the profile too.
+
 - **The driver's `blocked` write no longer makes its own runbook unmergeable**
   (#89). When a stage ran out of attempts, `scripts/plan_driver.py` wrote the
   `blocked` row and runbook straight into `.plan/LEDGER.md` on the plan branch

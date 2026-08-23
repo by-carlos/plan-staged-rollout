@@ -482,13 +482,27 @@ without launching anything:
 |---|---|
 | `gate: human` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a person |
 | a stage comes back `blocked` | reports it and stops; the session's own runbook is in the ledger, and the driver never retries a deliberate block |
-| a stage does not reach `done` within `--max-attempts` (default 2) | writes `blocked` plus a runbook into the ledger, commits it on the plan branch (`--no-commit` writes without committing), and stops |
+| a stage does not reach `done` within `--max-attempts` (default 2) | records the stage as blocked, with a runbook, in `.plan/BLOCKED.md` — never in `LEDGER.md`, which the stage's own branch may still be editing unmerged (see below) — commits it on the plan branch (`--no-commit` writes without committing), and stops |
 | nothing runnable, stages still open | reports which stages are waiting and stops |
 | every stage `done`/`skipped` | launches [`/plan-close --unattended`](commands/plan-close.md) as one more session, then reports the plan→main PR's URL and exits 0 |
 | closeout hits one of its own gates | reports that no PR was opened and stops — a stage worktree holding unpushed work is the usual cause |
 
 Exit code is `0` for a completed plan, `1` for any stop that wants a person,
 and `2` for a usage or guardrail refusal.
+
+**`.plan/BLOCKED.md` — the driver's own block record.** A stage that ran out
+of attempts has usually already committed its own edits to `LEDGER.md`'s row
+and notes, on its own branch — real acceptance evidence, or a PR that opened
+but couldn't merge. Writing the driver's block into those same lines on the
+plan branch would diverge from that unmerged commit, leaving the stage's own
+pull request unmergeable — the runbook would then be naming a merge its own
+write had just made impossible. `.plan/BLOCKED.md` is a sibling file the
+stage branch never edits, so the driver's write and the stage's write never
+contend for the same lines. Every driver round treats a stage id listed there
+as blocked and never retries it, even across a restart, regardless of what its
+`LEDGER.md` row still reads. Resolving the stage — merging its PR, or running
+`/plan-run` by hand — does not clear the entry on its own; the file's own
+runbook says to delete that stage's `### S<N>` section once it reaches `done`.
 
 ### Closeout, unattended
 

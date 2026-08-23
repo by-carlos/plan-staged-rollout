@@ -140,6 +140,22 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **The driver's `blocked` write no longer makes its own runbook unmergeable**
+  (#89). When a stage ran out of attempts, `scripts/plan_driver.py` wrote the
+  `blocked` row and runbook straight into `.plan/LEDGER.md` on the plan branch
+  — but by then the stage had usually already committed its own edits to that
+  same row and notes on its own branch (real acceptance evidence, or a PR that
+  opened but couldn't merge), so the two diverged and the stage's pull request
+  went `CONFLICTING`. The runbook then instructed a human to merge a PR that
+  could no longer be merged. The driver now records a retry-cap block in a new
+  sibling file, `.plan/BLOCKED.md`, that the stage branch never edits, so the
+  two writers never contend for the same lines; every driver round still
+  treats a stage listed there as `blocked` and never retries it, even across a
+  restart, regardless of what its `LEDGER.md` row reads. Verified with a git
+  fixture reproducing #85's exact shape (a stage branch with its own unmerged
+  `LEDGER.md` commit): the old write conflicted on merge as reported, the new
+  one merges clean.
+
 - **A `skipped` stage no longer deadlocks the stages that depend on it** (#87).
   `deps_satisfied()` in `scripts/plan_driver.py` required a dependency to be
   exactly `done`, while the same file already treated `skipped` as terminal

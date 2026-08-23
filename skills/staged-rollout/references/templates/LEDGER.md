@@ -38,7 +38,8 @@ _(empty)_
               handoff note here (what's left, where to resume).
   blocked   — record exactly what human/external action unblocks it, as a
               runbook the human can follow; no faked progress.
-  skipped   — one-line reason.
+  skipped   — one-line reason; if this stage owned acceptance/verification
+              work nothing else covers, say so here too, so SF sees it.
   follow-up — a shortcut or scope-creep item spotted here that became (or
               should become) its own stage; name it so the review stage sees it.
 -->

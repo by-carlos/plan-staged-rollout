@@ -109,7 +109,9 @@ order is **derived from it** — waves and parallelism are never written down as
 their own column. A stored copy is what drifts; the graph is the truth.
 
 - **Runnable set:** every stage whose `LEDGER.md` status is `todo` and whose
-  `depends` are all `done`, plus any `doing` stage (resumable). This is a
+  `depends` are all `done` or `skipped` — a skip is a settled outcome, not an
+  unmet dependency, so it must not deadlock a dependent — plus any `doing`
+  stage (resumable). This is a
   *set*, not a single stage. When it holds more than one, those stages have no
   dependency on each other and can be run **concurrently, one per fresh
   session**.
@@ -280,16 +282,20 @@ structural fact and four rules about timing.
    declared default, so a lighter-than-recommended model or an unrecognised
    tier marks the row `blocked` with the mismatch as the runbook, commits,
    and stops.
-3. **Dependency gate:** for every `depends` stage, confirm it is `done` in
-   `LEDGER.md` **AND its stage branch/PR is merged into the plan branch**
-   (`git fetch` first — the merge may be remote and not yet local). Both must
-   hold. A `done` ledger row alone is not enough: a stage branched off the
-   plan branch before a prerequisite's PR is merged will silently lack that
-   prerequisite's work. If either isn't true, stop and say so. This gate is
-   always satisfiable: **every** stage has repo artifacts, because `.plan/` is
-   tracked and every stage edits the ledger — a documentation- or
-   decision-only stage still commits its `PLAN.md`/`LEDGER.md` changes and
-   still opens a PR. A depends-stage with no PR means preflight step 0.0 was
+3. **Dependency gate:** for every `depends` stage, confirm it is `done` or
+   `skipped` in `LEDGER.md` **AND its stage branch/PR is merged into the plan
+   branch** (`git fetch` first — the merge may be remote and not yet local).
+   Both must hold, for a `skipped` dependency exactly as for a `done` one: a
+   skip still commits its ledger row and opens a PR (nothing here exempts it
+   from the git strategy above), and a dependent branched before that PR is
+   merged would silently miss the decision. A `done`/`skipped` ledger row
+   alone is not enough: a stage branched off the plan branch before a
+   prerequisite's PR is merged will silently lack that prerequisite's work. If
+   either isn't true, stop and say so. This gate is always satisfiable:
+   **every** stage has repo artifacts, because `.plan/` is tracked and every
+   stage edits the ledger — a documentation- or decision-only stage, and a
+   skipped one, still commits its `PLAN.md`/`LEDGER.md` changes and still
+   opens a PR. A depends-stage with no PR means preflight step 0.0 was
    skipped, not that the stage was exempt.
 4. **Branch & worktree:** the stage runs in its own sibling worktree and the
    clone stays on the plan branch (frozen decision above). Create branch and
@@ -426,8 +432,9 @@ structural fact and four rules about timing.
 
       End the session in the clone, on the plan branch.
    6. Announce: this stage is **finished**, then the **complete runnable
-      set** — *every* `todo` stage whose `depends` are now all `done`, not
-      just the first (see *Runnable set & waves* above). For each one, give
+      set** — *every* `todo` stage whose `depends` are now all `done` or
+      `skipped`, not just the first (see *Runnable set & waves* above). For
+      each one, give
       the exact prompt/command to run it, its recommended `model`/`effort`
       and its `gate` from the stage index — a `gate: human` stage needs a
       person at the keyboard, so an unattended runner reading this stops

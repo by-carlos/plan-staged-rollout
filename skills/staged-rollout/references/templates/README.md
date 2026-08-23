@@ -20,8 +20,9 @@ for you). The `.plan/` folder works standalone either way; the plugin is
 convenience, not a dependency.
 
 Run stages in any order allowed by their `depends`. The **runnable set** is
-every `todo` row in `LEDGER.md` whose dependencies are all `done` — often more
-than one. Stages in that set do not depend on each other, so you can run them
+every `todo` row in `LEDGER.md` whose dependencies are all `done` or
+`skipped` — often more than one. Stages in that set do not depend on each
+other, so you can run them
 **concurrently, one per fresh session** (one terminal each) — each one works
 in its own worktree, so they never collide. `PLAN.md`'s *Runnable set & waves*
 defines the set and shows how waves and the critical path are derived from the

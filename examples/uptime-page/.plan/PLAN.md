@@ -87,26 +87,35 @@ stage (Operating protocol, finish step 3).
 | S2 Status page | `stage-2-status-page.md` | S0, S1 | direct | inline | sonnet | med | auto |
 | SF Plan review | `stage-f-review.md` | S2 | direct | inline | sonnet | med | auto |
 
-Plan flags: `merge: manual`
+Plan flags: `merge: manual` · `plan-dir: delete`
 
 This table is the **single authoritative home** for every stage's `depends` /
 `mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line
-under it is the home of the plan-level `merge` flag. Stage files never restate
-them (a copy is what drifts), and the tooling reads them from here:
-`/plan-run`'s weight check reads `model`/`effort` from this index, the
-runnable-set logic (below) reads `depends` from it, and an unattended runner
-reads `gate` and `merge`. A stage that isn't in this table is invisible to all
-of them — so adding a new stage (including one the final review spawns) means
-adding its row here first.
+under it is the home of the plan-level `merge` and `plan-dir` flags. Stage
+files never restate them (a copy is what drifts), and the tooling reads them
+from here: `/plan-run`'s weight check reads `model`/`effort` from this index,
+the runnable-set logic (below) reads `depends` from it, an unattended runner
+reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
+isn't in this table is invisible to all of them — so adding a new stage
+(including one the final review spawns) means adding its row here first.
+
+The two plan flags are this plan's **declared defaults**: the answers a
+session applies when there is nobody to ask (`--unattended`). An interactive
+session still asks, taking the declared value as its recommendation. See the
+`staged-rollout` skill, *Unattended mode*, for the full classification of
+which questions have a default and which are hard stops in every mode.
 
 Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
 `subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
 `gate` = `auto` \| `human` (may the stage be launched with nobody watching? —
 `human` means never); `merge` = `manual` \| `auto` (does the session merge its
 own stage PR into the plan branch once checks are green, or offer it for your
-OK?). Defaults are deliberately cheap and preserve the fully-manual flow —
-`direct`, `inline`, the cheaper capable model, `gate: auto`, `merge: manual`;
-a missing `gate` column or plan-flags line means those defaults. Escalate only
+OK?); `plan-dir` = `delete` \| `keep` (at closeout, is `.plan/` removed as the
+last commit on the plan branch, or left in place because the plan doubles as
+documentation?). Defaults are deliberately cheap and preserve the fully-manual
+flow — `direct`, `inline`, the cheaper capable model, `gate: auto`,
+`merge: manual`, `plan-dir: delete`; a missing `gate` column, a missing
+plan-flags line, or a missing entry on it means those defaults. Escalate only
 where a stage has genuine open design questions (`brainstorm`, which also
 makes it `gate: human`) or heavy iteration churn (`subagent`). `merge` governs
 stage PRs only — the plan→main PR at closeout is manual in every mode.
@@ -118,7 +127,9 @@ order is **derived from it** — waves and parallelism are never written down as
 their own column. A stored copy is what drifts; the graph is the truth.
 
 - **Runnable set:** every stage whose `LEDGER.md` status is `todo` and whose
-  `depends` are all `done`, plus any `doing` stage (resumable). This is a
+  `depends` are all `done` or `skipped` — a skip is a settled outcome, not an
+  unmet dependency, so it must not deadlock a dependent — plus any `doing`
+  stage (resumable). This is a
   *set*, not a single stage. When it holds more than one, those stages have no
   dependency on each other and can be run **concurrently, one per fresh
   session**.
@@ -282,21 +293,27 @@ structural fact and four rules about timing.
    unattended runner, or `/plan-run`'s `--unattended` argument), check the
    stage's `gate` first: a `gate: human` stage is never started unattended —
    report that and stop here. For a `gate: auto` stage, every offer or
-   question in this step and the ones below has no one to answer it, so it
-   becomes `blocked` + runbook instead (see the `staged-rollout` skill,
-   *Statuses and human-gated stages*): a lighter-than-recommended model or an
-   unrecognised tier marks the row `blocked` with the mismatch as the
-   runbook, commits, and stops.
-3. **Dependency gate:** for every `depends` stage, confirm it is `done` in
-   `LEDGER.md` **AND its stage branch/PR is merged into the plan branch**
-   (`git fetch` first — the merge may be remote and not yet local). Both must
-   hold. A `done` ledger row alone is not enough: a stage branched off the
-   plan branch before a prerequisite's PR is merged will silently lack that
-   prerequisite's work. If either isn't true, stop and say so. This gate is
-   always satisfiable: **every** stage has repo artifacts, because `.plan/` is
-   tracked and every stage edits the ledger — a documentation- or
-   decision-only stage still commits its `PLAN.md`/`LEDGER.md` changes and
-   still opens a PR. A depends-stage with no PR means preflight step 0.0 was
+   question in this step and the ones below either has a **declared default**
+   on the plan flags line or is a **hard stop** — there is no third option
+   and nothing waits for an answer (see the `staged-rollout` skill,
+   *Unattended mode*, for the full classification). Nothing in this step has a
+   declared default, so a lighter-than-recommended model or an unrecognised
+   tier marks the row `blocked` with the mismatch as the runbook, commits,
+   and stops.
+3. **Dependency gate:** for every `depends` stage, confirm it is `done` or
+   `skipped` in `LEDGER.md` **AND its stage branch/PR is merged into the plan
+   branch** (`git fetch` first — the merge may be remote and not yet local).
+   Both must hold, for a `skipped` dependency exactly as for a `done` one: a
+   skip still commits its ledger row and opens a PR (nothing here exempts it
+   from the git strategy above), and a dependent branched before that PR is
+   merged would silently miss the decision. A `done`/`skipped` ledger row
+   alone is not enough: a stage branched off the plan branch before a
+   prerequisite's PR is merged will silently lack that prerequisite's work. If
+   either isn't true, stop and say so. This gate is always satisfiable:
+   **every** stage has repo artifacts, because `.plan/` is tracked and every
+   stage edits the ledger — a documentation- or decision-only stage, and a
+   skipped one, still commits its `PLAN.md`/`LEDGER.md` changes and still
+   opens a PR. A depends-stage with no PR means preflight step 0.0 was
    skipped, not that the stage was exempt.
 4. **Branch & worktree:** the stage runs in its own sibling worktree and the
    clone stays on the plan branch (frozen decision above). Create branch and
@@ -348,14 +365,17 @@ structural fact and four rules about timing.
    3. If a decision changed or was added, amend **Frozen decisions in this
       file** — nowhere else.
    4. Commit on the stage branch throughout the stage at logical units
-      (conventional messages) — not one commit at the end. There is no such
+      (conventional messages) — not one commit at the end. Everything in this
+      step — commits, push, the PR, any sibling re-sync merge — happens
+      **inside the stage worktree**, never in the clone. There is no such
       thing as a stage with nothing to commit: steps 1–3 above always change
       tracked files under `.plan/`, so a stage whose Artifacts are "no host or
       secret changes" still lands its ledger evidence and any frozen-decision
-      amendment as a commit. Push the branch and **open the PR** into
-      `plan-uptime-page` (compulsory, not offered), pinning the base
-      explicitly — `gh pr create --base plan-uptime-page` — never relying on
-      the default, which falls back to the repo's default branch (`main`).
+      amendment as a commit. Push the branch
+      and **open the PR** into `plan-uptime-page` (compulsory, not offered),
+      pinning the base explicitly — `gh pr create --base plan-uptime-page` —
+      never relying on the default, which falls back to the repo's default
+      branch (`main`).
       Then **offer** to merge it once reviewed — never merge on your own.
       Stage PRs are **squash-merged** (one commit per stage on the plan
       branch), and the merged stage branch is deleted. The stage cannot be
@@ -423,13 +443,18 @@ structural fact and four rules about timing.
       and its contents are not
       recoverable from git. Never `--force`, never `prune` to tidy up; an
       orphan left behind is reported by every later preflight and gates
-      closeout, which is the safe failure. If the merge did not happen this
+      closeout, which is the safe failure. **The two thresholds differ on
+      purpose:** a stage leaves anything it is unsure about, and closeout
+      sweeps up whichever of those turn out to be merged with nothing
+      unpushed. Erring towards leaving costs a line in a report; erring
+      towards removing costs a directory git cannot give back. If the merge did not happen this
       session, the worktree stays — teardown belongs with the `done` write.
 
       End the session in the clone, on the plan branch.
    6. Announce: this stage is **finished**, then the **complete runnable
-      set** — *every* `todo` stage whose `depends` are now all `done`, not
-      just the first (see *Runnable set & waves* above). For each one, give
+      set** — *every* `todo` stage whose `depends` are now all `done` or
+      `skipped`, not just the first (see *Runnable set & waves* above). For
+      each one, give
       the exact prompt/command to run it, its recommended `model`/`effort`
       and its `gate` from the stage index — a `gate: human` stage needs a
       person at the keyboard, so an unattended runner reading this stops

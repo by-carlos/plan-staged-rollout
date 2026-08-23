@@ -20,8 +20,9 @@ for you). The `.plan/` folder works standalone either way; the plugin is
 convenience, not a dependency.
 
 Run stages in any order allowed by their `depends`. The **runnable set** is
-every `todo` row in `LEDGER.md` whose dependencies are all `done` — often more
-than one. Stages in that set do not depend on each other, so you can run them
+every `todo` row in `LEDGER.md` whose dependencies are all `done` or
+`skipped` — often more than one. Stages in that set do not depend on each
+other, so you can run them
 **concurrently, one per fresh session** (one terminal each) — each one works
 in its own worktree, so they never collide. `PLAN.md`'s *Runnable set & waves*
 defines the set and shows how waves and the critical path are derived from the
@@ -99,8 +100,14 @@ details", merge-commit message = "Pull request title and description").
 ## Closeout
 
 When every ledger row is `done` or `skipped`, close out the plan — ask to
-**"close out the plan"**, run the explicit command
-`/plan-staged-rollout:plan-close`, or follow the closeout steps in `PLAN.md`
-directly: it distills `PLAN.md` + the ledger into the final PR body, deletes
-`.plan/` as the last commit (keeping it is an option), and proposes the PR
-from `plan-uptime-page` to `main`.
+**"close out the plan"**, or run the explicit command
+`/plan-staged-rollout:plan-close`, which is where the closeout steps live. It
+distills `PLAN.md` + the ledger into the final PR body, removes any stage
+worktree that is merged and fully pushed (anything holding unpushed work stops
+it instead), deletes `.plan/` as the last commit — or keeps it, per the
+`plan-dir` flag on `PLAN.md`'s plan flags line — and proposes the PR from
+`plan-uptime-page` to `main`.
+
+**Closeout runs unattended too:** `/plan-staged-rollout:plan-close
+--unattended` applies the plan flags instead of asking and opens the PR.
+Merging that PR into `main` is always a person's job, in every mode.

@@ -42,6 +42,10 @@ one) once filled. -->
 - `LEDGER.md` — status table + per-stage as-built notes. The tracker that
   changes as you execute; the resume point and cross-session memory.
 - `stage-<N>-<slug>.md` — one small, self-contained stage each.
+- `BLOCKED.md` — only present after an unattended driver ran out of attempts
+  on a stage: the driver's own block record and runbook, kept out of
+  `LEDGER.md` so it never collides with a stage branch's unmerged ledger
+  edits. Delete a stage's section there once that stage is resolved.
 
 ## Git & worktree model
 

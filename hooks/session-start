@@ -99,7 +99,7 @@ parse_ledger() {
 }
 
 # Parse the "## Stage index" table of PLAN.md
-# (| Stage | File | Depends | mode | exec | model | effort |).
+# (| Stage | File | Depends | mode | exec | model | effort | gate |).
 parse_index() {
     local in_section=0 line id
     while IFS= read -r line || [ -n "$line" ]; do

@@ -224,7 +224,9 @@ structural fact and four rules about timing.
       - **Self-healing:** a `doing` row whose stage PR is already merged
         means the merge happened remotely — complete the finish protocol's
         post-merge bookkeeping (finish step 5) by recording that row `done`
-        on the plan branch.
+        on the plan branch. If that row is the stage *this* session was
+        launched to run, the stage is finished: skip to finish step 6 (the
+        announcement) — it is neither a resume nor a redo, in any mode.
       - **Drift — report and stop:** a `done` row with an open or unmerged
         stage PR; an open stage PR based on `main` instead of
         `plan-<slug>`; and **this session's own stage** showing a `todo` row

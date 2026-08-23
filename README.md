@@ -502,7 +502,12 @@ contend for the same lines. Every driver round treats a stage id listed there
 as blocked and never retries it, even across a restart, regardless of what its
 `LEDGER.md` row still reads. Resolving the stage — merging its PR, or running
 `/plan-run` by hand — does not clear the entry on its own; the file's own
-runbook says to delete that stage's `### S<N>` section once it reaches `done`.
+runbook says to delete that stage's `### S<N>` section once the stage is
+resolved and then start the driver again. After a hand merge the row keeps
+reading `doing` until a session's preflight records the merged PR as `done`
+— the next session the driver launches does exactly that, and
+[`/plan-run`](commands/plan-run.md) treats a row its own preflight just
+self-healed as finished, not as a redo.
 
 ### Closeout, unattended
 
@@ -763,7 +768,7 @@ Layout:
   skills/staged-rollout/
     SKILL.md                     # method: principles, decomposition guidance,
                                  #   flag heuristics, anti-patterns
-    references/templates/        # PLAN.md, LEDGER.md, stage-N.md, README.md
+    references/templates/        # PLAN.md, LEDGER.md, stage-N.md, stage-f-review.md, README.md
   examples/
     uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
   commands/

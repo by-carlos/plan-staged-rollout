@@ -106,7 +106,7 @@ Work through these steps **in order**:
    - The stage's outcome: **finished**, or `blocked`/`doing` — and if not
      finished, exactly what remains (which checkboxes, what it's waiting on).
    - The **complete runnable set**: *every* `todo` stage whose `depends` are
-     now all `done` — derived from the stage index's `Depends` column, per
+     now all `done` or `skipped` — derived from the stage index's `Depends` column, per
      `PLAN.md`'s *Runnable set & waves*. Never announce only the first one.
      For each stage in the set, give the fresh-session prompt **"run stage
      \<N> of the plan"** — or the explicit command

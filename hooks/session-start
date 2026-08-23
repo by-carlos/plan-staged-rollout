@@ -246,7 +246,7 @@ Surface all of them to the user and wait for their go-ahead — do NOT auto-run 
         if [ "$open" -eq 0 ]; then
             context="**Active staged rollout in this repo** (\`.plan/\` present) — every stage is \`done\` or \`skipped\`, so the plan is ready for closeout. Offer to close it out via \`/plan-staged-rollout:plan-close\`, but do NOT auto-run it: surface this to the user and wait for their go-ahead."
         else
-            context="**Active staged rollout in this repo** (\`.plan/\` present), but no stage is currently runnable — the remaining stages are \`blocked\` or waiting on unmet dependencies. Surface this to the user and point them at \`.plan/LEDGER.md\` for the details. Do not run any stage."
+            context="**Active staged rollout in this repo** (\`.plan/\` present), but no stage is currently runnable — the remaining stages are \`blocked\` or waiting on unmet dependencies. Surface this to the user and point them at \`.plan/LEDGER.md\` — and at \`.plan/BLOCKED.md\` if it exists, which is where an unattended driver records a stage it gave up on — for the details. Do not run any stage."
         fi
     fi
 

@@ -153,7 +153,8 @@ The session follows the operating protocol in `PLAN.md`:
    introspectable), and on a mismatch it tells you and offers continue/abort.
 2. **Read only what's needed.** Frozen decisions + the stage file + the ledger
    table + notes of the stages it `depends` on. Never scan the repo.
-3. **Dependency gate.** If a prerequisite isn't `done` in the ledger, stop.
+3. **Dependency gate.** If a prerequisite isn't `done` or `skipped` in the
+   ledger (and merged into the plan branch), stop.
 4. **Honor `mode`.** `direct` = one-line plan, implement. `brainstorm` = a
    design pass scoped to this stage first, treating frozen decisions as settled.
 5. **Honor `exec`.** `inline` = implement here. `subagent(<model>)` = act as

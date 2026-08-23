@@ -155,6 +155,17 @@ elsewhere. See 0.4.0 for the split.
   subagent tool `Agent`, its current name, instead of the retired `Task` — the
   README copy of the profile too.
 
+- **Documentation brought back in step with the protocol.** The `uptime-page`
+  example `.plan/` regains the two edits that landed after its last resync —
+  preflight step 0.5's "a row this session's own preflight just self-healed is
+  a finished stage" sentence and the `BLOCKED.md` entry in its README; the
+  `/plan-run` end announcement and the README's dependency-gate line say a
+  prerequisite must be `done` **or `skipped`**, as every other surface has
+  since the skipped-stage fix; the scaffolded `.plan/README.md` names the
+  `merge: auto` carve-out next to "merges are offered", since it is the file a
+  plan's human actually reads; and the session-start nudge's "nothing
+  runnable" message points at `.plan/BLOCKED.md` as well as the ledger.
+
 - **The driver's `blocked` write no longer makes its own runbook unmergeable**
   (#89). When a stage ran out of attempts, `scripts/plan_driver.py` wrote the
   `blocked` row and runbook straight into `.plan/LEDGER.md` on the plan branch

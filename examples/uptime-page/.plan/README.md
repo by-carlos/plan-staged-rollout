@@ -39,6 +39,10 @@ the weight gate only prompts on the exceptions.
 - `LEDGER.md` — status table + per-stage as-built notes. The tracker that
   changes as you execute; the resume point and cross-session memory.
 - `stage-<N>-<slug>.md` — one small, self-contained stage each.
+- `BLOCKED.md` — only present after an unattended driver ran out of attempts
+  on a stage: the driver's own block record and runbook, kept out of
+  `LEDGER.md` so it never collides with a stage branch's unmerged ledger
+  edits. Delete a stage's section there once that stage is resolved.
 
 ## Git & worktree model
 
@@ -89,8 +93,11 @@ compulsory and incremental — logical units as the stage progresses, not one
 commit at the end. Branch creation and pushes are autonomous on feature
 branches — the agent creates and pushes stage/plan branches without asking,
 and opens the stage PR as a compulsory part of finishing a stage; merges are
-offered and happen only on your OK, and it never pushes to `main`. A stage
-cannot be marked `done` until its PR is merged into the plan branch. Stage
+offered and happen only on your OK, and it never pushes to `main`. The one
+carve-out is `merge: auto` on `PLAN.md`'s plan flags line: that is your OK
+given in advance for **stage PRs only**, so the session squash-merges its own
+stage PR once checks are green — the plan→main PR is yours in every mode. A
+stage cannot be marked `done` until its PR is merged into the plan branch. Stage
 PRs are squash-merged into the plan branch; the final PR from the plan branch
 into `main` is a normal (non-squash) merge, so each stage keeps its own
 commit on `main`. This needs the GitHub repo to allow both squash merging and

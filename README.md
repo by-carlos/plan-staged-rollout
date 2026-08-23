@@ -574,7 +574,7 @@ The driver therefore passes an explicit profile, which you can override:
 
 ```
 --permission-mode acceptEdits
---allowedTools Bash Edit Write Read Glob Grep Task Skill TodoWrite AskUserQuestion WebFetch WebSearch NotebookEdit
+--allowedTools Bash Edit Write Read Glob Grep Agent Skill TodoWrite AskUserQuestion WebFetch WebSearch NotebookEdit
 ```
 
 `AskUserQuestion` is in that list even though an unattended session never asks

@@ -78,7 +78,7 @@ DEFAULT_ALLOWED_TOOLS = [
     "Read",
     "Glob",
     "Grep",
-    "Task",
+    "Agent",
     "Skill",
     "TodoWrite",
     "AskUserQuestion",
@@ -295,7 +295,10 @@ def stage_argument(stage_id: str) -> str:
 
 def shell_quote(value: str) -> str:
     if os.name == "nt":
-        return '"' + value.replace('"', '""') + '"'
+        # list2cmdline follows the MSVCRT argv rules, including a trailing
+        # backslash before the closing quote - hand-rolled `""` doubling does
+        # not, and the message reaches a real shell in notify().
+        return subprocess.list2cmdline([value])
     return shlex.quote(value)
 
 
@@ -708,10 +711,17 @@ def drive(
         runnable = runnable_set(plan, statuses)
 
         if not runnable:
+            # Open = anything not settled, across BOTH tables. A stage listed in
+            # the index with no ledger row (a review stage that added the index
+            # row and forgot the ledger row) is not runnable, but it is not done
+            # either - counting only ledger rows here would declare the plan
+            # complete and launch closeout over a stage that never ran.
+            known = [row.stage_id for row in plan.index]
+            known += [stage_id for stage_id in statuses if stage_id not in known]
             open_stages = [
                 stage_id
-                for stage_id, status in statuses.items()
-                if status not in ("done", "skipped")
+                for stage_id in known
+                if statuses.get(stage_id) not in ("done", "skipped")
             ]
             if not open_stages:
                 if args.close:
@@ -728,10 +738,24 @@ def drive(
                 return 0
             open_list = ", ".join(sorted(open_stages))
             verb = "is" if len(open_stages) == 1 else "are"
+            unrowed = sorted(s for s in open_stages if s not in statuses)
+            unindexed = sorted(
+                s for s in open_stages if s not in {r.stage_id for r in plan.index}
+            )
             message = (
                 f"nothing runnable - {open_list} {verb} blocked or waiting on unmet "
                 "dependencies. See .plan/LEDGER.md and .plan/BLOCKED.md."
             )
+            if unrowed:
+                message += (
+                    f" {', '.join(unrowed)}: in PLAN.md's stage index but with no "
+                    "LEDGER.md row - add the row; a stage without one can never run."
+                )
+            if unindexed:
+                message += (
+                    f" {', '.join(unindexed)}: in LEDGER.md but not in PLAN.md's stage "
+                    "index - add the index row; the runnable set only sees indexed stages."
+                )
             log(message)
             notify(notify_cmd, "stop", message, open_list, plan_dir)
             return 1

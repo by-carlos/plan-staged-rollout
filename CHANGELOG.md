@@ -8,7 +8,9 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
-## [Unreleased]
+## [0.6.0] - 2026-08-23
+
+**Codename:** Frenacho AFK
 
 ### Added
 
@@ -556,7 +558,8 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
-[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.6.0...HEAD
+[0.6.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.6.0
 [0.5.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.5.0
 [0.4.1]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.1
 [0.4.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.0

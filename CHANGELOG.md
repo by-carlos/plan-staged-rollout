@@ -138,6 +138,22 @@ elsewhere. See 0.4.0 for the split.
   product, and each release automatically becomes Apache-2.0 two years after it
   is made available. Versions released before this change remain MIT.
 
+### Fixed
+
+- **A `skipped` stage no longer deadlocks the stages that depend on it** (#87).
+  `deps_satisfied()` in `scripts/plan_driver.py` required a dependency to be
+  exactly `done`, while the same file already treated `skipped` as terminal
+  everywhere else — so a plan that skipped a stage with dependents reported
+  "nothing runnable" and blamed an unmet dependency that was actually settled,
+  with no way out short of hand-editing the ledger. `skipped` now satisfies a
+  dependent's `depends`, matching the completion rule already stated in
+  `skills/staged-rollout/references/templates/PLAN.md` and `SKILL.md`; the
+  `Dependency gate` preflight step and the ledger's `skipped` note now also
+  flag that a skip can leave acceptance/verification work unowned, for the
+  final review stage to catch. Same code path: the "nothing runnable" stop
+  message now uses correct singular/plural grammar, and the notify payload's
+  stage field is populated with the waiting stages instead of being empty.
+
 ## [0.5.0] - 2026-08-21
 
 ### Changed

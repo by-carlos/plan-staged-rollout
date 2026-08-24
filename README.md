@@ -793,6 +793,7 @@ Layout:
   examples/
     uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
     on-the-run/                  # prompt contracts for unattended cloud runs
+      poc/                     #   end-to-end proof-of-concept plan + verify_run.py
   commands/
     plan-stages.md               # /plan-stages <idea>  — bootstrap .plan/
     plan-run.md                  # /plan-run <N>        — execute one stage

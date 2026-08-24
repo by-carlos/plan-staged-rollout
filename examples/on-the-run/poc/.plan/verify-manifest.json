@@ -1,0 +1,34 @@
+{
+  "default_branch": "main",
+  "plan_branch": "plan-slugify",
+  "stages": [
+    {
+      "id": "S0",
+      "title": "Slug core",
+      "branch": "plan-slugify-s0",
+      "expect_paths": ["slugify/core.py", "slugify/__init__.py", "tests/test_core.py", "pyproject.toml"],
+      "expect_contains": [["slugify/core.py", "def slugify("]]
+    },
+    {
+      "id": "S1",
+      "title": "CLI",
+      "branch": "plan-slugify-s1",
+      "expect_paths": ["slugify/cli.py", "tests/test_cli.py"],
+      "expect_contains": [["pyproject.toml", "slugify.cli:main"]]
+    },
+    {
+      "id": "S2",
+      "title": "License choice",
+      "branch": "plan-slugify-s2",
+      "expect_paths": ["LICENSE"],
+      "expect_contains": [["README.md", "## License"]]
+    },
+    {
+      "id": "SF",
+      "title": "Closeout",
+      "branch": "plan-slugify-sf",
+      "expect_paths": [".plan/pr-states.json", ".plan/LEDGER.md"],
+      "expect_contains": []
+    }
+  ]
+}

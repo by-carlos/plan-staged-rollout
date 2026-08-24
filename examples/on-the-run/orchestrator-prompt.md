@@ -35,6 +35,13 @@ design:
 | Watched by | nobody | the person who started it |
 | Decides what runs next | never | that is its only decision |
 
+**One word, two meanings — this is the other one.** The [plugin
+README](../../README.md) calls a *stage* session an orchestrator when its
+`exec` flag is `subagent(<model>)` and it dispatches the implementation to a
+subagent. That orchestrator sits inside one stage and does that stage's work
+through someone else. This one sits outside every stage and does no work at
+all.
+
 ## Where it runs, and what that changes
 
 Four measured facts shape every rule below:

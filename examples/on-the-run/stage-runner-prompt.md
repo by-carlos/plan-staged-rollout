@@ -223,13 +223,15 @@ protocol already defines.
 ## Three caveats worth knowing before firing one
 
 - **Under `merge: manual`, a fired stage produces no visible signal on the
-  plan branch.** The `doing` flip and the stage's evidence live on the stage
-  branch until its PR merges, so the plan branch's ledger row still reads
-  `todo` while the PR sits open. That is correct protocol, but it means a
-  caller reading only the ledger cannot tell a finished-but-unmerged stage
-  from one that never ran — the pushed stage branch and the open PR are the
-  only difference. A cloud rollout that wants a legible signal per stage runs
-  with `merge: auto`.
+  plan branch.** The plugin README already states the rule for the local
+  driver — no stage ever reaches `done` unattended under `merge: manual`,
+  because offering a merge is asking a person — and it costs more here. The
+  `doing` flip and the stage's evidence live on the stage branch until its PR
+  merges, so the plan branch's ledger row still reads `todo` while the PR sits
+  open, and a caller reading only the ledger cannot tell a
+  finished-but-unmerged stage from one that never ran. The pushed stage branch
+  and the open PR are the only difference. A plan meant to run this way sets
+  `merge: auto`.
 - **The `gate: human` refusal is recorded, where an interactive
   `--unattended` run only reports it.** `/plan-run --unattended` stops and
   says so, because a local driver reads its output. Nothing reads this run's

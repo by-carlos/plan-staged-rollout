@@ -83,5 +83,7 @@ change to a contract is a change here first.
 
 The split is the design: the runner knows one stage and never decides what
 runs next; the orchestrator decides what runs next and never does any of the
-work. Both are written but not yet proven end to end — the run environment's
-git cycle and the full lifecycle are still being verified.
+work. The run environment's git cycle is now measured — a routine run
+completes the whole branch-push-PR-merge sequence unattended — but both
+prompts are still written rather than proven, and the full lifecycle end to
+end is what remains to be verified.

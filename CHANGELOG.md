@@ -51,6 +51,34 @@ elsewhere. See 0.4.0 for the split.
   self-check table mapping each binding constraint to the section that names
   it. Written, not yet proven end to end — #107 and #110 verify it.
 
+### Fixed
+
+- **The stage-runner prompt told a cloud routine to open its PR with `gh`,
+  which does not exist there** (#107). The contract was written against the
+  assumption that a routine run has `gh` pre-installed behind a proxy that
+  blocks some GraphQL operations, so it made `gh pr create --base <branch>`
+  compulsory and named `gh api` as the fallback for whatever the proxy
+  refused. The git-cycle probe measured the environment and found something
+  else: there is no `gh` binary in a routine run at all, and GitHub is reached
+  through the GitHub MCP server. As written, every stage fired under that
+  contract would have failed at the one step it calls compulsory, and — by the
+  contract's own rule — recorded a block instead of landing the stage. §8 now
+  names `mcp__github__create_pull_request` and
+  `mcp__github__merge_pull_request`, the "measured facts" preamble states the
+  absence of `gh` rather than its presence, and the routine-setup notes add
+  that a narrowed tool list must still leave the GitHub MCP tools reachable,
+  since they are now the only route to the PR step. §8 also states that the
+  substitution reaches the finish protocol's own PR steps in `.plan/PLAN.md`,
+  which name `gh` too, and that everything else about them is unchanged — the
+  base stays pinned to the plan branch, the merge stays a squash merge, and
+  the stage branch is still deleted afterwards, as a separate step the MCP
+  merge tool does not perform. The same probe settled two
+  questions the file had left open against #107: the full
+  branch-push-PR-merge sequence completes unattended with no approval prompt,
+  and a non-`claude/` stage branch cut from a plan branch pushed and merged
+  without tripping the routine push restriction — recorded as one passing case
+  rather than a guarantee.
+
 ## [0.6.0] - 2026-08-23
 
 **Codename:** Frenacho AFK

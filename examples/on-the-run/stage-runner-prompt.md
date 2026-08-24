@@ -12,14 +12,15 @@ routine's saved-prompt field holds a copy; this file is the original, and a
 change to the contract is a change here first.
 
 > **Status: written, not yet proven end to end.** The measured facts below
-> are established (see the issue references). The contract as a whole is
-> verified by the git-cycle probe (#107) and the end-to-end proof of concept
-> (#110), not by this file.
+> are established (see the issue references), and the git-cycle probe (#107)
+> has since run the full branch-push-PR-merge sequence unattended. The
+> contract as a whole is verified by the end-to-end proof of concept (#110),
+> not by this file.
 
 ## Where it runs, and what that changes
 
-A routine run is a fresh Ubuntu sandbox per run, `gh` pre-installed, the
-repository cloned for it. Five measured facts shape every rule in the prompt:
+A routine run is a fresh Ubuntu sandbox per run, with the repository cloned
+for it. Six measured facts shape every rule in the prompt:
 
 - **The plugin is not there.** `enabled_plugins` never reaches the runtime —
   ticking the plugin in the routine's web form still produces a run with no
@@ -38,8 +39,18 @@ repository cloned for it. Five measured facts shape every rule in the prompt:
 - **The run acts as the account owner's GitHub identity, with no per-action
   approval** and no permission-mode picker (#104). The saved prompt is the
   only control on what the run touches.
-- **Push works with the run's own credentials** (#106). Branch creation, PR
-  opening and merging are not yet proven — that is #107.
+- **There is no `gh` CLI. GitHub is reached through the GitHub MCP server**
+  (#107). This corrects an earlier assumption that `gh` is pre-installed
+  behind a GraphQL-restricted proxy, needing a `gh api` REST fallback for the
+  operations the proxy blocks. The binary is not there at all, so there is
+  nothing for a `gh` subcommand to fall back *from*. The MCP tools stand in
+  for the two that matter: `mcp__github__create_pull_request` and
+  `mcp__github__merge_pull_request`.
+- **Push, branch creation, PR opening and PR merging all work with the run's
+  own credentials, unattended** (#106, #107). The git-cycle probe ran the
+  whole sequence — check out the plan branch, cut a stage branch off it, push
+  that branch straight after the first commit, open its PR, merge it — with no
+  blocking approval prompt at any step.
 
 ## What the caller must set on the routine
 
@@ -53,7 +64,9 @@ Not part of the prompt, but the prompt is wrong without them:
   `blocked` row rather than a finished stage.
 - **Tools:** do **not** pin a narrow `allowed_tools`. The default preset
   includes `Skill`, `Write`, `Edit`, `Bash` and `Task`; a pinned list that
-  omits any of them breaks the run silently (#106).
+  omits any of them breaks the run silently (#106). It must also leave the
+  GitHub MCP tools reachable: with no `gh` binary in the run, they are the
+  only way §8's compulsory PR step can happen at all.
 
 ## The fire payload
 
@@ -172,10 +185,12 @@ Everything between the markers is the saved prompt, verbatim.
     account settings, issues, other pull requests, or any routine or trigger
     configuration.
 
-    Opening this stage's PR into the plan branch is compulsory:
-    `gh pr create --base <branch>`. If a `gh` subcommand fails against this
-    environment's GitHub proxy, use its REST equivalent (`gh api ...`) rather
-    than skipping the step. A stage whose PR could not be opened is a block,
+    Opening this stage's PR into the plan branch is compulsory. There is no
+    `gh` binary in this run, so use the GitHub MCP server:
+    `mcp__github__create_pull_request` with `<branch>` as the base, and
+    `mcp__github__merge_pull_request` where §7 allows the merge. If one of
+    those calls fails, reach the same GitHub API another way rather than
+    skipping the step. A stage whose PR could not be opened is a block,
     recorded per "Recording a block" — never an acceptable outcome quietly
     passed over. That record cannot point at a PR that does not exist, so
     write the runbook on the stage branch as usual, push it, and let the
@@ -240,13 +255,17 @@ protocol already defines.
   says so, because a local driver reads its output. Nothing reads this run's
   output, so §4 writes the refusal into the ledger instead. It is the same
   hard stop, made durable.
-- **The stage branch may not be pushable at all, and §5 is where that would
-  show.** A routine run's pushes are unrestricted only for `claude/`-prefixed
+- **The stage branch push is proven once, not guaranteed, and §5 is where a
+  failure would show.** A routine run's pushes are unrestricted only for
+  `claude/`-prefixed
   branches; any other branch is accepted only when it is unprotected, has no
   other open PR, and **carries no other author's commits** (#104). A stage
   branch is `plan-<slug>-s<N>` by frozen decision, and it is cut from the plan
-  branch tip, so it inherits whatever commits are already there. Whether that
-  trips the restriction is exactly what #107 measures. It is not improvised
+  branch tip, so it inherits whatever commits are already there. #107 measured
+  exactly this and it did not trip: a non-`claude/` branch cut from a plan
+  branch was pushed and its PR merged, with no restriction hit. That is one
+  passing case rather than a guarantee — a protected plan branch, or a second
+  open PR against the stage branch, would still bite. It is not improvised
   around here: renaming stage branches to satisfy a hosting rule would change
   the plan's git model, which is a decision for its own issue, not a detail of
   this prompt.

@@ -286,8 +286,13 @@ path alongside the local driver, not a replacement for it.
   each fire individually if you want to be told.
 - **`merge: manual` plans cannot be driven from here at all**, and §3 refuses
   rather than discovering it a stage in. A plan meant to run this way sets
-  `merge: auto`. This is the same fact the stage-runner contract records from
-  the fired run's side; the orchestrator is where it becomes a hard stop.
+  `merge: auto`. The local driver is deliberately softer — it warns on startup
+  and runs on, and the README describes a semi-attended flow where you let each
+  stage stop at its open PR, merge it yourself and restart. That flow needs you
+  to be able to *see* the open PR the stage left behind; this session reads only
+  the plan branch, where a finished-but-unmerged stage and one that never ran
+  look identical. Refusing up front is the honest version of the same fact the
+  stage-runner contract records from the fired run's side.
 - **Reading `.plan/BLOCKED.md` alongside the ledger is a deliberate reading of
   "judge from the pushed plan branch", not a loophole in it.** Both files are
   pushed plan-branch state written by the protocol; neither is a run log. It

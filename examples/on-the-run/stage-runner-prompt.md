@@ -177,7 +177,10 @@ Everything between the markers is the saved prompt, verbatim.
     environment's GitHub proxy, use its REST equivalent (`gh api ...`) rather
     than skipping the step. A stage whose PR could not be opened is a block,
     recorded per "Recording a block" — never an acceptable outcome quietly
-    passed over.
+    passed over. That record cannot point at a PR that does not exist, so
+    write the runbook on the stage branch as usual, push it, and let the
+    `.plan/BLOCKED.md` section on the plan branch name the stage branch and
+    say plainly that the PR could not be opened, in place of its URL.
 
     9. DO ONLY THIS STAGE.
 
@@ -232,8 +235,8 @@ protocol already defines.
   finished-but-unmerged stage from one that never ran. The pushed stage branch
   and the open PR are the only difference. A plan meant to run this way sets
   `merge: auto`.
-- **The `gate: human` refusal is recorded, where an interactive
-  `--unattended` run only reports it.** `/plan-run --unattended` stops and
+- **The `gate: human` refusal is recorded, where a local `--unattended` run
+  only reports it.** `/plan-run --unattended` stops and
   says so, because a local driver reads its output. Nothing reads this run's
   output, so §4 writes the refusal into the ledger instead. It is the same
   hard stop, made durable.

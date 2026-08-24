@@ -67,7 +67,12 @@ elsewhere. See 0.4.0 for the split.
   `mcp__github__merge_pull_request`, the "measured facts" preamble states the
   absence of `gh` rather than its presence, and the routine-setup notes add
   that a narrowed tool list must still leave the GitHub MCP tools reachable,
-  since they are now the only route to the PR step. The same probe settled two
+  since they are now the only route to the PR step. §8 also states that the
+  substitution reaches the finish protocol's own PR steps in `.plan/PLAN.md`,
+  which name `gh` too, and that everything else about them is unchanged — the
+  base stays pinned to the plan branch, the merge stays a squash merge, and
+  the stage branch is still deleted afterwards, as a separate step the MCP
+  merge tool does not perform. The same probe settled two
   questions the file had left open against #107: the full
   branch-push-PR-merge sequence completes unattended with no approval prompt,
   and a non-`claude/` stage branch cut from a plan branch pushed and merged

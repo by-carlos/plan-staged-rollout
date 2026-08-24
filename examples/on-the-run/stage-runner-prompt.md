@@ -190,7 +190,18 @@ Everything between the markers is the saved prompt, verbatim.
     `mcp__github__create_pull_request` with `<branch>` as the base, and
     `mcp__github__merge_pull_request` where §7 allows the merge. If one of
     those calls fails, reach the same GitHub API another way rather than
-    skipping the step. A stage whose PR could not be opened is a block,
+    skipping the step.
+
+    This is one of the explicit overrides §3 allows, and it covers the finish
+    protocol's PR steps too: wherever `.plan/PLAN.md` writes
+    `gh pr create --base plan-<slug>` or
+    `gh pr merge --squash --delete-branch`, run the MCP equivalent instead.
+    Everything else about those steps is unchanged — the base is still pinned
+    to the plan branch and never left to default, the merge is still a
+    **squash** merge, and the merged stage branch is still deleted afterwards
+    (`mcp__github__merge_pull_request` does not delete it, so delete the
+    branch as a separate step). A stage whose PR could not be opened is a
+    block,
     recorded per "Recording a block" — never an acceptable outcome quietly
     passed over. That record cannot point at a PR that does not exist, so
     write the runbook on the stage branch as usual, push it, and let the

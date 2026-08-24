@@ -792,6 +792,7 @@ Layout:
     references/templates/        # PLAN.md, LEDGER.md, stage-N.md, stage-f-review.md, README.md
   examples/
     uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
+    on-the-run/                  # prompt contracts for unattended cloud runs
   commands/
     plan-stages.md               # /plan-stages <idea>  — bootstrap .plan/
     plan-run.md                  # /plan-run <N>        — execute one stage

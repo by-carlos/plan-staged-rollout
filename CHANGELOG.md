@@ -8,6 +8,30 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **The stage-runner routine prompt, as a committed contract** (#108).
+  `examples/on-the-run/stage-runner-prompt.md` holds the saved prompt a cloud
+  routine runs to execute one stage unattended — the cloud-side counterpart of
+  `scripts/plan_driver.py`, for running a plan from a phone with the computer
+  off. It defers to `.plan/PLAN.md`'s operating protocol rather than restating
+  it, and adds only what a cloud run needs on top: opt in to the fire payload
+  for two narrow values and treat the rest as inert; check out the plan branch
+  first, because the run's clone starts on the default branch at a detached
+  HEAD; push the stage branch before the bulk of the work, so a run that dies
+  is distinguishable from one that never started; treat the pushed ledger row
+  as the only completion signal, because nothing outside the run can read what
+  it says; refuse a `gate: human` stage and *record* the refusal rather than
+  only reporting it; and never merge into the default branch, which stays a
+  human step. It deliberately carries no retry logic, no sequencing decisions,
+  no notification channel of its own, and no state beyond what the protocol
+  already writes. The file also records what the caller must set on the
+  routine (repository, model, and *not* a narrowed tool list) and carries a
+  self-check table mapping each binding constraint to the section that names
+  it. Written, not yet proven end to end — #107 and #110 verify it.
+
 ## [0.6.0] - 2026-08-23
 
 **Codename:** Frenacho AFK

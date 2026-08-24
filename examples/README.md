@@ -1,6 +1,7 @@
 # Examples
 
-Worked examples of the artifacts this plugin produces. The templates in
+Worked examples of the artifacts a staged rollout produces and runs on. The
+templates in
 [`skills/staged-rollout/references/templates/`](../skills/staged-rollout/references/templates/)
 show the *shape* of a scaffold; these show what good **filled-in** content
 looks like, so you can judge your own `.plan/` without having to run
@@ -55,3 +56,22 @@ The discipline the [plugin README](../README.md) describes, in practice:
 - The example is inert where it lives: the plugin's SessionStart hook only
   reacts to a `.plan/` at the repo **root**, so this nested copy never nudges
   your sessions.
+
+## [`on-the-run/`](on-the-run/) — prompt contracts for unattended cloud runs
+
+The saved prompts that run a plan from a phone, with the computer off, by
+firing one Claude Code cloud routine per stage — the cloud-side counterpart of
+[`scripts/plan_driver.py`](../scripts/plan_driver.py). They live here as
+committed files so they can be reviewed and diffed; the routine's saved-prompt
+field holds a copy, and a change to a contract is a change here first.
+
+- **[`stage-runner-prompt.md`](on-the-run/stage-runner-prompt.md)** — the
+  prompt one fired routine runs to execute a single stage. It defers to
+  `.plan/PLAN.md`'s operating protocol rather than restating it, and adds only
+  what a cloud run needs on top: check out the plan branch first (the clone
+  starts on the default branch), push the stage branch before the work, treat
+  the ledger row as the only completion signal, and never merge into the
+  default branch.
+
+These are written but not yet proven end to end — the run environment's git
+cycle and the full lifecycle are still being verified.

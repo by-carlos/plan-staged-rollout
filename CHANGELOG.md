@@ -12,6 +12,25 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **The orchestrator session prompt, as a committed contract** (#109).
+  `examples/on-the-run/orchestrator-prompt.md` holds the operating
+  instructions for the interactive session that drives a whole plan from a
+  phone — the half a fired run cannot do for itself, since nothing inside a
+  routine run can fire another routine. It reads the plan branch fresh every
+  round, computes the runnable set with `.plan/PLAN.md`'s own derived rule,
+  fires one stage-runner routine, waits for the plan branch to say what
+  happened, and repeats. It judges a stage strictly from the pushed
+  `.plan/LEDGER.md` and `.plan/BLOCKED.md`, never from a fired run's log — the
+  phone-side tooling cannot read one back at all — holds no state between
+  rounds, never fires a `gate: human` stage, never retries or guesses at a
+  fix, treats the tool-permission prompt raised by firing as the per-stage
+  notification, and stops before closeout and the plan-to-main merge. It
+  deliberately carries no retry counter, no concurrency, no repository writes,
+  no merge behaviour and no notification channel of its own. The file also
+  records what the operator must have ready before starting (a pushed plan
+  branch, `merge: auto`, a routine per model the plan uses) and carries a
+  self-check table mapping each binding constraint to the section that names
+  it. Written, not yet proven end to end — #110 verifies it.
 - **The stage-runner routine prompt, as a committed contract** (#108).
   `examples/on-the-run/stage-runner-prompt.md` holds the saved prompt a cloud
   routine runs to execute one stage unattended — the cloud-side counterpart of

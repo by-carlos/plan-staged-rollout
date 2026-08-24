@@ -59,11 +59,12 @@ The discipline the [plugin README](../README.md) describes, in practice:
 
 ## [`on-the-run/`](on-the-run/) — prompt contracts for unattended cloud runs
 
-The saved prompts that run a plan from a phone, with the computer off, by
-firing one Claude Code cloud routine per stage — the cloud-side counterpart of
-[`scripts/plan_driver.py`](../scripts/plan_driver.py). They live here as
-committed files so they can be reviewed and diffed; the routine's saved-prompt
-field holds a copy, and a change to a contract is a change here first.
+The two prompts that run a plan from a phone, with the computer off, by firing
+one Claude Code cloud routine per stage — together, the cloud-side counterpart
+of [`scripts/plan_driver.py`](../scripts/plan_driver.py). They live here as
+committed files so they can be reviewed and diffed; the copy in a routine's
+saved-prompt field, or pasted into a session, is downstream of these, and a
+change to a contract is a change here first.
 
 - **[`stage-runner-prompt.md`](on-the-run/stage-runner-prompt.md)** — the
   prompt one fired routine runs to execute a single stage. It defers to
@@ -72,6 +73,15 @@ field holds a copy, and a change to a contract is a change here first.
   starts on the default branch), push the stage branch before the work, treat
   the ledger row as the only completion signal, and never merge into the
   default branch.
+- **[`orchestrator-prompt.md`](on-the-run/orchestrator-prompt.md)** — the
+  prompt the person's own interactive session runs to drive the whole plan:
+  read the plan branch, fire the one stage that may run next, wait for the
+  ledger to settle, repeat. It judges every stage from the pushed plan branch
+  alone (a fired run's log is unreadable from a phone), holds no state between
+  rounds, never fires a `gate: human` stage, never retries, and stops before
+  closeout and the plan-to-main merge.
 
-These are written but not yet proven end to end — the run environment's git
-cycle and the full lifecycle are still being verified.
+The split is the design: the runner knows one stage and never decides what
+runs next; the orchestrator decides what runs next and never does any of the
+work. Both are written but not yet proven end to end — the run environment's
+git cycle and the full lifecycle are still being verified.

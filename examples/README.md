@@ -89,7 +89,8 @@ change to a contract is a change here first.
 
 The split is the design: the runner knows one stage and never decides what
 runs next; the orchestrator decides what runs next and never does any of the
-work. The run environment's git cycle is now measured — a routine run
-completes the whole branch-push-PR-merge sequence unattended — but both
-prompts are still written rather than proven, and the full lifecycle end to
-end is what remains to be verified.
+work. Both prompts have now driven a full lifecycle end to end (#110): four
+stages on a disposable repository, phone-driven with the computer off, ending
+in a closeout whose verification script exited 0. What that run found was
+routed to each contract's own issue rather than folded into the files, so the
+prompts read as they did when they were proven.

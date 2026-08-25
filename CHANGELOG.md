@@ -30,7 +30,8 @@ elsewhere. See 0.4.0 for the split.
   stage the orchestrator must refuse to fire unattended, and a closeout whose
   plan-to-main merge stays the maintainer's by hand — plus `verify_run.py`,
   which turns "did it work" into a command result. The script asserts that
-  every stage branch exists and its work reached the plan branch, that every
+  each stage branch's work reached the plan branch — the branch itself may be
+  gone, since a merged stage branch is deleted — that every
   stage's pull request is closed as merged against the plan branch, that the
   ledger has every row settled, that each stage's claimed edits are actually
   present, and that nothing reached the default branch. Squash merges make
@@ -38,8 +39,11 @@ elsewhere. See 0.4.0 for the split.
   the pull request's state plus the presence of the branch's changed paths.
   Stdlib only and no network call of its own: pull-request state is captured
   into `.plan/pr-states.json` by the closeout stage through the GitHub MCP
-  server, since a routine run has no `gh`. The run itself remains a manual,
-  phone-driven act; this ships only its inputs.
+  server, since a routine run has no `gh`. The run has since happened and
+  passed: four stages on a disposable repository, phone-driven with the
+  computer off, `verify_run.py` exiting 0. Its one gap is that the final merge
+  landed as a squash, so stages landing as distinct commits on `main` remains
+  unproven by a live run.
 
 - **The orchestrator session prompt, as a committed contract** (#109).
   `examples/on-the-run/orchestrator-prompt.md` holds the operating
@@ -59,7 +63,7 @@ elsewhere. See 0.4.0 for the split.
   records what the operator must have ready before starting (a pushed plan
   branch, `merge: auto`, a routine per model the plan uses) and carries a
   self-check table mapping each binding constraint to the section that names
-  it. Written, not yet proven end to end — #110 verifies it.
+  it. Proven end to end by #110's run.
 - **The stage-runner routine prompt, as a committed contract** (#108).
   `examples/on-the-run/stage-runner-prompt.md` holds the saved prompt a cloud
   routine runs to execute one stage unattended — the cloud-side counterpart of

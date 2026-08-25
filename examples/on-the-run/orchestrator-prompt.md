@@ -17,9 +17,18 @@ It lives here as a committed file so it can be reviewed and diffed. Paste it
 into the session that will drive the plan; this file is the original, and a
 change to the contract is a change here first.
 
-> **Status: written, not yet proven end to end.** The measured facts below
-> are established (see the issue references). The contract as a whole is
-> verified by the end-to-end proof of concept (#110), not by this file.
+> **Status: proven end to end** (#110). This contract drove a live
+> phone-driven run across three rounds: it computed the runnable set from the
+> plan branch alone, fired each stage at the model its index named, refused to
+> fire the `gate: human` stage, and stopped before closeout and the final
+> merge. The measured facts below are established (see the issue references).
+>
+> Two things the run added, recorded on #109 and #116 rather than edited in
+> here: retiring a superseded orchestrator is undefined — `review_ready` does
+> not mean stopped, and two orchestrators ran against one plan branch for
+> roughly 90 minutes — and an orchestrator delegated to a cloud session cannot
+> fire unattended, because the permission prompt then falls to a session
+> nobody is watching.
 
 ## Two prompts, two different sessions
 

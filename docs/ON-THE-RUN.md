@@ -1,19 +1,22 @@
 # On the run — driving a plan from your phone
 
-Normally a staged rollout runs on your machine: open a session, run one stage,
-close it, repeat. **On the run** moves that work to the cloud. Each stage runs
-on Claude Code's cloud against your GitHub repo, so you can drive a whole build
-from a chat session on your phone with your computer switched off.
+Historically, plan staged rollout runs on your machine: open a session, run one
+stage, close it, repeat. **On the run** moves that work to the cloud. Each stage
+runs on Claude Code's cloud against your GitHub repo, so you can drive a whole
+build from a chat session on your phone with your computer switched off.
 
 ## What it does
 
-You keep one chat session open. It does this, over and over:
+You keep one orchestrator chat session open. The session, over and over:
 
 1. Reads your plan from GitHub to work out which stage is next.
 2. Asks your permission to start that stage. **You tap approve.**
 3. A cloud session runs the stage: writes the code, opens a pull request,
    merges it into the plan branch, and records "done" in the plan.
-4. Your session sees that "done" in GitHub, and goes back to step 1.
+4. If the stage gets stuck, it writes that down in the plan instead of asking —
+   nothing in the cloud can reach you mid-stage.
+5. Your session sees the "done" (or the "stuck") in GitHub, and either goes
+   back to step 1 or stops and tells you.
 
 It stops when every stage is finished, and hands the last merge to you.
 
@@ -24,12 +27,16 @@ It stops when every stage is finished, and hands the last merge to you.
 
 ## What you need first
 
-- **A plan already pushed to GitHub.** This doesn't create one — build it the
-  normal way with `/plan-stages`, then push the `plan-<name>` branch.
-- **Your plan set to merge its own stages.** Open `.plan/PLAN.md` and find the
-  line starting `Plan flags:`. It has to say `merge: auto`. If it says
-  `merge: manual`, change it and push — see [What it won't
-  do](#what-it-wont-do) for why this one isn't optional.
+**A plan, already pushed to GitHub.** This page doesn't create one — build it
+the usual way with `/plan-stages`, and push the plan branch it makes.
+
+While you're building it, `/plan-stages` asks how stage pull requests should be
+merged. **Choose "auto"** — the stage merges its own once the checks pass —
+rather than "manual". That single answer is what makes the phone version
+possible at all; see [What it won't do](#what-it-wont-do) for why.
+
+Already have a plan that chose manual? Ask a session to switch it to auto
+merging and push the change — you don't have to start over.
 
 ## How to set it up
 
@@ -44,7 +51,7 @@ cloud routine for each of them:
   wrong means the stage stops instead of finishing.
 - **Prompt:** copy the text between the `BEGIN STAGE-RUNNER PROMPT` and
   `END STAGE-RUNNER PROMPT` markers in
-  [`stage-runner-prompt.md`](examples/on-the-run/stage-runner-prompt.md), and
+  [`stage-runner-prompt.md`](../examples/on-the-run/stage-runner-prompt.md), and
   paste it in as-is.
 - **Tools:** leave them at the default. Narrowing the tool list breaks the run
   without telling you.
@@ -53,7 +60,7 @@ cloud routine for each of them:
 
 Open a normal chat session — phone, laptop, anywhere — and paste in the text
 between the `BEGIN ORCHESTRATOR PROMPT` and `END ORCHESTRATOR PROMPT` markers
-in [`orchestrator-prompt.md`](examples/on-the-run/orchestrator-prompt.md).
+in [`orchestrator-prompt.md`](../examples/on-the-run/orchestrator-prompt.md).
 
 Then tell it your plan branch name, because the prompt doesn't include it.
 Something like: `The plan branch is plan-slugify. Go.`
@@ -119,10 +126,10 @@ From the one full run done so far
 Both prompts are committed here so they can be reviewed and diffed, and each
 one spells out every rule it carries and why:
 
-- [`stage-runner-prompt.md`](examples/on-the-run/stage-runner-prompt.md) — what
+- [`stage-runner-prompt.md`](../examples/on-the-run/stage-runner-prompt.md) — what
   a cloud worker runs for a single stage.
-- [`orchestrator-prompt.md`](examples/on-the-run/orchestrator-prompt.md) — what
+- [`orchestrator-prompt.md`](../examples/on-the-run/orchestrator-prompt.md) — what
   your driver session runs.
-- [`poc/`](examples/on-the-run/poc/) — a small four-stage plan and a
+- [`poc/`](../examples/on-the-run/poc/) — a small four-stage plan and a
   verification script, if you'd rather try the whole thing on a throwaway repo
   before trusting it with real work.

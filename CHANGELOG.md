@@ -12,7 +12,7 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
-- **[`ON-THE-RUN.md`](ON-THE-RUN.md), a plain-language quickstart for driving a
+- **[`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md), a plain-language quickstart for driving a
   plan from a phone.** The two prompt contracts in `examples/on-the-run/` were
   proven end to end but written for review, not for use — anyone wanting to
   actually run a plan this way had to read both in full and work the procedure

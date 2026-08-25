@@ -705,7 +705,7 @@ leak it and force everyone working the plan onto one channel.
   becomes `blocked` with a runbook and the driver notifies you. That is the
   whole mechanism — there is no live chat relay.
 
-### Running it from your phone instead — see `ON-THE-RUN.md`
+### Running it from your phone instead — see `docs/ON-THE-RUN.md`
 
 The driver above needs a machine of yours left running. There is a second path
 that does not: each stage runs in Claude Code's cloud against the GitHub repo,
@@ -713,7 +713,7 @@ and you drive the whole plan from a chat session — phone included, computer
 off. You approve each stage as it starts, so it is not unattended; the trade is
 that nothing of yours has to stay awake.
 
-[`ON-THE-RUN.md`](ON-THE-RUN.md) is the quickstart — what it does, how to set
+[`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md) is the quickstart — what it does, how to set
 it up, and what it will not do. [`examples/on-the-run/`](examples/on-the-run/)
 holds the two prompt contracts themselves.
 
@@ -809,7 +809,8 @@ Layout:
 .
   .claude-plugin/plugin.json
   README.md                      ← you are here
-  ON-THE-RUN.md                  # quickstart: drive a plan from your phone
+  docs/
+    ON-THE-RUN.md                # quickstart: drive a plan from your phone
   skills/staged-rollout/
     SKILL.md                     # method: principles, decomposition guidance,
                                  #   flag heuristics, anti-patterns

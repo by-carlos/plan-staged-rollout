@@ -111,6 +111,14 @@ whole run — every stage fire, the human-input step, and the final manual merge
 — was driven from a phone with the computer off throughout. The script cannot
 check that second half; only the maintainer can attest to it.
 
+**The passing run is the one taken before the final merge, and it does not
+reproduce afterwards.** Check 5 asserts that nothing has reached the default
+branch, so once the maintainer merges the plan-to-main pull request — the last
+step of a *successful* run — re-running the script fails that check. This is
+the check working, not the run breaking. The result of record is the output SF
+pasted into its ledger notes at closeout; a later re-run is measuring a
+different repository state and answers a different question.
+
 If verification fails, SF marks its own row `blocked` and writes
 `.plan/BLOCKED.md`. A closeout that repairs its own subject proves nothing.
 

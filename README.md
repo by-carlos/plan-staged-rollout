@@ -323,6 +323,17 @@ On disk, that means your clone and one sibling directory per running stage:
   request title and commit details"; merge-commit message = "Pull request
   title and description" (so the distilled final-PR body lands in the merge
   commit on `main`).
+- **Nothing enforces the merge type at the final merge — set the repo's
+  default merge button to "Create a merge commit."** The plan-to-main merge is
+  the one step no session performs, so it is also the one step the plan cannot
+  police: whoever merges gets whatever the repo's default button offers, and a
+  default of "Squash and merge" silently collapses every stage into a single
+  commit on `main`. The result looks successful — the PR is merged, the files
+  are all there — and the per-stage history the non-squash merge exists to
+  preserve is simply gone. It is easiest to hit from a phone, where the button
+  is tapped without the dropdown ever being opened. Closeout states the
+  required merge type in the final PR's body for exactly this reason, but a
+  line in a PR body is a reminder, not a control.
 - **The clone never leaves the plan branch.** *The clone holds the plan;
   worktrees hold the work.* A stage branch is checked out only in its own
   sibling worktree (`../<repo>-s<N>`), created at stage time from the plan
@@ -793,6 +804,7 @@ Layout:
   examples/
     uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
     on-the-run/                  # prompt contracts for unattended cloud runs
+      poc/                     #   end-to-end proof-of-concept plan + verify_run.py
   commands/
     plan-stages.md               # /plan-stages <idea>  — bootstrap .plan/
     plan-run.md                  # /plan-run <N>        — execute one stage

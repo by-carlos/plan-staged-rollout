@@ -12,6 +12,35 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **The plan-to-main merge type is documented as unenforceable** (#110). The
+  final merge is the one step no session performs, so it is also the one step
+  the plan cannot police: whoever merges gets the repository's default merge
+  button, and a default of "Squash and merge" collapses every stage into a
+  single commit on `main` while still looking like a clean, successful merge.
+  A real run hit exactly this. The README's repo-settings prerequisite, the
+  skill's merge-type rule, and `/plan-close`'s final-PR step now all say to set
+  the repository default to "Create a merge commit", and closeout must state
+  the required merge type in the PR body — a reminder rather than a control,
+  and named as such.
+
+- **The end-to-end proof-of-concept plan and its verification script** (#110).
+  `examples/on-the-run/poc/` holds what a full "on the run" lifecycle run
+  consumes: a four-stage plan for a throwaway repository — two automatic
+  stages that make real edits and open real pull requests, one `gate: human`
+  stage the orchestrator must refuse to fire unattended, and a closeout whose
+  plan-to-main merge stays the maintainer's by hand — plus `verify_run.py`,
+  which turns "did it work" into a command result. The script asserts that
+  every stage branch exists and its work reached the plan branch, that every
+  stage's pull request is closed as merged against the plan branch, that the
+  ledger has every row settled, that each stage's claimed edits are actually
+  present, and that nothing reached the default branch. Squash merges make
+  ancestry-based merge checks meaningless, so merged-ness is established from
+  the pull request's state plus the presence of the branch's changed paths.
+  Stdlib only and no network call of its own: pull-request state is captured
+  into `.plan/pr-states.json` by the closeout stage through the GitHub MCP
+  server, since a routine run has no `gh`. The run itself remains a manual,
+  phone-driven act; this ships only its inputs.
+
 - **The orchestrator session prompt, as a committed contract** (#109).
   `examples/on-the-run/orchestrator-prompt.md` holds the operating
   instructions for the interactive session that drives a whole plan from a

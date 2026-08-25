@@ -80,6 +80,12 @@ change to a contract is a change here first.
   alone (a fired run's log is unreadable from a phone), holds no state between
   rounds, never fires a `gate: human` stage, never retries, and stops before
   closeout and the plan-to-main merge.
+- **[`poc/`](on-the-run/poc/)** — the inputs for the end-to-end proof of
+  concept: a four-stage plan for a throwaway repository (two automatic stages,
+  one `gate: human` stage, and a closeout), plus `verify_run.py`, which makes
+  the run's pass/fail a command result rather than a transcript to read. The
+  run itself is the maintainer's, driven from a phone; this is only what it
+  consumes.
 
 The split is the design: the runner knows one stage and never decides what
 runs next; the orchestrator decides what runs next and never does any of the

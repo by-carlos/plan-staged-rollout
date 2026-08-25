@@ -159,14 +159,23 @@ def check_stage(report, repo, stage, plan_ref, pr_states):
     report.section(f"Stage {sid} — {stage.get('title', '')}".rstrip(" —"))
 
     branch_ref = resolve_branch(repo, stage["branch"])
-    if not report.record(
-        branch_ref is not None,
-        f"{sid}: stage branch {stage['branch']!r} exists",
-        "neither origin/ nor a local ref resolves; a deleted branch also fails here",
-    ):
-        branch_ref = None
-
     pr = pr_states.get(sid)
+
+    # The stage-runner contract deletes a stage branch once its PR is merged,
+    # so an absent branch is the expected end state, not a failure. What must
+    # never be absent is the evidence that it existed and landed: a merged PR.
+    # Only a branch that is gone WITHOUT a merged PR is unaccounted for.
+    pr_merged = bool(pr and pr.get("merged") and str(pr.get("state", "")).lower() == "closed")
+    if branch_ref is None:
+        report.record(
+            pr_merged,
+            f"{sid}: stage branch {stage['branch']!r} is absent, but its PR merged (branch deleted after merge)",
+            "the branch does not resolve and no merged PR accounts for it — "
+            "the stage's work cannot be shown to have existed",
+        )
+    else:
+        report.record(True, f"{sid}: stage branch {stage['branch']!r} exists")
+
     if report.record(pr is not None, f"{sid}: pull-request state was captured", f"no entry for {sid!r} in the PR-state file"):
         merged = bool(pr.get("merged"))
         closed = str(pr.get("state", "")).lower() == "closed"

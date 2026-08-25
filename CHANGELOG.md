@@ -26,17 +26,6 @@ elsewhere. See 0.4.0 for the split.
   exposed and the two open issues that would soften them. Linked from the
   README's unattended-runs section and its layout tree.
 
-- **The plan-to-main merge type is documented as unenforceable** (#110). The
-  final merge is the one step no session performs, so it is also the one step
-  the plan cannot police: whoever merges gets the repository's default merge
-  button, and a default of "Squash and merge" collapses every stage into a
-  single commit on `main` while still looking like a clean, successful merge.
-  A real run hit exactly this. The README's repo-settings prerequisite, the
-  skill's merge-type rule, and `/plan-close`'s final-PR step now all say to set
-  the repository default to "Create a merge commit", and closeout must state
-  the required merge type in the PR body — a reminder rather than a control,
-  and named as such.
-
 - **The end-to-end proof-of-concept plan and its verification script** (#110).
   `examples/on-the-run/poc/` holds what a full "on the run" lifecycle run
   consumes: a four-stage plan for a throwaway repository — two automatic

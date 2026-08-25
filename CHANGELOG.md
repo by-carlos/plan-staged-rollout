@@ -12,6 +12,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **[`ON-THE-RUN.md`](ON-THE-RUN.md), a standalone quickstart for driving a
+  plan from a phone.** The two prompt contracts in `examples/on-the-run/`
+  were proven end to end but only documented as dense, correctness-first
+  contracts — no path existed for the person who wants the short version:
+  what to set up, what to paste, and the one thing that trips people up first
+  (it is not unattended — you keep approving each stage as it fires, and
+  "always allow" removes your only notification). Linked from the README's
+  Unattended runs section and its layout tree.
+
 - **The plan-to-main merge type is documented as unenforceable** (#110). The
   final merge is the one step no session performs, so it is also the one step
   the plan cannot police: whoever merges gets the repository's default merge

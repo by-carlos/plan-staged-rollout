@@ -705,6 +705,15 @@ leak it and force everyone working the plan onto one channel.
   becomes `blocked` with a runbook and the driver notifies you. That is the
   whole mechanism — there is no live chat relay.
 
+### Cloud / phone-driven — see `ON-THE-RUN.md`
+
+A separate, cloud-first path drives a plan from your phone instead of a
+local clone: your session fires one cloud routine per stage and watches the
+plan branch for it to settle, rather than launching the driver's local
+`claude -p` sessions. See [`ON-THE-RUN.md`](ON-THE-RUN.md) for the quickstart,
+or [`examples/on-the-run/`](examples/on-the-run/) for the full prompt
+contracts.
+
 ## The ledger, kept slim
 
 The ledger is read by *every* stage session, so its size taxes every future
@@ -797,6 +806,7 @@ Layout:
 .
   .claude-plugin/plugin.json
   README.md                      ← you are here
+  ON-THE-RUN.md                  # quickstart: drive a plan from your phone
   skills/staged-rollout/
     SKILL.md                     # method: principles, decomposition guidance,
                                  #   flag heuristics, anti-patterns

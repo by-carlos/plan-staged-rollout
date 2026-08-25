@@ -705,14 +705,17 @@ leak it and force everyone working the plan onto one channel.
   becomes `blocked` with a runbook and the driver notifies you. That is the
   whole mechanism — there is no live chat relay.
 
-### Cloud / phone-driven — see `ON-THE-RUN.md`
+### Running it from your phone instead — see `ON-THE-RUN.md`
 
-A separate, cloud-first path drives a plan from your phone instead of a
-local clone: your session fires one cloud routine per stage and watches the
-plan branch for it to settle, rather than launching the driver's local
-`claude -p` sessions. See [`ON-THE-RUN.md`](ON-THE-RUN.md) for the quickstart,
-or [`examples/on-the-run/`](examples/on-the-run/) for the full prompt
-contracts.
+The driver above needs a machine of yours left running. There is a second path
+that does not: each stage runs in Claude Code's cloud against the GitHub repo,
+and you drive the whole plan from a chat session — phone included, computer
+off. You approve each stage as it starts, so it is not unattended; the trade is
+that nothing of yours has to stay awake.
+
+[`ON-THE-RUN.md`](ON-THE-RUN.md) is the quickstart — what it does, how to set
+it up, and what it will not do. [`examples/on-the-run/`](examples/on-the-run/)
+holds the two prompt contracts themselves.
 
 ## The ledger, kept slim
 

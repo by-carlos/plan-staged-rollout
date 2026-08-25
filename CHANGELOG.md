@@ -12,14 +12,19 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
-- **[`ON-THE-RUN.md`](ON-THE-RUN.md), a standalone quickstart for driving a
-  plan from a phone.** The two prompt contracts in `examples/on-the-run/`
-  were proven end to end but only documented as dense, correctness-first
-  contracts — no path existed for the person who wants the short version:
-  what to set up, what to paste, and the one thing that trips people up first
-  (it is not unattended — you keep approving each stage as it fires, and
-  "always allow" removes your only notification). Linked from the README's
-  Unattended runs section and its layout tree.
+- **[`ON-THE-RUN.md`](ON-THE-RUN.md), a plain-language quickstart for driving a
+  plan from a phone.** The two prompt contracts in `examples/on-the-run/` were
+  proven end to end but written for review, not for use — anyone wanting to
+  actually run a plan this way had to read both in full and work the procedure
+  out for themselves. The new page answers the three questions in order: what
+  it does (a four-step loop, and the fact that you tap approve once per stage,
+  so it is *not* unattended), how to set it up (one cloud routine per model in
+  the stage table, which text to paste where, and that you have to tell the
+  driver its branch name), and what it will not do — no retries, no parallel
+  stages, no reading a failed run's log, no `merge: manual` plans, and never
+  the final merge into `main`. It closes with the rough edges the one real run
+  exposed and the two open issues that would soften them. Linked from the
+  README's unattended-runs section and its layout tree.
 
 - **The plan-to-main merge type is documented as unenforceable** (#110). The
   final merge is the one step no session performs, so it is also the one step

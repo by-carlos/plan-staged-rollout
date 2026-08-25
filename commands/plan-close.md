@@ -141,8 +141,12 @@ Work through these steps **in order**:
    to `main` using the distilled body from step 3. Unlike the per-stage PRs
    (which are squash-merged), this final PR is a **normal (non-squash) merge**,
    so each stage's squashed commit lands on `main` as its own distinct commit
-   and the as-built history survives. Wait for the user to review and merge —
-   never merge into `main` unilaterally. The plan's `merge` flag does not
+   and the as-built history survives. **Say so in the PR body, in its own line
+   near the top** — the merge is performed by a person using whatever the
+   repo's default merge button offers, and a default of "Squash and merge"
+   silently discards the per-stage history while still producing a merged PR
+   that looks correct. The body is the last place that can warn them. Wait for
+   the user to review and merge — never merge into `main` unilaterally. The plan's `merge` flag does not
    apply here: it governs stage PRs only, and closeout never reads it —
    `plan-dir` is the only plan flag closeout does read.
 

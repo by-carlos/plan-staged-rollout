@@ -24,7 +24,9 @@ are the inputs; the run produces the evidence.
 
 Two things stay manual by design, and the run is only a proof if both are
 exercised: the `gate: human` stage, and the final `plan-slugify` → `main`
-merge. S2 must exercise the **whole** path — refusal, interactive run, resume.
+merge. Note the split on that last one — SF **opens** the plan-to-main pull
+request as its final act and the maintainer **merges** it. Only the merge is
+manual; a closeout that cannot open the PR just leaves clerical work behind. S2 must exercise the **whole** path — refusal, interactive run, resume.
 A run that only proves the refusal has proved half of it.
 
 Every stage runs at the model and effort in the stage index, which are real

@@ -6,8 +6,11 @@ decides whether the run worked ([#110](https://github.com/by-carlos/plan-staged-
 
 The run itself is a **manual act by the maintainer** — driven from a phone,
 start to finish, with the computer off. Nothing in this directory can perform
-it, and nothing here should be read as a record that it has happened. These
-are the inputs; the run produces the evidence.
+it. These are the inputs; the run produces the evidence.
+
+**This has now been run once, and it passed** (#110). What follows is still
+written as inputs, because that is what they are for the next run — but the
+fixes in them came from the first one, not from review.
 
 > **Deliberately not run against this repository.** Using this plugin's own
 > mechanism to build its cloud mode would be circular and would muddle the
@@ -26,8 +29,10 @@ Two things stay manual by design, and the run is only a proof if both are
 exercised: the `gate: human` stage, and the final `plan-slugify` → `main`
 merge. Note the split on that last one — SF **opens** the plan-to-main pull
 request as its final act and the maintainer **merges** it. Only the merge is
-manual; a closeout that cannot open the PR just leaves clerical work behind. S2 must exercise the **whole** path — refusal, interactive run, resume.
-A run that only proves the refusal has proved half of it.
+manual; a closeout that cannot open the PR just leaves clerical work behind.
+
+S2 must exercise the **whole** path — refusal, interactive run, resume. A run
+that only proves the refusal has proved half of it.
 
 Every stage runs at the model and effort in the stage index, which are real
 values, not placeholders. The point is to measure what a run actually costs
@@ -65,7 +70,9 @@ python3 scripts/verify_run.py --repo .
 It asserts, reading everything through `git show <ref>:<path>` and preferring
 `origin/<branch>` so it judges what was actually **pushed**:
 
-1. every stage branch exists, and its work reached the plan branch;
+1. every stage branch's work reached the plan branch — the branch itself may
+   be gone, since the stage-runner contract deletes it after its PR merges, and
+   absence fails only when no merged PR accounts for it;
 2. every stage's pull request is closed as merged, and targeted the plan
    branch;
 3. `.plan/LEDGER.md` has every row settled — nothing at `doing`, `todo` or

@@ -387,7 +387,13 @@ Seven frozen semantics:
    the plan branch (one clean commit per stage, no intra-stage churn on the plan
    branch); the final PR from the plan branch into `main` is a **normal
    (non-squash) merge**, so every stage lands on `main` as its own distinct
-   commit and the as-built history survives.
+   commit and the as-built history survives. **This is the one rule the plan
+   cannot enforce**, because it is the one merge no session performs: the
+   person merging gets the repo's default merge button, and a default of
+   "Squash and merge" collapses every stage into one commit on `main` while
+   still looking like a clean, successful merge. Set the repo's default to
+   "Create a merge commit" when the plan is set up — that is the only real
+   control; closeout naming the merge type in the PR body is a reminder.
 7. **One worktree per stage, and the clone never leaves the plan branch.** A
    stage branch is checked out only in its own sibling worktree
    (`../<repo>-s<N>`); the main clone stays parked on `plan-<slug>` for the

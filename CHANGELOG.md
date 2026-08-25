@@ -8,6 +8,21 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **The plan-to-main merge type is documented as unenforceable** (#110). The
+  final merge is the one step no session performs, so it is also the one step
+  the plan cannot police: whoever merges gets the repository's default merge
+  button, and a default of "Squash and merge" collapses every stage into a
+  single commit on `main` while still looking like a clean, successful merge.
+  A real run hit exactly this. The README's repo-settings prerequisite, the
+  skill's merge-type rule, and `/plan-close`'s final-PR step now all say to set
+  the repository default to "Create a merge commit", and closeout must state
+  the required merge type in the PR body — a reminder rather than a control,
+  and named as such.
+
 ## [0.6.0] - 2026-08-23
 
 **Codename:** Frenacho AFK

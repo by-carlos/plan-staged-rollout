@@ -11,11 +11,18 @@ It lives here as a committed file so it can be reviewed and diffed. The
 routine's saved-prompt field holds a copy; this file is the original, and a
 change to the contract is a change here first.
 
-> **Status: written, not yet proven end to end.** The measured facts below
-> are established (see the issue references), and the git-cycle probe (#107)
-> has since run the full branch-push-PR-merge sequence unattended. The
-> contract as a whole is verified by the end-to-end proof of concept (#110),
-> not by this file.
+> **Status: proven end to end** (#110). Three stages ran under this contract
+> in a live phone-driven run — two unattended, one refused — and the plan
+> reached a verified closeout. The measured facts below are established (see
+> the issue references), and the git-cycle probe (#107) ran the full
+> branch-push-PR-merge sequence unattended.
+>
+> What the run added is recorded on #108 rather than edited in here: the fire
+> payload's `RUN_STAGE` line acts as an authenticity signal and not only a
+> parse target, its shape is documented nowhere an operator would see it, and
+> §4's refusal held against a stage fired with an explicit claim that a human
+> was present — a case the section anticipates less directly than the mistaken
+> fire it was written for.
 
 ## Where it runs, and what that changes
 

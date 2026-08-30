@@ -12,6 +12,33 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **The repository is now self-installable.** A
+  `.claude-plugin/marketplace.json` lists this plugin as its own marketplace
+  entry, pinned to the `release` branch, so
+  `claude plugin marketplace add by-carlos/plan-staged-rollout` works without
+  adding the shared `by-carlos/claude-plugins` catalog first. Both routes serve
+  the same plugin from the same branch; the `@<marketplace>` suffix on the
+  install command is the only difference. The shared catalog is unchanged and
+  keeps working exactly as before.
+
+- **README gained "Where it runs" and "Updating".** Install is split by surface
+  — a **Claude Desktop app** section with the two-step pane flow, a
+  **Claude Code CLI** section with both the in-session
+  `/plugin` commands and the shell `claude plugin` ones, the shared-catalog
+  route, and an "After installing" that says there is nothing to configure.
+  "Where it runs" names the surfaces that run Claude Code plugins and the ones
+  that do not — Chat, Cowork and claude.ai never load it, and a desktop *cloud*
+  session loads from your claude.ai account rather than your machine — then
+  points at the two pieces that want more than a session: the session-start
+  hook's `bash` dependency and the driver's need for a machine left running.
+  "Updating" covers the desktop app's **Update** button, the CLI's
+  **Marketplaces** tab where **Enable auto-update** lives, the shell commands,
+  and the restart a new version needs; it warns that desktop updating has been
+  inconsistent in testing and that a remove-and-reinstall is the fallback. It
+  closes by answering the question an in-flight rollout raises: updating
+  disturbs nothing, because a `.plan/` carries its own operating protocol and
+  `/plan-run` defers to it.
+
 - **The plan-to-main merge type is documented as unenforceable** (#110). The
   final merge is the one step no session performs, so it is also the one step
   the plan cannot police: whoever merges gets the repository's default merge

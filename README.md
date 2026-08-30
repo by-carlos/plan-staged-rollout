@@ -927,7 +927,8 @@ necessarily for others. The toggle lives here in the CLI, and the desktop app
 has no equivalent — which, with the caveat above, makes the CLI the reliable
 way to stay current.
 
-The same two actions from your shell:
+`/plugin marketplace update` does the one-off refresh without opening the tab.
+The same two actions from your shell, without starting a session first:
 
 ```bash
 claude plugin marketplace update

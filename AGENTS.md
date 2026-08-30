@@ -16,10 +16,13 @@ bitten by exactly that.
 These are the rules where *not having read the doc yet* is itself the failure
 mode. They are also in `CLAUDE.md`; that copy is authoritative.
 
-- **`release` is live distribution; `main` is not.** The
+- **`release` is live distribution; `main` is not.** Two marketplaces serve
+  this plugin — the
   [`by-carlos/claude-plugins`](https://github.com/by-carlos/claude-plugins)
-  catalog sources this plugin at `ref: release`, so nothing reaches users until
-  `release` moves. Merging to `main` is safe and ships nothing.
+  catalog and this repo's own `.claude-plugin/marketplace.json` — and both
+  source it at `ref: release`, so nothing reaches users on either route until
+  `release` moves. Merging to `main` is safe and ships nothing, and editing
+  `marketplace.json` ships nothing on its own either.
 - **Never move `release` without bumping `version` in
   `.claude-plugin/plugin.json`.** Claude Code decides whether to update an
   installed plugin by comparing version strings — an unbumped fast-forward ships

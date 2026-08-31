@@ -2,9 +2,12 @@
 
 Project instructions for agentic coding in this repository. This repo is the
 home of the **`plan-staged-rollout`** Claude Code plugin and nothing else — the
-plugin lives at the repo root. It is distributed through the separate
+plugin lives at the repo root. It is distributed through **two** marketplaces,
+both sourcing it from this repo's `release` branch: the separate
 [`by-carlos/claude-plugins`](https://github.com/by-carlos/claude-plugins)
-catalog, which sources it from this repo's `release` branch.
+catalog, and this repo's own `.claude-plugin/marketplace.json`, which makes it
+installable standalone with
+`claude plugin marketplace add by-carlos/plan-staged-rollout`.
 
 ## Git & merge conventions
 
@@ -62,10 +65,17 @@ No local pre-commit hook — dev environments vary, so this is CI-only by design
 
 ## Releasing
 
-- **`release` is live distribution; `main` is not.** The catalog sources this
-  plugin at `ref: release`, so nothing reaches users until `release` moves.
-  Merging to `main` is safe and does not ship. `release` is only ever
+- **`release` is live distribution; `main` is not.** Both marketplaces source
+  this plugin at `ref: release`, so nothing reaches users until `release`
+  moves. Merging to `main` is safe and does not ship. `release` is only ever
   **fast-forwarded** to a commit on `main` that has been tagged and released.
+- **The standalone marketplace releases on the same move, with no extra step.**
+  `.claude-plugin/marketplace.json` is the listing a user gets from
+  `claude plugin marketplace add by-carlos/plan-staged-rollout`, and its entry
+  also pins `ref: release` — so a fast-forward of `release` ships to both
+  routes at once, and editing that file never ships anything on its own. Keep
+  its `description` matching `plugin.json`'s rather than leaving two answers to
+  one question.
 - **Never move `release` without bumping `version` in
   `.claude-plugin/plugin.json`.** Claude Code decides whether to update an
   installed plugin by comparing version strings — if two refs resolve to the

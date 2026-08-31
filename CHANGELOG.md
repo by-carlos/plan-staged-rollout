@@ -12,6 +12,32 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **"On the run" docs, rewritten around driving a plan from cloud sessions
+  instead of hand-provisioned routines** (#127). `docs/ON-THE-RUN.md` is a
+  from-scratch quickstart for someone with no prior context on the plugin:
+  open a cloud session (claude.ai/code or the mobile app) per stage, tell it
+  to check out the plan branch and run the next stage, repeat. The
+  hand-provisioned "one cloud routine per model" setup step and the
+  persistent orchestrator chat session it fired are gone with no fallback —
+  a cloud session's model is chosen when you create it, and each session now
+  works out which stage is next on its own. `examples/on-the-run/` carries
+  the two committed contracts this replaces: `stage-runner-prompt.md` (what
+  a cloud session follows to pick and run one stage) and
+  `orchestrator-prompt.md` (now the human's own round-by-round checklist,
+  since there's no persistent session left to hold that role). A warning
+  that a cloud session cannot reach local files, a local network, local
+  secrets, or a locally-installed toolchain is stated prominently and
+  repeated across all three pages, folding in the GitHub-access sharp edges
+  (no `gh`, MCP-proxy-only access scoped to one repository, repo-less
+  search/list tools that can reach past that scope, set-semantics label
+  writes) and the fact that no plugin — this one included — loads inside a
+  cloud session. Neither prompt claims the earlier "proven end to end"
+  status: #110 proved the routine-based design, not this one, and both now
+  say so plainly until a new proof-of-concept run against
+  `examples/on-the-run/poc/` (currently a placeholder) passes. The
+  `gate: human` refusal and the plan-to-`main` merge staying a manual,
+  human-performed step are unchanged in the new design.
+
 - **A `gate: local` value for stages that need local resources** (#128). Alongside
   the existing `gate: human`, a stage can now be marked `gate: local` at
   authoring time — for work that needs local hardware, a LAN-only resource, a

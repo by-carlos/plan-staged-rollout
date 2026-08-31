@@ -55,3 +55,43 @@ The discipline the [plugin README](../README.md) describes, in practice:
 - The example is inert where it lives: the plugin's SessionStart hook only
   reacts to a `.plan/` at the repo **root**, so this nested copy never nudges
   your sessions.
+
+## [`on-the-run/`](on-the-run/) — running a plan from cloud sessions
+
+The committed contract behind
+[`docs/ON-THE-RUN.md`](../docs/ON-THE-RUN.md), the quickstart for driving a
+plan from your phone by creating one cloud session per stage instead of
+running each stage on your own machine. These files are the reviewable
+source; the quickstart is where to start if you just want to run one.
+
+> **A cloud session cannot reach anything on your computer or your local
+> network** — no local files, no LAN, no secret that lives only on your
+> machine, no locally-installed toolchain. Anything a stage needs has to
+> already be in the repository or otherwise reachable from the cloud. See
+> [`docs/ON-THE-RUN.md`](../docs/ON-THE-RUN.md#what-a-cloud-session-cannot-reach)
+> for the full statement, including what this narrows GitHub access down to.
+
+- **[`stage-runner-prompt.md`](on-the-run/stage-runner-prompt.md)** — what a
+  fresh cloud session follows to pick and run exactly one stage: check out
+  the plan branch, work out which stage is next from the ledger itself,
+  follow `.plan/PLAN.md`'s protocol, and stop. Unlike the earlier
+  routine-based design, there is no separate session deciding which stage to
+  fire — each cloud session works that out on its own.
+- **[`orchestrator-prompt.md`](on-the-run/orchestrator-prompt.md)** — the
+  checklist for the person driving the loop: what to type into each new
+  cloud session, how to read the plan branch to see what happened, when a
+  stage needs you instead of a cloud session, and what stays yours by hand
+  (the plan-to-`main` merge, in every case).
+- **[`poc/`](on-the-run/poc/)** — where the inputs for the next end-to-end
+  proof of concept will live, once one is written for this design.
+
+**Status: not yet proven for this transport.** An earlier design — a
+pre-provisioned cloud *routine* per model, fired by a persistent chat session
+pasted with a different orchestrator prompt — was proven end to end once
+([#110](https://github.com/by-carlos/plan-staged-rollout/issues/110)): four
+stages on a disposable repository, phone-driven with the computer off, ending
+in a verified closeout. That proof does not carry over to the design
+documented here; it proved the routine-based mechanism, not cloud sessions
+created directly. Nothing on this page claims otherwise, and the two files
+above will only lose that caveat once a new proof-of-concept run against
+`poc/` passes.

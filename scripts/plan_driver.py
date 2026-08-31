@@ -8,9 +8,9 @@ exactly as `commands/plan-run.md` step 6 does, launches the next stage as its ow
 `claude -p` session, waits for it, and re-reads the ledger. The ledger is the only
 state; the driver holds none of its own between rounds.
 
-It stops - and calls the notify command - on a `gate: human` stage, on a stage
-that comes back anything other than `done` after the retry cap, and when closeout
-is finished. Once every stage is `done` or `skipped` it launches one more session,
+It stops - and calls the notify command - on a `gate: human` or `gate: local`
+stage, on a stage that comes back anything other than `done` after the retry
+cap, and when closeout is finished. Once every stage is `done` or `skipped` it launches one more session,
 `/plan-close --unattended`, which applies the plan flags instead of asking and
 opens the plan-to-main PR (`--no-close` stops before that instead). It never
 targets a protected branch, and it never merges anything itself: merges belong to
@@ -441,6 +441,34 @@ def read_driver_blocked_ids(plan_dir: Path) -> set[str]:
     return ids
 
 
+def blocked_section_text(plan_dir: Path, stage_id: str) -> str:
+    """The body of `stage_id`'s `### S<N>` section in `.plan/BLOCKED.md`, "" when
+    the file or the section doesn't exist. Used only to sniff for the
+    `needs-local` reason tag (`PLAN.md`, "Recording a block", "The discovered
+    case") - not a general-purpose reader of the runbook prose."""
+    path = plan_dir / "BLOCKED.md"
+    if not path.exists():
+        return ""
+    lines = path.read_text(encoding="utf-8").splitlines()
+    heading = f"### {stage_id}"
+    start = next(
+        (
+            i
+            for i, line in enumerate(lines)
+            if line.startswith(heading)
+            and (len(line) == len(heading) or line[len(heading)] == " ")
+        ),
+        None,
+    )
+    if start is None:
+        return ""
+    end = next(
+        (i for i in range(start + 1, len(lines)) if lines[i].startswith("### ")),
+        len(lines),
+    )
+    return "\n".join(lines[start + 1 : end])
+
+
 def record_driver_block(
     plan_dir: Path,
     row: LedgerRow,
@@ -783,10 +811,18 @@ def drive(
 
         row = runnable[0]
 
-        if row.gate == "human":
+        if row.gate in ("human", "local"):
+            reason = (
+                "it is `gate: human`, so it is never launched with nobody watching"
+                if row.gate == "human"
+                else (
+                    "it is `gate: local`, so it needs a resource only the local "
+                    "machine has and is never launched by a driver that could be "
+                    "running anywhere"
+                )
+            )
             message = (
-                f"stopped in front of {describe(row)} - it is `gate: human`, so it is "
-                "never launched with nobody watching. Run it yourself with "
+                f"stopped in front of {describe(row)} - {reason}. Run it yourself with "
                 f"`/plan-staged-rollout:plan-run {stage_argument(row.stage_id)}`, then "
                 "start the driver again."
             )
@@ -834,24 +870,47 @@ def drive(
         # override already excludes a listed stage from the runnable set, so a
         # stage that got launched cannot have been listed before it ran.
         if row.stage_id in read_driver_blocked_ids(plan_dir):
-            message = (
-                f"{row.stage_id} recorded its own block in .plan/BLOCKED.md - its "
-                "session hit something only a person or an external system can clear "
-                "after its stage branch existed, so the `blocked` row and the full "
-                "runbook are on that branch and its pull request while the LEDGER.md "
-                f"row here still reads `{status}`. Not retried."
-            )
+            if "needs-local" in blocked_section_text(plan_dir, row.stage_id).lower():
+                message = (
+                    f"{row.stage_id} blocked itself with reason `needs-local` - its "
+                    "session discovered mid-run that it needs a resource only the "
+                    "local machine has (local hardware, a LAN-only host, a secret not "
+                    "committed anywhere reachable, or a locally-installed toolchain). "
+                    f"Re-run it locally with `/plan-staged-rollout:plan-run "
+                    f"{stage_argument(row.stage_id)}` once you're on a machine that "
+                    "has what it needs, then start the driver again - see its stage "
+                    "branch and pull request for the full runbook."
+                )
+            else:
+                message = (
+                    f"{row.stage_id} recorded its own block in .plan/BLOCKED.md - its "
+                    "session hit something only a person or an external system can clear "
+                    "after its stage branch existed, so the `blocked` row and the full "
+                    "runbook are on that branch and its pull request while the LEDGER.md "
+                    f"row here still reads `{status}`. Not retried."
+                )
             log(message)
             notify(notify_cmd, "blocked", message, row.stage_id, plan_dir)
             return 1
 
         if status == "blocked":
-            message = (
-                f"{row.stage_id} came back `blocked` - its session hit something only a "
-                "person or an external system can clear before its stage branch "
-                "existed, so it committed the row and runbook straight to "
-                ".plan/LEDGER.md on the plan branch. Not retried."
-            )
+            reason_cell = (after.cells[-1] if after and after.cells else "").lower()
+            if "needs-local" in reason_cell:
+                message = (
+                    f"{row.stage_id} came back `blocked` with reason `needs-local` - "
+                    "its session discovered, before its stage branch even existed, "
+                    "that it needs a resource only the local machine has. Re-run it "
+                    f"locally with `/plan-staged-rollout:plan-run "
+                    f"{stage_argument(row.stage_id)}` once you're on a machine that "
+                    "has what it needs, then start the driver again."
+                )
+            else:
+                message = (
+                    f"{row.stage_id} came back `blocked` - its session hit something only a "
+                    "person or an external system can clear before its stage branch "
+                    "existed, so it committed the row and runbook straight to "
+                    ".plan/LEDGER.md on the plan branch. Not retried."
+                )
             log(message)
             notify(notify_cmd, "blocked", message, row.stage_id, plan_dir)
             return 1

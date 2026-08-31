@@ -23,22 +23,100 @@ say yes". In repos without a `.plan/`, the hook stays silent (see
 
 ## Install
 
-From within Claude Code:
+This plugin is listed on the shared
+[`by-carlos/claude-plugins`](https://github.com/by-carlos/claude-plugins)
+marketplace, and this repository is also a marketplace in its own right — so
+you can install it on its own, without adding anything else first. Pick
+whichever of these matches how you use Claude Code.
+
+### Claude Desktop app
+
+No terminal needed. Open the **Plugins** pane (the **+** button next to the
+prompt box, then **Plugins**) and click **Add**. Put
+`by-carlos/plan-staged-rollout` in the **URL** box — it takes a GitHub
+`owner/repo` directly, so there is nothing else to paste — then click **Sync**.
+
+The plugin directory opens on its own once the sync finishes. Plan-Staged
+Rollout is under the **Code** tab, with a **+** beside it — click that, and it
+is installed.
+
+The same **Plugins** pane is where you later enable, disable or remove it.
+
+### Claude Code CLI
+
+From inside a session:
+
+```
+/plugin marketplace add by-carlos/plan-staged-rollout
+/plugin install plan-staged-rollout@plan-staged-rollout
+```
+
+Or from your shell, without starting a session first:
+
+```bash
+claude plugin marketplace add by-carlos/plan-staged-rollout
+claude plugin install plan-staged-rollout@plan-staged-rollout
+```
+
+### From the shared catalog instead
+
+If you already have the `carlos-plugins` marketplace added, or you want the
+other plugins in it, install from there:
 
 ```
 /plugin marketplace add by-carlos/claude-plugins
 /plugin install plan-staged-rollout@carlos-plugins
 ```
 
+Both routes install the same plugin from the same `release` branch of this
+repository. The `@<marketplace>` suffix is the only difference — it names where
+you added the listing from, not what you get. `main` is where development
+happens; `release` is what installs.
+
+### After installing
+
+There is nothing to configure. Go to a repository with a build too big for one
+session and run `/plan-staged-rollout:plan-stages <your project idea>` —
+everything the plugin needs after that, it writes into that repository's
+`.plan/` folder itself.
+
 Installed plugin commands are namespaced — see the quickstart above for the
 exact commands to type. The rest of this README uses the short names
-(`plan-stages`, `plan-run`, `plan-close`) for readability.
+(`plan-stages`, `plan-run`, `plan-close`) for readability. Getting a later
+version is [Updating](#updating), further down.
 
-The plugin is distributed through the
-[`carlos-plugins`](https://github.com/by-carlos/claude-plugins) catalog, which
-serves it from this repository's `release` branch. `main` is where development
-happens; `release` is what installs. Run `/plugin marketplace update` to pick
-up a new version.
+## Where it runs
+
+**This is a Claude Code plugin.** It runs everywhere Claude Code does: the
+**Claude Code CLI**, and the **Code** tab of the **Claude Desktop app**. You
+can install it from either one — the Desktop app has its own plugin menu, so
+you never have to open a terminal. Local and SSH sessions both work.
+
+It is not a claude.ai skill. The Claude Desktop app has three tabs, and only
+**Code** runs Claude Code plugins — **Chat** and **Cowork** do not, and neither
+does claude.ai itself, so the plugin will not appear in any of them. One more
+case worth knowing: a desktop **cloud** session loads plugins from your
+claude.ai account rather than from your own machine, so a copy you installed
+locally will not be there either.
+
+Two parts of the plugin ask for a little more than a session:
+
+- **The session-start nudge needs `bash`.** The hook ships as a cmd/bash
+  polyglot wrapper, so it runs on Linux, macOS and Windows via Git Bash. A
+  Windows box without bash simply gets no nudge, and nothing else is affected —
+  the commands themselves are model-driven, not shell scripts. See
+  [Session-start nudge](#session-start-nudge).
+- **The unattended driver needs a machine of yours left running**, plus
+  `python`, the `claude` CLI and `gh`. Everything else works from a session
+  alone. See [Unattended runs](#unattended-runs--scriptsplan_driverpy).
+
+**Typing `/plan-staged-rollout:<command>` always works.** Claude Code can also
+start one from plain language ("run stage 3 of the plan"), but only when it has
+room to read the command descriptions — on a smaller-context model with a lot
+of plugins installed it can fall back to names alone, and plain-language
+triggering stops working. This plugin's surface is small, so it is an unlikely
+squeeze; if it does happen, use the slash form, or give descriptions more room
+with `skillListingBudgetFraction` in your Claude Code settings.
 
 ---
 
@@ -182,7 +260,7 @@ normal, resumable state, not a failure.
 **Where a `blocked` record lands** depends on whether the stage's branch exists
 yet, and the plan's own `PLAN.md` states the rule (*Operating protocol →
 Recording a block*). A block that fires before the branch exists — the weight
-check, a `gate: human` backstop, a refused redo — is committed straight onto
+check, a `gate: human`/`gate: local` backstop, a refused redo — is committed straight onto
 the plan branch, so it is readable the moment it happens. A block that fires
 mid-stage lands on the stage branch, where its runbook rides the stage PR, and
 is announced on the plan branch through a `### S<N>` section in
@@ -411,7 +489,7 @@ work — and don't skimp on the hard parts:
 | `mode` | `direct` \| `brainstorm` | whether the stage needs a design pass first |
 | `exec` | `inline` \| `subagent(<model>)` | where the implementation churn lives |
 | `model` / `effort` | launch hints | recommended session weight; checked, not faked |
-| `gate` | `auto` \| `human` | may the stage be launched with nobody watching? `human` means never — an unattended runner stops in front of it |
+| `gate` | `auto` \| `human` \| `local` | may the stage be launched with nobody watching? `human` means never — a person's judgment or presence is part of the stage; `local` means never *by a driver running elsewhere* — the stage needs a resource only the local machine has. An unattended runner stops in front of either |
 
 And two flags for the plan as a whole, on the **plan flags** line under the
 stage index:
@@ -432,7 +510,8 @@ Defaults are deliberately cheap and reproduce the fully-manual flow: `direct`,
 `inline`, the cheaper capable model, `gate: auto`, `merge: manual`,
 `plan-dir: delete` — a plan that predates these flags needs no edit. Escalate
 only where a stage has genuine open design questions (`brainstorm`, which also
-makes it `gate: human`) or heavy iteration churn (`subagent`); opt into
+makes it `gate: human`), needs a resource only the local machine has
+(`gate: local`), or has heavy iteration churn (`subagent`); opt into
 `merge: auto` only for a plan you intend to run unattended.
 
 ### Why `model` / `effort` are hints, not automation
@@ -476,8 +555,8 @@ settled, and stops when something genuinely needs a person.
 
 **One unattended run covers the whole lifecycle bar two gates.** From a
 bootstrapped `.plan/` the driver reaches an open plan→main PR by itself; the
-only two places it hands back are a `gate: human` stage and the final merge,
-which is yours in every mode.
+only two places it hands back are a `gate: human` or `gate: local` stage and
+the final merge, which is yours in every mode.
 
 ```bash
 python scripts/plan_driver.py --dry-run
@@ -506,8 +585,9 @@ without launching anything:
 | Stop | What the driver does |
 |---|---|
 | `gate: human` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a person |
-| a stage comes back `blocked` before its branch existed | reports it and stops; the session committed its own runbook to `LEDGER.md` on the plan branch, and the driver never retries a deliberate block |
-| a stage blocks mid-stage | same stop, read from the `### S<N>` section the session wrote to `.plan/BLOCKED.md` on the plan branch; the full runbook is on the stage branch and its PR, and the `LEDGER.md` row still reads `doing` until someone merges it |
+| `gate: local` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a resource only the local machine has |
+| a stage comes back `blocked` before its branch existed | reports it and stops; the session committed its own runbook to `LEDGER.md` on the plan branch, and the driver never retries a deliberate block. Reason `needs-local`? Reported distinctly — "re-run this stage locally" — instead of a generic block |
+| a stage blocks mid-stage | same stop, read from the `### S<N>` section the session wrote to `.plan/BLOCKED.md` on the plan branch; the full runbook is on the stage branch and its PR, and the `LEDGER.md` row still reads `doing` until someone merges it. Reason `needs-local`? Same distinct report |
 | a stage does not reach `done` within `--max-attempts` (default 2) | records the stage as blocked, with a runbook, in `.plan/BLOCKED.md` — never in `LEDGER.md`, which the stage's own branch may still be editing unmerged (see below) — commits it on the plan branch (`--no-commit` writes without committing), and stops |
 | nothing runnable, stages still open | reports which stages are waiting and stops |
 | every stage `done`/`skipped` | launches [`/plan-close --unattended`](commands/plan-close.md) as one more session, then reports the plan→main PR's URL and exits 0 |
@@ -538,6 +618,16 @@ reading `doing` until a session's preflight records the merged PR as `done`
 — the next session the driver launches does exactly that, and
 [`/plan-run`](commands/plan-run.md) treats a row its own preflight just
 self-healed as finished, not as a redo.
+
+**`needs-local` — a block the driver calls out by name.** A stage can declare
+`gate: local` up front (see *Per-stage knobs*, above), or discover mid-run,
+with nothing declared, that it needs a resource only the local machine has —
+local hardware, a LAN-only host, a secret not committed anywhere reachable, or
+a locally-installed toolchain. The second case still ends up `blocked`, same
+as any other, but the session writes the literal reason `needs-local` in the
+ledger row's `Result` cell or the `.plan/BLOCKED.md` section, and the driver
+looks for exactly that token — so its report says "re-run this stage locally"
+instead of a bare failure you'd otherwise have to diagnose from scratch.
 
 ### Closeout, unattended
 
@@ -808,6 +898,7 @@ Layout:
 ```
 .
   .claude-plugin/plugin.json
+  .claude-plugin/marketplace.json  # lists this repo as its own marketplace
   README.md                      ← you are here
   docs/
     ON-THE-RUN.md                # quickstart: drive a plan from your phone
@@ -830,6 +921,60 @@ Layout:
   scripts/
     plan_driver.py               # unattended driver: one claude -p per stage
 ```
+
+## Updating
+
+New versions ship on the `release` branch. A merge to `main` releases nothing.
+
+### Claude Desktop app
+
+Open the **Plugins** pane and select the plugin. Its page shows the version you
+have and an **Update** button.
+
+**Do not count on the desktop app noticing a new release.** Its updating has
+been inconsistent in testing: a plugin sat on an old version across a release,
+with the **Update** button inactive and **Check for updates** reporting nothing
+available, days after the new version was out.
+
+So if that page shows a version behind the one you expect, do not wait for it.
+Remove the plugin and install it again — a reinstall always lands on the
+current version. If you have a terminal, the CLI commands below are the
+dependable route.
+
+### Claude Code CLI
+
+Run `/plugin` and open the **Marketplaces** tab. Selecting this plugin's
+marketplace gives you **Update marketplace** for a one-off, and **Enable
+auto-update**, which has Claude Code refresh the marketplace and its installed
+plugins in the background shortly after each session starts. That tab also
+tells you which state you are currently in.
+
+Auto-update is worth turning on, and worth checking rather than assuming:
+Claude Code enables it by default for Anthropic's own marketplaces, not
+necessarily for others. The toggle lives here in the CLI, and the desktop app
+has no equivalent — which, with the caveat above, makes the CLI the reliable
+way to stay current.
+
+`/plugin marketplace update` does the one-off refresh without opening the tab.
+The same two actions from your shell, without starting a session first:
+
+```bash
+claude plugin marketplace update
+claude plugin update plan-staged-rollout
+```
+
+However you update, a new version does not load into a session that is already
+running: restart Claude Code, or run `/reload-plugins`.
+
+### Does updating disturb a rollout already in progress?
+
+No. A `.plan/` folder carries its own operating protocol inside the `PLAN.md`
+that bootstrap scaffolded, and `/plan-run` is a thin wrapper that defers to it.
+A plan therefore keeps running exactly as it was decomposed, whatever version
+is installed when you come back to it days later. A new version changes what
+the *next* `/plan-stages` scaffolds, not what an in-flight plan does.
+
+[`CHANGELOG.md`](CHANGELOG.md) is what shipped when.
 
 ## Contributing
 

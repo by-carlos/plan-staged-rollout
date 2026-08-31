@@ -16,6 +16,13 @@ project, so the workflow is deliberately lightweight.
 
 The maintainer ([Carlos Eng](https://github.com/by-carlos)) reviews and merges all PRs.
 
+**Where an install problem goes.** This repository is its own marketplace, so
+anything wrong with `claude plugin marketplace add by-carlos/plan-staged-rollout`
+— or with the plugin it serves — belongs here. A problem with the shared
+`carlos-plugins` catalog listing belongs in
+[`by-carlos/claude-plugins`](https://github.com/by-carlos/claude-plugins),
+which owns that catalog.
+
 ## Validation
 
 A GitHub Actions workflow (`.github/workflows/validate.yml`) runs on every PR and on

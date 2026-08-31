@@ -112,23 +112,32 @@ deliberately cheap — escalate only where a stage genuinely warrants it:
 - `gate: auto` by default. `gate` says whether a stage may be **launched
   unattended** — by a driver that runs stages back-to-back with nobody
   watching (`scripts/plan_driver.py` in this repo; this flag is the contract
-  it reads). A `gate: human` stage is never launched unattended: the driver
-  stops in front of it and notifies, and a session that finds itself running
-  one unattended (see *Statuses and human-gated stages*) reports and stops
-  rather than starting it. Mark `human` where a person must be present for the stage to
-  get anywhere: every `mode: brainstorm` stage (a design pass is a
-  conversation), and any stage whose acceptance needs a human's eyes or hands
-  (a visual check, a GUI-only action, a credential). **Why `auto` is the
-  default and not `human`:** the flag changes nothing until something runs
-  stages unattended — today, and for any plan that never adopts a driver,
-  `merge: manual` already stops at every merge whatever `gate` says, so an
-  `auto` default costs existing plans nothing and keeps a fresh plan closest
-  to today's fully-manual experience. The conservative alternative (`human`
-  by default, opt stages *into* unattended) would make bootstrap upgrade
-  every mechanical stage by hand instead of downgrading the few that need a
-  person; it was considered and is the right call only if unattended runs
-  turn out to misfire on stages that looked mechanical at decomposition. An
-  **absent** `gate` column reads as `auto` — plans written before the flag
+  it reads). A `gate: human` or `gate: local` stage is never launched
+  unattended: the driver stops in front of it and notifies, and a session
+  that finds itself running one unattended (see *Statuses and human-gated
+  stages*) reports and stops rather than starting it. Mark `human` where a
+  person must be present for the stage to get anywhere: every
+  `mode: brainstorm` stage (a design pass is a conversation), and any stage
+  whose acceptance needs a human's eyes or hands (a visual check, a GUI-only
+  action, a credential). Mark `local` where the stage needs a resource only
+  the local machine has, known at authoring time — local hardware, a
+  LAN-only host, a secret not committed anywhere reachable, or a
+  locally-installed toolchain. The two gates are independent: the driver
+  refuses either exactly the same way, but for a different reason — `human`
+  because nobody is watching, `local` because the driver could be running
+  anywhere but the machine the stage needs. A stage that only discovers this
+  mid-run, with nothing declared up front, uses the `needs-local` blocked
+  reason instead (*Statuses and human-gated stages*, below). **Why `auto` is
+  the default and not `human`:** the flag changes nothing until something
+  runs stages unattended — today, and for any plan that never adopts a
+  driver, `merge: manual` already stops at every merge whatever `gate` says,
+  so an `auto` default costs existing plans nothing and keeps a fresh plan
+  closest to today's fully-manual experience. The conservative alternative
+  (`human` by default, opt stages *into* unattended) would make bootstrap
+  upgrade every mechanical stage by hand instead of downgrading the few that
+  need a person; it was considered and is the right call only if unattended
+  runs turn out to misfire on stages that looked mechanical at decomposition.
+  An **absent** `gate` column reads as `auto` — plans written before the flag
   existed need no edit.
 - `merge: manual` by default — **plan-level, not per-stage.** `merge` says
   what happens to a stage PR once it is open: under `manual` the session
@@ -250,7 +259,13 @@ out as method, not just vocabulary:
   `.plan/BLOCKED.md` section on the plan branch once it exists. That is the
   single source of truth for the rule. Neither this skill nor `/plan-run`
   restates it — they only name which side of it a given decision point falls
-  on.
+  on. **`needs-local`** is the reason value for one specific case: a stage
+  that discovers *mid-run* — nothing declared as `gate: local` up front —
+  that it needs a resource only the local machine has. Same `blocked` state,
+  same commit rule, but the one-line reason is the literal token
+  `needs-local` rather than free text, so an unattended driver's report can
+  say "re-run this stage locally" instead of a generic failure (`PLAN.md`,
+  *Recording a block*, "The discovered case").
 - **Unattended, a stage question that has no declared default becomes
   `blocked`.** Mark the stage `blocked` with a runbook stating the question
   and what would unblock it, commit that where *Recording a block* says, and
@@ -306,6 +321,7 @@ two kinds:
 | Decision point | Interactive | Unattended |
 |---|---|---|
 | A `gate: human` stage | announced — the person at the keyboard *is* the gate | **hard stop**, never started |
+| A `gate: local` stage | announced — running it here means this session already has what it needs | **hard stop**, never started |
 | Weight check: lighter model than recommended, or an unrecognised tier | offer continue/abort | **hard stop** — `blocked` + runbook |
 | A mid-stage question the frozen decisions don't settle | asked | **hard stop** — `blocked` + runbook |
 | Redo of a `done` stage | confirmed first | **hard stop** — `blocked` + runbook |
@@ -324,7 +340,8 @@ than anywhere else: a runbook left on an unmerged branch with nothing on the
 plan branch pointing at it is one the next pass never reads.
 
 **What no mode loosens.** The plan→main PR is opened by closeout and merged
-by a person, always. A `gate: human` stage is never launched unattended. A
+by a person, always. A `gate: human` stage is never launched unattended, and
+neither is a `gate: local` one — same refusal, different reason. A
 worktree holding real uncommitted or unpushed work is never removed, and never
 with `--force`. A merge the platform refuses is never forced or retried.
 

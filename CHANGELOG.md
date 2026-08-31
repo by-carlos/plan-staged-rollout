@@ -87,6 +87,70 @@ elsewhere. See 0.4.0 for the split.
   self-check table mapping each binding constraint to the section that names
   it. Written, not yet proven end to end — #107 and #110 verify it.
 
+- **A `gate: local` value for stages that need local resources** (#128). Alongside
+  the existing `gate: human`, a stage can now be marked `gate: local` at
+  authoring time — for work that needs local hardware, a LAN-only resource, a
+  secret not committed anywhere reachable, or a locally-installed toolchain.
+  The unattended driver (`scripts/plan_driver.py`) and `/plan-run --unattended`
+  refuse to launch it, exactly as they already refuse `gate: human`, and hand
+  it back to be run locally with `/plan-run`. For the case a stage only
+  discovers *mid-run* — nothing declared up front — the ledger convention adds
+  a `needs-local` blocked reason (written to the ledger row's `Result` cell,
+  or the `.plan/BLOCKED.md` section, depending on whether the stage branch
+  exists yet): the driver recognizes it and reports "re-run this stage
+  locally" instead of a generic block. `gate: human` semantics are unchanged;
+  `.plan/LEDGER.md` remains the sole source of truth for stage status in both
+  cases.
+
+- **The repository is now self-installable.** A
+  `.claude-plugin/marketplace.json` lists this plugin as its own marketplace
+  entry, pinned to the `release` branch, so
+  `claude plugin marketplace add by-carlos/plan-staged-rollout` works without
+  adding the shared `by-carlos/claude-plugins` catalog first. Both routes serve
+  the same plugin from the same branch; the `@<marketplace>` suffix on the
+  install command is the only difference. The shared catalog is unchanged and
+  keeps working exactly as before.
+
+- **README gained "Where it runs" and "Updating".** Install is split by surface
+  — a **Claude Desktop app** section with the two-step pane flow, a
+  **Claude Code CLI** section with both the in-session
+  `/plugin` commands and the shell `claude plugin` ones, the shared-catalog
+  route, and an "After installing" that says there is nothing to configure.
+  "Where it runs" names the surfaces that run Claude Code plugins and the ones
+  that do not — Chat, Cowork and claude.ai never load it, and a desktop *cloud*
+  session loads from your claude.ai account rather than your machine — then
+  points at the two pieces that want more than a session: the session-start
+  hook's `bash` dependency and the driver's need for a machine left running.
+  "Updating" covers the desktop app's **Update** button, the CLI's
+  **Marketplaces** tab where **Enable auto-update** lives, the shell commands,
+  and the restart a new version needs; it warns that desktop updating has been
+  inconsistent in testing and that a remove-and-reinstall is the fallback. It
+  closes by answering the question an in-flight rollout raises: updating
+  disturbs nothing, because a `.plan/` carries its own operating protocol and
+  `/plan-run` defers to it.
+
+- **The plan-to-main merge type is documented as unenforceable** (#110). The
+  final merge is the one step no session performs, so it is also the one step
+  the plan cannot police: whoever merges gets the repository's default merge
+  button, and a default of "Squash and merge" collapses every stage into a
+  single commit on `main` while still looking like a clean, successful merge.
+  A real run hit exactly this. The README's repo-settings prerequisite, the
+  skill's merge-type rule, and `/plan-close`'s final-PR step now all say to set
+  the repository default to "Create a merge commit", and closeout must state
+  the required merge type in the PR body — a reminder rather than a control,
+  and named as such.
+
+### Changed
+
+- **`/plan-stages` no longer asks the `merge` bootstrap question** (#124). A
+  new plan's flags line now gets `merge: auto` by default, written without
+  asking — a stage that finishes itself needs its PR merged without a person
+  showing up to approve it, so that is what an unattended or cloud-driven run
+  needs by default. `merge: manual` remains available as an explicit opt-in a
+  plan author can still set by editing `PLAN.md`'s plan flags line, and
+  `/plan-run`'s finish protocol still honours it exactly as before for any
+  plan that sets it.
+
 ### Fixed
 
 - **The stage-runner prompt told a cloud routine to open its PR with `gh`,

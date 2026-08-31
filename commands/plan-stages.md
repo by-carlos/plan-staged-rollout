@@ -83,14 +83,19 @@ Then work through these steps **in order**:
    Decide it here, from the decomposition, never by asking the user row by
    row:
    `human` for every `mode: brainstorm` stage and for any stage whose
-   acceptance needs a person's eyes or hands; `auto` for everything else —
-   it is the default, and the flag changes nothing until a plan is actually
-   run unattended. Then apply the skill's **group by gate** rule to the
-   graph: `human` stages go at the **front** (where frozen decisions get
+   acceptance needs a person's eyes or hands; `local` for a stage you already
+   know needs a resource only the local machine has — local hardware, a
+   LAN-only host, a secret not committed anywhere reachable, or a
+   locally-installed toolchain; `auto` for everything else — it is the
+   default, and neither `human` nor `local` changes anything until a plan is
+   actually run unattended. Then apply the skill's **group by gate** rule to
+   the graph: `human` stages go at the **front** (where frozen decisions get
    settled or amended) and the review stage at the **end**, with the
    mechanical `auto` stages in between — never a `human` stage wedged between
-   two `auto` ones unless a dependency edge genuinely forces it. When that
-   rule and the graph disagree, the graph wins and you say so.
+   two `auto` ones unless a dependency edge genuinely forces it. `local`
+   stages carry no design question, so they need no such front-loading — they
+   sit wherever the dependency graph puts them. When the human-grouping rule
+   and the graph disagree, the graph wins and you say so.
 
 4. **Git model (fixed, not a question).** Record the frozen git protocol in
    `PLAN.md`: **branch-per-stage** — `main` → `plan-<slug>` (the plan branch)

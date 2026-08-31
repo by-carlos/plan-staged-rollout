@@ -17,7 +17,7 @@ If `$ARGUMENTS` carries the token **`--unattended`**, this session has nobody
 to answer it — it was launched by an unattended runner, or the user is
 walking away. The token selects **declared default over ask**, never "proceed
 anyway". Strip it before resolving the stage, and honour it in steps 3, 5 and 6
-below: a `gate: human` stage is never started, and every question the protocol
+below: a `gate: human` or `gate: local` stage is never started, and every question the protocol
 would put to a person either has a declared default on `PLAN.md`'s plan flags
 line (`merge`) or becomes `blocked` + runbook (the `staged-rollout` skill,
 *Unattended mode*, classifies each one; `PLAN.md`'s *Recording a block* says
@@ -74,10 +74,13 @@ Work through these steps **in order**:
 
    **Gate check (same step, unattended only).** Read the stage's `gate`
    column from the same index row (an absent column reads as `auto`). Under
-   `--unattended`, a `gate: human` stage is not started: say plainly that it
-   needs a person present, name it, and stop — a runner reading the previous
-   stage's end announcement should already have stopped in front of it, so
-   this is the backstop, not the mechanism. For a `gate: auto` stage run
+   `--unattended`, a `gate: human` or `gate: local` stage is not started: say
+   plainly why — `human` needs a person present, `local` needs a resource
+   only the local machine has (local hardware, a LAN-only host, a secret not
+   committed anywhere reachable, or a locally-installed toolchain) — name the
+   stage, and stop — a runner reading the previous stage's end announcement
+   should already have stopped in front of it, so this is the backstop, not
+   the mechanism. For a `gate: auto` stage run
    unattended, the weight check's continue/abort offer and the tier question
    have no one to answer them: mark the row `blocked` with the mismatch as
    the runbook, and commit it per `PLAN.md`'s *Recording a block* — this step
@@ -129,9 +132,10 @@ Work through these steps **in order**:
      \<N> of the plan"** — or the explicit command
      **`/plan-staged-rollout:plan-run <N>`** — and state its recommended
      **model and effort** and its **`gate`** from the stage index. A
-     `gate: human` stage in the set needs a person at the keyboard — say so,
-     because an unattended runner reading this announcement stops in front
-     of it rather than launching it.
+     `gate: human` stage in the set needs a person at the keyboard, and a
+     `gate: local` stage needs to run on a machine that has what it needs —
+     say so, because an unattended runner reading this announcement stops in
+     front of either rather than launching it.
    - **Whether they can overlap.** If the runnable set holds more than one
      stage, say plainly that those stages are independent and can be launched
      **concurrently, one stage per fresh session** — that launch is the

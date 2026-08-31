@@ -260,7 +260,7 @@ normal, resumable state, not a failure.
 **Where a `blocked` record lands** depends on whether the stage's branch exists
 yet, and the plan's own `PLAN.md` states the rule (*Operating protocol →
 Recording a block*). A block that fires before the branch exists — the weight
-check, a `gate: human` backstop, a refused redo — is committed straight onto
+check, a `gate: human`/`gate: local` backstop, a refused redo — is committed straight onto
 the plan branch, so it is readable the moment it happens. A block that fires
 mid-stage lands on the stage branch, where its runbook rides the stage PR, and
 is announced on the plan branch through a `### S<N>` section in
@@ -489,7 +489,7 @@ work — and don't skimp on the hard parts:
 | `mode` | `direct` \| `brainstorm` | whether the stage needs a design pass first |
 | `exec` | `inline` \| `subagent(<model>)` | where the implementation churn lives |
 | `model` / `effort` | launch hints | recommended session weight; checked, not faked |
-| `gate` | `auto` \| `human` | may the stage be launched with nobody watching? `human` means never — an unattended runner stops in front of it |
+| `gate` | `auto` \| `human` \| `local` | may the stage be launched with nobody watching? `human` means never — a person's judgment or presence is part of the stage; `local` means never *by a driver running elsewhere* — the stage needs a resource only the local machine has. An unattended runner stops in front of either |
 
 And two flags for the plan as a whole, on the **plan flags** line under the
 stage index:
@@ -510,7 +510,8 @@ Defaults are deliberately cheap and reproduce the fully-manual flow: `direct`,
 `inline`, the cheaper capable model, `gate: auto`, `merge: manual`,
 `plan-dir: delete` — a plan that predates these flags needs no edit. Escalate
 only where a stage has genuine open design questions (`brainstorm`, which also
-makes it `gate: human`) or heavy iteration churn (`subagent`); opt into
+makes it `gate: human`), needs a resource only the local machine has
+(`gate: local`), or has heavy iteration churn (`subagent`); opt into
 `merge: auto` only for a plan you intend to run unattended.
 
 ### Why `model` / `effort` are hints, not automation
@@ -554,8 +555,8 @@ settled, and stops when something genuinely needs a person.
 
 **One unattended run covers the whole lifecycle bar two gates.** From a
 bootstrapped `.plan/` the driver reaches an open plan→main PR by itself; the
-only two places it hands back are a `gate: human` stage and the final merge,
-which is yours in every mode.
+only two places it hands back are a `gate: human` or `gate: local` stage and
+the final merge, which is yours in every mode.
 
 ```bash
 python scripts/plan_driver.py --dry-run
@@ -584,8 +585,9 @@ without launching anything:
 | Stop | What the driver does |
 |---|---|
 | `gate: human` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a person |
-| a stage comes back `blocked` before its branch existed | reports it and stops; the session committed its own runbook to `LEDGER.md` on the plan branch, and the driver never retries a deliberate block |
-| a stage blocks mid-stage | same stop, read from the `### S<N>` section the session wrote to `.plan/BLOCKED.md` on the plan branch; the full runbook is on the stage branch and its PR, and the `LEDGER.md` row still reads `doing` until someone merges it |
+| `gate: local` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a resource only the local machine has |
+| a stage comes back `blocked` before its branch existed | reports it and stops; the session committed its own runbook to `LEDGER.md` on the plan branch, and the driver never retries a deliberate block. Reason `needs-local`? Reported distinctly — "re-run this stage locally" — instead of a generic block |
+| a stage blocks mid-stage | same stop, read from the `### S<N>` section the session wrote to `.plan/BLOCKED.md` on the plan branch; the full runbook is on the stage branch and its PR, and the `LEDGER.md` row still reads `doing` until someone merges it. Reason `needs-local`? Same distinct report |
 | a stage does not reach `done` within `--max-attempts` (default 2) | records the stage as blocked, with a runbook, in `.plan/BLOCKED.md` — never in `LEDGER.md`, which the stage's own branch may still be editing unmerged (see below) — commits it on the plan branch (`--no-commit` writes without committing), and stops |
 | nothing runnable, stages still open | reports which stages are waiting and stops |
 | every stage `done`/`skipped` | launches [`/plan-close --unattended`](commands/plan-close.md) as one more session, then reports the plan→main PR's URL and exits 0 |
@@ -616,6 +618,16 @@ reading `doing` until a session's preflight records the merged PR as `done`
 — the next session the driver launches does exactly that, and
 [`/plan-run`](commands/plan-run.md) treats a row its own preflight just
 self-healed as finished, not as a redo.
+
+**`needs-local` — a block the driver calls out by name.** A stage can declare
+`gate: local` up front (see *Per-stage knobs*, above), or discover mid-run,
+with nothing declared, that it needs a resource only the local machine has —
+local hardware, a LAN-only host, a secret not committed anywhere reachable, or
+a locally-installed toolchain. The second case still ends up `blocked`, same
+as any other, but the session writes the literal reason `needs-local` in the
+ledger row's `Result` cell or the `.plan/BLOCKED.md` section, and the driver
+looks for exactly that token — so its report says "re-run this stage locally"
+instead of a bare failure you'd otherwise have to diagnose from scratch.
 
 ### Closeout, unattended
 

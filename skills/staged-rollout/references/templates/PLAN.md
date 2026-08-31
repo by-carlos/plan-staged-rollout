@@ -89,18 +89,25 @@ which questions have a default and which are hard stops in every mode.
 
 Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
 `subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
-`gate` = `auto` \| `human` (may the stage be launched with nobody watching? —
-`human` means never); `merge` = `manual` \| `auto` (does the session merge its
-own stage PR into the plan branch once checks are green, or offer it for your
-OK?); `plan-dir` = `delete` \| `keep` (at closeout, is `.plan/` removed as the
-last commit on the plan branch, or left in place because the plan doubles as
-documentation?). Defaults are deliberately cheap and preserve the fully-manual
-flow — `direct`, `inline`, the cheaper capable model, `gate: auto`,
-`merge: manual`, `plan-dir: delete`; a missing `gate` column, a missing
-plan-flags line, or a missing entry on it means those defaults. Escalate only
-where a stage has genuine open design questions (`brainstorm`, which also
-makes it `gate: human`) or heavy iteration churn (`subagent`). `merge` governs
-stage PRs only — the plan→main PR at closeout is manual in every mode.
+`gate` = `auto` \| `human` \| `local` (may the stage be launched with nobody
+watching? `human` means never — a person's judgment or presence is part of
+the stage itself; `local` means never *by a driver that could be running
+anywhere but the local machine* — the stage needs a resource only that
+machine has: local hardware, a LAN-only host, a secret not committed anywhere
+reachable, or a locally-installed toolchain. Same refusal, different reason —
+an unattended runner stops in front of either exactly the same way); `merge` =
+`manual` \| `auto` (does the session merge its own stage PR into the plan
+branch once checks are green, or offer it for your OK?); `plan-dir` =
+`delete` \| `keep` (at closeout, is `.plan/` removed as the last commit on the
+plan branch, or left in place because the plan doubles as documentation?).
+Defaults are deliberately cheap and preserve the fully-manual flow — `direct`,
+`inline`, the cheaper capable model, `gate: auto`, `merge: manual`,
+`plan-dir: delete`; a missing `gate` column, a missing plan-flags line, or a
+missing entry on it means those defaults. Escalate only where a stage has
+genuine open design questions (`brainstorm`, which also makes it
+`gate: human`), needs a resource only the local machine has (`gate: local`),
+or has heavy iteration churn (`subagent`). `merge` governs stage PRs only —
+the plan→main PR at closeout is manual in every mode.
 
 ### Runnable set & waves (derived, never stored)
 
@@ -285,8 +292,8 @@ structural fact and four rules about timing.
    guess — state the exact model ID/name and ask the user which tier applies.
    **Unattended?** If this session was launched with nobody to answer it (an
    unattended runner, or `/plan-run`'s `--unattended` argument), check the
-   stage's `gate` first: a `gate: human` stage is never started unattended —
-   report that and stop here. For a `gate: auto` stage, every offer or
+   stage's `gate` first: a `gate: human` or `gate: local` stage is never
+   started unattended — report that and stop here. For a `gate: auto` stage, every offer or
    question in this step and the ones below either has a **declared default**
    on the plan flags line or is a **hard stop** — there is no third option
    and nothing waits for an answer (see the `staged-rollout` skill,
@@ -454,8 +461,9 @@ structural fact and four rules about timing.
       each one, give
       the exact prompt/command to run it, its recommended `model`/`effort`
       and its `gate` from the stage index — a `gate: human` stage needs a
-      person at the keyboard, so an unattended runner reading this stops
-      there. If the set holds more than one stage, say so
+      person at the keyboard and a `gate: local` stage needs a machine that
+      has what it needs, so an unattended runner reading this stops in front
+      of either. If the set holds more than one stage, say so
       plainly: they are independent and can be launched **concurrently, one
       per fresh session**. If it is empty, say which it is — every stage
       `done`/`skipped` (ready for closeout) or stalled on `blocked` rows and
@@ -494,6 +502,22 @@ branch exists yet.
 
   Leave the plan branch's ledger row reading `doing`. It becomes `blocked`
   there only once the stage PR is merged, and that is a person's call.
+
+**The discovered case — `needs-local`.** `gate: local` (Stage index &
+dependencies, above) covers a local-resource need known at authoring time. A
+stage can also discover this *mid-run*, with nothing declared up front — a
+credential that turns out to live only on this machine, a host only reachable
+from a LAN this session isn't on, a locally-installed toolchain the session
+doesn't have. Record it exactly like any other block above — same two cases
+by whether the stage branch exists yet, same commit points — but write the
+one-line reason as the literal token `needs-local`: in the row's `Result`
+cell for the before-the-branch case, or as the first line of the
+`.plan/BLOCKED.md` section's body for the after-the-branch case. That literal
+token is what lets an unattended runner's report say "re-run this stage
+locally" instead of a bare failure the next reader has to diagnose from
+scratch. The full runbook — what exactly is missing and how to get it — still
+goes in the notes block or the stage PR, same as any other block; `needs-local`
+is a machine-readable tag, not a substitute for it.
 
 **Not every unattended stop is a block.** A stage that did its work and stopped
 only because `merge: manual` withheld the merge — or because a required check

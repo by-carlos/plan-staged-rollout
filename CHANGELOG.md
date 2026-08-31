@@ -12,6 +12,21 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **A `gate: local` value for stages that need local resources** (#128). Alongside
+  the existing `gate: human`, a stage can now be marked `gate: local` at
+  authoring time — for work that needs local hardware, a LAN-only resource, a
+  secret not committed anywhere reachable, or a locally-installed toolchain.
+  The unattended driver (`scripts/plan_driver.py`) and `/plan-run --unattended`
+  refuse to launch it, exactly as they already refuse `gate: human`, and hand
+  it back to be run locally with `/plan-run`. For the case a stage only
+  discovers *mid-run* — nothing declared up front — the ledger convention adds
+  a `needs-local` blocked reason (written to the ledger row's `Result` cell,
+  or the `.plan/BLOCKED.md` section, depending on whether the stage branch
+  exists yet): the driver recognizes it and reports "re-run this stage
+  locally" instead of a generic block. `gate: human` semantics are unchanged;
+  `.plan/LEDGER.md` remains the sole source of truth for stage status in both
+  cases.
+
 - **The repository is now self-installable.** A
   `.claude-plugin/marketplace.json` lists this plugin as its own marketplace
   entry, pinned to the `release` branch, so

@@ -42,7 +42,11 @@ _(empty)_
               exists yet — see PLAN.md, Operating protocol, "Recording a
               block". A mid-stage block lands on the stage branch, so this
               file's copy on the plan branch keeps reading `doing` and the
-              block is recorded in BLOCKED.md instead.
+              block is recorded in BLOCKED.md instead. Discovered mid-run that
+              the stage needs a resource only the local machine has? Use the
+              literal reason `needs-local` in the Result cell (or the
+              BLOCKED.md section) instead of a generic note — see PLAN.md,
+              "Recording a block", "The discovered case".
   skipped   — one-line reason; if this stage owned acceptance/verification
               work nothing else covers, say so here too, so SF sees it.
   follow-up — a shortcut or scope-creep item spotted here that became (or

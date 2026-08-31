@@ -1,0 +1,19 @@
+{
+  "name": "plan-staged-rollout",
+  "description": "Plan-Staged Rollout, as its own self-hosted marketplace entry.",
+  "owner": {
+    "name": "Carlos Eng",
+    "url": "https://github.com/by-carlos"
+  },
+  "plugins": [
+    {
+      "name": "plan-staged-rollout",
+      "source": {
+        "source": "url",
+        "url": "https://github.com/by-carlos/plan-staged-rollout.git",
+        "ref": "release"
+      },
+      "description": "Run big projects as many small sessions — not one huge one."
+    }
+  ]
+}

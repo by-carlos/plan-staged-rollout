@@ -112,19 +112,18 @@ Then work through these steps **in order**:
    here — stage branches (`plan-<slug>-s<N>`) are proposed and created at
    stage time by `/plan-staged-rollout:plan-run`, never at bootstrap.
 
-   **The plan-level `merge` flag — the one thing here that IS a question.**
-   Ask it explicitly, as a single multiple-choice question (`AskUserQuestion`
-   where available), with `manual` as the recommended default: *"Stage PRs
-   into the plan branch — offer each merge for your OK (`manual`,
-   recommended), or let the stage session squash-merge its own PR once checks
-   are green (`auto`)?"* Skip the question only if `$ARGUMENTS` or the design
-   pass already answered it. Write the answer on the plan flags line under
-   the stage index (`merge: manual` or `merge: auto`) and repeat it in the
-   end announcement. `manual` is today's behaviour exactly — the session
-   opens each stage PR and offers the merge; `auto` squash-merges a stage PR
-   into the plan branch once its checks are green (stage PRs only — the
-   plan→main PR is manual in every mode, and nothing here may change that).
-   Either way the user can flip it later in `PLAN.md` in one line.
+   **The plan-level `merge` flag — written, not asked.** Write
+   **`merge: auto`** on the plan flags line under the stage index without
+   asking: a step that finishes itself squash-merging its own stage PR once
+   checks are green (stage PRs only — the plan→main PR is manual in every
+   mode, and nothing here may change that) is what unattended and
+   cloud-driven runs need, so it is what a new plan gets by default. Repeat
+   the value in the end announcement. `merge: manual` — offer each stage
+   PR's merge for the user's OK instead — remains a value a plan author can
+   set explicitly by editing `PLAN.md`'s plan flags line, for anyone who
+   wants per-merge control while driving a plan locally; `/plan-run`'s
+   finish protocol still honours it exactly as before. Either way the user
+   can flip the flag later in `PLAN.md` in one line.
 
    **The `plan-dir` flag — written, not asked.** The same line also carries
    `plan-dir: delete` \| `keep`, the plan's declared answer to closeout's
@@ -134,7 +133,7 @@ Then work through these steps **in order**:
    `/plan-close` already recommends, an interactive closeout still puts the
    choice to the user with this value as its recommendation, and one more
    bootstrap question buys nothing. So the finished line reads
-   ``Plan flags: `merge: manual` · `plan-dir: delete``` (with whichever values
+   ``Plan flags: `merge: auto` · `plan-dir: delete``` (with whichever values
    this plan chose).
 
    **Worktree model (also fixed, also not a question).** Record it alongside

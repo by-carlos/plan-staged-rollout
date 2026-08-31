@@ -50,6 +50,17 @@ elsewhere. See 0.4.0 for the split.
   the required merge type in the PR body — a reminder rather than a control,
   and named as such.
 
+### Changed
+
+- **`/plan-stages` no longer asks the `merge` bootstrap question** (#124). A
+  new plan's flags line now gets `merge: auto` by default, written without
+  asking — a stage that finishes itself needs its PR merged without a person
+  showing up to approve it, so that is what an unattended or cloud-driven run
+  needs by default. `merge: manual` remains available as an explicit opt-in a
+  plan author can still set by editing `PLAN.md`'s plan flags line, and
+  `/plan-run`'s finish protocol still honours it exactly as before for any
+  plan that sets it.
+
 ## [0.6.0] - 2026-08-23
 
 **Codename:** Frenacho AFK

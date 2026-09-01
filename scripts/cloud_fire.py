@@ -12,8 +12,16 @@ it errors under `--print`, under a pipe, and under pty emulation - so nothing
 scripted can drive it. It also silently drops `--effort` behind a server-side
 feature gate, booking the model and nothing else, which is the exact
 wrong-weight failure the stage index's `effort` column exists to prevent. The
-API books both, and the booking is verifiable: `model` is echoed in the create
-response and `effort_level` reaches the container as `CLAUDE_EFFORT`.
+API accepts both and echoes them back, and this script refuses a fire whose echo
+disagrees with what it asked for.
+
+One limit stated plainly, because a booking you cannot check is a booking you
+should not trust silently: the **model** is confirmed to take effect - a fired
+session reports it from inside the container - while the **effort level** is
+not. `CLAUDE_EFFORT`, the variable a container used to report it with, came back
+empty from sessions booked at low, medium and high alike (1 Sep 2026). Treat a
+booked effort level as requested, not proven; the measurements are in the
+reference below.
 
 **Plugins do not load in cloud containers**, so a fired session cannot invoke
 `/plan-staged-rollout:plan-run`. It does not need to. `.plan/PLAN.md` carries

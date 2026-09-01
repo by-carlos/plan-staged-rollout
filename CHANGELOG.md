@@ -21,8 +21,10 @@ elsewhere. See 0.4.0 for the split.
   content the container starts from, and the stage branch plus the plan branch
   become the only branches the session may push. The model booking is confirmed
   from inside a fired container; the effort level is stored and echoed by the
-  API but **not** confirmed to take effect, and both that measurement and the
-  earlier one that disagrees with it are recorded in the reference. It fires one stage and returns;
+  API but **cannot currently be confirmed to take effect** — `CLAUDE_EFFORT`
+  came back empty from sessions booked at `low`, `medium` and `high` alike — so
+  the README and the reference both read a booked effort level as requested
+  rather than proven. It fires one stage and returns;
   sequencing, retries and closeout stay with `scripts/plan_driver.py`. The
   script is deliberately not `claude --cloud`, which needs a real TTY and
   silently drops `--effort`, booking the model and nothing else — the exact

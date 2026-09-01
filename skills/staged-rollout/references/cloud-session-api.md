@@ -19,8 +19,11 @@ The CLI's own cloud launcher cannot be scripted:
   stage index's `effort` column exists to prevent — a stage would look fired at
   its recommended weight and not be.
 
-The API underneath books both, and the booking is checkable afterwards, which
-is why the script uses it directly.
+The API underneath accepts both and echoes them back, so a wrong booking fails
+loudly instead of running quietly at the wrong weight — which is why the script
+uses it directly. Note the difference between *stored* and *in effect*: the
+model booking is confirmed to take effect inside the container, the effort level
+currently is not (see below).
 
 ## Create
 
@@ -116,19 +119,33 @@ way to confirm a booking took effect: the create response echoes what the server
 
 - **`model` is booked** — the container's CLI runs with `--model <value>` and
   the session self-reports it.
-- **`effort_level` is stored, and its effect inside the container is
-  unconfirmed.** The create response echoes it back, so the API accepts and
-  persists it. Whether the container runs at that level is a separate question,
-  and the two measurements taken so far disagree: a session created with
-  `"effort_level": "low"` (25 Aug 2026) reported `CLAUDE_EFFORT=low` from inside
-  the container, while a session created with `"effort_level": "medium"`
-  (1 Sep 2026, the fire that verified `cloud_fire.py`) found **`CLAUDE_EFFORT`
-  empty**. `CLAUDE_CODE_EFFORT_LEVEL` was empty in both — it is an input
-  override, not a readout. Until that is resolved, treat a booked effort level
-  as **requested, not proven**: the echo in the create response is evidence the
-  server stored it and nothing more. Values above `high` (the CLI's `xhigh`,
-  `max`) have no measured API equivalent at all — `cloud_fire.py` books `high`
-  for them and says so rather than dropping them silently.
+- **`effort_level` is stored, and there is currently no way to confirm it takes
+  effect.** The create response echoes it back, so the API accepts and persists
+  it — `cloud_fire.py` fails a fire whose echo disagrees. Whether the container
+  actually runs at that level is a separate question, and as of 1 Sep 2026 it
+  cannot be answered from inside: `CLAUDE_EFFORT`, the variable that used to
+  report it, is **empty at every level**. Measured with one session per value,
+  all `claude-haiku-4-5`, all running a bare `echo` and stopping:
+
+  | Booked `effort_level` | `CLAUDE_EFFORT` | `CLAUDE_CODE_EFFORT_LEVEL` |
+  |---|---|---|
+  | `low` | empty | empty |
+  | `medium` | empty | empty |
+  | `high` | empty | empty |
+
+  This **supersedes** the 25 Aug 2026 measurement, which recorded a session
+  booked at `low` reporting `CLAUDE_EFFORT=low`. Something changed between the
+  two dates; the readout is gone. Two explanations fit and nothing available
+  from outside separates them — the container may still honour the booking and
+  merely stopped exporting the variable, or the booking may no longer be
+  applied. Until a new readout appears, treat a booked effort level as
+  **requested, not proven**, and do not write a claim anywhere that says
+  otherwise. `CLAUDE_CODE_EFFORT_LEVEL` is an input override, not a readout, and
+  was empty throughout in both rounds.
+
+  Values above `high` (the CLI's `xhigh`, `max`) have no measured API equivalent
+  at all — `cloud_fire.py` books `high` for them and says so rather than
+  dropping them silently.
 - **The container does not start on `sources.revision` by name.** It starts on a
   branch the platform creates, named after the first entry of
   `outcomes.branches` with a random suffix (`…-s0-wcssqj`), whose *content* is

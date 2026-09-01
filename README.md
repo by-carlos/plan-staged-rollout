@@ -814,11 +814,18 @@ python scripts/cloud_fire.py 3             # fire stage S3
 
 Run it from the plan branch clone, same as the driver. It reads the stage's row
 in `.plan/PLAN.md` and books what it finds: the `model` and `effort` columns
-become the session's model and effort level, the plan branch becomes the branch
-the container checks out, and the stage branch plus the plan branch become the
+become the session's model and effort level, the plan branch becomes the content
+the container starts from, and the stage branch plus the plan branch become the
 only branches the session may push to. The plan branch is on that list because a
 stage that blocks *before* its stage branch exists commits the block record
 straight to the plan branch.
+
+"Content", not "branch", is deliberate there. The platform checks out a branch of
+its own making — named after the first push branch with a random suffix — whose
+content is the plan branch, so a fired session finds `.plan/` where it expects it
+but finds HEAD reading something else. That looks exactly like the branch drift
+`PLAN.md`'s preflight exists to correct, so the prompt tells the session up front
+that it is expected rather than a fault.
 
 It fires one stage and returns. Sequencing, retries and closeout stay with
 [`plan_driver.py`](#unattended-runs--scriptsplan_driverpy); which stage to fire
@@ -835,13 +842,16 @@ written down in
 If a fire starts failing, fix it there against that record and re-measure — do
 not guess at a replacement shape.
 
-**One honest limit.** The model booking is confirmed — a fired session reports
-the model it was booked at, from inside the container. The effort level is
-**stored but not confirmed to take effect**: the API accepts it and echoes it
-back, and the script fails the fire if that echo disagrees, but a session
-booked at `medium` found its `CLAUDE_EFFORT` empty. Read a booked effort level
-as requested rather than proven until that is resolved; the measurement, and
-the earlier one that disagrees with it, are both recorded in the reference
+**One honest limit, and it matters.** The model booking is confirmed — a fired
+session reports the model it was booked at, from inside the container. The
+effort level is **stored, and cannot currently be confirmed to take effect**:
+the API accepts it and echoes it back, and the script fails the fire if that
+echo disagrees, but `CLAUDE_EFFORT` — the variable a container used to report it
+with — came back empty from sessions booked at `low`, at `medium` and at `high`
+alike. Either the container still honours the booking and stopped exporting the
+variable, or the booking is no longer applied; nothing observable from outside
+separates the two. So read a booked effort level as **requested, not proven**.
+The measurements, and the earlier one they supersede, are in the reference
 above.
 
 **Plugins do not load in cloud containers**, so a fired session has no

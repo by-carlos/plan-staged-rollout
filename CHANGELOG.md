@@ -12,6 +12,30 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Stages can be fired as cloud sessions** (#140). A new
+  `scripts/cloud_fire.py` launches one stage on Anthropic's hosted
+  infrastructure instead of as a local `claude -p` process, so the stage keeps
+  running after the machine that started it goes away. It reads the stage's row
+  in `.plan/PLAN.md` and books what it finds — the `model` and `effort` columns
+  become the session's model and effort level, the plan branch becomes the
+  branch the container checks out, and the stage branch plus the plan branch
+  become the only branches the session may push. It fires one stage and returns;
+  sequencing, retries and closeout stay with `scripts/plan_driver.py`. The
+  script is deliberately not `claude --cloud`, which needs a real TTY and
+  silently drops `--effort`, booking the model and nothing else — the exact
+  wrong-weight run the `effort` column exists to prevent. It talks to the
+  session-creation API instead, whose **beta** request shape lives in one
+  function and is recorded, with the measurements behind it, in
+  `skills/staged-rollout/references/cloud-session-api.md`. Credentials resolve
+  to a self-renewing OAuth grant the script maintains itself (`--seed-token`
+  once per machine, `--probe-credentials` to check it), because an unattended
+  run cannot stop every eight hours to re-authenticate. Guardrails mirror the
+  local driver: it refuses to fire from a protected branch, refuses a
+  `gate: human` or `gate: local` stage, refuses a stage whose `depends` are
+  unsettled, and fails loudly if the API's response does not echo the model and
+  effort it was asked to book. `--dry-run` prints the request without sending
+  it, and `--tail` reads a fired session's transcript back.
+
 - **A `gate: local` value for stages that need local resources** (#128). Alongside
   the existing `gate: human`, a stage can now be marked `gate: local` at
   authoring time — for work that needs local hardware, a LAN-only resource, a

@@ -79,7 +79,7 @@ Then work through these steps **in order**:
 
    **Then set `gate` per stage, and group by it.** `gate` says whether a
    stage may be launched with nobody watching (the skill's *Flag heuristics*
-   define it; the unattended driver, `scripts/plan_driver.py`, reads it).
+   define it; the remote orchestrator reads it before firing a stage).
    Decide it here, from the decomposition, never by asking the user row by
    row:
    `human` for every `mode: brainstorm` stage and for any stage whose

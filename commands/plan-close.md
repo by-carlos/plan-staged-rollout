@@ -12,8 +12,9 @@ preserve the story, clean up, and propose the final PR. This command is a
 repo or git log — distill it from those two files.
 
 If `$ARGUMENTS` carries the token **`--unattended`**, this session has nobody
-to answer it — it was launched by an unattended runner (`plan_driver.py` runs
-closeout itself once every stage is settled), or the user is walking away.
+to answer it — it was launched by an unattended runner (an orchestrator may
+fire closeout as one more session once every stage is settled), or the user is
+walking away.
 The token selects **declared default over ask**, never "proceed anyway": every
 question below either has an answer already written on `PLAN.md`'s plan flags
 line or is a hard stop, per the `staged-rollout` skill's *Unattended mode*.

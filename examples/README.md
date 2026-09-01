@@ -60,8 +60,7 @@ The discipline the [plugin README](../README.md) describes, in practice:
 ## [`on-the-run/`](on-the-run/) — prompt contracts for unattended cloud runs
 
 The two prompts that run a plan from a phone, with the computer off, by firing
-one Claude Code cloud routine per stage — together, the cloud-side counterpart
-of [`scripts/plan_driver.py`](../scripts/plan_driver.py). They live here as
+one Claude Code cloud routine per stage. They live here as
 committed files so they can be reviewed and diffed; the copy in a routine's
 saved-prompt field, or pasted into a session, is downstream of these, and a
 change to a contract is a change here first.

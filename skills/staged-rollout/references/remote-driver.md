@@ -42,7 +42,12 @@ the person can watch in the session.
    booked model from inside the container. Whether reasoning **effort** can be
    booked through `session_context` is an open measurement (#125) — until it is
    settled, treat a stage's `effort` column as a reminder the prompt restates,
-   not a booking.
+   not a booking. Do **not** pin a narrow `allowed_tools` list in
+   `session_context`: the default preset includes the tools a stage needs, a
+   pinned list that omits one breaks the run silently, and the GitHub MCP
+   tools must stay reachable — with no `gh` binary in the run they are the
+   only way the compulsory PR step can happen (measured on the routine path,
+   #106/#107; a routine is exactly what this fires).
 3. **Fire it directly** with `RemoteTrigger {action: "run"}`. This is measured
    to start the session immediately and return the new session id
    synchronously. The routine's schedule is never involved — `run` fires even a
@@ -93,6 +98,13 @@ so the contract survives the scripts:
   account without claude.ai/code cloud has no cloud leg. Likely, not measured
   across account types.
 - **Effort booking is unresolved** (#125), as above.
+- **The stage-branch push is proven, not guaranteed.** A fired run's pushes
+  are unrestricted only for `claude/`-prefixed branches; any other branch is
+  accepted only when it is unprotected, has no other open PR, and carries no
+  other author's commits (#104). A `plan-<slug>-s<N>` branch cut from the
+  plan branch tip passed exactly this in the measured run (#107), but a
+  protected plan branch or a second open PR against the stage branch would
+  still bite.
 
 ## Why not the alternatives
 

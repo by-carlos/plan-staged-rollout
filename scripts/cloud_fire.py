@@ -26,8 +26,11 @@ reference below.
 **Plugins do not load in cloud containers**, so a fired session cannot invoke
 `/plan-staged-rollout:plan-run`. It does not need to. `.plan/PLAN.md` carries
 the whole operating protocol - including what an unattended session does at
-every gate - so the prompt is the standalone one-liner `PLAN.md` was designed
-for: point the session at its stage file and say it is unattended.
+every gate - so the prompt is built on the standalone pointer `PLAN.md` was
+designed for: name the stage file, say the session is unattended, and describe
+the two things about a cloud container `PLAN.md` cannot know (no plugin, and a
+start branch that is not the plan branch). Nothing of the protocol itself is
+restated - a copy is what drifts.
 
 The beta request shape lives in exactly one function, `build_payload`, and is
 recorded in `../skills/staged-rollout/references/cloud-session-api.md`. When the

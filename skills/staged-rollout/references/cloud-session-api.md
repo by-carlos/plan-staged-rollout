@@ -215,7 +215,21 @@ scope failure, not payload drift.
 
 The mechanism was proven before it was vendored here: batch-orchestration
 tooling in a separate repository fires cloud sessions through this same
-endpoint, and fired six in one batch on 31 Aug 2026 with model and effort booked
-per session. The measurements above were taken between 25 and 31 Aug 2026
-against Claude Code 2.1.240. Re-measure rather than trust them if the endpoint
-starts behaving differently.
+endpoint, and fired six in one batch on 31 Aug 2026, each with a `model` and an
+`effort_level` in its payload.
+
+The record has two rounds behind it, and the second corrected the first:
+
+- **25–31 Aug 2026**, against Claude Code 2.1.240 — the payload shape, the
+  `environment_id` requirement, the credential facts, and a session booked at
+  `effort_level: low` reporting `CLAUDE_EFFORT=low`.
+- **1 Sep 2026**, the round that verified `cloud_fire.py` — one full stage fired
+  end to end plus three bare probe sessions. It confirmed the model booking from
+  inside the container, established that the container starts on a
+  platform-created branch rather than `sources.revision` by name, and found
+  `CLAUDE_EFFORT` empty at `low`, `medium` and `high` alike, superseding the
+  August effort reading.
+
+That is the pattern to expect: a beta endpoint's behaviour moved inside a week.
+Re-measure rather than trust any line above if a fire starts behaving
+differently, and date what you add.

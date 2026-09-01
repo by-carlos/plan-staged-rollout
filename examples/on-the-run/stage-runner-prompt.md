@@ -10,6 +10,12 @@ It lives here as a committed file so it can be reviewed and diffed. The
 routine's saved-prompt field holds a copy; this file is the original, and a
 change to the contract is a change here first.
 
+> **Superseded as the maintained source** (#123): the contract a plan
+> actually carries is now scaffolded into `.plan/RUNNER.md` from
+> `skills/staged-rollout/references/templates/RUNNER.md`, which is where
+> changes land first. This file stays as the record of the proven
+> routine-based run until #127 rewrites `examples/on-the-run/`.
+
 > **Status: proven end to end** (#110). Three stages ran under this contract
 > in a live phone-driven run — two unattended, one refused — and the plan
 > reached a verified closeout. The measured facts below are established (see

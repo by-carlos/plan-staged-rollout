@@ -26,7 +26,8 @@ First, load the method: invoke the **`staged-rollout`** skill (via the Skill
 tool) and follow its decomposition guidance, flag heuristics, and git model.
 The templates to copy live at
 `${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/references/templates/`
-(`PLAN.md`, `LEDGER.md`, `stage-N.md`, `stage-f-review.md`, `README.md`).
+(`PLAN.md`, `LEDGER.md`, `stage-N.md`, `stage-f-review.md`, `README.md`,
+`RUNNER.md`).
 
 Then work through these steps **in order**:
 
@@ -177,13 +178,22 @@ Then work through these steps **in order**:
    - the frozen git model and worktree model from step 4, and the complete
      plan flags line it decided (both `merge` and `plan-dir`);
    - the path to `skills/staged-rollout/references/templates/`
-     (`PLAN.md`, `LEDGER.md`, `README.md`, `stage-N.md`, `stage-f-review.md`).
+     (`PLAN.md`, `LEDGER.md`, `README.md`, `RUNNER.md`, `stage-N.md`,
+     `stage-f-review.md`);
+   - the plugin version from `.claude-plugin/plugin.json`, for `RUNNER.md`'s
+     scaffold marker.
 
    Instruct it to copy the templates into `<repo>/.plan/` and fill every
    placeholder: `stage-N.md` **once per stage**, each renamed to
    `stage-<N>-<slug>.md`, and `stage-f-review.md` **once**, renamed to
    `stage-f-review.md` (no slug — it's the standing final stage; state this
-   explicitly rather than trusting it to infer from the template name). After
+   explicitly rather than trusting it to infer from the template name).
+   `RUNNER.md` is copied **whole with its placeholders filled and its header
+   comment's `<version>` set** — it is the stage-runner contract the plan
+   carries so any session, cloud included, can run a stage from the one-line
+   instruction "run stage \<N> of plan branch \<branch> per `.plan/RUNNER.md`";
+   it is a deliberate generation-time copy (the header says how it refreshes),
+   never a reference to plugin files that a cloud run cannot see. After
    the stage index is filled, compute the **modal `model`** across all stage
    rows (including SF); if one model is recommended by a strict majority, note
    it in `.plan/README.md`'s "How to run a stage" section as a one-line hint

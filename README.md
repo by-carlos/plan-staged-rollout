@@ -591,10 +591,13 @@ availability likely tracks cloud access being enabled on your Claude account —
 no claude.ai/code cloud, no remote leg.
 
 **Plugins do not load in cloud containers**, so a fired session has no
-`/plan-run` to call. It does not need one: `.plan/PLAN.md` carries the entire
-operating protocol, including what an unattended session does at every gate,
-and the stage prompt points at it. That is also why the plan branch must be
-pushed before anything fires.
+`/plan-run` to call. It does not need one: the plan carries its own contract —
+`.plan/RUNNER.md`, scaffolded by `/plan-stages`, tells a cold session how to
+run one stage, and `.plan/PLAN.md` carries the operating protocol it defers
+to. The fired prompt is one sentence pointing at them, which is why the plan
+branch must be pushed before anything fires. (A plan scaffolded before
+`RUNNER.md` existed gets it backfilled from the plugin's templates — see
+[`remote-driver.md`](skills/staged-rollout/references/remote-driver.md).)
 
 ### Running it from your phone instead — see `docs/ON-THE-RUN.md`
 

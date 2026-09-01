@@ -10,6 +10,23 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **`/plan-stages` scaffolds the stage-runner contract into the plan:
+  `.plan/RUNNER.md`** (#123). Every new plan now carries, inside `.plan/`, the
+  complete contract for running one stage cold — checkout-first, the
+  `gate: human`/`gate: local` refusals, the early stage-branch push, the
+  ledger-as-only-completion-signal rule, and the GitHub-MCP substitutions a
+  cloud run needs — so any session, cloud included, runs a stage from the
+  one-line instruction "run stage \<N> of plan branch \<branch> per
+  `.plan/RUNNER.md`", with nothing pasted first. The template lives at
+  `skills/staged-rollout/references/templates/RUNNER.md`; the scaffolded copy
+  is a deliberate generation-time copy with a plugin-version marker in its
+  header, refreshed by regeneration — never silently diverged. Plans
+  scaffolded before this change get the file backfilled from the template
+  before their first remote fire (documented in
+  `references/remote-driver.md`).
+
 ### Removed
 
 - **The Python drivers are gone: `scripts/plan_driver.py` and

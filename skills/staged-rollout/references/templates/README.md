@@ -42,6 +42,10 @@ one) once filled. -->
 - `LEDGER.md` — status table + per-stage as-built notes. The tracker that
   changes as you execute; the resume point and cross-session memory.
 - `stage-<N>-<slug>.md` — one small, self-contained stage each.
+- `RUNNER.md` — the stage-runner contract: how a session with no plugin and
+  no prior context (a fired cloud session included) runs one stage from the
+  one-line instruction "run stage \<N> of plan branch \<branch> per
+  `.plan/RUNNER.md`".
 - `BLOCKED.md` — only present once a stage has been blocked outside the
   ledger: by an unattended driver that ran out of attempts, or by a stage
   session that blocked after its stage branch existed (`PLAN.md`, *Recording

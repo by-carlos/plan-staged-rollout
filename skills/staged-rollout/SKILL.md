@@ -12,8 +12,11 @@ don't share it; the plan can't drift because every decision lives in exactly one
 place; progress is a glanceable ledger, not a transcript.
 
 The file formats are in `references/templates/` (`PLAN.md`, `LEDGER.md`,
-`stage-N.md`, `stage-f-review.md`, `README.md`) — copy those verbatim for
-structure, then fill every `<placeholder>` when scaffolding. This file is the
+`stage-N.md`, `stage-f-review.md`, `README.md`, `RUNNER.md`) — copy those
+verbatim for structure, then fill every `<placeholder>` when scaffolding.
+`RUNNER.md` is the stage-runner contract scaffolded into each plan so any
+session — cloud included, where this plugin does not load — can run a stage
+cold from a one-line instruction pointing at `.plan/RUNNER.md`. This file is the
 *method*: when to use it, how to decompose, how to set flags. Don't restate
 the templates here.
 

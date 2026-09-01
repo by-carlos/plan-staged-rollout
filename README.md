@@ -587,8 +587,8 @@ plan branch but whose HEAD may read a platform-named branch — the stage prompt
 warns the session this drift is expected. Spent run-once routines cannot be
 deleted programmatically; they auto-disable but stay listed, and cleaning them
 up is a manual step at claude.ai/code/routines. And `RemoteTrigger`'s
-availability tracks cloud access being enabled on your Claude account — no
-claude.ai/code cloud, no remote leg.
+availability likely tracks cloud access being enabled on your Claude account —
+no claude.ai/code cloud, no remote leg.
 
 **Plugins do not load in cloud containers**, so a fired session has no
 `/plan-run` to call. It does not need one: `.plan/PLAN.md` carries the entire

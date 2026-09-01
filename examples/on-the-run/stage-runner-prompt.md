@@ -1,9 +1,8 @@
 # Stage-runner routine prompt
 
 The saved prompt a **cloud routine** runs to execute exactly one stage of a
-`plan-staged-rollout` plan, unattended, with nobody watching. It is the
-cloud-side counterpart of what [`scripts/plan_driver.py`](../../scripts/plan_driver.py)
-does locally, and it is deliberately the *smallest* thing that can run a
+`plan-staged-rollout` plan, unattended, with nobody watching. It is
+deliberately the *smallest* thing that can run a
 stage: it knows about one stage, follows the plan's own protocol, records
 what happened where the plan records it, and stops.
 

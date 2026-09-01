@@ -106,12 +106,11 @@ Two parts of the plugin ask for a little more than a session:
   Windows box without bash simply gets no nudge, and nothing else is affected —
   the commands themselves are model-driven, not shell scripts. See
   [Session-start nudge](#session-start-nudge).
-- **The unattended driver needs a machine of yours left running**, plus
-  `python`, the `claude` CLI and `gh`. Everything else works from a session
-  alone. See [Unattended runs](#unattended-runs--scriptsplan_driverpy). Its
-  cloud counterpart needs only `python` and a moment of that machine to fire —
-  the stage itself then runs on Anthropic's infrastructure. See
-  [Firing a stage in the cloud](#firing-a-stage-in-the-cloud--scriptscloud_firepy).
+- **Driving stages remotely needs cloud access on your Claude account.** The
+  orchestrator session fires each stage as a cloud session through Claude
+  Code's built-in `RemoteTrigger` tool — nothing to install, but an account
+  without claude.ai/code cloud has no cloud leg. See
+  [Driving a plan remotely](#driving-a-plan-remotely--the-orchestrator).
 
 **Typing `/plan-staged-rollout:<command>` always works.** Claude Code can also
 start one from plain language ("run stage 3 of the plan"), but only when it has
@@ -323,7 +322,7 @@ Two deliberate limits:
 - **Launching is yours.** A session cannot spawn independent top-level
   sessions, so running a wave in parallel means opening one terminal per stage.
   The plugin tells you what *can* overlap; whether to is your call. The
-  [unattended driver](#unattended-runs--scriptsplan_driverpy) removes the
+  [remote orchestrator](#driving-a-plan-remotely--the-orchestrator) removes the
   keyboard from *sequential* runs, not from this — it takes a multi-stage
   runnable set one stage at a time.
 
@@ -475,8 +474,9 @@ alone. Then it:
 4. proposes the PR from `plan-<slug>` to `main`. You review and merge.
 
 It runs headless too — `/plan-close --unattended` applies the plan flags
-instead of asking, and the [unattended driver](#unattended-runs--scriptsplan_driverpy)
-launches it for you once every stage is settled. Merging that final PR is
+instead of asking, and a
+[remotely driven plan](#driving-a-plan-remotely--the-orchestrator) can run it
+as one more fired session once every stage is settled. Merging that final PR is
 yours in every mode.
 
 ---
@@ -519,10 +519,10 @@ makes it `gate: human`), needs a resource only the local machine has
 
 ### Why `model` / `effort` are hints, not automation
 
-Launching a stage at its recommended weight is **manual by design, because the
-platform gives no other option.** As of August 2026, nothing available to a
-Claude Code session can start another session at a chosen model or effort
-level:
+Launching a *local* stage at its recommended weight is **manual by design,
+because the platform gives no other option.** Nothing available to a Claude
+Code session can start another local top-level session at a chosen model or
+effort level:
 
 - an agent cannot switch its own model mid-session, so a stage that opens on
   the wrong model can only report the mismatch, not correct it;
@@ -540,390 +540,72 @@ exact command plus its recommended weight at every handoff. `.plan/` stays the
 carrier of that recommendation because it is the only channel that survives
 across sessions and works everywhere the plugin does.
 
-This is a platform limit, not a preference. If session spawning ever gains
-model/effort parameters, the handoff step is the place to revisit.
+The remote path is the partial exception:
+[a fired cloud stage](#driving-a-plan-remotely--the-orchestrator) has its
+`model` booked from the stage index at fire time — that booking is measured to
+take effect — while booking `effort` remotely is still an open question (#125),
+so the effort column stays a reminder the stage prompt restates in every mode.
 
-The limit is on what a *session* can do, and that is why both runners below are
-scripts rather than skills. Outside any session, `claude -p --model … --effort
-…` sets both freely for a local run, and the
-[cloud fire script](#firing-a-stage-in-the-cloud--scriptscloud_firepy) books
-both against the session-creation API for a hosted one. The hint in `.plan/` is
-still the carrier in either case — each runner reads the same stage-index
-columns a person reads, and prints them before every launch.
-
-## Unattended runs — `scripts/plan_driver.py`
+## Driving a plan remotely — the orchestrator
 
 Everything above assumes you are at the keyboard, launching one session per
-stage. [`scripts/plan_driver.py`](scripts/plan_driver.py) does that launching
-for you: it runs stages back to back, closes the plan out when they are all
-settled, and stops when something genuinely needs a person.
+stage. The remote path keeps one session at the keyboard — the
+**orchestrator** — and moves the stages off your machine: each one runs as a
+cloud session on Anthropic's infrastructure, so the work keeps going after you
+close the laptop, and every fired stage is a first-class session at
+claude.ai/code that you can open, watch, and resume.
 
-**One unattended run covers the whole lifecycle bar two gates.** From a
-bootstrapped `.plan/` the driver reaches an open plan→main PR by itself; the
-only two places it hands back are a `gate: human` or `gate: local` stage and
-the final merge, which is yours in every mode.
+The orchestrator is an ordinary interactive Claude Code session in a clone of
+your repo. There is nothing to install and no credential to manage: it fires
+stages through **`RemoteTrigger`**, a tool built into Claude Code that talks to
+the claude.ai routines API with your account's own authentication handled
+in-process. Per stage it creates a run-once routine as the stage's config
+container — repository, the stage prompt, and the stage's `model` from the
+index — fires it directly with the tool's `run` action (the schedule is never
+involved), gets the new session's id and link back synchronously, and then
+polls the run's condensed log to see it finish, fail, or crash before firing
+the next.
 
-```bash
-python scripts/plan_driver.py --dry-run
-```
+The full contract — prompt shape, refusals, what is measured and what is still
+open — is in
+[`remote-driver.md`](skills/staged-rollout/references/remote-driver.md). The
+short version of the guarantees, which carry over unchanged from the retired
+local driver:
 
-Run it from the **plan branch clone** (the clone stays parked there for the
-life of the plan). It is a re-scanning loop, not a schedule: each round it
-reads `.plan/LEDGER.md` and `.plan/PLAN.md`'s stage index, recomputes the
-runnable set exactly as `/plan-run` does, launches the next stage as its own
-`claude -p "/plan-staged-rollout:plan-run <N> --unattended"` session, waits for
-it, and re-reads the ledger. **The ledger is the only state.** Stop the driver
-whenever you like and start it again later; it picks up from what is written
-down, exactly as a person would.
+- **`gate: human` / `gate: local` stages are never fired** — a cloud container
+  has strictly less access than your machine; the orchestrator stops in front
+  of them.
+- **Dependencies must read `done`/`skipped` in the ledger** before a stage
+  fires; out-of-order firing is a deliberate operator choice, never a default.
+- **It refuses to drive from a protected branch**, and **the plan→main merge
+  stays manual and human-performed in every mode.**
+- **The ledger is the only state.** Stop driving whenever you like and pick the
+  plan up later — from this or any other session — from what is written down.
 
-`--dry-run` computes and prints the whole order — which stages, in which
-sequence, at what model and effort, and the exact command each would get —
-without launching anything:
-
-```
-[plan-driver] launching S1 - CLI runner (model sonnet, effort low, gate auto) - attempt 1 of 2
-[plan-driver]   $ claude -p "/plan-staged-rollout:plan-run 1 --unattended" --model sonnet --effort low ...
-```
-
-### What stops it
-
-| Stop | What the driver does |
-|---|---|
-| `gate: human` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a person |
-| `gate: local` stage is next | reports it and stops **before** launching — never runs a stage marked as needing a resource only the local machine has |
-| a stage comes back `blocked` before its branch existed | reports it and stops; the session committed its own runbook to `LEDGER.md` on the plan branch, and the driver never retries a deliberate block. Reason `needs-local`? Reported distinctly — "re-run this stage locally" — instead of a generic block |
-| a stage blocks mid-stage | same stop, read from the `### S<N>` section the session wrote to `.plan/BLOCKED.md` on the plan branch; the full runbook is on the stage branch and its PR, and the `LEDGER.md` row still reads `doing` until someone merges it. Reason `needs-local`? Same distinct report |
-| a stage does not reach `done` within `--max-attempts` (default 2) | records the stage as blocked, with a runbook, in `.plan/BLOCKED.md` — never in `LEDGER.md`, which the stage's own branch may still be editing unmerged (see below) — commits it on the plan branch (`--no-commit` writes without committing), and stops |
-| nothing runnable, stages still open | reports which stages are waiting and stops |
-| every stage `done`/`skipped` | launches [`/plan-close --unattended`](commands/plan-close.md) as one more session, then reports the plan→main PR's URL and exits 0 |
-| closeout hits one of its own gates | reports that no PR was opened and stops — a stage worktree holding unpushed work is the usual cause |
-
-Exit code is `0` for a completed plan, `1` for any stop that wants a person,
-and `2` for a usage or guardrail refusal.
-
-**`.plan/BLOCKED.md` — the block record that isn't the ledger.** A stage that
-ran out of attempts, or that stopped itself at a mid-stage gate, has usually
-already committed its own edits to `LEDGER.md`'s row and notes, on its own
-branch — real acceptance evidence, or a PR that opened but couldn't merge.
-Writing a block into those same lines on the plan branch would diverge from
-that unmerged commit, leaving the stage's own pull request unmergeable — the
-runbook would then be naming a merge its own write had just made impossible.
-`.plan/BLOCKED.md` is a sibling file the stage branch never edits, so a write
-to it and the stage's own write never contend for the same lines. **Both the
-driver and a stage session write there**, for the same reason and in the same
-format: the driver when the retry cap is reached, and a session when it blocks
-after its stage branch exists (`PLAN.md`, *Recording a block*). Every driver
-round treats a stage id listed there as blocked and never retries it, even
-across a restart, regardless of what its `LEDGER.md` row still reads.
-Resolving the stage — merging its PR, or running
-`/plan-run` by hand — does not clear the entry on its own; the file's own
-runbook says to delete that stage's `### S<N>` section once the stage is
-resolved and then start the driver again. After a hand merge the row keeps
-reading `doing` until a session's preflight records the merged PR as `done`
-— the next session the driver launches does exactly that, and
-[`/plan-run`](commands/plan-run.md) treats a row its own preflight just
-self-healed as finished, not as a redo.
-
-**`needs-local` — a block the driver calls out by name.** A stage can declare
-`gate: local` up front (see *Per-stage knobs*, above), or discover mid-run,
-with nothing declared, that it needs a resource only the local machine has —
-local hardware, a LAN-only host, a secret not committed anywhere reachable, or
-a locally-installed toolchain. The second case still ends up `blocked`, same
-as any other, but the session writes the literal reason `needs-local` in the
-ledger row's `Result` cell or the `.plan/BLOCKED.md` section, and the driver
-looks for exactly that token — so its report says "re-run this stage locally"
-instead of a bare failure you'd otherwise have to diagnose from scratch.
-
-### Closeout, unattended
-
-Once every row is `done` or `skipped` the driver launches one final session,
-`claude -p "/plan-staged-rollout:plan-close --unattended"`, in the same clone
-and with the same profile as the stage sessions. That session applies the
-plan's declared defaults instead of asking: it removes any stage worktree
-whose branch is merged with nothing unpushed (and stops on any that holds work
-git cannot recover), deletes or keeps `.plan/` per the `plan-dir` flag, and
-**opens** the plan→main PR. It never merges it.
-
-Closeout has no stage-index row, so its weight comes from the CLI:
-
-```bash
-python scripts/plan_driver.py --close-model opus --close-effort medium
-```
-
-`--no-close` restores the old behaviour — the driver stops at "plan complete"
-and you run `/plan-close` yourself.
-
-The driver confirms the outcome with `gh pr list` against the plan branch, and
-distinguishes three results: a URL (closeout succeeded, go and merge it), no
-open PR (closeout stopped at a gate — exit 1), and `gh` unable to answer
-(reported as unconfirmed rather than as either).
-
-### Guardrails
-
-- **It refuses to run on a protected branch** — `main`, `master`, `release`,
-  `trunk`, `develop`, or the remote's default — regardless of what the repo's
-  own policy allows. Stage branches are cut from whatever is checked out and,
-  under `merge: auto`, merged back into it; a driver pointed at `main` would
-  merge stage work straight into it. This refusal has no override flag.
-- **The retry cap is a cap, not a hint.** A stage gets `--max-attempts`
-  launches (default 2) and is then marked `blocked`. The driver never loops on
-  a failing stage, and it never retries a stage its own session marked
-  `blocked`.
-- **Model and effort are printed before every launch.** Headless spend with
-  nobody watching is the real risk here, so the weight of each session is on
-  the stream before it starts. `--max-budget-usd` passes a per-session ceiling
-  through to `claude` if you want a hard stop as well. Budget for a fixed
-  floor per session: measured on the first end-to-end run, a stage session
-  loads roughly 50k tokens of system prompt and plugin surface before doing
-  any work — $0.20–0.35 on Sonnet — so a plan of many tiny stages is
-  overhead-dominated, and the driver pays off on a few substantial stages
-  rather than many trivial ones. The driver does not report what a run cost;
-  stage sessions inherit the terminal, so there is no usage total to read back.
-- **`--plan-dir` is for dry runs only.** Stage sessions run in the checked-out
-  repo, so a real run pointed at another repo's `.plan/` would work the wrong
-  tree. The driver refuses that combination outright; `--dry-run` still reads
-  any plan you point it at.
-- **It never merges anything itself.** Stage PRs are merged by their own
-  sessions under the plan's `merge` flag; the plan→main PR is manual in every
-  mode, driver or no driver.
-
-### The permission profile under `-p`
-
-A `-p` session has nobody to answer a permission prompt, so **any rule that
-would prompt resolves as a denial** — including a `permissions.ask` entry in
-your own settings. A stage session that cannot run `git`, `gh` or an edit does
-not fail loudly; it stalls and comes back not-`done`, which is what the retry
-cap is there to catch.
-
-The driver therefore passes an explicit profile, which you can override:
-
-```
---permission-mode acceptEdits
---allowedTools Bash Edit Write Read Glob Grep Agent Skill TodoWrite AskUserQuestion WebFetch WebSearch NotebookEdit
-```
-
-`AskUserQuestion` is in that list even though an unattended session never asks
-anything: the same profile is what you copy to launch a session by hand, and
-without the tool a session falls back to asking in prose, which is worse in
-every mode.
-
-Three consequences worth knowing before the first unattended run:
-
-- **Any `permissions.ask` entry a session needs is a hard stop — `gh pr merge`
-  is just the one `merge: auto` guarantees to hit.** If your settings ask
-  before a merge — as a branch-protection or merge-gate policy usually does —
-  that ask is a denial headless, so every stage stalls at its own PR and the
-  driver stops at the first one with nothing merged. But it is not only the
-  merge: in the first end-to-end run, closeout was stopped cold by an `ask` on
-  `rm -rf` when it tried to clear a build cache, a rule nobody had thought of
-  as part of the plan. Go through your `ask` list with the plan's commands in
-  mind before driving it. **An `ask` entry is close to unbeatable
-  per-command.** Measured, each against a real user-level `ask` rule and a
-  real tool call:
-
-  | Attempt | Result |
-  |---|---|
-  | `--allowedTools Bash` | still denied |
-  | `--permission-mode bypassPermissions` | still denied |
-  | `--settings` with a matching `permissions.allow` | still denied |
-  | `--setting-sources project,local` | **allowed** |
-
-  Only the last works, and it works by never loading your user settings at all:
-
-  ```bash
-  python scripts/plan_driver.py --setting-sources project,local
-  ```
-
-  That is a blunt instrument, not a scalpel. Dropping `user` drops **everything**
-  in it — your hooks (including any branch guard), your user `CLAUDE.md`, and the
-  rest of your permission rules — for every stage session. If you will not drop
-  `user`, be honest that the plan is then **semi-attended, not unattended**: set
-  `merge: manual`, let the driver run each stage up to its PR and stop (the next
-  bullet), merge it yourself, restart the driver. That costs you one click per
-  stage; the alternative costs you every safety rule you have, per session.
-- **`merge: manual` means no stage ever reaches `done` unattended.** Offering a
-  merge is asking a person, and unattended mode never waits for an answer. The
-  stage is not marked `blocked` for it — it ends at `doing` with its PR open,
-  which is why the driver's retry cap is what eventually stops the run. The
-  driver says so on startup when it reads `merge: manual`.
-  A plan you intend to drive wants `merge: auto` on its plan-flags line.
-- **`bypassPermissions` bypasses less than the name suggests.** Measured: a
-  `PreToolUse` hook still runs headless and its `deny` is still honoured under
-  it, and so is a `permissions.ask` entry. That cuts both ways — a hook-based
-  branch guard keeps protecting you through an unattended run, and neither a
-  hook nor an `ask` rule that refuses something a stage needs is escapable by
-  changing permission mode. The only measured way past an `ask` is the
-  `--setting-sources` route above, with the cost it carries.
-
-### Driving an unreleased plugin — `--plugin-dir`
-
-A stage session resolves `/plan-staged-rollout:plan-run` against the **installed**
-plugin, not the working tree the driver was launched from. Testing an unreleased
-change — to the plugin or to the driver itself — therefore needs the stage
-sessions pointed at the tree under test:
-
-```bash
-python scripts/plan_driver.py --plugin-dir /path/to/plan-staged-rollout
-```
-
-The value is passed straight through to `claude --plugin-dir`, which loads a
-plugin **for that session only** — no marketplace entry, no global install, and
-nothing to undo afterwards. It is repeatable, and it takes a plugin directory or
-a `.zip`. A directory has to contain `.claude-plugin/plugin.json` or the driver
-refuses to start: silently falling back to the installed plugin would produce a
-run that looks fine and tested the wrong code.
-
-### Being told about it
-
-The driver calls a notify command on every stop, on `blocked`, and on
-finishing the plan. Set it with the `PLAN_DRIVER_NOTIFY` environment variable
-(or `--notify`):
-
-```bash
-PLAN_DRIVER_NOTIFY='curl -s -d' python scripts/plan_driver.py
-```
-
-The message is appended as one argument, and `PLAN_DRIVER_EVENT`,
-`PLAN_DRIVER_MESSAGE`, `PLAN_DRIVER_STAGE` and `PLAN_DRIVER_PLAN` are exported
-into the command's environment, so both a one-liner and a script work without
-a wrapper. **An environment variable rather than a `.plan/` setting**, because
-`.plan/` is tracked and shared on the plan branch: a notify target is usually
-a personal webhook or a machine-local notifier, and committing it would both
-leak it and force everyone working the plan onto one channel.
-
-### Deliberately out of scope
-
-- **Parallel waves.** The driver is sequential. When more than one stage is
-  runnable it says so and takes them in stage-index order; running a wave
-  concurrently is still one terminal per stage, as above.
-- **Relaying questions to you mid-flight.** A stage that needs an answer
-  becomes `blocked` with a runbook and the driver notifies you. That is the
-  whole mechanism — there is no live chat relay.
-
-### Running it from your phone instead — see `docs/ON-THE-RUN.md`
-
-The driver above needs a machine of yours left running. There is a second path
-that does not: each stage runs in Claude Code's cloud against the GitHub repo,
-and you drive the whole plan from a chat session — phone included, computer
-off. You approve each stage as it starts, so it is not unattended; the trade is
-that nothing of yours has to stay awake.
-
-[`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md) is the quickstart — what it does, how to set
-it up, and what it will not do. [`examples/on-the-run/`](examples/on-the-run/)
-holds the two prompt contracts themselves.
-
-## Firing a stage in the cloud — `scripts/cloud_fire.py`
-
-The driver above runs stages on your machine, which has to stay awake for the
-length of the plan. [`scripts/cloud_fire.py`](scripts/cloud_fire.py) launches
-**one** stage on Anthropic's hosted infrastructure instead, so the stage keeps
-running after you close the laptop:
-
-```bash
-python scripts/cloud_fire.py 3 --dry-run   # print the request, send nothing
-python scripts/cloud_fire.py 3             # fire stage S3
-```
-
-Run it from the plan branch clone, same as the driver. It reads the stage's row
-in `.plan/PLAN.md` and books what it finds: the `model` and `effort` columns
-become the session's model and effort level, the plan branch becomes the content
-the container starts from, and the stage branch plus the plan branch become the
-only branches the session may push to. The plan branch is on that list because a
-stage that blocks *before* its stage branch exists commits the block record
-straight to the plan branch.
-
-"Content", not "branch", is deliberate there. The platform checks out a branch of
-its own making — named after the first push branch with a random suffix — whose
-content is the plan branch, so a fired session finds `.plan/` where it expects it
-but finds HEAD reading something else. That looks exactly like the branch drift
-`PLAN.md`'s preflight exists to correct, so the prompt tells the session up front
-that it is expected rather than a fault.
-
-It fires one stage and returns. Sequencing, retries and closeout stay with
-[`plan_driver.py`](#unattended-runs--scriptsplan_driverpy); which stage to fire
-stays with you.
-
-**Why not `claude --cloud`.** The CLI's cloud launcher needs a real TTY, so
-nothing scripted can drive it, and it silently drops `--effort` — booking the
-model and nothing else. That is the exact silent wrong-weight run the `effort`
-column exists to prevent, so the script talks to the session-creation API
-directly. That endpoint is **beta**: its request shape is measured rather than
-documented, so it lives in one function and the measurements behind it are
-written down in
-[`cloud-session-api.md`](skills/staged-rollout/references/cloud-session-api.md).
-If a fire starts failing, fix it there against that record and re-measure — do
-not guess at a replacement shape.
-
-**One honest limit, and it matters.** The model booking is confirmed — a fired
-session reports the model it was booked at, from inside the container. The
-effort level is **stored, and cannot currently be confirmed to take effect**:
-the API accepts it and echoes it back, and the script fails the fire if that
-echo disagrees, but `CLAUDE_EFFORT` — the variable a container used to report it
-with — came back empty from sessions booked at `low`, at `medium` and at `high`
-alike. Either the container still honours the booking and stopped exporting the
-variable, or the booking is no longer applied; nothing observable from outside
-separates the two. So read a booked effort level as **requested, not proven**.
-The measurements, and the earlier one they supersede, are in the reference
-above.
+Three honest limits. A fired stage runs from a checkout whose *content* is the
+plan branch but whose HEAD may read a platform-named branch — the stage prompt
+warns the session this drift is expected. Spent run-once routines cannot be
+deleted programmatically; they auto-disable but stay listed, and cleaning them
+up is a manual step at claude.ai/code/routines. And `RemoteTrigger`'s
+availability likely tracks cloud access being enabled on your Claude account —
+no claude.ai/code cloud, no remote leg.
 
 **Plugins do not load in cloud containers**, so a fired session has no
 `/plan-run` to call. It does not need one: `.plan/PLAN.md` carries the entire
-operating protocol, including what an unattended session does at every gate, so
-the script sends the standalone prompt that file was designed for.
+operating protocol, including what an unattended session does at every gate,
+and the stage prompt points at it. That is also why the plan branch must be
+pushed before anything fires.
 
-### Credentials
+### Running it from your phone instead — see `docs/ON-THE-RUN.md`
 
-The endpoint does not take your `gh` credential, and an unattended run cannot
-stop every eight hours to re-authenticate. Seed a self-renewing grant once per
-machine, then check it:
-
-```bash
-python scripts/cloud_fire.py --seed-token
-```
-
-```bash
-python scripts/cloud_fire.py --probe-credentials
-```
-
-`--seed-token` copies the token pair from your interactive login (it never edits
-that file) into `~/.claude/.batch-oauth-token.json`, and from the first refresh
-onward the script renews that grant itself. `$PLAN_CLOUD_TOKEN_FILE` moves the
-file; `$CLAUDE_CODE_OAUTH_TOKEN` overrides it entirely, for CI. One caveat worth
-knowing: every refresh invalidates the previous refresh token, so **one grant
-file per machine** — two forked from the same login will kill each other at the
-first renewal.
-
-### What it refuses
-
-| Refusal | Why |
-|---|---|
-| the current branch is `main`/`master`/`release`/`trunk`/`develop` | a stage fired from a protected branch would branch off it and, under `merge: auto`, merge back into it |
-| the stage is `gate: human` or `gate: local` | a cloud container has strictly less access than your machine; `--ignore-gate` overrides, and is almost always wrong |
-| the stage's `depends` are not `done` or `skipped` | firing out of order is a legitimate operator choice, but never an accidental one — `--ignore-deps` makes it deliberate |
-| the response did not echo the model or effort level asked for | a booking that came back different is a silent wrong-weight run, so the fire fails loudly instead of reporting success |
-
-Two overrides are worth knowing about precisely because they switch off things
-the rest of this section presents as guarantees. `--push-branch` replaces the
-push list above, so it is the one flag that can widen what a fired session is
-allowed to touch. `--prompt-file` replaces the built prompt wholesale — including
-the instruction to honour `PLAN.md`'s unattended rules and the warning about the
-start branch — so a stage fired with it gets whatever the file says and nothing
-else. Both are legitimate for a deliberate one-off; neither should appear in a
-script you leave running. `--help` lists the rest.
-
-### Confirming what it booked
-
-The create response echoes what the server *stored*. What the container actually
-got is a separate question, and the transcript answers it:
-
-```bash
-python scripts/cloud_fire.py --tail session_...
-```
-
-That prints the session's status and stored context, then the tail of its event
-stream — where a session reporting its own model, or `CLAUDE_EFFORT` read from
-inside the container, is real evidence rather than an inference from the request
-that was sent.
+The orchestrator above is a session on a machine of yours. There is a second
+path that needs no machine at all: drive the whole plan from a chat session —
+phone included, computer off.
+[`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md) is the quickstart — what it does,
+how to set it up, and what it will not do.
+[`examples/on-the-run/`](examples/on-the-run/) holds the prompt contracts
+themselves. (Both are being rewritten around the `RemoteTrigger` mechanism —
+see #127 — and describe the older routine-based setup until that lands.)
 
 ## The ledger, kept slim
 
@@ -998,7 +680,7 @@ earlier stage's assumptions were written down.
 
 ## Roadmap
 
-- Parallel waves in the unattended driver (it is sequential today)
+- Parallel waves in the remote orchestrator (it is sequential today)
 - Subagent fan-out for independent sub-steps within a stage
 - Progress dashboard rendered from the ledger
 - Skill evals (triggering accuracy, protocol adherence)
@@ -1024,7 +706,7 @@ Layout:
     SKILL.md                     # method: principles, decomposition guidance,
                                  #   flag heuristics, anti-patterns
     references/templates/        # PLAN.md, LEDGER.md, stage-N.md, stage-f-review.md, README.md
-    references/cloud-session-api.md  # the measured beta shape cloud_fire.py posts
+    references/remote-driver.md  # the RemoteTrigger contract for firing stages remotely
   examples/
     uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
     on-the-run/                  # prompt contracts for unattended cloud runs
@@ -1037,9 +719,6 @@ Layout:
     hooks.json                   # SessionStart registration
     run-hook.cmd                 # polyglot cmd/bash wrapper (Windows + Unix)
     session-start                # .plan/-aware nudge: next runnable stage
-  scripts/
-    plan_driver.py               # unattended driver: one claude -p per stage
-    cloud_fire.py                # fire one stage as a hosted cloud session
 ```
 
 ## Updating

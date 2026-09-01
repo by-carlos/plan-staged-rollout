@@ -3,8 +3,7 @@
 The operating instructions for the **orchestrator**: the interactive session a
 person starts — from a phone, or from anywhere else — to drive a whole
 `plan-staged-rollout` plan by firing one cloud routine per stage and watching
-the plan branch for it to settle. It is the cloud-side counterpart of the loop
-in [`scripts/plan_driver.py`](../../scripts/plan_driver.py), and it does the
+the plan branch for it to settle. It does the
 half that a fired run cannot do for itself: decide what runs next, and fire it.
 
 The orchestrator is **not** unattended. A person keeps it open and answers its
@@ -282,9 +281,7 @@ Everything between the markers is the orchestrator prompt, verbatim.
 | Merge behaviour of any kind — stage PRs and the plan-to-main PR alike | §8, §10 |
 | A notification channel of its own | §9 |
 
-Nothing here changes the format of `.plan/PLAN.md` or `.plan/LEDGER.md`, and
-nothing here changes `scripts/plan_driver.py`. This is a separate, cloud-first
-path alongside the local driver, not a replacement for it.
+Nothing here changes the format of `.plan/PLAN.md` or `.plan/LEDGER.md`.
 
 ## Four caveats worth knowing before driving a plan this way
 

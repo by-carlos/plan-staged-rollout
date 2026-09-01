@@ -10,6 +10,24 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Removed
+
+- **The Python drivers are gone: `scripts/plan_driver.py` and
+  `scripts/cloud_fire.py`, plus
+  `skills/staged-rollout/references/cloud-session-api.md`** (#143). Driving a
+  plan no longer runs a program anywhere: an ordinary orchestrator session
+  fires each stage as a cloud session through Claude Code's built-in
+  `RemoteTrigger` tool, which talks to the claude.ai routines API with the
+  account's own authentication handled in-process — no runtime dependency, no
+  hand-maintained credential, and nothing shipped that touches a user's auth.
+  The driving contract (fire shape, refusals, measured facts and open
+  questions) now lives at
+  `skills/staged-rollout/references/remote-driver.md`; the `gate: human` /
+  `gate: local` refusals, dependency checks, protected-branch refusal, the
+  ledger as sole status truth, and the manual plan→main merge all carry over
+  unchanged. README's "Unattended runs" and "Firing a stage in the cloud"
+  sections are replaced by "Driving a plan remotely — the orchestrator".
+
 ### Added
 
 - **[`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md), a plain-language quickstart for driving a

@@ -12,6 +12,17 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **The remote-driver contract defines a concrete poll cadence and a
+  dead-run definition** (#122). Watching a fired stage was "wait, then
+  re-read," with no number attached — now it's poll `list_runs` and
+  `.plan/LEDGER.md` together every 3–5 minutes, and once `list_runs` shows
+  the session has ended, a fixed 10-minute grace period before an unmoved
+  ledger row counts as the stage having died rather than merely being slow to
+  push. `get_run_log` is read at that point purely as diagnostic evidence for
+  the person; the orchestrator still never writes to the repository, and
+  still reports rather than records — the same pattern `needs-local` already
+  uses. See `skills/staged-rollout/references/remote-driver.md`, "When a
+  fired run doesn't settle."
 - **`/plan-stages` scaffolds the stage-runner contract into the plan:
   `.plan/RUNNER.md`** (#123). Every new plan now carries, inside `.plan/`, the
   complete contract for running one stage cold — checkout-first, the

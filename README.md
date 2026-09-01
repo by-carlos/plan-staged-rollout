@@ -890,6 +890,15 @@ first renewal.
 | the stage's `depends` are not `done` or `skipped` | firing out of order is a legitimate operator choice, but never an accidental one — `--ignore-deps` makes it deliberate |
 | the response did not echo the model or effort level asked for | a booking that came back different is a silent wrong-weight run, so the fire fails loudly instead of reporting success |
 
+Two overrides are worth knowing about precisely because they switch off things
+the rest of this section presents as guarantees. `--push-branch` replaces the
+push list above, so it is the one flag that can widen what a fired session is
+allowed to touch. `--prompt-file` replaces the built prompt wholesale — including
+the instruction to honour `PLAN.md`'s unattended rules and the warning about the
+start branch — so a stage fired with it gets whatever the file says and nothing
+else. Both are legitimate for a deliberate one-off; neither should appear in a
+script you leave running. `--help` lists the rest.
+
 ### Confirming what it booked
 
 The create response echoes what the server *stored*. What the container actually

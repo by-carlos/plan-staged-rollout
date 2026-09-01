@@ -304,18 +304,23 @@ def build_payload(
     failing, re-measure against the live API and fix this function; do not guess
     at a replacement shape, and update that record with what you measured.
 
-    Two parts are easy to get wrong and are called out there too: the initial
+    Three things are easy to get wrong and are called out there too: the initial
     prompt is a top-level user-message **event**, not a `session_context` field;
-    and `environment_id` is required, though its absence returns a bare
-    `invalid_request_error` naming no field.
+    `environment_id` is required, though its absence returns a bare
+    `invalid_request_error` naming no field; and the event's `uuid` and
+    `session_id` are generated fresh, since the values the CLI sends are
+    redacted in its own log and server-side validation of them is unmeasured.
     """
     context: dict = {
         "sources": [
             {
                 "type": "git_repository",
                 "url": f"https://github.com/{repo}",
-                # Where the container starts. For a staged rollout this is the
-                # plan branch - `.plan/` exists nowhere else.
+                # Where the container's *content* comes from - not the branch it
+                # starts on. Measured: the platform creates its own branch from
+                # `outcomes.branches[0]` plus a random suffix and checks that
+                # out, with this revision's content in it. For a staged rollout
+                # this is the plan branch, because `.plan/` exists nowhere else.
                 "revision": source_branch,
             }
         ],
@@ -325,7 +330,9 @@ def build_payload(
                 "git_info": {
                     "type": "github",
                     "repo": repo,
-                    # The only branches the session may push.
+                    # The only branches the session may push - as base names,
+                    # not exact matches: the platform's own suffixed branch is
+                    # pushable although its literal name is not in this list.
                     "branches": push_branches,
                 },
             }

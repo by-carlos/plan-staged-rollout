@@ -20,13 +20,18 @@ the person can watch in the session.
 
 ## Firing one stage
 
-1. **Build the stage prompt.** The prompt is the standalone stage instruction
-   `.plan/PLAN.md` was designed for: name the plan branch, tell the session to
-   fetch and check it out, name the stage, state in plain words that the run is
-   unattended, and point at `.plan/PLAN.md` as the operating protocol. Plugins
-   do not load in cloud containers, so the prompt must not reference any
-   `/plan-*` command — the plan folder carries the whole protocol, which is why
-   it must be pushed before anything fires.
+1. **Build the stage prompt.** One sentence: run stage `<id>` of plan branch
+   `plan-<slug>`, unattended, per `.plan/RUNNER.md`. That file — scaffolded
+   into every plan by `/plan-stages` — carries the whole stage-runner
+   contract: checkout-first, the gate refusals, the early push, the
+   ledger-as-only-signal rule, and the GitHub-MCP substitutions a cloud run
+   needs. Plugins do not load in cloud containers, so the prompt must not
+   reference any `/plan-*` command; the plan folder carries everything, which
+   is why the plan branch must be pushed before anything fires. **Backfill:**
+   a plan scaffolded before `RUNNER.md` existed lacks the file — generate it
+   from the plugin's `references/templates/RUNNER.md` (fill the placeholders
+   and the version marker), commit it on the plan branch, and push, before
+   the first fire.
 2. **Create a run-once routine as the stage's config container** with
    `RemoteTrigger {action: "create"}`. The body carries the routine name, a
    `run_once_at` timestamp (any future time — it will not be used, see below),

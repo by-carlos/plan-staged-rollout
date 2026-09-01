@@ -257,7 +257,15 @@ def build_prompt(row: plan_driver.IndexRow, plan_dir_name: str) -> str:
         f"This is a cloud container, so the plan-staged-rollout plugin is not "
         f"loaded and its slash commands do not exist here. Nothing depends on "
         f"them: `PLAN.md` is self-contained. Use the git and GitHub access you "
-        f"have, and push only to the branches this session is permitted."
+        f"have, and push only to the branches this session is permitted.\n\n"
+        f"One thing about this container will look wrong and is not: **you do "
+        f"not start on the plan branch.** The platform checks out a branch of "
+        f"its own making, named after the branch you are allowed to push with a "
+        f"random suffix. Its *content* is the plan branch, which is why `.plan/` "
+        f"is there. Treat it as the ordinary drift `PLAN.md`'s preflight already "
+        f"knows how to correct - check the plan branch out in the clone and "
+        f"follow the protocol's worktree rules from there - not as evidence "
+        f"that something is broken."
     )
 
 

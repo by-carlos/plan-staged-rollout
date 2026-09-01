@@ -116,12 +116,33 @@ way to confirm a booking took effect: the create response echoes what the server
 
 - **`model` is booked** — the container's CLI runs with `--model <value>` and
   the session self-reports it.
-- **`effort_level` is booked** — a session created with `"effort_level": "low"`
-  reported `CLAUDE_EFFORT=low` from inside the container. `CLAUDE_EFFORT` is the
-  readout; `CLAUDE_CODE_EFFORT_LEVEL` is an input override and stays empty.
-  Values above `high` (the CLI's `xhigh`, `max`) have no measured API
-  equivalent — `cloud_fire.py` books `high` for them and says so rather than
-  dropping them silently.
+- **`effort_level` is stored, and its effect inside the container is
+  unconfirmed.** The create response echoes it back, so the API accepts and
+  persists it. Whether the container runs at that level is a separate question,
+  and the two measurements taken so far disagree: a session created with
+  `"effort_level": "low"` (25 Aug 2026) reported `CLAUDE_EFFORT=low` from inside
+  the container, while a session created with `"effort_level": "medium"`
+  (1 Sep 2026, the fire that verified `cloud_fire.py`) found **`CLAUDE_EFFORT`
+  empty**. `CLAUDE_CODE_EFFORT_LEVEL` was empty in both — it is an input
+  override, not a readout. Until that is resolved, treat a booked effort level
+  as **requested, not proven**: the echo in the create response is evidence the
+  server stored it and nothing more. Values above `high` (the CLI's `xhigh`,
+  `max`) have no measured API equivalent at all — `cloud_fire.py` books `high`
+  for them and says so rather than dropping them silently.
+- **The container does not start on `sources.revision` by name.** It starts on a
+  branch the platform creates, named after the first entry of
+  `outcomes.branches` with a random suffix (`…-s0-wcssqj`), whose *content* is
+  `sources.revision`. Measured 1 Sep 2026: a fire booking
+  `sources.revision: plan-cloud-fire-probe` and
+  `outcomes.branches: [plan-cloud-fire-probe-s0, plan-cloud-fire-probe]` began
+  with `git rev-parse --abbrev-ref HEAD` reporting
+  `plan-cloud-fire-probe-s0-wcssqj`, with `.plan/` present and correct. Pushing
+  that suffixed branch **was** permitted even though its literal name is not in
+  `outcomes.branches`, so the listed value behaves as a base name rather than an
+  exact match. For a staged rollout this reads as branch drift — `PLAN.md`'s
+  preflight requires the clone's HEAD to be the plan branch — so
+  `cloud_fire.py`'s prompt warns the session up front that the drift is expected
+  and correctable rather than a fault.
 - **Plugins do not load in cloud containers** — marketplace loading is disabled
   by environment flag before settings are read. A fired session therefore cannot
   invoke `/plan-staged-rollout:plan-run`, and does not need to: `.plan/PLAN.md`

@@ -835,6 +835,15 @@ written down in
 If a fire starts failing, fix it there against that record and re-measure — do
 not guess at a replacement shape.
 
+**One honest limit.** The model booking is confirmed — a fired session reports
+the model it was booked at, from inside the container. The effort level is
+**stored but not confirmed to take effect**: the API accepts it and echoes it
+back, and the script fails the fire if that echo disagrees, but a session
+booked at `medium` found its `CLAUDE_EFFORT` empty. Read a booked effort level
+as requested rather than proven until that is resolved; the measurement, and
+the earlier one that disagrees with it, are both recorded in the reference
+above.
+
 **Plugins do not load in cloud containers**, so a fired session has no
 `/plan-run` to call. It does not need one: `.plan/PLAN.md` carries the entire
 operating protocol, including what an unattended session does at every gate, so

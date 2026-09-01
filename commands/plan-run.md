@@ -58,7 +58,7 @@ Work through these steps **in order**, after the notice above is confirmed:
 4. **Compute the runnable set.** Read `.plan/PLAN.md`'s stage index and
    `.plan/LEDGER.md`, and derive every `todo` stage whose `depends` are all
    `done` or `skipped`, per `PLAN.md`'s *Runnable set & waves*. If nothing is
-   runnable because every stage is `done`/`skipped`, skip straight to step 7.
+   runnable because every stage is `done`/`skipped`, skip straight to step 8.
    If nothing is runnable because everything left is blocked on a `doing` or
    `blocked` row, report that and stop — there is nothing this command can
    fire.
@@ -95,10 +95,15 @@ Work through these steps **in order**, after the notice above is confirmed:
    stops entirely: it never writes to the repository or guesses at the
    outcome on the stage's behalf.
 
-7. **Loop.** Once every stage fired this round has settled, recompute the
-   runnable set (step 4) — a stage that just went `done` may have unblocked
-   others — and repeat from step 5. Keep going until either nothing remains
-   runnable or a step above has stopped the command outright.
+7. **Loop.** Once every stage fired this round has settled, check whether
+   this round fired anything: if every stage in the runnable set was
+   `gate: human`/`gate: local` and none was fired, stop here and go straight
+   to step 8 — recomputing the runnable set would produce the identical set
+   forever, since a gated stage that is never fired never leaves `todo`.
+   Otherwise recompute the runnable set (step 4) — a stage that just went
+   `done` may have unblocked others — and repeat from step 5. Keep going
+   until either nothing remains runnable, a round fires nothing, or a step
+   above has stopped the command outright.
 
 8. **End announcement.** When the loop ends, state explicitly:
    - Every stage this run fired and its outcome (`done`, `blocked`, or a dead

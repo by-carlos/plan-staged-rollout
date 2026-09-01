@@ -773,6 +773,12 @@ def main(argv: list[str] | None = None) -> int:
         log(f"warning: {effort_warning}")
 
     stage_branch = stage_branch_for(plan_branch, row.stage_id)
+    # Order matters, and not only for readability: the platform names the
+    # container's own start branch after the FIRST entry here (plus a random
+    # suffix). Putting the stage branch first means that branch reads as a stage
+    # branch, which is what the session should think it is looking at. Putting
+    # the plan branch first would name it `plan-<slug>-<suffix>` - something that
+    # looks like the plan branch and is not, which is the worse confusion.
     push_branches = args.push_branch or [stage_branch, plan_branch]
     prompt = (
         args.prompt_file.read_text(encoding="utf-8")

@@ -609,8 +609,11 @@ def tail_session(session_id: str, limit: int) -> None:
         f"model={context.get('model')} effort_level={context.get('effort_level')}"
     )
     events = api_get(f"{API_BASE}/{session_id}/events").get("data") or []
-    log(f"{len(events)} event(s); showing the last {min(limit, len(events))}")
-    for event in events[-limit:]:
+    # `events[-0:]` is the whole list, not an empty one - so a limit of 0 has to
+    # be handled explicitly, or asking for no events prints every event.
+    shown = events[-limit:] if limit > 0 else []
+    log(f"{len(events)} event(s); showing the last {len(shown)}")
+    for event in shown:
         print(json.dumps(event, indent=2)[:4000])
 
 

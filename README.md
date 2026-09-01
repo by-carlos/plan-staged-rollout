@@ -108,7 +108,10 @@ Two parts of the plugin ask for a little more than a session:
   [Session-start nudge](#session-start-nudge).
 - **The unattended driver needs a machine of yours left running**, plus
   `python`, the `claude` CLI and `gh`. Everything else works from a session
-  alone. See [Unattended runs](#unattended-runs--scriptsplan_driverpy).
+  alone. See [Unattended runs](#unattended-runs--scriptsplan_driverpy). Its
+  cloud counterpart needs only `python` and a moment of that machine to fire —
+  the stage itself then runs on Anthropic's infrastructure. See
+  [Firing a stage in the cloud](#firing-a-stage-in-the-cloud--scriptscloud_firepy).
 
 **Typing `/plan-staged-rollout:<command>` always works.** Claude Code can also
 start one from plain language ("run stage 3 of the plan"), but only when it has
@@ -540,11 +543,13 @@ across sessions and works everywhere the plugin does.
 This is a platform limit, not a preference. If session spawning ever gains
 model/effort parameters, the handoff step is the place to revisit.
 
-The limit is on what a *session* can do, and that is why the unattended driver
-below is a script rather than a skill: outside any session, `claude -p --model
-… --effort …` sets both freely. The hint in `.plan/` is still the carrier — the
-driver reads the same stage-index columns a person reads, and prints them
-before every launch.
+The limit is on what a *session* can do, and that is why both runners below are
+scripts rather than skills. Outside any session, `claude -p --model … --effort
+…` sets both freely for a local run, and the
+[cloud fire script](#firing-a-stage-in-the-cloud--scriptscloud_firepy) books
+both against the session-creation API for a hosted one. The hint in `.plan/` is
+still the carrier in either case — each runner reads the same stage-index
+columns a person reads, and prints them before every launch.
 
 ## Unattended runs — `scripts/plan_driver.py`
 
@@ -807,6 +812,119 @@ that nothing of yours has to stay awake.
 it up, and what it will not do. [`examples/on-the-run/`](examples/on-the-run/)
 holds the two prompt contracts themselves.
 
+## Firing a stage in the cloud — `scripts/cloud_fire.py`
+
+The driver above runs stages on your machine, which has to stay awake for the
+length of the plan. [`scripts/cloud_fire.py`](scripts/cloud_fire.py) launches
+**one** stage on Anthropic's hosted infrastructure instead, so the stage keeps
+running after you close the laptop:
+
+```bash
+python scripts/cloud_fire.py 3 --dry-run   # print the request, send nothing
+python scripts/cloud_fire.py 3             # fire stage S3
+```
+
+Run it from the plan branch clone, same as the driver. It reads the stage's row
+in `.plan/PLAN.md` and books what it finds: the `model` and `effort` columns
+become the session's model and effort level, the plan branch becomes the content
+the container starts from, and the stage branch plus the plan branch become the
+only branches the session may push to. The plan branch is on that list because a
+stage that blocks *before* its stage branch exists commits the block record
+straight to the plan branch.
+
+"Content", not "branch", is deliberate there. The platform checks out a branch of
+its own making — named after the first push branch with a random suffix — whose
+content is the plan branch, so a fired session finds `.plan/` where it expects it
+but finds HEAD reading something else. That looks exactly like the branch drift
+`PLAN.md`'s preflight exists to correct, so the prompt tells the session up front
+that it is expected rather than a fault.
+
+It fires one stage and returns. Sequencing, retries and closeout stay with
+[`plan_driver.py`](#unattended-runs--scriptsplan_driverpy); which stage to fire
+stays with you.
+
+**Why not `claude --cloud`.** The CLI's cloud launcher needs a real TTY, so
+nothing scripted can drive it, and it silently drops `--effort` — booking the
+model and nothing else. That is the exact silent wrong-weight run the `effort`
+column exists to prevent, so the script talks to the session-creation API
+directly. That endpoint is **beta**: its request shape is measured rather than
+documented, so it lives in one function and the measurements behind it are
+written down in
+[`cloud-session-api.md`](skills/staged-rollout/references/cloud-session-api.md).
+If a fire starts failing, fix it there against that record and re-measure — do
+not guess at a replacement shape.
+
+**One honest limit, and it matters.** The model booking is confirmed — a fired
+session reports the model it was booked at, from inside the container. The
+effort level is **stored, and cannot currently be confirmed to take effect**:
+the API accepts it and echoes it back, and the script fails the fire if that
+echo disagrees, but `CLAUDE_EFFORT` — the variable a container used to report it
+with — came back empty from sessions booked at `low`, at `medium` and at `high`
+alike. Either the container still honours the booking and stopped exporting the
+variable, or the booking is no longer applied; nothing observable from outside
+separates the two. So read a booked effort level as **requested, not proven**.
+The measurements, and the earlier one they supersede, are in the reference
+above.
+
+**Plugins do not load in cloud containers**, so a fired session has no
+`/plan-run` to call. It does not need one: `.plan/PLAN.md` carries the entire
+operating protocol, including what an unattended session does at every gate, so
+the script sends the standalone prompt that file was designed for.
+
+### Credentials
+
+The endpoint does not take your `gh` credential, and an unattended run cannot
+stop every eight hours to re-authenticate. Seed a self-renewing grant once per
+machine, then check it:
+
+```bash
+python scripts/cloud_fire.py --seed-token
+```
+
+```bash
+python scripts/cloud_fire.py --probe-credentials
+```
+
+`--seed-token` copies the token pair from your interactive login (it never edits
+that file) into `~/.claude/.batch-oauth-token.json`, and from the first refresh
+onward the script renews that grant itself. `$PLAN_CLOUD_TOKEN_FILE` moves the
+file; `$CLAUDE_CODE_OAUTH_TOKEN` overrides it entirely, for CI. One caveat worth
+knowing: every refresh invalidates the previous refresh token, so **one grant
+file per machine** — two forked from the same login will kill each other at the
+first renewal.
+
+### What it refuses
+
+| Refusal | Why |
+|---|---|
+| the current branch is `main`/`master`/`release`/`trunk`/`develop` | a stage fired from a protected branch would branch off it and, under `merge: auto`, merge back into it |
+| the stage is `gate: human` or `gate: local` | a cloud container has strictly less access than your machine; `--ignore-gate` overrides, and is almost always wrong |
+| the stage's `depends` are not `done` or `skipped` | firing out of order is a legitimate operator choice, but never an accidental one — `--ignore-deps` makes it deliberate |
+| the response did not echo the model or effort level asked for | a booking that came back different is a silent wrong-weight run, so the fire fails loudly instead of reporting success |
+
+Two overrides are worth knowing about precisely because they switch off things
+the rest of this section presents as guarantees. `--push-branch` replaces the
+push list above, so it is the one flag that can widen what a fired session is
+allowed to touch. `--prompt-file` replaces the built prompt wholesale — including
+the instruction to honour `PLAN.md`'s unattended rules and the warning about the
+start branch — so a stage fired with it gets whatever the file says and nothing
+else. Both are legitimate for a deliberate one-off; neither should appear in a
+script you leave running. `--help` lists the rest.
+
+### Confirming what it booked
+
+The create response echoes what the server *stored*. What the container actually
+got is a separate question, and the transcript answers it:
+
+```bash
+python scripts/cloud_fire.py --tail session_...
+```
+
+That prints the session's status and stored context, then the tail of its event
+stream — where a session reporting its own model, or `CLAUDE_EFFORT` read from
+inside the container, is real evidence rather than an inference from the request
+that was sent.
+
 ## The ledger, kept slim
 
 The ledger is read by *every* stage session, so its size taxes every future
@@ -906,6 +1024,7 @@ Layout:
     SKILL.md                     # method: principles, decomposition guidance,
                                  #   flag heuristics, anti-patterns
     references/templates/        # PLAN.md, LEDGER.md, stage-N.md, stage-f-review.md, README.md
+    references/cloud-session-api.md  # the measured beta shape cloud_fire.py posts
   examples/
     uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
     on-the-run/                  # prompt contracts for unattended cloud runs
@@ -920,6 +1039,7 @@ Layout:
     session-start                # .plan/-aware nudge: next runnable stage
   scripts/
     plan_driver.py               # unattended driver: one claude -p per stage
+    cloud_fire.py                # fire one stage as a hosted cloud session
 ```
 
 ## Updating

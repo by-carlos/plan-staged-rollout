@@ -14,7 +14,7 @@ Start a **fresh** session and paste one line:
 That's the whole prompt — the stage file points the session at the shared
 protocol and frozen decisions in `PLAN.md`. If this repo has the
 `plan-staged-rollout` plugin installed, asking to **"run stage \<N> of the
-plan"** — or the explicit command `/plan-staged-rollout:plan-run <N>` — is
+plan"** — or the explicit command `/plan-staged-rollout:stage-run <N>` — is
 the same thing with ergonomics (it also runs the model/effort weight check
 for you). The `.plan/` folder works standalone either way; the plugin is
 convenience, not a dependency.

@@ -94,7 +94,8 @@ context a long session would carry).
 
 Each stage declares `depends` / `mode` / `exec` / `model` / `effort` / `gate`
 in the **PLAN.md stage index** — the single authoritative home for these
-flags, read by `/plan-run`'s weight check and next-runnable logic. The plan as
+flags, read by `/stage-run`'s weight check and the runnable-set logic both
+commands share. The plan as
 a whole declares two more, `merge` and `plan-dir`, on the **plan flags** line
 directly under that index — those two are the plan's *declared defaults*, the
 answers an unattended session applies where an interactive one would ask (see
@@ -261,7 +262,7 @@ out as method, not just vocabulary:
   protocol under *Recording a block* — on the plan branch directly when the
   block predates the stage branch, and on the stage branch plus a
   `.plan/BLOCKED.md` section on the plan branch once it exists. That is the
-  single source of truth for the rule. Neither this skill nor `/plan-run`
+  single source of truth for the rule. Neither this skill nor `/stage-run`
   restates it — they only name which side of it a given decision point falls
   on. **`needs-local`** is the reason value for one specific case: a stage
   that discovers *mid-run* — nothing declared as `gate: local` up front —

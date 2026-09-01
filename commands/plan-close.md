@@ -54,7 +54,7 @@ Work through these steps **in order**:
    no remaining stage PRs. If any row is `todo`, `doing`, or `blocked`,
    **refuse to run**: list exactly which stages are pending, their status,
    and what to run instead — "run stage \<N> of the plan", or the explicit
-   command `/plan-staged-rollout:plan-run <N>`, for `todo`/`doing`, or
+   command `/plan-staged-rollout:stage-run <N>`, for `todo`/`doing`, or
    resolve the `blocked` runbook first. Stop there — do not proceed to
    distillation or cleanup. This gate is a **hard stop in both modes** —
    unattended, it has no default to fall back on, so report the same way and

@@ -10,6 +10,14 @@ Measured 01 Sep 2026 against Claude Code 2.1.240 (see #143 for the full
 investigation). Where something below is stated as *likely* rather than
 measured, it says so.
 
+**Proven end to end, 01 Sep 2026:** a cold cloud session, given only "run
+stage S0 of plan branch plan-proof, unattended, per `.plan/RUNNER.md`",
+executed a full stage against a fixture repository in 3.5 minutes fire to
+done — checkout-first, preflight, early stage-branch push, real acceptance
+evidence in the ledger, PR opened via the GitHub MCP with the base pinned to
+the plan branch, `merge: auto` squash-merge, `done` row pushed, next-runnable
+set reported and not started.
+
 ## What the orchestrator is
 
 An ordinary interactive Claude Code session, opened by a person, in a clone of
@@ -102,9 +110,20 @@ so the contract survives the scripts:
   are unrestricted only for `claude/`-prefixed branches; any other branch is
   accepted only when it is unprotected, has no other open PR, and carries no
   other author's commits (#104). A `plan-<slug>-s<N>` branch cut from the
-  plan branch tip passed exactly this in the measured run (#107), but a
-  protected plan branch or a second open PR against the stage branch would
-  still bite.
+  plan branch tip passed exactly this in the measured runs (#107, and the
+  01 Sep 2026 proof run), but a protected plan branch or a second open PR
+  against the stage branch would still bite.
+- **The sandbox does not persist paths outside the primary clone between
+  tool calls** (measured in the proof run): a sibling stage worktree can
+  vanish mid-stage, taking its worktree metadata with it. Worktree-per-stage
+  therefore degrades to branch-per-stage in a cloud run. Harmless when §5's
+  early push was honoured — everything of value is on the remote — and a run
+  that finds its worktree gone should verify the pushed state and carry on
+  in the clone, never re-do pushed work.
+- **A fired run cannot delete remote branches** (measured in the proof run:
+  `git push origin --delete` returns HTTP 403 from the git proxy). Merged
+  stage branches therefore linger on the remote; deleting them falls to the
+  orchestrator or a person, as part of plan cleanup.
 
 ## Why not the alternatives
 

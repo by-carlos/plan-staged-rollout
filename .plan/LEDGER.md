@@ -14,7 +14,7 @@ protocol, finish protocol).
 
 | Stage | Status | Verified | Date | Result |
 |---|---|---|---|---|
-| S0 Fire evidence | todo | — | — | — |
+| S0 Fire evidence | doing | yes | 2026-09-01 | Evidence recorded: model, effort vars, branch, plugin availability |
 
 ## Notes
 
@@ -22,4 +22,14 @@ As-built notes, acceptance evidence, gotchas, handoff notes, follow-ups. One
 block per stage; sessions read only the blocks of their `depends` stages.
 
 ### S0 Fire evidence
-_(empty)_
+
+**Acceptance checks:**
+- ✓ `probe/cloud-fire-evidence.md` exists on the stage branch
+- ✓ Contains all five labelled observations with commands and outputs:
+  - Model: claude-haiku-4-5 (from system prompt)
+  - CLAUDE_EFFORT: (empty, confirmed via `echo "$CLAUDE_EFFORT"`)
+  - CLAUDE_CODE_EFFORT_LEVEL: (empty, confirmed via `echo "$CLAUDE_CODE_EFFORT_LEVEL"`)
+  - Starting branch: plan-cloud-fire-probe-s0-wcssqj (pre-stage-creation state)
+  - Plugin slash commands: no (cloud container, plugin not loaded)
+- ✓ Worktree properly provisioned during preflight (drift correction applied: plan branch in clone, stage branch in worktree)
+- ✓ Stage PR opened into plan branch

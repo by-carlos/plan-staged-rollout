@@ -10,6 +10,23 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Changed
+
+- **Migration note: `/plan-run` no longer runs one stage — it now drives every
+  remaining stage of the plan on the cloud.** If you're used to typing
+  `/plan-staged-rollout:plan-run <N>` for one stage in the current session,
+  that habit now fires an unattended cloud session for **every** stage the
+  plan has left to run, one after another, until nothing is runnable or a
+  `gate: human`/`gate: local` stage stops it — not what the old command did.
+  `/plan-run` opens with a plain-language notice and a yes/no confirmation
+  before touching anything, precisely so this can't happen by reflex. The old,
+  narrower behaviour — run exactly one stage, in this session — is unchanged
+  in substance and now lives at **`/plan-staged-rollout:stage-run <N>`**; use
+  it wherever you used to reach for `/plan-run <N>`. This is a deliberate,
+  pre-1.0 rename, not a bug: see [`README.md`](README.md#driving-a-plan-remotely--plan-run)
+  and [`remote-driver.md`](skills/staged-rollout/references/remote-driver.md)
+  for the mechanism `/plan-run` now drives (#129).
+
 ### Added
 
 - **The remote-driver contract defines a concrete poll cadence and a
@@ -166,9 +183,9 @@ elsewhere. See 0.4.0 for the split.
   the existing `gate: human`, a stage can now be marked `gate: local` at
   authoring time — for work that needs local hardware, a LAN-only resource, a
   secret not committed anywhere reachable, or a locally-installed toolchain.
-  The unattended driver (`scripts/plan_driver.py`) and `/plan-run --unattended`
+  The unattended driver (`scripts/plan_driver.py`) and `/stage-run --unattended`
   refuse to launch it, exactly as they already refuse `gate: human`, and hand
-  it back to be run locally with `/plan-run`. For the case a stage only
+  it back to be run locally with `/stage-run`. For the case a stage only
   discovers *mid-run* — nothing declared up front — the ledger convention adds
   a `needs-local` blocked reason (written to the ledger row's `Result` cell,
   or the `.plan/BLOCKED.md` section, depending on whether the stage branch
@@ -202,7 +219,7 @@ elsewhere. See 0.4.0 for the split.
   inconsistent in testing and that a remove-and-reinstall is the fallback. It
   closes by answering the question an in-flight rollout raises: updating
   disturbs nothing, because a `.plan/` carries its own operating protocol and
-  `/plan-run` defers to it.
+  `/stage-run` defers to it.
 
 - **The plan-to-main merge type is documented as unenforceable** (#110). The
   final merge is the one step no session performs, so it is also the one step
@@ -223,7 +240,7 @@ elsewhere. See 0.4.0 for the split.
   showing up to approve it, so that is what an unattended or cloud-driven run
   needs by default. `merge: manual` remains available as an explicit opt-in a
   plan author can still set by editing `PLAN.md`'s plan flags line, and
-  `/plan-run`'s finish protocol still honours it exactly as before for any
+  `/stage-run`'s finish protocol still honours it exactly as before for any
   plan that sets it.
 
 ### Fixed

@@ -111,7 +111,7 @@ Two parts of the plugin ask for a little more than a session:
   orchestrator session fires each stage as a cloud session through Claude
   Code's built-in `RemoteTrigger` tool — nothing to install, but an account
   without claude.ai/code cloud has no cloud leg. See
-  [Driving a plan remotely](#driving-a-plan-remotely--the-orchestrator).
+  [Driving a plan remotely](#driving-a-plan-remotely--plan-run).
 
 **Typing `/plan-staged-rollout:<command>` always works.** Claude Code can also
 start one from plain language ("run stage 3 of the plan"), but only when it has
@@ -323,7 +323,7 @@ Two deliberate limits:
 - **Launching is yours.** A session cannot spawn independent top-level
   sessions, so running a wave in parallel means opening one terminal per stage.
   The plugin tells you what *can* overlap; whether to is your call. The
-  [remote orchestrator](#driving-a-plan-remotely--the-orchestrator) removes the
+  [remote orchestrator](#driving-a-plan-remotely--plan-run) removes the
   keyboard from *sequential* runs, not from this — it takes a multi-stage
   runnable set one stage at a time.
 
@@ -476,7 +476,7 @@ alone. Then it:
 
 It runs headless too — `/plan-close --unattended` applies the plan flags
 instead of asking, and a
-[remotely driven plan](#driving-a-plan-remotely--the-orchestrator) can run it
+[remotely driven plan](#driving-a-plan-remotely--plan-run) can run it
 as one more fired session once every stage is settled. Merging that final PR is
 yours in every mode.
 
@@ -542,7 +542,7 @@ carrier of that recommendation because it is the only channel that survives
 across sessions and works everywhere the plugin does.
 
 The remote path is the partial exception:
-[a fired cloud stage](#driving-a-plan-remotely--the-orchestrator) has its
+[a fired cloud stage](#driving-a-plan-remotely--plan-run) has its
 `model` booked from the stage index at fire time — that booking is measured to
 take effect — while booking `effort` remotely is still an open question (#125),
 so the effort column stays a reminder the stage prompt restates in every mode.

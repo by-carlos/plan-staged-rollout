@@ -111,9 +111,11 @@ deliberately cheap — escalate only where a stage genuinely warrants it:
   stages. Most staged work is `low`/`med` effort.
 - `gate: auto` by default. `gate` says whether a stage may be **launched
   unattended** — by a driver that runs stages back-to-back with nobody
-  watching (`scripts/plan_driver.py` in this repo; this flag is the contract
-  it reads). A `gate: human` or `gate: local` stage is never launched
-  unattended: the driver stops in front of it and notifies, and a session
+  watching (`scripts/plan_driver.py` in this repo), or by the cloud fire script
+  (`scripts/cloud_fire.py`) that launches one stage on hosted infrastructure;
+  this flag is the contract both read. A `gate: human` or `gate: local` stage is
+  never launched unattended: the driver stops in front of it and notifies, the
+  fire script refuses outright, and a session
   that finds itself running one unattended (see *Statuses and human-gated
   stages*) reports and stops rather than starting it. Mark `human` where a
   person must be present for the stage to get anywhere: every
@@ -293,8 +295,12 @@ review stage catch them.
 
 **One mode, one rule, honoured at every decision point.** A session is
 unattended when nobody can answer it: it was launched by a driver
-(`scripts/plan_driver.py`), or a command was told so explicitly with its
-`--unattended` argument. That argument is a single switch selecting **declared
+(`scripts/plan_driver.py`), a command was told so explicitly with its
+`--unattended` argument, or its opening prompt says so in plain words. That
+last path is how a **cloud** session enters this mode: plugins do not load in
+cloud containers, so there is no command and no argument to carry the flag —
+`scripts/cloud_fire.py` states it in the prompt instead. However a session
+learns it, the contract below is identical. That argument is a single switch selecting **declared
 default over ask** — never "proceed anyway". Interactive sessions keep asking
 exactly as they always have, and one body of skill text serves both modes. A
 fork into interactive and unattended copies is the anti-pattern this contract

@@ -72,10 +72,62 @@ the person can watch in the session.
    ledger row to know something went wrong. The pushed
    `.plan/LEDGER.md` stays the sole source of truth for *stage status*; the run
    log is evidence about the *session*, used to decide when to look and what to
-   report, never to overwrite what the ledger says.
+   report, never to overwrite what the ledger says. Poll on a defined cadence,
+   not continuously — see "When a fired run doesn't settle" below.
 5. **Hand the person the link.** Every fired stage is a first-class cloud
    session at claude.ai/code — openable, watchable, resumable. Surface the
    session URL as soon as `run` returns it.
+
+## When a fired run doesn't settle
+
+A concrete cadence and a concrete dead-run definition, so "wait, then check
+again" is a number, not a judgement call (#122).
+
+- **Poll every 3–5 minutes.** Call `list_runs` and re-read `.plan/LEDGER.md`
+  together, on that interval, while the run's `list_runs` status still reads
+  as running. Tighter polling burns the session's own turns for no benefit —
+  nothing about a stage resolves faster for being checked more often.
+- **The run ending is not the same as the stage settling.** The moment
+  `list_runs` reports the session has ended, re-read `.plan/LEDGER.md`
+  immediately. If the fired stage's row now reads `done`, `blocked`, or
+  `skipped` (or the block is recorded in `.plan/BLOCKED.md` per the ledger's
+  own rules), the stage is settled — proceed as normal. If the row is
+  unchanged, do not declare the stage dead yet: a session that has finished
+  can still have a push in flight. Wait a further 10 minutes, then re-read
+  the ledger once more.
+- **Still unmoved after the grace period — the stage is dead.** This is the
+  crash-vs-never-started discriminator this file exists to provide: a session
+  the run log shows as ended, against a ledger row that never moved, is now
+  distinguishable from a stage that simply has not been fired yet. Read
+  `get_run_log` for that session to learn *why* — a crash, a provisioning
+  failure, a denied permission, an error mid-tool-call — but treat it as
+  diagnostic only. It explains the failure to the person; it is never
+  evidence the orchestrator acts on, and it never substitutes for, or
+  overrides, what `.plan/LEDGER.md` says.
+- **Declaring a stage dead is a report, not a write.** The orchestrator's
+  refusal to touch the repository (below) holds here exactly as everywhere
+  else — it does not write a `blocked` row, a `.plan/BLOCKED.md` section, or
+  anything else on the stage's behalf. It stops and reports to the person:
+  the session id and its claude.ai link, what `get_run_log` showed, how long
+  it has been since the stage was fired, and what was actually left behind —
+  whether the stage branch exists on the remote
+  (`git ls-remote origin plan-<slug>-s<N>`) and whether a pull request
+  against the plan branch is open for it. That mirrors the existing
+  `needs-local` reporting pattern (`SKILL.md`, *Statuses and human-gated
+  stages*): a specific, checked state handed to the person, not a generic
+  "something went wrong."
+- **A run still reported as running is not stalled, however long the ledger
+  has sat still.** `list_runs` distinguishes an alive session from a dead
+  one; a long-running stage is not evidence of anything on its own. Keep
+  polling on the same cadence, and if asked, report the elapsed time and the
+  last state read — the existing rule for "nothing has moved for a long
+  stretch" is unchanged, just now backed by a status the orchestrator can
+  actually check instead of a guess.
+
+These numbers — 3–5 minute polling, a 10-minute settlement grace period — are
+a field-tested starting point (#122), not a tuned constant. An operator who
+finds them too eager or too slow for a given plan's stages is free to adjust
+them; nothing here depends on the exact interval, only on there being one.
 
 ## What the orchestrator refuses
 
@@ -94,6 +146,11 @@ so the contract survives the scripts:
   back into it.
 - **The plan→main merge is manual and human-performed, in every mode.** The
   orchestrator opens nothing against `main` and merges nothing into it.
+- **It never writes `.plan/LEDGER.md` or `.plan/BLOCKED.md` itself.** Those
+  files update only from a fired stage's own push, per `RUNNER.md`'s
+  ledger-as-only-completion-signal rule. Whatever the orchestrator observes —
+  including a stage it has declared dead — it reports to the person; it never
+  records that observation into the plan branch on the stage's behalf.
 
 ## Known limits
 

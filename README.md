@@ -8,7 +8,8 @@ and keeps every decision in exactly one place so the plan never drifts.
 
 ```
 /plan-staged-rollout:plan-stages <idea>  →  design + decompose into .plan/ (once)
-/plan-staged-rollout:plan-run 3          →  execute one stage in a fresh, cheap session (repeat)
+/plan-staged-rollout:stage-run 3         →  execute one stage in a fresh, cheap session (repeat)
+/plan-staged-rollout:plan-run            →  drive every remaining stage on the cloud instead (repeat)
 /plan-staged-rollout:plan-close          →  final PR, cleanup, done
 ```
 
@@ -82,7 +83,7 @@ everything the plugin needs after that, it writes into that repository's
 
 Installed plugin commands are namespaced — see the quickstart above for the
 exact commands to type. The rest of this README uses the short names
-(`plan-stages`, `plan-run`, `plan-close`) for readability. Getting a later
+(`plan-stages`, `stage-run`, `plan-run`, `plan-close`) for readability. Getting a later
 version is [Updating](#updating), further down.
 
 ## Where it runs
@@ -110,7 +111,7 @@ Two parts of the plugin ask for a little more than a session:
   orchestrator session fires each stage as a cloud session through Claude
   Code's built-in `RemoteTrigger` tool — nothing to install, but an account
   without claude.ai/code cloud has no cloud leg. See
-  [Driving a plan remotely](#driving-a-plan-remotely--the-orchestrator).
+  [Driving a plan remotely](#driving-a-plan-remotely--plan-run).
 
 **Typing `/plan-staged-rollout:<command>` always works.** Claude Code can also
 start one from plain language ("run stage 3 of the plan"), but only when it has
@@ -223,7 +224,7 @@ project captured mid-rollout — a `done` stage with real acceptance evidence
 pasted in the ledger, a `doing` stage with ticked checkboxes and a handoff
 note — plus a tour of the discipline it demonstrates.
 
-### 2. Execute — `/plan-run <N>` (repeat, one fresh session each)
+### 2. Execute — `/stage-run <N>` (repeat, one fresh session each)
 
 The session follows the operating protocol in `PLAN.md`:
 
@@ -251,7 +252,7 @@ The session follows the operating protocol in `PLAN.md`:
 **Subtasks and interruption.** Stage steps are checkboxes. If a session must
 stop mid-stage (blocked, context getting long, you interrupt), it marks the
 stage `doing`, ticks the completed boxes, and writes a handoff note.
-Re-running `/plan-staged-rollout:plan-run <N>` (or asking to "run stage \<N>
+Re-running `/plan-staged-rollout:stage-run <N>` (or asking to "run stage \<N>
 of the plan" again) resumes from the unticked boxes.
 
 **Statuses:** `todo → doing → done`, plus `blocked` (waiting on a human or an
@@ -276,7 +277,7 @@ that a fresh session doesn't know a rollout exists. A `SessionStart` hook
 closes that gap: when the repo has a `.plan/` directory, every new session
 starts already knowing every runnable stage — any `doing` stage to resume, plus
 every `todo` whose `depends` are all `done` or `skipped` — with each stage's recommended
-model/effort from the stage index and its exact `/plan-run` command. When more
+model/effort from the stage index and its exact `/stage-run` command. When more
 than one stage is runnable it says so, so a fan-out is visible from the first
 line of the session.
 
@@ -305,9 +306,9 @@ never just the first:
 3 stages are runnable right now — none depends on another, so they can be
 run concurrently, one per fresh session:
 
-- S1 — Parser       /plan-run 1   (model sonnet, effort low)
-- S2 — Renderer     /plan-run 2   (model sonnet, effort med)
-- S3 — CLI flags    /plan-run 3   (model haiku,  effort low)
+- S1 — Parser       /stage-run 1   (model sonnet, effort low)
+- S2 — Renderer     /stage-run 2   (model sonnet, effort med)
+- S3 — CLI flags    /stage-run 3   (model haiku,  effort low)
 ```
 
 Bootstrap prints the wave structure and critical path for the same reason: the
@@ -322,7 +323,7 @@ Two deliberate limits:
 - **Launching is yours.** A session cannot spawn independent top-level
   sessions, so running a wave in parallel means opening one terminal per stage.
   The plugin tells you what *can* overlap; whether to is your call. The
-  [remote orchestrator](#driving-a-plan-remotely--the-orchestrator) removes the
+  [remote orchestrator](#driving-a-plan-remotely--plan-run) removes the
   keyboard from *sequential* runs, not from this — it takes a multi-stage
   runnable set one stage at a time.
 
@@ -434,7 +435,7 @@ On disk, that means your clone and one sibling directory per running stage:
 ### 4. Review — the standing final stage
 
 Bootstrap always appends `SF: plan review` (run with
-`/plan-staged-rollout:plan-run f`, or by asking to "run the review stage").
+`/plan-staged-rollout:stage-run f`, or by asking to "run the review stage").
 It is the one stage exempt
 from the read-scope rule: it reads the *entire* ledger — every note, gotcha,
 shortcut, and known gap accumulated across all stages — and sweeps for
@@ -444,7 +445,7 @@ becomes exactly one of:
 - **A new stage in this plan** — for follow-up work that belongs to this
   project (a shortcut to reconcile, a config to bring under management). It
   gets a PLAN.md stage index row (with its flags), a ledger row, and a stage
-  file, and runs later as a normal `/plan-staged-rollout:plan-run <N>` in its
+  file, and runs later as a normal `/plan-staged-rollout:stage-run <N>` in its
   own fresh session and branch, like any other stage.
 - **A spin-off candidate** — for work that has outgrown this plan (a genuinely
   new project). It's recorded in the ledger and surfaced in the final PR body
@@ -475,7 +476,7 @@ alone. Then it:
 
 It runs headless too — `/plan-close --unattended` applies the plan flags
 instead of asking, and a
-[remotely driven plan](#driving-a-plan-remotely--the-orchestrator) can run it
+[remotely driven plan](#driving-a-plan-remotely--plan-run) can run it
 as one more fired session once every stage is settled. Merging that final PR is
 yours in every mode.
 
@@ -541,24 +542,30 @@ carrier of that recommendation because it is the only channel that survives
 across sessions and works everywhere the plugin does.
 
 The remote path is the partial exception:
-[a fired cloud stage](#driving-a-plan-remotely--the-orchestrator) has its
+[a fired cloud stage](#driving-a-plan-remotely--plan-run) has its
 `model` booked from the stage index at fire time — that booking is measured to
 take effect — while booking `effort` remotely is still an open question (#125),
 so the effort column stays a reminder the stage prompt restates in every mode.
 
-## Driving a plan remotely — the orchestrator
+## Driving a plan remotely — `/plan-run`
 
 Everything above assumes you are at the keyboard, launching one session per
-stage. The remote path keeps one session at the keyboard — the
-**orchestrator** — and moves the stages off your machine: each one runs as a
-cloud session on Anthropic's infrastructure, so the work keeps going after you
-close the laptop, and every fired stage is a first-class session at
-claude.ai/code that you can open, watch, and resume.
+stage with `/stage-run <N>`. `/plan-staged-rollout:plan-run` — no arguments —
+is the other path: it keeps one session at the keyboard, the
+**orchestrator**, and moves every *remaining* stage off your machine instead
+of just the next one — each runs as a cloud session on Anthropic's
+infrastructure, so the work keeps going after you close the laptop, and every
+fired stage is a first-class session at claude.ai/code that you can open,
+watch, and resume. It opens with a plain-language notice and a yes/no
+confirmation before touching anything, precisely because it is a much bigger
+action than `/stage-run <N>` and shares part of its name — see
+[`commands/plan-run.md`](commands/plan-run.md).
 
 The orchestrator is an ordinary interactive Claude Code session in a clone of
-your repo. There is nothing to install and no credential to manage: it fires
-stages through **`RemoteTrigger`**, a tool built into Claude Code that talks to
-the claude.ai routines API with your account's own authentication handled
+your repo, running that command. There is nothing to install and no
+credential to manage: it fires stages through **`RemoteTrigger`**, a tool
+built into Claude Code that talks to the claude.ai routines API with your
+account's own authentication handled
 in-process. Per stage it creates a run-once routine as the stage's config
 container — repository, the stage prompt, and the stage's `model` from the
 index — fires it directly with the tool's `run` action (the schedule is never
@@ -591,7 +598,7 @@ availability likely tracks cloud access being enabled on your Claude account —
 no claude.ai/code cloud, no remote leg.
 
 **Plugins do not load in cloud containers**, so a fired session has no
-`/plan-run` to call. It does not need one: the plan carries its own contract —
+`/plan-run` or `/stage-run` to call. It does not need one: the plan carries its own contract —
 `.plan/RUNNER.md`, scaffolded by `/plan-stages`, tells a cold session how to
 run one stage, and `.plan/PLAN.md` carries the operating protocol it defers
 to. The fired prompt is one sentence pointing at them, which is why the plan
@@ -716,7 +723,8 @@ Layout:
       poc/                     #   end-to-end proof-of-concept plan + verify_run.py
   commands/
     plan-stages.md               # /plan-stages <idea>  — bootstrap .plan/
-    plan-run.md                  # /plan-run <N>        — execute one stage
+    stage-run.md                 # /stage-run <N>       — execute one stage, in this session
+    plan-run.md                  # /plan-run             — drive every remaining stage remotely
     plan-close.md                # /plan-close          — final PR + cleanup
   hooks/
     hooks.json                   # SessionStart registration
@@ -771,10 +779,14 @@ running: restart Claude Code, or run `/reload-plugins`.
 ### Does updating disturb a rollout already in progress?
 
 No. A `.plan/` folder carries its own operating protocol inside the `PLAN.md`
-that bootstrap scaffolded, and `/plan-run` is a thin wrapper that defers to it.
-A plan therefore keeps running exactly as it was decomposed, whatever version
-is installed when you come back to it days later. A new version changes what
-the *next* `/plan-stages` scaffolds, not what an in-flight plan does.
+that bootstrap scaffolded, and `/stage-run` is a thin wrapper that defers to
+it. A plan therefore keeps running exactly as it was decomposed, whatever
+version is installed when you come back to it days later. A new version
+changes what the *next* `/plan-stages` scaffolds, not what an in-flight plan
+does. `/plan-run`'s own orchestrator loop is the one exception — it isn't
+scaffolded into `.plan/`, so a plugin update does change what it does the
+next time you run it; what each fired stage runs cold is still
+`.plan/RUNNER.md`, versioned and backfilled the same as the rest of `.plan/`.
 
 [`CHANGELOG.md`](CHANGELOG.md) is what shipped when.
 

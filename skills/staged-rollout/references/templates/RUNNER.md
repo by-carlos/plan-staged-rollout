@@ -45,8 +45,9 @@ does not restate it and does not override it, except where a rule below says
 so explicitly.
 
 The `plan-staged-rollout` plugin may not be installed where you are running —
-cloud containers never have it — so do not rely on any `/plan-run` command or
-plugin skill. `.plan/PLAN.md` is complete on its own.
+cloud containers never have it — so do not rely on any `/plan-run`,
+`/stage-run`, or other plugin command or skill. `.plan/PLAN.md` is complete on
+its own.
 
 If nobody can answer you (you were fired by an orchestrator, or your opening
 instruction says so), treat this run as **unattended** everywhere the

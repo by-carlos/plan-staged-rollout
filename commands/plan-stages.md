@@ -116,7 +116,7 @@ Then work through these steps **in order**:
    (non-squash) merge** so each stage keeps its own commit on `main`. Do
    **not** create any *stage* branch
    here — stage branches (`plan-<slug>-s<N>`) are proposed and created at
-   stage time by `/plan-staged-rollout:plan-run`, never at bootstrap.
+   stage time by `/plan-staged-rollout:stage-run`, never at bootstrap.
 
    **The plan-level `merge` flag — written, not asked.** Write
    **`merge: auto`** on the plan flags line under the stage index without
@@ -127,7 +127,7 @@ Then work through these steps **in order**:
    the value in the end announcement. `merge: manual` — offer each stage
    PR's merge for the user's OK instead — remains a value a plan author can
    set explicitly by editing `PLAN.md`'s plan flags line, for anyone who
-   wants per-merge control while driving a plan locally; `/plan-run`'s
+   wants per-merge control while driving a plan locally; `/stage-run`'s
    finish protocol still honours it exactly as before. Either way the user
    can flip the flag later in `PLAN.md` in one line.
 
@@ -201,7 +201,7 @@ Then work through these steps **in order**:
    means the weight gate only prompts on the exceptions."*) — a
    bootstrap-time convenience only, it never changes the per-stage
    `model`/`effort` values, which stay authoritative and are still checked
-   individually by `/plan-run`'s weight gate. Skip the hint if there's no
+   individually by `/stage-run`'s weight gate. Skip the hint if there's no
    strict majority (e.g. an even split). The subagent returns a **manifest of
    files written** — nothing else.
 
@@ -220,7 +220,7 @@ Then work through these steps **in order**:
 6. **End announcement.** State explicitly that **bootstrap is finished and no
    stage was executed.** Tell the user their next action, in a **fresh
    session**, is **"run stage 0 of the plan"** — or the explicit command
-   **`/plan-staged-rollout:plan-run 0`** — and state **S0's recommended model
+   **`/plan-staged-rollout:stage-run 0`** — and state **S0's recommended model
    and effort** from the stage index. If step 5 found a modal-model majority,
    repeat that recommendation here too (e.g. *"consider `/model opus` as your
    session default — it covers 6 of 8 stages"*).

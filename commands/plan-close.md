@@ -1,5 +1,5 @@
 ---
-description: Close out a finished staged-rollout .plan/ — verify completion, distill the story into a final PR body, clean up .plan/, and propose the PR to main.
+description: Close out a finished staged-rollout `.plan/` and propose the final PR to main. Use when the user says "close the plan" or "the plan is done".
 argument-hint: [--unattended]
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Execute one stage of a staged-rollout .plan/ — locate the stage, follow the project's own PLAN.md protocol, verify launch weight, and hand off to the next stage.
+description: Execute one stage of an existing staged-rollout `.plan/`. Use when the user says "run stage 2", "run the next stage", or names a stage to execute.
 argument-hint: <stage number, or f for the review stage> [--unattended]
 ---
 

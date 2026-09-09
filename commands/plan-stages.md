@@ -1,5 +1,5 @@
 ---
-description: Bootstrap a staged-rollout .plan/ from a project idea — design, decompose, scaffold, and commit. Executes no stage.
+description: Turn a project idea into a committed staged-rollout `.plan/` scaffold. Use when the user says "bootstrap a plan for X" or "break this project into stages".
 argument-hint: <project idea>
 ---
 

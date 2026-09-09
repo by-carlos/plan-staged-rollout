@@ -96,6 +96,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
+- **Skill and command descriptions trimmed** to cut the context every session
+  pays for the plugin being installed. All four descriptions — the
+  `staged-rollout` skill and the `/plan-stages`, `/plan-run` and `/plan-close`
+  commands — are now one plain sentence saying what the thing does plus a short
+  trigger clause, instead of restating the body's step list, its refusals and
+  its scope boundaries. Behaviour is unchanged: every claim dropped from a
+  description is still asserted in the skill or command body that has to obey
+  it. In-context description text goes from 1001 to 790 characters.
+
 - **`/plan-stages` no longer asks the `merge` bootstrap question** (#124). A
   new plan's flags line now gets `merge: auto` by default, written without
   asking — a stage that finishes itself needs its PR merged without a person

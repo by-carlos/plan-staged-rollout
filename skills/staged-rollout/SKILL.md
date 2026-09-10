@@ -1,6 +1,6 @@
 ---
 name: staged-rollout
-description: Use when a build is too big for one session and must be run as many small, resumable sessions — a staged or milestone rollout with cross-session progress tracking, a persistent plan that must not drift, and stop/resume freely over hours or days. Covers decomposing a large project into a `.plan/` folder of dependency-ordered stages with an evidence ledger, and executing one stage per fresh session. NOT for single-session tasks, quick fixes, or work of roughly three sessions or less — the scaffold has a floor cost that only pays off on genuinely large, decomposable builds.
+description: Run a large build as many small, resumable sessions by decomposing it into a `.plan/` folder of dependency-ordered stages with an evidence ledger, then executing one stage per fresh session. Use when the user says "this is too big for one session", "plan a staged rollout", or describes a multi-day build that needs cross-session progress tracking.
 ---
 
 # Staged rollout

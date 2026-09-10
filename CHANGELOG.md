@@ -8,7 +8,7 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
-## [Unreleased]
+## [0.7.0] - 2026-09-10
 
 ### Changed
 
@@ -233,6 +233,15 @@ elsewhere. See 0.4.0 for the split.
   and named as such.
 
 ### Changed
+
+- **Skill and command descriptions trimmed** to cut the context every session
+  pays for the plugin being installed. All four descriptions — the
+  `staged-rollout` skill and the `/plan-stages`, `/plan-run` and `/plan-close`
+  commands — are now one plain sentence saying what the thing does plus a short
+  trigger clause, instead of restating the body's step list, its refusals and
+  its scope boundaries. Behaviour is unchanged: every claim dropped from a
+  description is still asserted in the skill or command body that has to obey
+  it. In-context description text goes from 1001 to 790 characters.
 
 - **`/plan-stages` no longer asks the `merge` bootstrap question** (#124). A
   new plan's flags line now gets `merge: auto` by default, written without
@@ -821,7 +830,8 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
-[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.6.0...HEAD
+[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.7.0...HEAD
+[0.7.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.7.0
 [0.6.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.6.0
 [0.5.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.5.0
 [0.4.1]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.4.1

@@ -15,6 +15,11 @@ jobs:
           fetch-depth: 0
       - name: gitleaks detect
         run: |
+          # The container runs git as a different UID than the checkout, so
+          # git refuses the repo as "dubious ownership" and gitleaks silently
+          # scans 0 commits, reporting "no leaks found" no matter what is in
+          # the tree. Mark the workspace safe before scanning.
+          git config --global --add safe.directory "$GITHUB_WORKSPACE"
           gitleaks detect \
             --source . \
             --baseline-path .gitleaks-baseline.json \

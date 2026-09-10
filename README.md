@@ -606,16 +606,14 @@ branch must be pushed before anything fires. (A plan scaffolded before
 `RUNNER.md` existed gets it backfilled from the plugin's templates — see
 [`remote-driver.md`](skills/staged-rollout/references/remote-driver.md).)
 
-### Running it from your phone instead — see `docs/ON-THE-RUN.md`
+### More detail — see `docs/ON-THE-RUN.md`
 
-The orchestrator above is a session on a machine of yours. There is a second
-path that needs no machine at all: drive the whole plan from a chat session —
-phone included, computer off.
-[`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md) is the quickstart — what it does,
-how to set it up, and what it will not do.
-[`examples/on-the-run/`](examples/on-the-run/) holds the prompt contracts
-themselves. (Both are being rewritten around the `RemoteTrigger` mechanism —
-see #127 — and describe the older routine-based setup until that lands.)
+Everything above is the mechanism; [`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md)
+is the plain-language quickstart on top of it — what it does, what you need
+before you start, what a cloud stage can't reach, and the known limits.
+[`examples/on-the-run/`](examples/on-the-run/) holds the retired prompt
+contracts from the earlier hand-provisioned-routine design, kept only so old
+links keep resolving.
 
 ## The ledger, kept slim
 

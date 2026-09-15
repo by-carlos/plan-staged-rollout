@@ -118,6 +118,9 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
+- **`/plan-run` prints each stage's model and effort before firing** (#125).
+  The model is booked on the run-once routine; effort is restated in the stage
+  prompt, not booked — no cloud-side effort control has been measured to work.
 - **`docs/ON-THE-RUN.md` rewritten around the current `/plan-run` design**
   (#127). The page previously described the retired routine-based setup
   (one hand-provisioned cloud routine per model, tap-approve each stage);

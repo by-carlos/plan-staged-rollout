@@ -58,6 +58,46 @@ the person can watch in the session.
    tools must stay reachable — with no `gh` binary in the run they are the
    only way the compulsory PR step can happen (measured on the routine path,
    #106/#107; a routine is exactly what this fires).
+
+   **Shape measured 1 Sep 2026** from a real routine listing — field names may
+   drift:
+
+   ```
+   RemoteTrigger({
+     action: "create",
+     name: "<plan-slug> stage <N>",
+     run_once_at: "<ISO-8601 UTC timestamp, e.g. 2026-09-01T12:00:00Z — inert, never actually used>",
+     persist_session: false,
+     job_config: {
+       ccr: {
+         environment_id: "<from RemoteTrigger list, or omit for the default>",
+         events: [
+           {
+             data: {
+               type: "user",
+               message: {
+                 role: "user",
+                 content: "Run stage S2 of plan branch plan-example, unattended, per .plan/RUNNER.md."
+               }
+             }
+           }
+         ],
+         session_context: {
+           model: "claude-sonnet-5",
+           sources: [
+             { git_repository: { url: "https://github.com/<owner>/<repo>" } }
+           ]
+         }
+       }
+     }
+   })
+   ```
+
+   followed by
+
+   ```
+   RemoteTrigger({ action: "run", trigger_id: "<id returned by create>" })
+   ```
 3. **Fire it directly** with `RemoteTrigger {action: "run"}`. This is measured
    to start the session immediately and return the new session id
    synchronously. The routine's schedule is never involved — `run` fires even a

@@ -1,5 +1,5 @@
 ---
-description: Execute one stage of a staged-rollout .plan/, in this session — locate the stage, follow the project's own PLAN.md protocol, verify launch weight, and hand off to the next stage. For driving every remaining stage unattended via cloud sessions, use /plan-run instead.
+description: Execute one stage of a staged-rollout .plan/, in this session. Use when the user says "run stage 2", "run the next stage", or "do the review stage".
 argument-hint: <stage number, or f for the review stage> [--unattended]
 ---
 

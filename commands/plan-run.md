@@ -1,5 +1,5 @@
 ---
-description: Drive every remaining stage of a staged-rollout .plan/ to completion, firing each one as a cloud session via RemoteTrigger — one orchestrator session at the keyboard, no stage runs locally. For a single stage in this session, use /stage-run instead.
+description: Drive every remaining stage of a staged-rollout .plan/ to completion, firing each one as a cloud session. Use when the user says "run the plan", "drive the rest of the stages", or "fire off the remaining stages".
 argument-hint: (no arguments — drives the plan's current runnable set, and keeps going)
 ---
 

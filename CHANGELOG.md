@@ -10,6 +10,8 @@ elsewhere. See 0.4.0 for the split.
 
 ## [0.8.0] - 2026-09-15
 
+**Codename:** Head on the cloud
+
 ### Added
 
 - **The remote-driver contract defines a concrete poll cadence and a

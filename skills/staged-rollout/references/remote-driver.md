@@ -29,7 +29,7 @@ the person can watch in the session.
 ## Firing one stage
 
 1. **Build the stage prompt.** One sentence: run stage `<id>` of plan branch
-   `plan-<slug>`, unattended, per `.plan/RUNNER.md`. That file — scaffolded
+   `plan-<slug>`, unattended, per `.plan/RUNNER.md`, effort `<effort>`. That file — scaffolded
    into every plan by `/plan-stages` — carries the whole stage-runner
    contract: checkout-first, the gate refusals, the early push, the
    ledger-as-only-signal rule, and the GitHub-MCP substitutions a cloud run
@@ -48,9 +48,11 @@ the person can watch in the session.
    and the stage's `model` from the stage index in `session_context.model`.
    Booking the model this way is measured to work: the probe run reported the
    booked model from inside the container. Whether reasoning **effort** can be
-   booked through `session_context` is an open measurement (#125) — until it is
-   settled, treat a stage's `effort` column as a reminder the prompt restates,
-   not a booking. Do **not** pin a narrow `allowed_tools` list in
+   booked through `session_context` is unmeasured — the earlier scripted path
+   found `CLAUDE_EFFORT` empty at every level, so treat a stage's `effort`
+   column as a reminder the stage prompt restates ("effort: `<effort>`"), not
+   a booking. The driver prints each stage's model and effort on one line
+   before firing, so what was requested is on record in the session (#125). Do **not** pin a narrow `allowed_tools` list in
    `session_context`: the default preset includes the tools a stage needs, a
    pinned list that omits one breaks the run silently, and the GitHub MCP
    tools must stay reachable — with no `gh` binary in the run they are the

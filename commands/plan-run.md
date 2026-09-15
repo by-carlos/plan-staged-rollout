@@ -71,10 +71,15 @@ Work through these steps **in order**, after the notice above is confirmed:
      firing this one. Naming it here is the point: a person reading this
      session picks it up with `/stage-run <N>` themselves.
    - **`gate: auto`** — fire it per `remote-driver.md`'s *Firing one stage*:
-     build the one-sentence stage prompt naming the plan branch and stage id,
-     create the run-once routine carrying the stage's `model` from the index,
-     fire it with the `run` action, and surface the returned session id and
-     its claude.ai link immediately.
+     read the stage's `model` and `effort` from the index and print one line
+     before firing — `S<N> <slug> — model: <model>, effort: <effort>` — so
+     the values booked are visible in this session; build the one-sentence
+     stage prompt naming the plan branch, stage id and effort, create the
+     run-once routine carrying the stage's `model`, fire it with the `run`
+     action, and surface the returned session id and its claude.ai link
+     immediately. The `effort` value is restated in the prompt, not booked
+     (#125): the one confirmation at the top covers the whole run, there is
+     no per-stage pause.
    - Fire stages in the runnable set **sequentially, not concurrently** — one
      `run` call, watched to settlement, before the next. `remote-driver.md`'s
      poll cadence and dead-run rules exist per fired session; running several

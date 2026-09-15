@@ -57,39 +57,25 @@ The discipline the [plugin README](../README.md) describes, in practice:
   reacts to a `.plan/` at the repo **root**, so this nested copy never nudges
   your sessions.
 
-## [`on-the-run/`](on-the-run/) — prompt contracts for unattended cloud runs
+## [`on-the-run/`](on-the-run/) — driving a plan on the cloud
 
-The two prompts that run a plan from a phone, with the computer off, by firing
-one Claude Code cloud routine per stage. They live here as
-committed files so they can be reviewed and diffed; the copy in a routine's
-saved-prompt field, or pasted into a session, is downstream of these, and a
-change to a contract is a change here first.
+The current design fires each stage as a Claude Code cloud session straight
+from `/plan-run`, through the built-in `RemoteTrigger` tool — no hand-set-up
+routine, no separate prompt to paste anywhere. `/plan-run` itself creates a
+short-lived, run-once routine per stage under the hood as the vehicle for
+firing it; that's an implementation detail of the tool, not a setup step for
+a person. See [`docs/ON-THE-RUN.md`](../docs/ON-THE-RUN.md) for the
+quickstart and
+[`remote-driver.md`](../skills/staged-rollout/references/remote-driver.md)
+for the full mechanism.
 
-- **[`stage-runner-prompt.md`](on-the-run/stage-runner-prompt.md)** — the
-  prompt one fired routine runs to execute a single stage. It defers to
-  `.plan/PLAN.md`'s operating protocol rather than restating it, and adds only
-  what a cloud run needs on top: check out the plan branch first (the clone
-  starts on the default branch), push the stage branch before the work, treat
-  the ledger row as the only completion signal, and never merge into the
-  default branch.
-- **[`orchestrator-prompt.md`](on-the-run/orchestrator-prompt.md)** — the
-  prompt the person's own interactive session runs to drive the whole plan:
-  read the plan branch, fire the one stage that may run next, wait for the
-  ledger to settle, repeat. It judges every stage from the pushed plan branch
-  alone (a fired run's log is unreadable from a phone), holds no state between
-  rounds, never fires a `gate: human` stage, never retries, and stops before
-  closeout and the plan-to-main merge.
+- **[`stage-runner-prompt.md`](on-the-run/stage-runner-prompt.md)** and
+  **[`orchestrator-prompt.md`](on-the-run/orchestrator-prompt.md)** are
+  **retired** (#127) — they were the pasted prompts for the earlier,
+  hand-provisioned-routine design. Kept only so old links keep resolving; see
+  each file for what replaced it.
 - **[`poc/`](on-the-run/poc/)** — the inputs for the end-to-end proof of
-  concept: a four-stage plan for a throwaway repository (two automatic stages,
-  one `gate: human` stage, and a closeout), plus `verify_run.py`, which makes
-  the run's pass/fail a command result rather than a transcript to read. The
-  run itself is the maintainer's, driven from a phone; this is only what it
-  consumes.
-
-The split is the design: the runner knows one stage and never decides what
-runs next; the orchestrator decides what runs next and never does any of the
-work. Both prompts have now driven a full lifecycle end to end (#110): four
-stages on a disposable repository, phone-driven with the computer off, ending
-in a closeout whose verification script exited 0. What that run found was
-routed to each contract's own issue rather than folded into the files, so the
-prompts read as they did when they were proven.
+  concept that validated the earlier design: a four-stage plan for a
+  throwaway repository (two automatic stages, one `gate: human` stage, and a
+  closeout), plus `verify_run.py`, which makes the run's pass/fail a command
+  result rather than a transcript to read.

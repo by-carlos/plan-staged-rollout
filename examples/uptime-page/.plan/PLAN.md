@@ -93,7 +93,7 @@ This table is the **single authoritative home** for every stage's `depends` /
 `mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line
 under it is the home of the plan-level `merge` and `plan-dir` flags. Stage
 files never restate them (a copy is what drifts), and the tooling reads them
-from here: `/plan-run`'s weight check reads `model`/`effort` from this index,
+from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
 the runnable-set logic (below) reads `depends` from it, an unattended runner
 reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
 isn't in this table is invisible to all of them — so adding a new stage
@@ -302,7 +302,7 @@ structural fact and four rules about timing.
    disclosed model doesn't recognizably match a tier in the rubric, don't
    guess — state the exact model ID/name and ask the user which tier applies.
    **Unattended?** If this session was launched with nobody to answer it (an
-   unattended runner, or `/plan-run`'s `--unattended` argument), check the
+   unattended runner, or `/stage-run`'s `--unattended` argument), check the
    stage's `gate` first: a `gate: human` stage is never started unattended —
    report that and stop here. For a `gate: auto` stage, every offer or
    question in this step and the ones below either has a **declared default**

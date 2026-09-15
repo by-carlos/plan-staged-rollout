@@ -14,7 +14,7 @@ Start a **fresh** session and paste one line:
 That's the whole prompt — the stage file points the session at the shared
 protocol and frozen decisions in `PLAN.md`. If this repo has the
 `plan-staged-rollout` plugin installed, asking to **"run stage \<N> of the
-plan"** — or the explicit command `/plan-staged-rollout:plan-run <N>` — is
+plan"** — or the explicit command `/plan-staged-rollout:stage-run <N>` — is
 the same thing with ergonomics (it also runs the model/effort weight check
 for you). The `.plan/` folder works standalone either way; the plugin is
 convenience, not a dependency.
@@ -42,6 +42,10 @@ one) once filled. -->
 - `LEDGER.md` — status table + per-stage as-built notes. The tracker that
   changes as you execute; the resume point and cross-session memory.
 - `stage-<N>-<slug>.md` — one small, self-contained stage each.
+- `RUNNER.md` — the stage-runner contract: how a session with no plugin and
+  no prior context (a fired cloud session included) runs one stage from the
+  one-line instruction "run stage \<N> of plan branch \<branch> per
+  `.plan/RUNNER.md`".
 - `BLOCKED.md` — only present once a stage has been blocked outside the
   ledger: by an unattended driver that ran out of attempts, or by a stage
   session that blocked after its stage branch existed (`PLAN.md`, *Recording

@@ -23,7 +23,7 @@ and records them.
 - [ ] For each loose end, resolve it into exactly one outcome:
   - **New stage in this plan** — add a **PLAN.md stage index row** (with its
     `depends` / `mode` / `exec` / `model` / `effort` / `gate` flags — the index is the
-    authoritative home, so `/plan-run`'s weight check and next-runnable logic
+    authoritative home, so `/stage-run`'s weight check and next-runnable logic
     can see the stage), a ledger row, and a stage file; it runs later as a
     normal stage in its own fresh session and branch.
   - **Spin-off candidate** — record it in the ledger and note it for the

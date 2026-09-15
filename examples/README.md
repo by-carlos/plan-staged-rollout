@@ -1,6 +1,7 @@
 # Examples
 
-Worked examples of the artifacts this plugin produces. The templates in
+Worked examples of the artifacts a staged rollout produces and runs on. The
+templates in
 [`skills/staged-rollout/references/templates/`](../skills/staged-rollout/references/templates/)
 show the *shape* of a scaffold; these show what good **filled-in** content
 looks like, so you can judge your own `.plan/` without having to run
@@ -55,3 +56,26 @@ The discipline the [plugin README](../README.md) describes, in practice:
 - The example is inert where it lives: the plugin's SessionStart hook only
   reacts to a `.plan/` at the repo **root**, so this nested copy never nudges
   your sessions.
+
+## [`on-the-run/`](on-the-run/) — driving a plan on the cloud
+
+The current design fires each stage as a Claude Code cloud session straight
+from `/plan-run`, through the built-in `RemoteTrigger` tool — no hand-set-up
+routine, no separate prompt to paste anywhere. `/plan-run` itself creates a
+short-lived, run-once routine per stage under the hood as the vehicle for
+firing it; that's an implementation detail of the tool, not a setup step for
+a person. See [`docs/ON-THE-RUN.md`](../docs/ON-THE-RUN.md) for the
+quickstart and
+[`remote-driver.md`](../skills/staged-rollout/references/remote-driver.md)
+for the full mechanism.
+
+- **[`stage-runner-prompt.md`](on-the-run/stage-runner-prompt.md)** and
+  **[`orchestrator-prompt.md`](on-the-run/orchestrator-prompt.md)** are
+  **retired** (#127) — they were the pasted prompts for the earlier,
+  hand-provisioned-routine design. Kept only so old links keep resolving; see
+  each file for what replaced it.
+- **[`poc/`](on-the-run/poc/)** — the inputs for the end-to-end proof of
+  concept that validated the earlier design: a four-stage plan for a
+  throwaway repository (two automatic stages, one `gate: human` stage, and a
+  closeout), plus `verify_run.py`, which makes the run's pass/fail a command
+  result rather than a transcript to read.

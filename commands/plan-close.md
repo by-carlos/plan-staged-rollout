@@ -12,8 +12,9 @@ preserve the story, clean up, and propose the final PR. This command is a
 repo or git log — distill it from those two files.
 
 If `$ARGUMENTS` carries the token **`--unattended`**, this session has nobody
-to answer it — it was launched by an unattended runner (`plan_driver.py` runs
-closeout itself once every stage is settled), or the user is walking away.
+to answer it — it was launched by an unattended runner (an orchestrator may
+fire closeout as one more session once every stage is settled), or the user is
+walking away.
 The token selects **declared default over ask**, never "proceed anyway": every
 question below either has an answer already written on `PLAN.md`'s plan flags
 line or is a hard stop, per the `staged-rollout` skill's *Unattended mode*.
@@ -53,7 +54,7 @@ Work through these steps **in order**:
    no remaining stage PRs. If any row is `todo`, `doing`, or `blocked`,
    **refuse to run**: list exactly which stages are pending, their status,
    and what to run instead — "run stage \<N> of the plan", or the explicit
-   command `/plan-staged-rollout:plan-run <N>`, for `todo`/`doing`, or
+   command `/plan-staged-rollout:stage-run <N>`, for `todo`/`doing`, or
    resolve the `blocked` runbook first. Stop there — do not proceed to
    distillation or cleanup. This gate is a **hard stop in both modes** —
    unattended, it has no default to fall back on, so report the same way and

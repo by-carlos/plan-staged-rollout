@@ -12,8 +12,11 @@ don't share it; the plan can't drift because every decision lives in exactly one
 place; progress is a glanceable ledger, not a transcript.
 
 The file formats are in `references/templates/` (`PLAN.md`, `LEDGER.md`,
-`stage-N.md`, `stage-f-review.md`, `README.md`) — copy those verbatim for
-structure, then fill every `<placeholder>` when scaffolding. This file is the
+`stage-N.md`, `stage-f-review.md`, `README.md`, `RUNNER.md`) — copy those
+verbatim for structure, then fill every `<placeholder>` when scaffolding.
+`RUNNER.md` is the stage-runner contract scaffolded into each plan so any
+session — cloud included, where this plugin does not load — can run a stage
+cold from a one-line instruction pointing at `.plan/RUNNER.md`. This file is the
 *method*: when to use it, how to decompose, how to set flags. Don't restate
 the templates here.
 
@@ -91,7 +94,8 @@ context a long session would carry).
 
 Each stage declares `depends` / `mode` / `exec` / `model` / `effort` / `gate`
 in the **PLAN.md stage index** — the single authoritative home for these
-flags, read by `/plan-run`'s weight check and next-runnable logic. The plan as
+flags, read by `/stage-run`'s weight check and the runnable-set logic both
+commands share. The plan as
 a whole declares two more, `merge` and `plan-dir`, on the **plan flags** line
 directly under that index — those two are the plan's *declared defaults*, the
 answers an unattended session applies where an interactive one would ask (see
@@ -110,12 +114,11 @@ deliberately cheap — escalate only where a stage genuinely warrants it:
   model; reserve the top model for the keystone and the one or two design-heavy
   stages. Most staged work is `low`/`med` effort.
 - `gate: auto` by default. `gate` says whether a stage may be **launched
-  unattended** — by a driver that runs stages back-to-back with nobody
-  watching (`scripts/plan_driver.py` in this repo), or by the cloud fire script
-  (`scripts/cloud_fire.py`) that launches one stage on hosted infrastructure;
-  this flag is the contract both read. A `gate: human` or `gate: local` stage is
-  never launched unattended: the driver stops in front of it and notifies, the
-  fire script refuses outright, and a session
+  unattended** — by an orchestrator session that fires stages back-to-back
+  with nobody watching them run (see `references/remote-driver.md`); this flag
+  is the contract it reads. A `gate: human` or `gate: local` stage is
+  never launched unattended: the orchestrator stops in front of it and
+  reports rather than firing, and a session
   that finds itself running one unattended (see *Statuses and human-gated
   stages*) reports and stops rather than starting it. Mark `human` where a
   person must be present for the stage to get anywhere: every
@@ -196,9 +199,9 @@ at once. Three rules keep that an advantage rather than a source of confusion:
   what *can* overlap — every `todo` stage whose `depends` are all `done` or
   `skipped`, each
   with its command, recommended model/effort and `gate`. Starting them is the
-  operator's action, one session per stage — or a driver's, running outside
-  any session and honouring `gate` — because a session cannot spawn
-  independent top-level sessions, and nothing in this method pretends
+  operator's action, one session per stage — or an orchestrator's, firing
+  cloud stages and honouring `gate` — because a session cannot spawn
+  independent top-level local sessions, and nothing in this method pretends
   otherwise.
 - **Separate working trees are what make it physical.** The semantics below
   make concurrent sessions *safe*; worktree-per-stage (see *Git model*) makes
@@ -259,13 +262,13 @@ out as method, not just vocabulary:
   protocol under *Recording a block* — on the plan branch directly when the
   block predates the stage branch, and on the stage branch plus a
   `.plan/BLOCKED.md` section on the plan branch once it exists. That is the
-  single source of truth for the rule. Neither this skill nor `/plan-run`
+  single source of truth for the rule. Neither this skill nor `/stage-run`
   restates it — they only name which side of it a given decision point falls
   on. **`needs-local`** is the reason value for one specific case: a stage
   that discovers *mid-run* — nothing declared as `gate: local` up front —
   that it needs a resource only the local machine has. Same `blocked` state,
   same commit rule, but the one-line reason is the literal token
-  `needs-local` rather than free text, so an unattended driver's report can
+  `needs-local` rather than free text, so an orchestrator's report can
   say "re-run this stage locally" instead of a generic failure (`PLAN.md`,
   *Recording a block*, "The discovered case").
 - **Unattended, a stage question that has no declared default becomes
@@ -294,12 +297,12 @@ review stage catch them.
 ## Unattended mode
 
 **One mode, one rule, honoured at every decision point.** A session is
-unattended when nobody can answer it: it was launched by a driver
-(`scripts/plan_driver.py`), a command was told so explicitly with its
+unattended when nobody can answer it: a command was told so explicitly with its
 `--unattended` argument, or its opening prompt says so in plain words. That
 last path is how a **cloud** session enters this mode: plugins do not load in
 cloud containers, so there is no command and no argument to carry the flag —
-`scripts/cloud_fire.py` states it in the prompt instead. However a session
+the orchestrator that fired the stage (see `references/remote-driver.md`)
+states it in the prompt instead. However a session
 learns it, the contract below is identical. That argument is a single switch selecting **declared
 default over ask** — never "proceed anyway". Interactive sessions keep asking
 exactly as they always have, and one body of skill text serves both modes. A
@@ -550,8 +553,8 @@ recoverable from git — stops closeout in both modes, with the path and what it
 holds reported. An operator's unrelated worktree (any other branch) is none of
 the plan's business and never blocks.
 
-**Closeout runs unattended too** (`/plan-close --unattended`), and the driver
-launches it once every stage is `done` or `skipped`, so a plan can go from
+**Closeout runs unattended too** (`/plan-close --unattended`), and an
+orchestrator can fire it once every stage is `done` or `skipped`, so a plan can go from
 bootstrap to an open plan→main PR with exactly two human gates: a `gate: human`
 stage, and the final merge. See *Unattended mode*.
 

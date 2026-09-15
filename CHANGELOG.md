@@ -8,6 +8,191 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **The remote-driver contract defines a concrete poll cadence and a
+  dead-run definition** (#122). Watching a fired stage was "wait, then
+  re-read," with no number attached — now it's poll `list_runs` and
+  `.plan/LEDGER.md` together every 3–5 minutes, and once `list_runs` shows
+  the session has ended, a fixed 10-minute grace period before an unmoved
+  ledger row counts as the stage having died rather than merely being slow to
+  push. `get_run_log` is read at that point purely as diagnostic evidence for
+  the person; the orchestrator still never writes to the repository, and
+  still reports rather than records — the same pattern `needs-local` already
+  uses. See `skills/staged-rollout/references/remote-driver.md`, "When a
+  fired run doesn't settle."
+
+- **`/plan-stages` scaffolds the stage-runner contract into the plan:
+  `.plan/RUNNER.md`** (#123). Every new plan now carries, inside `.plan/`, the
+  complete contract for running one stage cold — checkout-first, the
+  `gate: human`/`gate: local` refusals, the early stage-branch push, the
+  ledger-as-only-completion-signal rule, and the GitHub-MCP substitutions a
+  cloud run needs — so any session, cloud included, runs a stage from the
+  one-line instruction "run stage \<N> of plan branch \<branch> per
+  `.plan/RUNNER.md`", with nothing pasted first. The template lives at
+  `skills/staged-rollout/references/templates/RUNNER.md`; the scaffolded copy
+  is a deliberate generation-time copy with a plugin-version marker in its
+  header, refreshed by regeneration — never silently diverged. Plans
+  scaffolded before this change get the file backfilled from the template
+  before their first remote fire (documented in
+  `references/remote-driver.md`).
+
+- **[`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md), a plain-language quickstart for driving a
+  plan from a phone.** Answers what it does (`/plan-run` in one local session
+  fires each stage as a cloud session via `RemoteTrigger` and watches it —
+  the local computer stays on, but nobody opens a session per stage by hand),
+  the prerequisites (plugin installed locally, a pushed plan branch carrying
+  `.plan/RUNNER.md`, cloud access on the account, GitHub connected to
+  claude.ai/code), the run step by step, what a cloud stage cannot reach (no
+  LAN, no local files, no local services — that's what `gate: local` is for),
+  and what to do when a stage is reported dead or blocked. It closes with the
+  known limits (effort booking unresolved, spent routines not
+  auto-deleted, no remote branch deletion, no cross-call path persistence,
+  and the multi-stage loop not yet proven end to end) and a short note on the
+  two rejected designs. Linked from the README's remote-driving section and
+  its layout tree.
+
+- **The end-to-end proof-of-concept plan and its verification script** (#110).
+  `examples/on-the-run/poc/` holds what a full "on the run" lifecycle run
+  consumes: a four-stage plan for a throwaway repository — two automatic
+  stages that make real edits and open real pull requests, one `gate: human`
+  stage the orchestrator must refuse to fire unattended, and a closeout whose
+  plan-to-main merge stays the maintainer's by hand — plus `verify_run.py`,
+  which turns "did it work" into a command result. The script asserts that
+  each stage branch's work reached the plan branch — the branch itself may be
+  gone, since a merged stage branch is deleted — that every
+  stage's pull request is closed as merged against the plan branch, that the
+  ledger has every row settled, that each stage's claimed edits are actually
+  present, and that nothing reached the default branch. Squash merges make
+  ancestry-based merge checks meaningless, so merged-ness is established from
+  the pull request's state plus the presence of the branch's changed paths.
+  Stdlib only and no network call of its own: pull-request state is captured
+  into `.plan/pr-states.json` by the closeout stage through the GitHub MCP
+  server, since a routine run has no `gh`. The run has since happened and
+  passed: four stages on a disposable repository, phone-driven with the
+  computer off, `verify_run.py` exiting 0. Its one gap is that the final merge
+  landed as a squash, so stages landing as distinct commits on `main` remains
+  unproven by a live run.
+
+- **The orchestrator session prompt, as a committed contract** (#109).
+  `examples/on-the-run/orchestrator-prompt.md` holds the operating
+  instructions for the interactive session that drives a whole plan from a
+  phone — the half a fired run cannot do for itself, since nothing inside a
+  routine run can fire another routine. It reads the plan branch fresh every
+  round, computes the runnable set with `.plan/PLAN.md`'s own derived rule,
+  fires one stage-runner routine, waits for the plan branch to say what
+  happened, and repeats. It judges a stage strictly from the pushed
+  `.plan/LEDGER.md` and `.plan/BLOCKED.md`, never from a fired run's log — the
+  phone-side tooling cannot read one back at all — holds no state between
+  rounds, never fires a `gate: human` stage, never retries or guesses at a
+  fix, treats the tool-permission prompt raised by firing as the per-stage
+  notification, and stops before closeout and the plan-to-main merge. It
+  deliberately carries no retry counter, no concurrency, no repository writes,
+  no merge behaviour and no notification channel of its own. The file also
+  records what the operator must have ready before starting (a pushed plan
+  branch, `merge: auto`, a routine per model the plan uses) and carries a
+  self-check table mapping each binding constraint to the section that names
+  it. Proven end to end by #110's run.
+
+- **The stage-runner routine prompt, as a committed contract** (#108).
+  `examples/on-the-run/stage-runner-prompt.md` holds the saved prompt a cloud
+  routine runs to execute one stage unattended — the cloud-side counterpart of
+  `scripts/plan_driver.py`, for running a plan from a phone with the computer
+  off. It defers to `.plan/PLAN.md`'s operating protocol rather than restating
+  it, and adds only what a cloud run needs on top: opt in to the fire payload
+  for two narrow values and treat the rest as inert; check out the plan branch
+  first, because the run's clone starts on the default branch at a detached
+  HEAD; push the stage branch before the bulk of the work, so a run that dies
+  is distinguishable from one that never started; treat the pushed ledger row
+  as the only completion signal, because nothing outside the run can read what
+  it says; refuse a `gate: human` stage and *record* the refusal rather than
+  only reporting it; and never merge into the default branch, which stays a
+  human step. It deliberately carries no retry logic, no sequencing decisions,
+  no notification channel of its own, and no state beyond what the protocol
+  already writes. The file also records what the caller must set on the
+  routine (repository, model, and *not* a narrowed tool list) and carries a
+  self-check table mapping each binding constraint to the section that names
+  it. Written, not yet proven end to end — #107 and #110 verify it.
+
+### Changed
+
+- **`/plan-run` prints each stage's model and effort before firing** (#125).
+  The model is booked on the run-once routine; effort is restated in the stage
+  prompt, not booked — no cloud-side effort control has been measured to work.
+- **`docs/ON-THE-RUN.md` rewritten around the current `/plan-run` design**
+  (#127). The page previously described the retired routine-based setup
+  (one hand-provisioned cloud routine per model, tap-approve each stage);
+  it now covers what `/plan-run` actually does — prerequisites, the run as
+  the person experiences it, what a cloud stage cannot reach, what to do
+  when a stage is reported dead or blocked, and the current known limits.
+  `examples/on-the-run/stage-runner-prompt.md` and
+  `examples/on-the-run/orchestrator-prompt.md` are retired to short notes
+  pointing at `.plan/RUNNER.md` and `remote-driver.md`, and
+  `examples/README.md` / `README.md` updated to match.
+
+- **Migration note: `/plan-run` no longer runs one stage — it now drives every
+  remaining stage of the plan on the cloud.** If you're used to typing
+  `/plan-staged-rollout:plan-run <N>` for one stage in the current session,
+  that habit now fires an unattended cloud session for **every** stage the
+  plan has left to run, one after another, until nothing is runnable or a
+  `gate: human`/`gate: local` stage stops it — not what the old command did.
+  `/plan-run` opens with a plain-language notice and a yes/no confirmation
+  before touching anything, precisely so this can't happen by reflex. The old,
+  narrower behaviour — run exactly one stage, in this session — is unchanged
+  in substance and now lives at **`/plan-staged-rollout:stage-run <N>`**; use
+  it wherever you used to reach for `/plan-run <N>`. This is a deliberate,
+  pre-1.0 rename, not a bug: see [`README.md`](README.md#driving-a-plan-remotely--plan-run)
+  and [`remote-driver.md`](skills/staged-rollout/references/remote-driver.md)
+  for the mechanism `/plan-run` now drives (#129).
+
+### Removed
+
+- **The Python drivers are gone: `scripts/plan_driver.py` and
+  `scripts/cloud_fire.py`, plus
+  `skills/staged-rollout/references/cloud-session-api.md`** (#143). Driving a
+  plan no longer runs a program anywhere: an ordinary orchestrator session
+  fires each stage as a cloud session through Claude Code's built-in
+  `RemoteTrigger` tool, which talks to the claude.ai routines API with the
+  account's own authentication handled in-process — no runtime dependency, no
+  hand-maintained credential, and nothing shipped that touches a user's auth.
+  The driving contract (fire shape, refusals, measured facts and open
+  questions) now lives at
+  `skills/staged-rollout/references/remote-driver.md`; the `gate: human` /
+  `gate: local` refusals, dependency checks, protected-branch refusal, the
+  ledger as sole status truth, and the manual plan→main merge all carry over
+  unchanged. README's "Unattended runs" and "Firing a stage in the cloud"
+  sections are replaced by "Driving a plan remotely — the orchestrator".
+
+### Fixed
+
+- **The stage-runner prompt told a cloud routine to open its PR with `gh`,
+  which does not exist there** (#107). The contract was written against the
+  assumption that a routine run has `gh` pre-installed behind a proxy that
+  blocks some GraphQL operations, so it made `gh pr create --base <branch>`
+  compulsory and named `gh api` as the fallback for whatever the proxy
+  refused. The git-cycle probe measured the environment and found something
+  else: there is no `gh` binary in a routine run at all, and GitHub is reached
+  through the GitHub MCP server. As written, every stage fired under that
+  contract would have failed at the one step it calls compulsory, and — by the
+  contract's own rule — recorded a block instead of landing the stage. §8 now
+  names `mcp__github__create_pull_request` and
+  `mcp__github__merge_pull_request`, the "measured facts" preamble states the
+  absence of `gh` rather than its presence, and the routine-setup notes add
+  that a narrowed tool list must still leave the GitHub MCP tools reachable,
+  since they are now the only route to the PR step. §8 also states that the
+  substitution reaches the finish protocol's own PR steps in `.plan/PLAN.md`,
+  which name `gh` too, and that everything else about them is unchanged — the
+  base stays pinned to the plan branch, the merge stays a squash merge, and
+  the stage branch is still deleted afterwards, as a separate step the MCP
+  merge tool does not perform. The same probe settled two
+  questions the file had left open against #107: the full
+  branch-push-PR-merge sequence completes unattended with no approval prompt,
+  and a non-`claude/` stage branch cut from a plan branch pushed and merged
+  without tripping the routine push restriction — recorded as one passing case
+  rather than a guarantee.
+
 ## [0.7.0] - 2026-09-10
 
 ### Added
@@ -41,21 +226,6 @@ elsewhere. See 0.4.0 for the split.
   effort it was asked to book. `--dry-run` prints the request without sending
   it, and `--tail` reads a fired session's transcript back.
 
-- **A `gate: local` value for stages that need local resources** (#128). Alongside
-  the existing `gate: human`, a stage can now be marked `gate: local` at
-  authoring time — for work that needs local hardware, a LAN-only resource, a
-  secret not committed anywhere reachable, or a locally-installed toolchain.
-  The unattended driver (`scripts/plan_driver.py`) and `/plan-run --unattended`
-  refuse to launch it, exactly as they already refuse `gate: human`, and hand
-  it back to be run locally with `/plan-run`. For the case a stage only
-  discovers *mid-run* — nothing declared up front — the ledger convention adds
-  a `needs-local` blocked reason (written to the ledger row's `Result` cell,
-  or the `.plan/BLOCKED.md` section, depending on whether the stage branch
-  exists yet): the driver recognizes it and reports "re-run this stage
-  locally" instead of a generic block. `gate: human` semantics are unchanged;
-  `.plan/LEDGER.md` remains the sole source of truth for stage status in both
-  cases.
-
 - **The repository is now self-installable.** A
   `.claude-plugin/marketplace.json` lists this plugin as its own marketplace
   entry, pinned to the `release` branch, so
@@ -64,6 +234,21 @@ elsewhere. See 0.4.0 for the split.
   the same plugin from the same branch; the `@<marketplace>` suffix on the
   install command is the only difference. The shared catalog is unchanged and
   keeps working exactly as before.
+
+- **A `gate: local` value for stages that need local resources** (#128). Alongside
+  the existing `gate: human`, a stage can now be marked `gate: local` at
+  authoring time — for work that needs local hardware, a LAN-only resource, a
+  secret not committed anywhere reachable, or a locally-installed toolchain.
+  The unattended driver (`scripts/plan_driver.py`) and `/stage-run --unattended`
+  refuse to launch it, exactly as they already refuse `gate: human`, and hand
+  it back to be run locally with `/stage-run`. For the case a stage only
+  discovers *mid-run* — nothing declared up front — the ledger convention adds
+  a `needs-local` blocked reason (written to the ledger row's `Result` cell,
+  or the `.plan/BLOCKED.md` section, depending on whether the stage branch
+  exists yet): the driver recognizes it and reports "re-run this stage
+  locally" instead of a generic block. `gate: human` semantics are unchanged;
+  `.plan/LEDGER.md` remains the sole source of truth for stage status in both
+  cases.
 
 - **README gained "Where it runs" and "Updating".** Install is split by surface
   — a **Claude Desktop app** section with the two-step pane flow, a
@@ -81,7 +266,7 @@ elsewhere. See 0.4.0 for the split.
   inconsistent in testing and that a remove-and-reinstall is the fallback. It
   closes by answering the question an in-flight rollout raises: updating
   disturbs nothing, because a `.plan/` carries its own operating protocol and
-  `/plan-run` defers to it.
+  `/stage-run` defers to it.
 
 - **The plan-to-main merge type is documented as unenforceable** (#110). The
   final merge is the one step no session performs, so it is also the one step
@@ -111,7 +296,7 @@ elsewhere. See 0.4.0 for the split.
   showing up to approve it, so that is what an unattended or cloud-driven run
   needs by default. `merge: manual` remains available as an explicit opt-in a
   plan author can still set by editing `PLAN.md`'s plan flags line, and
-  `/plan-run`'s finish protocol still honours it exactly as before for any
+  `/stage-run`'s finish protocol still honours it exactly as before for any
   plan that sets it.
 
 ## [0.6.0] - 2026-08-23

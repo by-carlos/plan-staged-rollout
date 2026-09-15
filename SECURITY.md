@@ -47,8 +47,8 @@ server and no service of its own. In scope:
 - Instructions embedded in content a skill ingests -- a `.plan/` stage file, a
   ledger entry, a plan document carried over from another session -- that
   redirect the skill's behaviour.
-- The cloud-session path (`references/cloud-session-api.md` and the stage
-  runner): a stage dispatched to a session that runs with credentials or scope
+- The cloud-session path (`references/remote-driver.md` and the
+  `.plan/RUNNER.md` stage-runner contract): a stage dispatched to a session that runs with credentials or scope
   the contract does not describe.
 - A weakness in the release path: the tag, the `release` branch, or the CI
   workflows.

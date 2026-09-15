@@ -1,5 +1,10 @@
 # The end-to-end proof of concept
 
+> **Era note (15 Sep 2026).** This fixture and its setup steps date from the
+> retired routine-per-model design (#110). The current mechanism is `/plan-run`
+> firing cloud sessions via `RemoteTrigger` — see `docs/ON-THE-RUN.md`. The
+> plan files still work as a fixture; the routine setup below does not apply.
+
 Everything a full **"on the run"** lifecycle run consumes, ready to drop into a
 throwaway repository: a four-stage plan, and the verification script that
 decides whether the run worked ([#110](https://github.com/by-carlos/plan-staged-rollout/issues/110)).

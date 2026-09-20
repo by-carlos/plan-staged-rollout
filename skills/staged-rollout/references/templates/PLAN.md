@@ -100,8 +100,8 @@ an unattended runner stops in front of either exactly the same way); `merge` =
 branch once checks are green, or offer it for your OK?); `plan-dir` =
 `delete` \| `keep` (at closeout, is `.plan/` removed as the last commit on the
 plan branch, or left in place because the plan doubles as documentation?).
-Defaults are deliberately cheap and preserve the fully-manual flow — `direct`,
-`inline`, the cheaper capable model, `gate: auto`, `merge: manual`,
+Defaults stay cheap where cheap is safe, and preserve the fully-manual flow — `direct`,
+`inline`, a model sized to finish the stage, `gate: auto`, `merge: manual`,
 `plan-dir: delete`; a missing `gate` column, a missing plan-flags line, or a
 missing entry on it means those defaults. Escalate only where a stage has
 genuine open design questions (`brainstorm`, which also makes it

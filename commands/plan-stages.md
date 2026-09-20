@@ -53,9 +53,10 @@ Then work through these steps **in order**:
    this method exists to prevent).
 
 3. **Decompose.** Apply the skill's guidance: smallest sensible stages, explicit
-   `depends`, the keystone as **S0**, and deliberately cheap flags (`direct`,
-   `inline`, the cheaper capable model — escalate only where a stage genuinely
-   warrants it). Then **append the standing `SF: plan review` stage** as the
+   `depends`, the keystone as **S0**, deliberately cheap process flags
+   (`direct`, `inline` — escalate only where a stage genuinely warrants it),
+   and a `model`/`effort` sized to finish the stage rather than minimised.
+   Then **append the standing `SF: plan review` stage** as the
    last row (it catalogs loose ends and never implements), scaffolded from
    `stage-f-review.md` — not a copy of `stage-N.md` — since it already bakes
    in the three-outcome checklist and acceptance check.

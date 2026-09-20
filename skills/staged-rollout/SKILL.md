@@ -99,8 +99,10 @@ commands share. The plan as
 a whole declares two more, `merge` and `plan-dir`, on the **plan flags** line
 directly under that index — those two are the plan's *declared defaults*, the
 answers an unattended session applies where an interactive one would ask (see
-*Unattended mode*). Stage files never restate any of them. Defaults are
-deliberately cheap — escalate only where a stage genuinely warrants it:
+*Unattended mode*). Stage files never restate any of them. The **process**
+defaults are deliberately cheap — escalate `mode`, `exec` and `gate` only
+where a stage genuinely warrants it. `model`/`effort` are not among them:
+those are sized to finish the stage, not to be minimised (see below).
 
 - `mode: direct` by default (state a one-line plan, implement). Use `brainstorm`
   only where the stage has real open design choices. A full brainstorm on a
@@ -110,9 +112,15 @@ deliberately cheap — escalate only where a stage genuinely warrants it:
   debugging) where dispatching keeps the churn out of the orchestrator's context.
 - `model`/`effort` are **launch hints**, not switches the agent can flip
   mid-session. The model is verifiable from the session; effort is a reminder
-  (not introspectable — never claim to verify it). Default to the cheaper capable
-  model; reserve the top model for the keystone and the one or two design-heavy
-  stages. Most staged work is `low`/`med` effort.
+  (not introspectable — never claim to verify it). Pick the tier that would
+  carry the stage to its **exit criteria without the session having to
+  escalate** — not the cheapest tier that could plausibly start it. A stage
+  that stalls and gets re-run costs more than the tier it saved, and because
+  the re-run happens in a fresh session the plan never records that it
+  happened. **Where two tiers are arguable, take the higher one.** Reserve the
+  top model for the keystone and the one or two design-heavy stages; much
+  staged work still lands at `low`/`med` effort, but that is an observation
+  about past plans, not a target this one should hit.
 - `gate: auto` by default. `gate` says whether a stage may be **launched
   unattended** — by an orchestrator session that fires stages back-to-back
   with nobody watching them run (see `references/remote-driver.md`); this flag

@@ -65,8 +65,8 @@ Work through these steps **in order**:
    stage index. Verify the **model** from your own system prompt, checked
    mechanically against the `staged-rollout` skill's **Model weight tiers**
    rubric — not a guess about your own weight. State the recommended
-   **effort** as a reminder only — effort is not introspectable, so never
-   claim to verify it. If the session is **lighter** than the stage
+   **effort** actually set, read from `CLAUDE_EFFORT`; if that variable is
+   absent, say it could not be read rather than assuming it matched. If the session is **lighter** than the stage
    recommends, say so plainly and **offer continue or abort** so the user can
    relaunch on a heavier session before any work begins. If the disclosed
    model doesn't recognizably match a tier in the rubric, don't guess — state

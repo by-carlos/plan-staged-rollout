@@ -10,6 +10,19 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Reasoning effort is readable, and the weight check now verifies it instead
+  of reminding.** Seven places across the skill, both plan commands, the
+  `PLAN.md` template, the worked example and the README stated that "effort is
+  not introspectable, so never claim to verify it" — a session can in fact read
+  `CLAUDE_EFFORT` from its environment. The weight check now states the effort
+  actually set, and says it could not be read when the variable is absent
+  rather than assuming it matched the flag. What has **not** changed: a session
+  still cannot *switch* its own effort or model mid-run, so a mismatch is
+  reported, never corrected — that half of the constraint was always real and
+  is what made the claim plausible for so long.
+
 ### Added
 
 - **`/stage-run` gets a runaway-spend breaker and an opt-in per-stage

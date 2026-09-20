@@ -296,8 +296,9 @@ structural fact and four rules about timing.
 2. **Weight check:** compare the session's model against the stage's `model`
    flag (your system prompt states your model), checked mechanically against
    the `staged-rollout` skill's **Model weight tiers** rubric — not a guess
-   about your own weight; remind the recommended `effort` — effort is NOT
-   introspectable, so never claim to verify it. If the session is lighter than
+   about your own weight; state the `effort` actually set, read from
+   `CLAUDE_EFFORT`, and say it could not be read if that variable is absent
+   rather than assuming it matched. If the session is lighter than
    recommended, say so and offer continue/abort before doing anything. If the
    disclosed model doesn't recognizably match a tier in the rubric, don't
    guess — state the exact model ID/name and ask the user which tier applies.

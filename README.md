@@ -189,8 +189,8 @@ not as a separate spec that would become a second source of truth. Then it:
 
 - gates on session weight first: bootstrap is the highest-leverage session of
   a plan, so it requires at least an Opus-class model (verified from the
-  session) and recommends medium-or-higher effort (reminded — effort isn't
-  introspectable), offering to abort so you can relaunch appropriately;
+  session) and recommends medium-or-higher effort (read from `CLAUDE_EFFORT`),
+  offering to abort so you can relaunch appropriately;
 - decomposes the work into the smallest sensible stages with explicit
   `depends`, putting the keystone (the piece everything needs) as S0;
 - appends a standing **final review stage** (see below);
@@ -230,8 +230,8 @@ The session follows the operating protocol in `PLAN.md`:
 
 1. **Flag check.** Each stage recommends a model and effort level. The agent
    can't switch its own model, so these are honest *launch hints*: the model
-   is verified from the session itself, the effort is a reminder (it isn't
-   introspectable), and on a mismatch it tells you and offers continue/abort.
+   is verified from the session itself, the effort from `CLAUDE_EFFORT`, and on
+   a mismatch it tells you and offers continue/abort.
 2. **Read only what's needed.** Frozen decisions + the stage file + the ledger
    table + notes of the stages it `depends` on. Never scan the repo.
 3. **Dependency gate.** If a prerequisite isn't `done` or `skipped` in the
@@ -527,8 +527,9 @@ effort level:
 
 - an agent cannot switch its own model mid-session, so a stage that opens on
   the wrong model can only report the mismatch, not correct it;
-- effort is not introspectable at all — a session cannot read its own setting,
-  which is why the protocol *reminds* rather than verifies;
+- effort **is** readable, from `CLAUDE_EFFORT` in the environment, so the
+  protocol verifies it rather than merely reminding — but a session still
+  cannot *change* it, so a mismatch is reported, never corrected;
 - the desktop app's suggested-task chips (the click-to-start notifications)
   carry only a title, a prompt and a working directory — no model or effort
   field — so even the one mechanism that can spawn a session inherits the

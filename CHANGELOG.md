@@ -10,6 +10,29 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **`/stage-run` gets a runaway-spend breaker and an opt-in per-stage
+  record.** A stage that stops making progress keeps spending, and an
+  unattended run has nobody to notice. A new
+  `skills/staged-rollout/scripts/effortlog.py` reads the session's own
+  transcript — located from `CLAUDE_CODE_SESSION_ID`, so it behaves the same
+  headless as attended — and compares the context total against a deliberately
+  generous budget. Over budget, an unattended stage stops with a handoff note
+  recommending a heavier `model`; an attended one warns once and continues.
+  The harness states which case applies via `CLAUDE_CODE_SESSION_ATTENDED`, so
+  the command no longer has to infer it. This is a runaway detector with
+  headroom, **not** a judgement that a stage was sized wrong, and a healthy
+  stage should never reach it.
+
+  The same script appends one NDJSON row per stage, on every outcome rather
+  than only the bad ones. **Writing is opt-in on `CLAUDE_EFFORT_LOG` and does
+  nothing when unset** — a plugin distributed to other people must not start
+  writing files into their home directory because it was installed. The record
+  lives outside the repository deliberately: `.plan/` is deleted at closeout
+  under the default `plan-dir: delete`, so the ledger cannot hold anything
+  meant to be read later. Nothing in this plugin consumes the log.
+
 ### Changed
 
 - **A stage's `model`/`effort` is now sized to finish the stage, not

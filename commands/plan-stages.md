@@ -36,7 +36,8 @@ Then work through these steps **in order**:
    the session model is **Opus-class or better**, checked mechanically against
    the skill's **Model weight tiers** rubric — not the model's own guess about
    itself. State the effort recommendation (**medium or higher**) as a
-   reminder — effort is not introspectable, so never claim to verify it. If
+   effort actually set, read from `CLAUDE_EFFORT`; if that variable is absent,
+   say it could not be read rather than assuming it matched. If
    the model is lighter than Opus-class, warn and **offer to abort** so the
    user can relaunch on a heavier model, before doing any design or
    scaffolding work. If the disclosed model doesn't recognizably match a tier

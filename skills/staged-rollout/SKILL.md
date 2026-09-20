@@ -111,8 +111,11 @@ those are sized to finish the stage, not to be minimised (see below).
   reserve `subagent(<model>)` for churn-heavy stages (lots of iteration, config,
   debugging) where dispatching keeps the churn out of the orchestrator's context.
 - `model`/`effort` are **launch hints**, not switches the agent can flip
-  mid-session. The model is verifiable from the session; effort is a reminder
-  (not introspectable — never claim to verify it). Pick the tier that would
+  mid-session. Both are verifiable: the model from the session itself, and the
+  effort level from `CLAUDE_EFFORT` in the environment — so state what is
+  actually set rather than restating the flag as a reminder. When that variable
+  is absent, say the effort could not be read instead of assuming it matched.
+  Pick the tier that would
   carry the stage to its **exit criteria without the session having to
   escalate** — not the cheapest tier that could plausibly start it. A stage
   that stalls and gets re-run costs more than the tier it saved, and because

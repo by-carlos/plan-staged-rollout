@@ -117,7 +117,28 @@ Work through these steps **in order**:
    under `--unattended` too, where it is not a hard stop. Otherwise run it
    fresh.
 
-6. **End announcement.** When you stop, state explicitly:
+6. **Spend breaker (ergonomic add).** A stage can stop making progress and
+   keep spending, and an unattended run has nobody to notice. Between phases
+   of the stage's own Steps — not on a timer — run:
+
+   ```
+   python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" check
+   ```
+
+   It reads this session's own transcript, so it works the same unattended as
+   attended. Exit `3` means the context has blown a **deliberately generous**
+   budget: this is a runaway detector, not a judgement that the stage was
+   sized wrong, and a healthy stage should never reach it.
+
+   On exit `3`: if the session is **unattended**, stop, mark the row `doing`
+   with a handoff note saying the breaker fired and at what figure, and
+   recommend relaunching the stage on a heavier `model`. If it is
+   **attended**, say the same thing once and carry on — the person at the
+   keyboard decides. The script reports which case applies; don't re-derive
+   it. Exit `2` is a measurement failure and is never a reason to stop the
+   stage — say so in one line and continue.
+
+7. **End announcement.** When you stop, state explicitly:
    - The stage's outcome: **finished**, or `blocked`/`doing` — and if not
      finished, exactly what remains (which checkboxes, what it's waiting on).
      For a `blocked` outcome, name **where the record was committed** — the
@@ -151,4 +172,24 @@ Work through these steps **in order**:
      — instead. Under `--unattended`, name it as
      **`/plan-staged-rollout:plan-close --unattended`**: closeout runs
      headless too, and an unattended runner picks it up from here.
+
+   Then append one run record — **on every stage, not only the ones that went
+   badly.** A stage that finished comfortably on a heavy model is the only
+   evidence that the tier could have been lighter; log only the failures and
+   the record can never say anything but "go heavier".
+
+   ```
+   python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" log \
+     --source stage-run --repo <owner/repo> --target <plan-slug>/S<N> \
+     --estimated-tier <the stage's model/effort from the index> \
+     --outcome <stage-done|stage-blocked|stage-doing> [--tripped] \
+     --note "<one line: what made this stage easy or hard>"
+   ```
+
+   Writing is **opt-in**: with `CLAUDE_EFFORT_LOG` unset the script writes
+   nothing and exits 0, which is the normal state for anyone who has not asked
+   for it. `.plan/` is deleted at closeout, so the ledger is the wrong home for
+   anything meant to be read later — this file is deliberately outside the
+   repo. A failure here is reported in one line and never blocks the stage.
+
    Then stop.

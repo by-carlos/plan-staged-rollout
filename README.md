@@ -510,8 +510,8 @@ selects the default over the question. The full classification of which
 questions have a default and which are hard stops in every mode is in the
 skill (*Unattended mode*).
 
-Defaults are deliberately cheap and reproduce the fully-manual flow: `direct`,
-`inline`, the cheaper capable model, `gate: auto`, `merge: manual`,
+Defaults stay cheap where cheap is safe, and reproduce the fully-manual flow: `direct`,
+`inline`, a model sized to finish the stage, `gate: auto`, `merge: manual`,
 `plan-dir: delete` — a plan that predates these flags needs no edit. Escalate
 only where a stage has genuine open design questions (`brainstorm`, which also
 makes it `gate: human`), needs a resource only the local machine has

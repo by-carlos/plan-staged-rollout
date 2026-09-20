@@ -8,6 +8,23 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Changed
+
+- **A stage's `model`/`effort` is now sized to finish the stage, not
+  minimised.** The guidance was "default to the cheaper capable model" with
+  "most staged work is `low`/`med` effort" stated alongside it — a
+  prescriptive prior rather than an estimate, which a stage inherits at
+  planning time when nobody yet has the evidence to argue it up. The test is
+  now whether the tier carries the stage to its exit criteria without the
+  session having to escalate, with a genuine tie resolved upward: a stalled
+  stage gets re-run in a fresh session, so it costs more than the tier it
+  saved and the plan never records that it happened. `mode`, `exec` and
+  `gate` keep their deliberately cheap defaults — only `model`/`effort` are
+  exempted from the "escalate only where warranted" framing.
+  `commands/plan-stages.md`, `README.md` and the `PLAN.md` template follow.
+
 ## [0.8.0] - 2026-09-15
 
 **Codename:** Head on the cloud

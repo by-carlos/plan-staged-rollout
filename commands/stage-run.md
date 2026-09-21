@@ -64,8 +64,8 @@ Work through these steps **in order**:
    session against the stage's `model` and `effort` flags in `.plan/PLAN.md`'s
    stage index. Verify the **model** from your own system prompt, checked
    mechanically against the `staged-rollout` skill's **Model weight tiers**
-   rubric — not a guess about your own weight. State the recommended
-   **effort** actually set, read from `CLAUDE_EFFORT`, next to the stage's
+   rubric — not a guess about your own weight. State the **effort**
+   actually set, read from `CLAUDE_EFFORT`, next to the stage's
    `effort` flag (`med` and `medium` are the same level); if that variable is
    absent, say it could not be read rather than assuming it matched — that is
    not a mismatch, and it neither asks nor blocks. If the session's model is
@@ -87,8 +87,8 @@ Work through these steps **in order**:
    the mechanism. For a `gate: auto` stage run
    unattended, the weight check's continue/abort offer and the tier question
    have no one to answer them — a readable effort that differs from the flag
-   counts here too; an effort that could not be read does not: mark the row `blocked` with the mismatch as
-   the runbook, and commit it per `PLAN.md`'s *Recording a block* — this step
+   counts here too; an effort that could not be read does not: mark the row
+   `blocked` with the mismatch as the runbook, and commit it per `PLAN.md`'s *Recording a block* — this step
    runs before the stage branch exists, so that is a direct commit on the plan
    branch, pushed — then stop. Without `--unattended`, `gate` is
    announced and nothing more — the person at the keyboard *is* the gate.

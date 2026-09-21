@@ -23,6 +23,19 @@ elsewhere. See 0.4.0 for the split.
   reported, never corrected — that half of the constraint was always real and
   is what made the claim plausible for so long.
 
+### Changed
+
+- **The weight check now asks when the effort set differs from the stage's
+  `effort` flag — higher or lower.** Reading `CLAUDE_EFFORT` (above) only
+  stated the value; the continue/abort offer still fired on a lighter *model*
+  alone. A readable effort that differs from the flag now triggers the same
+  offer interactively and the same `blocked` + runbook unattended, in
+  `/stage-run`, the `PLAN.md` template, the worked example and the skill's
+  unattended table. An effort that **cannot be read** is stated but is not a
+  mismatch, so it never asks or blocks — a fired cloud session can report it
+  empty, and blocking on that would stop every unattended run. A heavier
+  model on its own is still not a mismatch.
+
 ### Added
 
 - **`/stage-run` gets a runaway-spend breaker and an opt-in per-stage

@@ -64,11 +64,15 @@ Work through these steps **in order**:
    session against the stage's `model` and `effort` flags in `.plan/PLAN.md`'s
    stage index. Verify the **model** from your own system prompt, checked
    mechanically against the `staged-rollout` skill's **Model weight tiers**
-   rubric — not a guess about your own weight. State the recommended
-   **effort** actually set, read from `CLAUDE_EFFORT`; if that variable is
-   absent, say it could not be read rather than assuming it matched. If the session is **lighter** than the stage
-   recommends, say so plainly and **offer continue or abort** so the user can
-   relaunch on a heavier session before any work begins. If the disclosed
+   rubric — not a guess about your own weight. State the **effort**
+   actually set, read from `CLAUDE_EFFORT`, next to the stage's
+   `effort` flag (`med` and `medium` are the same level); if that variable is
+   absent, say it could not be read rather than assuming it matched — that is
+   not a mismatch, and it neither asks nor blocks. If the session's model is
+   **lighter** than the stage recommends, or the effort set is **different**
+   from the flag — higher or lower, both are misaligned — say so plainly and
+   **offer continue or abort** so the user can relaunch before any work
+   begins. A heavier model alone is not a mismatch. If the disclosed
    model doesn't recognizably match a tier in the rubric, don't guess — state
    the exact model ID/name and ask the user which tier applies.
 
@@ -82,8 +86,9 @@ Work through these steps **in order**:
    should already have stopped in front of it, so this is the backstop, not
    the mechanism. For a `gate: auto` stage run
    unattended, the weight check's continue/abort offer and the tier question
-   have no one to answer them: mark the row `blocked` with the mismatch as
-   the runbook, and commit it per `PLAN.md`'s *Recording a block* — this step
+   have no one to answer them — a readable effort that differs from the flag
+   counts here too; an effort that could not be read does not: mark the row
+   `blocked` with the mismatch as the runbook, and commit it per `PLAN.md`'s *Recording a block* — this step
    runs before the stage branch exists, so that is a direct commit on the plan
    branch, pushed — then stop. Without `--unattended`, `gate` is
    announced and nothing more — the person at the keyboard *is* the gate.

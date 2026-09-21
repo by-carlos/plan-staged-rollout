@@ -342,7 +342,7 @@ two kinds:
 |---|---|---|
 | A `gate: human` stage | announced — the person at the keyboard *is* the gate | **hard stop**, never started |
 | A `gate: local` stage | announced — running it here means this session already has what it needs | **hard stop**, never started |
-| Weight check: lighter model than recommended, or an unrecognised tier | offer continue/abort | **hard stop** — `blocked` + runbook |
+| Weight check: lighter model than recommended, a readable effort that differs from the flag, or an unrecognised tier | offer continue/abort | **hard stop** — `blocked` + runbook |
 | A mid-stage question the frozen decisions don't settle | asked | **hard stop** — `blocked` + runbook |
 | Redo of a `done` stage | confirmed first | **hard stop** — `blocked` + runbook |
 | A stage PR's merge | offered | `merge` flag — `auto` merges it, `manual` is a **hard stop** |

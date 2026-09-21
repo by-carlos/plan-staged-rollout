@@ -286,9 +286,13 @@ structural fact and four rules about timing.
    flag (your system prompt states your model), checked mechanically against
    the `staged-rollout` skill's **Model weight tiers** rubric — not a guess
    about your own weight; state the `effort` actually set, read from
-   `CLAUDE_EFFORT`, and say it could not be read if that variable is absent
-   rather than assuming it matched. If the session is lighter than
-   recommended, say so and offer continue/abort before doing anything. If the
+   `CLAUDE_EFFORT`, next to the stage's `effort` flag (`med` = `medium`), and
+   say it could not be read if that variable is absent rather than assuming
+   it matched — an unreadable effort is not a mismatch and neither asks nor
+   blocks. If the session is lighter than recommended, or the effort set
+   differs from the flag (higher or lower — both are misaligned), say so and
+   offer continue/abort before doing anything; a heavier model alone is not
+   a mismatch. If the
    disclosed model doesn't recognizably match a tier in the rubric, don't
    guess — state the exact model ID/name and ask the user which tier applies.
    **Unattended?** If this session was launched with nobody to answer it (an
@@ -299,8 +303,8 @@ structural fact and four rules about timing.
    on the plan flags line or is a **hard stop** — there is no third option
    and nothing waits for an answer (see the `staged-rollout` skill,
    *Unattended mode*, for the full classification). Nothing in this step has a
-   declared default, so a lighter-than-recommended model or an unrecognised
-   tier marks the row `blocked` with the mismatch as the runbook, commits it
+   declared default, so a lighter-than-recommended model, a readable effort
+   that differs from the flag, or an unrecognised tier marks the row `blocked` with the mismatch as the runbook, commits it
    per *Recording a block* below — this step runs before step 4, so that is a
    direct commit on the plan branch — and stops.
 3. **Dependency gate:** for every `depends` stage, confirm it is `done` or

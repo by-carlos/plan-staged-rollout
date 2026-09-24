@@ -231,7 +231,8 @@ The session follows the operating protocol in `PLAN.md`:
 1. **Flag check.** Each stage recommends a model and effort level. The agent
    can't switch its own model, so these are honest *launch hints*: the model
    is verified from the session itself, the effort from `CLAUDE_EFFORT`, and on
-   a mismatch it tells you and offers continue/abort.
+   a mismatch it stops before any work and names the model and effort to
+   relaunch with — there is no continue option.
 2. **Read only what's needed.** Frozen decisions + the stage file + the ledger
    table + notes of the stages it `depends` on. Never scan the repo.
 3. **Dependency gate.** If a prerequisite isn't `done` or `skipped` in the
@@ -559,7 +560,9 @@ infrastructure, so the work keeps going after you close the laptop, and every
 fired stage is a first-class session at claude.ai/code that you can open,
 watch, and resume. It opens with a plain-language notice and a yes/no
 confirmation before touching anything, precisely because it is a much bigger
-action than `/stage-run <N>` and shares part of its name — see
+action than `/stage-run <N>` and shares part of its name. The notice also
+says what a cloud stage cannot reach and that cloud sessions may use
+additional credits — see
 [`commands/plan-run.md`](commands/plan-run.md).
 
 The orchestrator is an ordinary interactive Claude Code session in a clone of

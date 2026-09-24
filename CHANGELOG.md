@@ -8,6 +8,25 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Changed
+
+- **A model or effort mismatch now stops a stage outright, attended or not.**
+  The weight check used to offer continue/abort to a person at the keyboard;
+  it now stops before any work, names the model and effort to relaunch with,
+  and writes nothing, so the row stays `todo`. There is no continue option.
+  Unattended runs already stopped with `blocked` + runbook and still do. An
+  effort that cannot be read is still not a mismatch, and a heavier model
+  alone still is not one either. An unrecognised model tier is still asked
+  about interactively. Changed in `/stage-run`, the `PLAN.md` template, the
+  worked example, the skill's unattended table and the README.
+- **`/plan-run`'s opening notice says what running on the cloud means.**
+  Before the yes/no it now states that a cloud stage has no access to local
+  files, LAN hosts, local services, local tools or uncommitted secrets, and
+  that each fired stage is a separate cloud session that may use additional
+  credits, linking the Claude Code on the web documentation.
+
 ## [0.9.0] - 2026-09-21
 
 ### Fixed

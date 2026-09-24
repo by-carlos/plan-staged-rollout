@@ -8,6 +8,29 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Changed
+
+- **The weight check now asks when the effort set differs from the stage's
+  `effort` flag — higher or lower.** Reading `CLAUDE_EFFORT` (0.9.0) only
+  stated the value; the continue/abort offer still fired on a lighter *model*
+  alone. A readable effort that differs from the flag now triggers the same
+  offer interactively and the same `blocked` + runbook unattended, in
+  `/stage-run`, the `PLAN.md` template, the worked example and the skill's
+  unattended table. An effort that **cannot be read** is stated but is not a
+  mismatch, so it never asks or blocks — a fired cloud session can report it
+  empty, and blocking on that would stop every unattended run. A heavier
+  model on its own is still not a mismatch.
+
+### Fixed
+
+- **`docs/ON-THE-RUN.md` no longer lists effort booking as pending work.** Its
+  known-limits entry pointed at #125, closed in 0.8.0. Effort is still not
+  booked through `RemoteTrigger`; the entry now says so plainly and explains
+  that the fired stage reads `CLAUDE_EFFORT` and blocks on a readable
+  mismatch.
+
 ## [0.9.0] - 2026-09-21
 
 ### Fixed
@@ -22,19 +45,6 @@ elsewhere. See 0.4.0 for the split.
   still cannot *switch* its own effort or model mid-run, so a mismatch is
   reported, never corrected — that half of the constraint was always real and
   is what made the claim plausible for so long.
-
-### Changed
-
-- **The weight check now asks when the effort set differs from the stage's
-  `effort` flag — higher or lower.** Reading `CLAUDE_EFFORT` (above) only
-  stated the value; the continue/abort offer still fired on a lighter *model*
-  alone. A readable effort that differs from the flag now triggers the same
-  offer interactively and the same `blocked` + runbook unattended, in
-  `/stage-run`, the `PLAN.md` template, the worked example and the skill's
-  unattended table. An effort that **cannot be read** is stated but is not a
-  mismatch, so it never asks or blocks — a fired cloud session can report it
-  empty, and blocking on that would stop every unattended run. A heavier
-  model on its own is still not a mismatch.
 
 ### Added
 

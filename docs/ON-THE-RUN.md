@@ -86,9 +86,12 @@ tells you to run it yourself.
 
 ## Known limits
 
-- **Reasoning effort isn't booked yet** — a stage's `effort` column is a
-  reminder in the fired prompt, not a setting the cloud session is held to
-  (#125).
+- **Reasoning effort isn't booked** — `RemoteTrigger` books a stage's
+  `model` but has no measured way to book its `effort`, so the `effort`
+  column is restated in the fired prompt rather than set. The fired stage
+  reads the effort it actually got from `CLAUDE_EFFORT` and blocks on a
+  mismatch; when a cloud session reports it empty, the stage says so and
+  carries on, since an unreadable effort is not a mismatch.
 - **Spent routines aren't cleaned up automatically.** Each fire leaves a
   used-up routine behind; the API can't delete it — clear them out at
   claude.ai/code/routines once a plan finishes.

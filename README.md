@@ -556,9 +556,11 @@ stage with `/stage-run <N>`. `/plan-staged-rollout:plan-run` — no arguments �
 is the other path: it keeps one session at the keyboard, the
 **orchestrator**, and moves every *remaining* stage off your machine instead
 of just the next one — each runs as a cloud session on Anthropic's
-infrastructure, so the work keeps going after you close the laptop, and every
-fired stage is a first-class session at claude.ai/code that you can open,
-watch, and resume. It opens with a plain-language notice and a yes/no
+infrastructure, and every fired stage is a first-class session at
+claude.ai/code that you can open, watch, and resume. The orchestrator itself
+stays local, so the machine running it has to stay on: close the laptop and
+the stage already fired runs to its end, but nothing fires the next one.
+It opens with a plain-language notice and a yes/no
 confirmation before touching anything, precisely because it is a much bigger
 action than `/stage-run <N>` and shares part of its name. The notice also
 says what a cloud stage cannot reach and that cloud sessions may use

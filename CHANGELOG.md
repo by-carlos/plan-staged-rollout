@@ -27,6 +27,13 @@ elsewhere. See 0.4.0 for the split.
   that each fired stage is a separate cloud session that may use additional
   credits, linking the Claude Code on the web documentation.
 
+### Fixed
+
+- **The README no longer says a `/plan-run` build keeps going after you close
+  the laptop.** The orchestrator is a local session, so the machine running it
+  has to stay on; a stage already fired finishes, but nothing fires the next.
+  `docs/ON-THE-RUN.md` already said so.
+
 ## [0.9.0] - 2026-09-21
 
 ### Fixed

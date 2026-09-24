@@ -290,9 +290,10 @@ structural fact and four rules about timing.
    say it could not be read if that variable is absent rather than assuming
    it matched — an unreadable effort is not a mismatch and neither asks nor
    blocks. If the session is lighter than recommended, or the effort set
-   differs from the flag (higher or lower — both are misaligned), say so and
-   offer continue/abort before doing anything; a heavier model alone is not
-   a mismatch. If the
+   differs from the flag (higher or lower — both are misaligned), **stop**
+   before doing anything: name the mismatch and the model and effort to
+   relaunch with. There is no continue option; nothing is written and the
+   row stays `todo`. A heavier model alone is not a mismatch. If the
    disclosed model doesn't recognizably match a tier in the rubric, don't
    guess — state the exact model ID/name and ask the user which tier applies.
    **Unattended?** If this session was launched with nobody to answer it (an

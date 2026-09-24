@@ -15,7 +15,20 @@ Before doing anything else, show this notice and stop for a yes/no answer:
 > **This drives all remaining stages of the plan on the cloud, one cloud
 > session per stage, until nothing runnable is left or a gate stops it.** It
 > does not run any stage in this session. For a single local stage, use
-> `/stage-run <N>` instead. Continue?
+> `/stage-run <N>` instead.
+>
+> - **Cloud sessions don't have what this machine has.** Each stage runs in a
+>   fresh sandbox holding only a clone of the repository: no local files
+>   outside it, no LAN hosts, no local services, no locally installed tools,
+>   and no secrets that aren't committed or configured in the cloud
+>   environment. Stages marked `gate: local` are skipped for that reason.
+> - **Cloud sessions may use additional credits.** Each fired stage is a
+>   separate Claude Code session on Anthropic's infrastructure, drawing on
+>   your plan's usage and possibly on usage credits beyond it. See
+>   [Claude Code on the web](https://code.claude.com/docs/en/claude-code-on-the-web)
+>   before running a long plan.
+>
+> Continue?
 
 Proceed only on an explicit yes. On no, or anything short of a clear yes, stop
 here — nothing has been touched yet.

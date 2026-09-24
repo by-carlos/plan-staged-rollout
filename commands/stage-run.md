@@ -70,9 +70,12 @@ Work through these steps **in order**:
    absent, say it could not be read rather than assuming it matched — that is
    not a mismatch, and it neither asks nor blocks. If the session's model is
    **lighter** than the stage recommends, or the effort set is **different**
-   from the flag — higher or lower, both are misaligned — say so plainly and
-   **offer continue or abort** so the user can relaunch before any work
-   begins. A heavier model alone is not a mismatch. If the disclosed
+   from the flag — higher or lower, both are misaligned — **stop** before any
+   work begins: name the mismatch and the model and effort to relaunch with.
+   There is no continue option — a stage run on the wrong weight is the
+   failure this check exists to prevent — and nothing is written, so the row
+   stays `todo` for the relaunched session. A heavier model alone is not a
+   mismatch. If the disclosed
    model doesn't recognizably match a tier in the rubric, don't guess — state
    the exact model ID/name and ask the user which tier applies.
 
@@ -85,9 +88,9 @@ Work through these steps **in order**:
    stage, and stop — a runner reading the previous stage's end announcement
    should already have stopped in front of it, so this is the backstop, not
    the mechanism. For a `gate: auto` stage run
-   unattended, the weight check's continue/abort offer and the tier question
-   have no one to answer them — a readable effort that differs from the flag
-   counts here too; an effort that could not be read does not: mark the row
+   unattended, a weight-check stop has no one to relaunch the session and the
+   tier question has no one to answer it — a readable effort that differs from the flag counts here too;
+   an effort that could not be read does not: mark the row
    `blocked` with the mismatch as the runbook, and commit it per `PLAN.md`'s *Recording a block* — this step
    runs before the stage branch exists, so that is a direct commit on the plan
    branch, pushed — then stop. Without `--unattended`, `gate` is

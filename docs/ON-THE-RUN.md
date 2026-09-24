@@ -42,8 +42,11 @@ hand, every time.
 ## Running it
 
 Type `/plan-run` in your local session. It opens with a plain-language notice
-— this drives *every* remaining stage on the cloud, not just one — and waits
-for a yes. Say yes, and it starts firing.
+— this drives *every* remaining stage on the cloud, not just one; a cloud
+stage can't reach anything only your machine has; and each fired stage is a
+separate cloud session that may use additional credits (see
+[Claude Code on the web](https://code.claude.com/docs/en/claude-code-on-the-web))
+— and waits for a yes. Say yes, and it starts firing.
 
 While it runs, your local session prints what it's doing: which stage it
 fired, the cloud session's link, and its status each time it checks in. You

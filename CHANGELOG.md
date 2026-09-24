@@ -12,16 +12,31 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
-- **The weight check now asks when the effort set differs from the stage's
-  `effort` flag — higher or lower.** Reading `CLAUDE_EFFORT` (0.9.0) only
+- **The weight check now treats an effort that differs from the stage's
+  `effort` flag — higher or lower — as a mismatch.** Reading `CLAUDE_EFFORT` (0.9.0) only
   stated the value; the continue/abort offer still fired on a lighter *model*
-  alone. A readable effort that differs from the flag now triggers the same
-  offer interactively and the same `blocked` + runbook unattended, in
+  alone. A readable effort that differs from the flag now gets the same
+  handling as a lighter model — interactively a hard stop, per the next
+  entry, and `blocked` + runbook unattended — in
   `/stage-run`, the `PLAN.md` template, the worked example and the skill's
   unattended table. An effort that **cannot be read** is stated but is not a
-  mismatch, so it never asks or blocks — a fired cloud session can report it
+  mismatch, so it never stops or blocks — a fired cloud session can report it
   empty, and blocking on that would stop every unattended run. A heavier
   model on its own is still not a mismatch.
+- **A model or effort mismatch now stops a stage outright, attended or not.**
+  The weight check used to offer continue/abort to a person at the keyboard;
+  it now stops before any work, names the model and effort to relaunch with,
+  and writes nothing, so the row stays `todo`. There is no continue option.
+  Unattended runs already stopped with `blocked` + runbook and still do. An
+  effort that cannot be read is still not a mismatch, and a heavier model
+  alone still is not one either. An unrecognised model tier is still asked
+  about interactively. Changed in `/stage-run`, the `PLAN.md` template, the
+  worked example, the skill's unattended table and the README.
+- **`/plan-run`'s opening notice says what running on the cloud means.**
+  Before the yes/no it now states that a cloud stage has no access to local
+  files, LAN hosts, local services, local tools or uncommitted secrets, and
+  that each fired stage is a separate cloud session that may use additional
+  credits, linking the Claude Code on the web documentation.
 
 ### Fixed
 
@@ -30,6 +45,10 @@ elsewhere. See 0.4.0 for the split.
   booked through `RemoteTrigger`; the entry now says so plainly and explains
   that the fired stage reads `CLAUDE_EFFORT` and blocks on a readable
   mismatch.
+- **The README no longer says a `/plan-run` build keeps going after you close
+  the laptop.** The orchestrator is a local session, so the machine running it
+  has to stay on; a stage already fired finishes, but nothing fires the next.
+  `docs/ON-THE-RUN.md` already said so.
 
 ## [0.9.0] - 2026-09-21
 

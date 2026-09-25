@@ -88,10 +88,11 @@ tells you to run it yourself.
 
 - **Reasoning effort isn't booked** — `RemoteTrigger` books a stage's
   `model` but has no measured way to book its `effort`, so the `effort`
-  column is restated in the fired prompt rather than set. The fired stage
-  reads the effort it actually got from `CLAUDE_EFFORT` and blocks on a
-  mismatch; when a cloud session reports it empty, the stage says so and
-  carries on, since an unreadable effort is not a mismatch.
+  column is restated in the fired prompt rather than set. The fired stage is
+  meant to read the effort it actually got from `CLAUDE_EFFORT` and block on
+  a mismatch, but in the 25 Sep 2026 end-to-end run no fired stage read it:
+  each reported "effort matches" by taking the value from its own prompt.
+  Treat a cloud stage's effort as requested, not confirmed.
 - **Spent routines aren't cleaned up automatically.** Each fire leaves a
   used-up routine behind; the API can't delete it — clear them out at
   claude.ai/code/routines once a plan finishes.
@@ -103,10 +104,21 @@ tells you to run it yourself.
 - **Cloud access on the account is a likely prerequisite, not a measured
   one** — `RemoteTrigger`'s availability probably tracks it, but that hasn't
   been checked across account types.
-- **Not yet proven end to end.** A single stage fired this way, cold, has
-  completed in 3.5 minutes on a fixture repo (1 Sep 2026). The full
-  multi-stage `/plan-run` loop — fire, watch, repeat to completion — has not
-  yet been run live. Don't treat this as proven beyond that one measurement.
+- **Proven end to end once, on a small fixture** (25 Sep 2026, #168). A
+  four-stage plan ran to completion on a disposable repo: two dependent auto
+  stages fired and settled `done` without a person (2 and 4 minutes each),
+  the `gate: human` stage was refused and run by hand, the auto closeout
+  passed its verification script 43/43, and the hand-made plan→main merge
+  left every stage as its own commits on `main`. Four cloud sessions were
+  fired, leaving four spent routines and three merged stage branches to
+  clear by hand. Two gaps surfaced and are fixed in the contract: the fired
+  prompt must spell out the plan-branch checkout (a Sonnet stage told only
+  "per `.plan/RUNNER.md`" looked at the default branch, found no plan and
+  gave up), and a finished run keeps `status: active` — the end signal is
+  `worker_status: idle`. No dead run past the grace period and no
+  grace-period behaviour were observed beyond that one failed fire. One
+  small plan is one data point: a long plan with slow stages is still
+  unmeasured.
 
 ## What was tried before
 

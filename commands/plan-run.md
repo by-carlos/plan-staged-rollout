@@ -86,8 +86,10 @@ Work through these steps **in order**, after the notice above is confirmed:
    - **`gate: auto`** — fire it per `remote-driver.md`'s *Firing one stage*:
      read the stage's `model` and `effort` from the index and print one line
      before firing — `S<N> <slug> — model: <model>, effort: <effort>` — so
-     the values booked are visible in this session; build the one-sentence
-     stage prompt naming the plan branch, stage id and effort, create the
+     the values booked are visible in this session; build the stage prompt
+     naming the plan branch, stage id and effort, **with the plan-branch
+     checkout spelled out in it** (a cloud clone starts on the default
+     branch, where `.plan/RUNNER.md` does not exist), create the
      run-once routine carrying the stage's `model`, fire it with the `run`
      action, and surface the returned session id and its claude.ai link
      immediately. The `effort` value is restated in the prompt, not booked
@@ -101,7 +103,8 @@ Work through these steps **in order**, after the notice above is confirmed:
 
 6. **Watch each fired stage to settlement**, per `remote-driver.md`'s *When a
    fired run doesn't settle*: poll `list_runs` and re-read `.plan/LEDGER.md`
-   together every 3–5 minutes; the moment `list_runs` reports the run ended,
+   together every 3–5 minutes; the moment `list_runs` reports the run ended
+   (`worker_status: idle` — `status` stays `active`),
    re-read the ledger immediately, and if the row hasn't moved, wait a further
    10 minutes before re-reading once more. A row that settles `done` moves this
    loop to the next stage in the set. A row that settles `blocked` is reported

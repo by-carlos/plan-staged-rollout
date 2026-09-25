@@ -634,8 +634,9 @@ no claude.ai/code cloud, no remote leg.
 `/plan-run` or `/stage-run` to call. It does not need one: the plan carries its own contract —
 `.plan/RUNNER.md`, scaffolded by `/plan-stages`, tells a cold session how to
 run one stage, and `.plan/PLAN.md` carries the operating protocol it defers
-to. The fired prompt is one sentence pointing at them, which is why the plan
-branch must be pushed before anything fires. (A plan scaffolded before
+to. The fired prompt is a short instruction to check out the plan branch and
+follow them, which is why the plan branch must be pushed before anything
+fires. (A plan scaffolded before
 `RUNNER.md` existed gets it backfilled from the plugin's templates — see
 [`remote-driver.md`](skills/staged-rollout/references/remote-driver.md).)
 

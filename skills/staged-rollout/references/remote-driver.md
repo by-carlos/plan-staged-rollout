@@ -18,6 +18,16 @@ evidence in the ledger, PR opened via the GitHub MCP with the base pinned to
 the plan branch, `merge: auto` squash-merge, `done` row pushed, next-runnable
 set reported and not started.
 
+**Full `/plan-run` loop proven, 25 Sep 2026 (#168):** a four-stage fixture
+plan (two dependent `gate: auto` stages, a `gate: human` stage, an auto
+closeout) was driven to completion on a disposable repository — each auto
+stage fired, watched to a `done` row and followed by the next without a
+person, the human stage refused and run interactively, `verify_run.py`
+passing 43/43 before the final merge, and the plan→main merge done by hand
+as a normal merge leaving every stage as its own commits on `main`. Fire to
+`done`: 2, 4 and 4.5 minutes per auto stage. It took one re-fire, for the
+checkout-in-prompt gap step 1 now closes.
+
 ## What the orchestrator is
 
 An ordinary interactive Claude Code session, opened by a person, in a clone of
@@ -28,8 +38,17 @@ the person can watch in the session.
 
 ## Firing one stage
 
-1. **Build the stage prompt.** One sentence: run stage `<id>` of plan branch
-   `plan-<slug>`, unattended, per `.plan/RUNNER.md`, effort `<effort>`. That file — scaffolded
+1. **Build the stage prompt.** Run stage `<id>` of plan branch
+   `plan-<slug>`, unattended, effort `<effort>`; the plan lives only on that
+   branch, so first run `git fetch origin plan-<slug> && git checkout -B
+   plan-<slug> origin/plan-<slug>`, then follow `.plan/RUNNER.md`. **The
+   checkout belongs in the prompt, not only in `RUNNER.md`:** a cloud clone
+   starts detached on the default branch with only that branch fetched, and
+   `RUNNER.md` exists only on the plan branch — so a session told merely "per
+   `.plan/RUNNER.md`" cannot read the file that tells it to check out. Measured
+   25 Sep 2026 (#168): an Opus stage fetched the plan branch on its own
+   initiative, a Sonnet stage found no `.plan/`, concluded the repository was
+   unset, and ended in 19 seconds with nothing written. `RUNNER.md` — scaffolded
    into every plan by `/plan-stages` — carries the whole stage-runner
    contract: checkout-first, the gate refusals, the early push, the
    ledger-as-only-signal rule, and the GitHub-MCP substitutions a cloud run
@@ -43,7 +62,10 @@ the person can watch in the session.
 2. **Create a run-once routine as the stage's config container** with
    `RemoteTrigger {action: "create"}`. The body carries the routine name, a
    `run_once_at` timestamp (any future time — it will not be used, see below),
-   and a `job_config.ccr` object holding the environment id, the repository as
+   and a `job_config.ccr` object holding the environment id (**required** —
+   measured 25 Sep 2026, `create` without one returns HTTP 400 "job_config must
+   set ccr.environment_id"; reuse the id of an environment already in
+   `RemoteTrigger {action: "list"}`), the repository as
    a `sources` entry, the stage prompt as the seeded user message in `events`,
    and the stage's `model` from the stage index in `session_context.model`.
    Booking the model this way is measured to work: the probe run reported the
@@ -70,14 +92,14 @@ the person can watch in the session.
      persist_session: false,
      job_config: {
        ccr: {
-         environment_id: "<from RemoteTrigger list, or omit for the default>",
+         environment_id: "<required — reuse one from RemoteTrigger list>",
          events: [
            {
              data: {
                type: "user",
                message: {
                  role: "user",
-                 content: "Run stage S2 of plan branch plan-example, unattended, per .plan/RUNNER.md."
+                 content: "Run stage S2 of plan branch plan-example, unattended, effort: med. The plan lives only on that branch, so first run `git fetch origin plan-example && git checkout -B plan-example origin/plan-example`, then follow .plan/RUNNER.md."
                }
              }
            }
@@ -129,6 +151,12 @@ again" is a number, not a judgement call (#122).
   together, on that interval, while the run's `list_runs` status still reads
   as running. Tighter polling burns the session's own turns for no benefit —
   nothing about a stage resolves faster for being checked more often.
+- **What "ended" looks like.** A fired session that has finished its work does
+  **not** flip `status` away from `active` — measured 25 Sep 2026 (#168), a
+  run whose log showed its final `result` 19 seconds after firing still read
+  `status: "active"` half an hour later. The end signal is
+  `worker_status: "idle"` together with a final `result` event in
+  `get_run_log`. Waiting for `status` to change would poll forever.
 - **The run ending is not the same as the stage settling.** The moment
   `list_runs` reports the session has ended, re-read `.plan/LEDGER.md`
   immediately. If the fired stage's row now reads `done`, `blocked`, or
@@ -204,7 +232,10 @@ so the contract survives the scripts:
   likely tracks cloud access being enabled on the user's Claude account — an
   account without claude.ai/code cloud has no cloud leg. Likely, not measured
   across account types.
-- **Effort booking is unresolved** (#125), as above.
+- **Effort booking is unresolved** (#125), as above — and a fired stage's
+  weight check does not measure it either: in #168 every fired stage
+  reported "model and effort match" without ever reading `CLAUDE_EFFORT`,
+  taking the effort from the prompt that restated it.
 - **The stage-branch push is proven, not guaranteed.** A fired run's pushes
   are unrestricted only for `claude/`-prefixed branches; any other branch is
   accepted only when it is unprotected, has no other open PR, and carries no

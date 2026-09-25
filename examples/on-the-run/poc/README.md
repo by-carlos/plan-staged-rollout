@@ -4,6 +4,14 @@
 > retired routine-per-model design (#110). The current mechanism is `/plan-run`
 > firing cloud sessions via `RemoteTrigger` — see `docs/ON-THE-RUN.md`. The
 > plan files still work as a fixture; the routine setup below does not apply.
+>
+> **Re-run on the current mechanism, 25 Sep 2026 (#168), and passed.** Setup
+> steps 1–3 below still hold; replace 4–5 with running `/plan-run` in a clone
+> of the throwaway repository — it backfills `.plan/RUNNER.md` on the plan
+> branch before the first fire. `verify_run.py` needed no change. One known
+> conflict: `stage-f-closeout.md` tells SF to **open** the plan-to-main pull
+> request, while `RUNNER.md` §7 forbids opening it; in that run SF followed
+> the stage file and opened it.
 
 Everything a full **"on the run"** lifecycle run consumes, ready to drop into a
 throwaway repository: a four-stage plan, and the verification script that

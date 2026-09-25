@@ -28,6 +28,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
+- **`/plan-run`'s fired prompt now spells out the plan-branch checkout.**
+  A cloud clone starts on the default branch, where `.plan/RUNNER.md` does
+  not exist, so "per `.plan/RUNNER.md`" alone could leave a stage unable to
+  find its own instructions. The remote-driver contract also records that
+  `RemoteTrigger create` requires an `environment_id` and that a finished run
+  shows `worker_status: idle` while `status` stays `active`. `ON-THE-RUN.md`
+  now reports the first live end-to-end `/plan-run` result instead of "not
+  yet proven" (#168).
+
 - **A stage refuses to start in a session that has already run another
   stage** (or, for `/stage-run`, bootstrapped the plan) — the desktop chip's
   **Fix in this session** mode drops the prompt into the finishing stage's

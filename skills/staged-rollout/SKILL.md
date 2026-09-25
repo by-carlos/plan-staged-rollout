@@ -211,9 +211,11 @@ at once. Three rules keep that an advantage rather than a source of confusion:
   `skipped`, each
   with its command, recommended model/effort and `gate`. Starting them is the
   operator's action, one session per stage — or an orchestrator's, firing
-  cloud stages and honouring `gate` — because a session cannot spawn
-  independent top-level local sessions, and nothing in this method pretends
-  otherwise.
+  cloud stages and honouring `gate`. In the desktop app a stage can *offer*
+  each one as a suggestion chip, but the click is still the operator's: the
+  chip cannot pick its launch mode, model or effort, and it exists nowhere
+  else (not on a phone, not in a terminal), so the printed command stays the
+  handoff every surface can use.
 - **Separate working trees are what make it physical.** The semantics below
   make concurrent sessions *safe*; worktree-per-stage (see *Git model*) makes
   them *possible*. Two sessions sharing one working tree fight over `HEAD`

@@ -24,6 +24,14 @@ line (`merge`) or becomes `blocked` + runbook (the `staged-rollout` skill,
 where that runbook is committed). Without the token, nothing changes —
 every gate and offer below works exactly as it always has.
 
+**A stage runs in a fresh session.** If this session has already run another
+stage or bootstrapped the plan — which is what happens when a desktop-app chip
+is opened with **Fix in this session**, dropping the prompt into the finishing
+stage's session — do not start: say the stage needs a fresh session and point
+at the chip's **Start locally** or the command below. Earlier conversation
+that did neither is fine, and so is a weight-check stop of this same stage
+followed by **go** (step 3).
+
 Work through these steps **in order**:
 
 1. **Locate `.plan/`.** Find the `.plan/` directory at the repo root. If it
@@ -75,7 +83,17 @@ Work through these steps **in order**:
    There is no continue option — a stage run on the wrong weight is the
    failure this check exists to prevent — and nothing is written, so the row
    stays `todo` for the relaunched session. A heavier model alone is not a
-   mismatch. If the disclosed
+   mismatch.
+
+   **Switch and go.** An attended stop ends with one plain instruction the
+   operator can act on in place, for example: *"This session is on Opus /
+   high; stage 2 needs Sonnet / low. Switch the model and effort in this
+   session's model menu, then type **go** (or just **.**)."* A **go** or
+   **.** as the next message means exactly that: re-run this command for the
+   same stage from step 1, reading the model and `CLAUDE_EFFORT` afresh. The
+   switch takes effect from the next turn, which is why the stop comes first.
+   If they still differ, stop again with the same line — **go** re-checks, it
+   never overrides. If the disclosed
    model doesn't recognizably match a tier in the rubric, don't guess — state
    the exact model ID/name and ask the user which tier applies.
 
@@ -168,13 +186,44 @@ Work through these steps **in order**:
    - **Whether they can overlap.** If the runnable set holds more than one
      stage, say plainly that those stages are independent and can be launched
      **concurrently, one stage per fresh session** — that launch is the
-     operator's action (N terminals); this session cannot start independent
-     sessions and must not try. Say that each one runs in **its own
-     worktree** (`../<repo-dirname>-s<N>`, created by that session at
+     operator's action — one chip click each in the desktop app (below), or
+     one terminal each; this session never starts them itself. Say that each
+     one runs in **its own worktree** (`../<repo-dirname>-s<N>`, created by that session at
      protocol step 4) while the clone stays on the plan branch — that
      isolation is what makes the overlap safe to launch. If the set holds
      exactly one stage, say that too, so "one stage next" reads as a fact
      about the graph rather than a default.
+   - **Desktop-app chips (in addition to the printed commands).** When the
+     `spawn_task` tool is available (it exists only in the Claude desktop
+     app), this is not a cloud session (`CLAUDE_CODE_REMOTE` is not `true`),
+     and the run is not `--unattended`, also call `spawn_task` once per stage
+     in the runnable set, so the operator can start it with one click:
+     - `title`: "Run stage \<N> of plan-\<slug>".
+     - `prompt`: when `.plan/RUNNER.md` exists, the one-line runner
+       instruction **"Run stage S\<N> of plan branch plan-\<slug> per
+       `.plan/RUNNER.md`."** — it works in every launch mode, cloud included,
+       where the plugin is not installed. Only a plan without `RUNNER.md`
+       gets `/plan-staged-rollout:stage-run <N>`, which a cloud session
+       cannot run.
+     - `cwd`: the clone's root.
+     - `tldr`: the stage's name, its recommended model, effort and `gate`,
+       and "Choose **Start locally**."
+
+     Then tell the operator how to use it, in one plain paragraph: *"In the
+     desktop app, click the chip for the stage (top right of the window) and
+     choose **Start locally** — Send to cloud may use additional credits.
+     The new session starts on this session's model and effort (\<model> /
+     \<effort>); if the stage needs different ones it stops and tells you
+     what to switch to, then you type **go**. On a phone (Remote Control) or
+     in a terminal there is no chip — paste the command above into a fresh
+     session instead."* The other two launch modes are covered in the
+     README, not repeated here: **Start with worktree** works but leaves an
+     unused app worktree based on the default branch, and **Fix in this
+     session** is refused (the fresh-session rule at the top of this file).
+
+     The printed command stays exactly as it is: the chip is an addition,
+     never a replacement, because nothing outside the desktop app sees it.
+
    - If no stages remain runnable (all `done`/`skipped`), point the user at
      closeout — **"close out the plan"** or **`/plan-staged-rollout:plan-close`**
      — instead. Under `--unattended`, name it as

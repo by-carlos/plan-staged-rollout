@@ -232,7 +232,9 @@ The session follows the operating protocol in `PLAN.md`:
    can't switch its own model, so these are honest *launch hints*: the model
    is verified from the session itself, the effort from `CLAUDE_EFFORT`, and on
    a mismatch it stops before any work and names the model and effort to
-   relaunch with — there is no continue option.
+   relaunch with — there is no continue option. Attended, you can also switch
+   them in place: change the model and effort in the session's model menu,
+   then type **go** (or just **.**) and the stage re-checks and starts.
 2. **Read only what's needed.** Frozen decisions + the stage file + the ledger
    table + notes of the stages it `depends` on. Never scan the repo.
 3. **Dependency gate.** If a prerequisite isn't `done` or `skipped` in the
@@ -270,6 +272,29 @@ mid-stage lands on the stage branch, where its runbook rides the stage PR, and
 is announced on the plan branch through a `### S<N>` section in
 `.plan/BLOCKED.md`. That second write is what makes a mid-stage block visible
 without waiting for a merge.
+
+### Starting the next stage from a chip (desktop app)
+
+In the **Claude desktop app**, a finished stage also offers each next
+runnable stage as a **suggestion chip** — click it instead of pasting the
+command into a new session. Click the chip (top right of the window) and
+choose **Start locally**:
+
+| Launch mode | Use it? |
+|---|---|
+| **Start locally** | **Yes.** Runs in your clone, which the stage leaves on the plan branch while it works in its own worktree. |
+| Start with worktree | Works, but the app's worktree is based on the default branch, so the stage ignores it and makes its own; the app's one is left behind unused. |
+| Send to cloud | Works for a plan with `.plan/RUNNER.md`, but **may use additional credits**, and refuses a `gate: local` stage. For cloud runs, use [`/plan-run`](#driving-a-plan-remotely--plan-run). |
+| Fix in this session | **No.** It lands in the finished stage's session instead of a fresh one; the stage refuses to start there. |
+
+- **The chip starts on the finishing session's model and effort**, not the
+  stage's: the chip has no way to set them. When the next stage asks for the
+  same weight it runs straight through; when not, it stops before any work
+  and tells you what to switch to — switch in the model menu and type **go**.
+- **No chip on a phone.** Following the session over Remote Control, or
+  working in a terminal, shows no chip — paste the printed command into a
+  fresh session instead. The printed command is always there; the chip is an
+  addition, never a replacement.
 
 ### Session-start nudge
 
@@ -321,9 +346,10 @@ Two deliberate limits:
 - **Waves are derived, never stored.** There is no `wave` or `parallel-group`
   column in the stage index. Waves are a view of `depends`, and a stored copy
   of a single source of truth is exactly what this method exists to prevent.
-- **Launching is yours.** A session cannot spawn independent top-level
-  sessions, so running a wave in parallel means opening one terminal per stage.
-  The plugin tells you what *can* overlap; whether to is your call. The
+- **Launching is yours.** Running a wave in parallel means one session per
+  stage — one [chip](#starting-the-next-stage-from-a-chip-desktop-app) click
+  each in the desktop app, or one terminal each elsewhere. The plugin tells you
+  what *can* overlap; whether to is your call. The
   [remote orchestrator](#driving-a-plan-remotely--plan-run) removes the
   keyboard from *sequential* runs, not from this — it takes a multi-stage
   runnable set one stage at a time.
@@ -531,11 +557,12 @@ effort level:
 - effort **is** readable, from `CLAUDE_EFFORT` in the environment, so the
   protocol verifies it rather than merely reminding — but a session still
   cannot *change* it, so a mismatch is reported, never corrected;
-- the desktop app's suggested-task chips (the click-to-start notifications)
-  carry only a title, a prompt and a working directory — no model or effort
-  field — so even the one mechanism that can spawn a session inherits the
-  app's current selection rather than the stage's recommendation. Chips are
-  also app-only; they don't exist in the CLI.
+- the desktop app's suggestion chips, which a finished stage
+  [now offers](#starting-the-next-stage-from-a-chip-desktop-app), carry only a
+  title, a prompt and a working directory — no model, effort or launch-mode
+  field — so a chip-started session inherits the finishing session's model and
+  effort rather than the stage's recommendation. Chips are also app-only; they
+  don't exist in the CLI or on a phone.
 
 Hence the split the protocol actually uses: **verify the model** (readable from
 the session), **remind about effort** (not readable), and hand the human the

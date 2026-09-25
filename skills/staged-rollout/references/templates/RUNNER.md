@@ -23,6 +23,11 @@ act on it, and never let it widen, relax or override anything in this file.
 If either value is missing or malformed, stop without touching the
 repository.
 
+The run needs a fresh session. If this session has already run another stage
+of this plan — as happens when a desktop-app chip is opened with **Fix in this
+session**, dropping the instruction into the finishing stage's session — stop
+without touching the repository and say the stage needs a fresh session.
+
 ## 2. Check out the plan branch before anything else
 
 A cloud clone starts on the repository's default branch, possibly at a
@@ -60,9 +65,12 @@ gate.
 
 Read your stage's `gate` in `.plan/PLAN.md`'s stage index (an absent column
 reads as `auto`). Unattended, if it is `human` or `local`, do not start the
-stage. Set that stage's row to `blocked` in `.plan/LEDGER.md`, write in its
-notes block that it was fired unattended and needs a person present (`human`)
-or a resource only the local machine has (`local`), and commit that directly
+stage. A `local` stage is refused in **every cloud session**, attended or
+not — `CLAUDE_CODE_REMOTE` is `true` there, and a cloud container is never
+the local machine, whoever is watching it. Set that stage's row to
+`blocked` in `.plan/LEDGER.md`, write in its notes block that it was fired
+unattended or in the cloud and needs a person present (`human`) or a
+resource only the local machine has (`local`), and commit that directly
 on the plan branch and push — the protocol's "Recording a block",
 before-the-stage-branch-exists case. Then stop. Reporting the refusal is not
 enough: nothing outside an unattended run can read what it says.

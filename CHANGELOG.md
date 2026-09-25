@@ -28,9 +28,11 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
-- **A stage refuses to start in a session that already holds other work** —
-  the desktop chip's **Fix in this session** mode drops the prompt into the
-  finishing stage's session — in `/stage-run` and the `RUNNER.md` template.
+- **A stage refuses to start in a session that has already run another
+  stage** (or, for `/stage-run`, bootstrapped the plan) — the desktop chip's
+  **Fix in this session** mode drops the prompt into the finishing stage's
+  session. In `/stage-run` and the `RUNNER.md` template; earlier conversation
+  that ran no stage is unaffected.
 - **`RUNNER.md` refuses a `gate: local` stage in every cloud session**
   (`CLAUDE_CODE_REMOTE=true`), attended or not. It used to refuse only when
   unattended, and a chip-started cloud session has someone watching.

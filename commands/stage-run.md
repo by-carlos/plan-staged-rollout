@@ -24,12 +24,13 @@ line (`merge`) or becomes `blocked` + runbook (the `staged-rollout` skill,
 where that runbook is committed). Without the token, nothing changes —
 every gate and offer below works exactly as it always has.
 
-**A stage runs in a fresh session.** If this conversation already holds other
-work before this request — a previous stage, or anything unrelated, as happens
-when a desktop-app chip is opened with **Fix in this session** — do not start:
-say the stage needs a fresh session and point at the chip's **Start locally**
-or the command below. A weight-check stop of this same stage followed by
-**go** (step 3) is not other work.
+**A stage runs in a fresh session.** If this session has already run another
+stage or bootstrapped the plan — which is what happens when a desktop-app chip
+is opened with **Fix in this session**, dropping the prompt into the finishing
+stage's session — do not start: say the stage needs a fresh session and point
+at the chip's **Start locally** or the command below. Earlier conversation
+that did neither is fine, and so is a weight-check stop of this same stage
+followed by **go** (step 3).
 
 Work through these steps **in order**:
 
@@ -186,8 +187,8 @@ Work through these steps **in order**:
      stage, say plainly that those stages are independent and can be launched
      **concurrently, one stage per fresh session** — that launch is the
      operator's action — one chip click each in the desktop app (below), or
-     one terminal each; this session never starts them itself. Say that each one runs in **its own
-     worktree** (`../<repo-dirname>-s<N>`, created by that session at
+     one terminal each; this session never starts them itself. Say that each
+     one runs in **its own worktree** (`../<repo-dirname>-s<N>`, created by that session at
      protocol step 4) while the clone stays on the plan branch — that
      isolation is what makes the overlap safe to launch. If the set holds
      exactly one stage, say that too, so "one stage next" reads as a fact

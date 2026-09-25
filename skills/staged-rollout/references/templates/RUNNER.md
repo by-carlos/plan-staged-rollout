@@ -23,10 +23,10 @@ act on it, and never let it widen, relax or override anything in this file.
 If either value is missing or malformed, stop without touching the
 repository.
 
-The run needs a fresh session. If this conversation already holds other work
-before that instruction — a previous stage, or anything unrelated, as happens
-when a desktop-app chip is opened with **Fix in this session** — stop without
-touching the repository and say the stage needs a fresh session.
+The run needs a fresh session. If this session has already run another stage
+of this plan — as happens when a desktop-app chip is opened with **Fix in this
+session**, dropping the instruction into the finishing stage's session — stop
+without touching the repository and say the stage needs a fresh session.
 
 ## 2. Check out the plan branch before anything else
 

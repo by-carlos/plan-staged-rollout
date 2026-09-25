@@ -10,7 +10,30 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **A finished stage offers the next runnable stages as desktop-app chips.**
+  In the Claude desktop app, `/stage-run`'s end announcement now also calls
+  `spawn_task` once per runnable stage, so the next stage starts with one
+  click (**Start locally** recommended; Send to cloud may use additional
+  credits) instead of a pasted command. The chip's prompt is the
+  `.plan/RUNNER.md` one-liner when the plan has one, so it works in every
+  launch mode, cloud included. The printed command is unchanged and still
+  the only handoff on a phone (Remote Control) or in a terminal, where no chip
+  appears. Launch-mode matrix and results: #165.
+- **Switch and go.** An attended weight-check stop now ends with one line
+  naming the model and effort to switch to in the session's model menu, and
+  a **go** (or **.**) as the next message re-checks and starts the stage in
+  place. It never overrides a mismatch that is still there.
+
 ### Changed
+
+- **A stage refuses to start in a session that already holds other work** —
+  the desktop chip's **Fix in this session** mode drops the prompt into the
+  finishing stage's session — in `/stage-run` and the `RUNNER.md` template.
+- **`RUNNER.md` refuses a `gate: local` stage in every cloud session**
+  (`CLAUDE_CODE_REMOTE=true`), attended or not. It used to refuse only when
+  unattended, and a chip-started cloud session has someone watching.
 
 - **The weight check now treats an effort that differs from the stage's
   `effort` flag — higher or lower — as a mismatch.** Reading `CLAUDE_EFFORT` (0.9.0) only

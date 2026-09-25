@@ -293,7 +293,12 @@ structural fact and four rules about timing.
    differs from the flag (higher or lower — both are misaligned), **stop**
    before doing anything: name the mismatch and the model and effort to
    relaunch with. There is no continue option; nothing is written and the
-   row stays `todo`. A heavier model alone is not a mismatch. If the
+   row stays `todo`. A heavier model alone is not a mismatch. Attended, end
+   the stop with one plain line the operator can act on in place — *"switch
+   the model and effort in this session's model menu to \<model> /
+   \<effort>, then type **go** (or just **.**)"* — and treat a **go** or
+   **.** as the next message as a fresh start of this same stage, re-reading
+   the model and `CLAUDE_EFFORT`: it re-checks, it never overrides. If the
    disclosed model doesn't recognizably match a tier in the rubric, don't
    guess — state the exact model ID/name and ask the user which tier applies.
    **Unattended?** If this session was launched with nobody to answer it (an

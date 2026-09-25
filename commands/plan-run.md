@@ -86,8 +86,10 @@ Work through these steps **in order**, after the notice above is confirmed:
    - **`gate: auto`** — fire it per `remote-driver.md`'s *Firing one stage*:
      read the stage's `model` and `effort` from the index and print one line
      before firing — `S<N> <slug> — model: <model>, effort: <effort>` — so
-     the values booked are visible in this session; build the one-sentence
-     stage prompt naming the plan branch, stage id and effort, create the
+     the values booked are visible in this session; build the stage prompt
+     naming the plan branch, stage id and effort, **with the plan-branch
+     checkout spelled out in it** (a cloud clone starts on the default
+     branch, where `.plan/RUNNER.md` does not exist), create the
      run-once routine carrying the stage's `model`, fire it with the `run`
      action, and surface the returned session id and its claude.ai link
      immediately. The `effort` value is restated in the prompt, not booked

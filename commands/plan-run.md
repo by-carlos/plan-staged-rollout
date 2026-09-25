@@ -103,7 +103,8 @@ Work through these steps **in order**, after the notice above is confirmed:
 
 6. **Watch each fired stage to settlement**, per `remote-driver.md`'s *When a
    fired run doesn't settle*: poll `list_runs` and re-read `.plan/LEDGER.md`
-   together every 3–5 minutes; the moment `list_runs` reports the run ended,
+   together every 3–5 minutes; the moment `list_runs` reports the run ended
+   (`worker_status: idle` — `status` stays `active`),
    re-read the ledger immediately, and if the row hasn't moved, wait a further
    10 minutes before re-reading once more. A row that settles `done` moves this
    loop to the next stage in the set. A row that settles `blocked` is reported

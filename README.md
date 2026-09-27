@@ -1,5 +1,7 @@
 # Plan-Staged Rollout
 
+![Plan-Staged Rollout](docs/hero.jpg)
+
 **Run big projects as many small sessions — not one huge one.**
 
 A Claude Code plugin that breaks a large build into *stages*, executes each

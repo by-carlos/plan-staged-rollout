@@ -36,6 +36,6 @@ catalogs loose ends. Depends on S1 and S2; reads every notes block.
 maintainer's, by hand, after reading this stage's evidence — `RUNNER.md` §7
 makes the plan-to-default-branch step permanently human, and this stage file
 does not override it. The maintainer proposes that pull request from a local
-session with `/plan-close`, which merges it as a **normal, non-squash** merge.
+session with `/plan-close` and merges it as a **normal, non-squash** merge.
 
 Record the evidence, merge your own stage PR into the plan branch, stop.

@@ -44,8 +44,11 @@ one) once filled. -->
 - `stage-<N>-<slug>.md` — one small, self-contained stage each.
 - `RUNNER.md` — the stage-runner contract: how a session with no plugin and
   no prior context (a fired cloud session included) runs one stage from the
-  one-line instruction "run stage \<N> of plan branch \<branch> per
-  `.plan/RUNNER.md`".
+  one-line instruction "run stage \<N> of plan branch \<branch>; first run
+  `git fetch origin <branch> && git checkout -B <branch> origin/<branch>`,
+  then follow `.plan/RUNNER.md`". Keep the checkout in the instruction: a
+  cloud session starts on the default branch, where this folder does not
+  exist.
 - `BLOCKED.md` — only present once a stage has been blocked outside the
   ledger: by an unattended driver that ran out of attempts, or by a stage
   session that blocked after its stage branch existed (`PLAN.md`, *Recording

@@ -200,9 +200,14 @@ Work through these steps **in order**:
      in the runnable set, so the operator can start it with one click:
      - `title`: "Run stage \<N> of plan-\<slug>".
      - `prompt`: when `.plan/RUNNER.md` exists, the one-line runner
-       instruction **"Run stage S\<N> of plan branch plan-\<slug> per
-       `.plan/RUNNER.md`."** — it works in every launch mode, cloud included,
-       where the plugin is not installed. Only a plan without `RUNNER.md`
+       instruction **"Run stage S\<N> of plan branch plan-\<slug>. The plan
+       lives only on that branch, so first run `git fetch origin
+       plan-<slug> && git checkout -B plan-<slug> origin/plan-<slug>`,
+       then follow `.plan/RUNNER.md`."** — it works in every launch mode,
+       cloud included, where the plugin is not installed. The checkout must
+       be in the prompt: **Send to cloud** starts a clone on the default
+       branch, where `RUNNER.md` does not exist yet (see
+       `remote-driver.md`, *Firing one stage*). Only a plan without `RUNNER.md`
        gets `/plan-staged-rollout:stage-run <N>`, which a cloud session
        cannot run.
      - `cwd`: the clone's root.

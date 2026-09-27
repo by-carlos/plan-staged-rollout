@@ -86,7 +86,8 @@ elsewhere. See 0.4.0 for the split.
   99 about 0.6, with byte-identical output. The hook also declares
   `shell: "bash"`, matching superpowers, and a 30-second `timeout`, so a hook
   that stalls for any other reason is cut off instead of blocking startup.
-  Thanks [Nachitous](https://github.com/nachitous) for always lending a hand
+  Thanks [Nachitous](https://github.com/nachitous) for going to great lengths
+  to find the limit and lending a hand.
 - **`docs/ON-THE-RUN.md` no longer lists effort booking as pending work.** Its
   known-limits entry pointed at #125, closed in 0.8.0. Effort is still not
   booked through `RemoteTrigger`; the entry now says so plainly and explains

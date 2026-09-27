@@ -12,6 +12,14 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **`/plan-stages` copies the templates itself before dispatching the
+  scaffold subagent.** The subagent used to get the plugin's templates path
+  and copy them in its own shell command; one that also ran `sed -i` on the
+  copies raised a permission prompt that read as an edit to the plugin's
+  templates, because the cache sits under the Claude config directory. The
+  parent now runs a plain copy into `<repo>/.plan/`, and the subagent gets
+  only that folder and edits it with the Edit and Write tools.
+
 - **Every cloud-bound stage one-liner now checks out the plan branch first.**
   The desktop-app chip's prompt, `/plan-stages`' description of the runner
   instruction and the one-liner scaffolded into each plan's `.plan/README.md`

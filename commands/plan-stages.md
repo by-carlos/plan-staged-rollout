@@ -179,17 +179,26 @@ Then work through these steps **in order**:
      review` row and every stage's `gate`;
    - the frozen git model and worktree model from step 4, and the complete
      plan flags line it decided (both `merge` and `plan-dir`);
-   - the path to `skills/staged-rollout/references/templates/`
-     (`PLAN.md`, `LEDGER.md`, `README.md`, `RUNNER.md`, `stage-N.md`,
-     `stage-f-review.md`);
    - the plugin version from `.claude-plugin/plugin.json`, for `RUNNER.md`'s
      scaffold marker.
 
-   Instruct it to copy the templates into `<repo>/.plan/` and fill every
-   placeholder: `stage-N.md` **once per stage**, each renamed to
-   `stage-<N>-<slug>.md`, and `stage-f-review.md` **once**, renamed to
-   `stage-f-review.md` (no slug — it's the standing final stage; state this
-   explicitly rather than trusting it to infer from the template name).
+   **Before dispatching, copy the templates yourself**, as a plain copy with
+   nothing else in the command: `mkdir -p <repo>/.plan && cp
+   "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/references/templates/"*.md
+   <repo>/.plan/`. Give the subagent **only `<repo>/.plan/`** — never the
+   plugin's templates path — and tell it to edit those working copies with
+   the Edit and Write tools, no shell text substitution. The plugin cache
+   sits under the Claude config directory, outside the repo: a shell command
+   that names it and also edits files (`sed -i` on a variable path) raises a
+   permission prompt that reads as an edit to the plugin itself, even when
+   only the copies are touched.
+
+   Instruct it to fill every placeholder in `<repo>/.plan/`, using the
+   copies there as its templates: `stage-N.md` **once per stage**, each
+   written as `stage-<N>-<slug>.md`, then the `.plan/stage-N.md` copy
+   removed; and `stage-f-review.md` **once**, filled in place under the same
+   name (no slug — it's the standing final stage; state this explicitly
+   rather than trusting it to infer from the template name).
    `RUNNER.md` is copied **whole with its placeholders filled and its header
    comment's `<version>` set** — it is the stage-runner contract the plan
    carries so any session, cloud included, can run a stage from the one-line

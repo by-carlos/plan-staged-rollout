@@ -15,11 +15,35 @@
 # Nothing this script could write to stderr is worth risking a session over.
 exec 2>/dev/null
 
+# Performance: helpers return their result in the global REPLY, never through
+# `$(...)` or a pipe. Every command substitution forks a subshell, and on
+# Windows (Git Bash) each fork costs tens of milliseconds — per table cell,
+# that made the hook's run time grow with the plan until a large plan ran
+# past the SessionStart startup deadline. Keep the per-row path fork-free.
+# Stay bash 3.2 compatible (macOS /bin/bash): no ${var,,}, no namerefs.
+
 trim() {
     local s="$1"
     s="${s#"${s%%[![:space:]]*}"}"
     s="${s%"${s##*[![:space:]]}"}"
-    printf '%s' "$s"
+    REPLY="$s"
+}
+
+# Set REPLY to the canonical lowercase form of a ledger status; fail on
+# anything outside the todo/doing/done/blocked/skipped vocabulary.
+normalize_status() {
+    local rc=0
+    shopt -s nocasematch
+    case "$1" in
+        todo) REPLY=todo ;;
+        doing) REPLY=doing ;;
+        done) REPLY=done ;;
+        blocked) REPLY=blocked ;;
+        skipped) REPLY=skipped ;;
+        *) rc=1 ;;
+    esac
+    shopt -u nocasematch
+    return "$rc"
 }
 
 # Escape string for JSON embedding using bash parameter substitution.
@@ -61,13 +85,14 @@ split_row() {
     [ "${#cells[@]}" -ge 2 ]
 }
 
-# Print the stage id (S<digits> or SF) leading a stage cell; fail otherwise.
+# Set REPLY to the stage id (S<digits> or SF) leading a stage cell; fail
+# otherwise.
 stage_id_of() {
-    local c id
-    c="$(trim "$1")"
-    id="${c%%[[:space:]]*}"
+    local id
+    trim "$1"
+    id="${REPLY%%[[:space:]]*}"
     case "$id" in
-        S[0-9]|S[0-9][0-9]|SF) printf '%s' "$id" ;;
+        S[0-9]|S[0-9][0-9]|SF) REPLY="$id" ;;
         *) return 1 ;;
     esac
 }
@@ -84,14 +109,14 @@ parse_ledger() {
         esac
         [ "$in_section" -eq 1 ] || continue
         split_row "$line" || continue
-        id="$(stage_id_of "${cells[0]}")" || continue
-        name="$(trim "${cells[0]}")"
-        name="$(trim "${name#"$id"}")"
-        status="$(trim "${cells[1]}" | tr '[:upper:]' '[:lower:]')"
-        case "$status" in
-            todo|doing|done|blocked|skipped) ;;
-            *) continue ;;
-        esac
+        stage_id_of "${cells[0]}" || continue
+        id="$REPLY"
+        trim "${cells[0]}"
+        trim "${REPLY#"$id"}"
+        name="$REPLY"
+        trim "${cells[1]}"
+        normalize_status "$REPLY" || continue
+        status="$REPLY"
         ledger_ids+=("$id")
         ledger_names+=("$name")
         ledger_statuses+=("$status")
@@ -109,33 +134,36 @@ parse_index() {
         esac
         [ "$in_section" -eq 1 ] || continue
         split_row "$line" || continue
-        id="$(stage_id_of "${cells[0]}")" || continue
+        stage_id_of "${cells[0]}" || continue
+        id="$REPLY"
         [ "${#cells[@]}" -ge 3 ] || continue
         index_ids+=("$id")
-        index_depends+=("$(trim "${cells[2]}")")
-        index_models+=("$(trim "${cells[5]:-}")")
-        index_efforts+=("$(trim "${cells[6]:-}")")
+        trim "${cells[2]}"; index_depends+=("$REPLY")
+        trim "${cells[5]:-}"; index_models+=("$REPLY")
+        trim "${cells[6]:-}"; index_efforts+=("$REPLY")
     done < "$1"
 }
 
-# Print the ledger status of a stage id; fail if the id has no ledger row.
+# Set REPLY to the ledger status of a stage id; fail if the id has no ledger
+# row.
 status_of() {
     local id="$1" j
     for j in "${!ledger_ids[@]}"; do
         if [ "${ledger_ids[$j]}" = "$id" ]; then
-            printf '%s' "${ledger_statuses[$j]}"
+            REPLY="${ledger_statuses[$j]}"
             return 0
         fi
     done
     return 1
 }
 
-# Print the stage-index array position of a stage id; fail if not indexed.
+# Set REPLY to the stage-index array position of a stage id; fail if not
+# indexed.
 index_pos_of() {
     local id="$1" j
     for j in "${!index_ids[@]}"; do
         if [ "${index_ids[$j]}" = "$id" ]; then
-            printf '%s' "$j"
+            REPLY="$j"
             return 0
         fi
     done
@@ -148,7 +176,8 @@ index_pos_of() {
 # as NOT satisfied — the nudge must never claim a stage is runnable on a guess.
 deps_satisfied() {
     local deps d dep_status
-    deps="$(trim "${1//,/ }")"
+    trim "${1//,/ }"
+    deps="$REPLY"
     case "$deps" in
         ''|'—'|'-'|'–') return 0 ;;
     esac
@@ -157,7 +186,8 @@ deps_satisfied() {
             S[0-9]|S[0-9][0-9]|SF) ;;
             *) return 1 ;;
         esac
-        dep_status="$(status_of "$d")" || return 1
+        status_of "$d" || return 1
+        dep_status="$REPLY"
         case "$dep_status" in
             done|skipped) ;;
             *) return 1 ;;
@@ -166,20 +196,23 @@ deps_satisfied() {
     return 0
 }
 
-# Render one runnable stage as a single markdown bullet body: its id and name,
-# the exact plan-run command, and the launch hints from the stage index.
+# Set REPLY to one runnable stage as a single markdown bullet body: its id and
+# name, the exact plan-run command, and the launch hints from the stage index.
 describe_stage() {
     local i="$1" id name num model="" effort="" weight="" pos
     id="${ledger_ids[$i]}"
     name="${ledger_names[$i]}"
-    num="$(printf '%s' "${id#S}" | tr '[:upper:]' '[:lower:]')"
-    if pos="$(index_pos_of "$id")"; then
+    # stage_id_of admits only S<digits> and SF, so SF is the one id to lowercase.
+    num="${id#S}"
+    [ "$num" = "F" ] && num="f"
+    if index_pos_of "$id"; then
+        pos="$REPLY"
         model="${index_models[$pos]}"
         effort="${index_efforts[$pos]}"
     fi
-    case "$model" in ''|'—'|'-') ;; *) weight="$(printf 'model `%s`' "$model")" ;; esac
-    case "$effort" in ''|'—'|'-') ;; *) weight="${weight:+$weight, }$(printf 'effort `%s`' "$effort")" ;; esac
-    printf '**%s%s** — `/plan-staged-rollout:plan-run %s`%s' \
+    case "$model" in ''|'—'|'-') ;; *) weight="model \`$model\`" ;; esac
+    case "$effort" in ''|'—'|'-') ;; *) weight="${weight:+$weight, }effort \`$effort\`" ;; esac
+    printf -v REPLY '**%s%s** — `/plan-staged-rollout:plan-run %s`%s' \
         "$id" "${name:+ — $name}" "$num" "${weight:+ ($weight)}"
 }
 
@@ -211,7 +244,8 @@ main() {
     done
     for i in "${!ledger_ids[@]}"; do
         [ "${ledger_statuses[$i]}" = "todo" ] || continue
-        pos="$(index_pos_of "${ledger_ids[$i]}")" || continue
+        index_pos_of "${ledger_ids[$i]}" || continue
+        pos="$REPLY"
         deps_satisfied "${index_depends[$pos]}" || continue
         runnable+=("$i")
     done
@@ -220,7 +254,8 @@ main() {
     if [ "${#runnable[@]}" -eq 1 ]; then
         local only="${runnable[0]}" action="run"
         [ "${ledger_statuses[$only]}" = "doing" ] && action="resume — it is \`doing\`, so a session left it partially complete"
-        context="**Active staged rollout in this repo** (\`.plan/\` present). Exactly one stage is runnable; every other stage is \`done\`, \`skipped\`, or still waiting on a dependency. Next: $(describe_stage "$only"), to $action.
+        describe_stage "$only"
+        context="**Active staged rollout in this repo** (\`.plan/\` present). Exactly one stage is runnable; every other stage is \`done\`, \`skipped\`, or still waiting on a dependency. Next: $REPLY, to $action.
 
 Offer it to the user but do NOT auto-run it: surface this and wait for their go-ahead. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
     elif [ "${#runnable[@]}" -gt 1 ]; then
@@ -228,8 +263,9 @@ Offer it to the user but do NOT auto-run it: surface this and wait for their go-
         for j in "${runnable[@]}"; do
             suffix=""
             [ "${ledger_statuses[$j]}" = "doing" ] && suffix=" — \`doing\`, resume it"
+            describe_stage "$j"
             list="$list
-- $(describe_stage "$j")$suffix"
+- $REPLY$suffix"
         done
         context="**Active staged rollout in this repo** (\`.plan/\` present). **${#runnable[@]} stages are runnable right now** — their \`depends\` are all satisfied and none of them depends on another, so they can be run **concurrently, one per fresh session**:
 $list

@@ -22,12 +22,8 @@ catalogs loose ends. Depends on S1 and S2; reads every notes block.
       the stage-runner or orchestrator contracts as notes to route back to
       their own issues — never edit those contracts from inside this run.
 - [ ] Open this stage's pull request into the plan branch and, under
-      `merge: auto`, squash-merge it once green.
-- [ ] **Open the `plan-slugify` → `main` pull request** and leave it open. Say
-      in its body that it must be merged as a **normal, non-squash** merge, and
-      summarise the stage table and the verification result. Opening it is
-      compulsory and is the last thing this stage does; merging it is not
-      yours.
+      `merge: auto`, squash-merge it once green. This is the last thing this
+      stage does.
 
 ## Acceptance
 
@@ -36,11 +32,10 @@ catalogs loose ends. Depends on S1 and S2; reads every notes block.
 
 ## What SF does NOT do
 
-**Merge** the `plan-slugify` → `main` pull request. Opening it is this stage's
-job (above); merging it is the maintainer's, by hand, after reading this
-stage's evidence — a fixed condition of the proof of concept.
+**Open or merge** the `plan-slugify` → `main` pull request. Both are the
+maintainer's, by hand, after reading this stage's evidence — `RUNNER.md` §7
+makes the plan-to-default-branch step permanently human, and this stage file
+does not override it. The maintainer proposes that pull request from a local
+session with `/plan-close`, which merges it as a **normal, non-squash** merge.
 
-The distinction is the whole gate: a closeout that cannot open the final PR
-leaves the maintainer doing clerical work the run should have done, while a
-closeout that merges it removes the one decision the run exists to preserve.
-Open it, describe it, stop.
+Record the evidence, merge your own stage PR into the plan branch, stop.

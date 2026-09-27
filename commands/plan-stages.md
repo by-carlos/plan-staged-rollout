@@ -199,7 +199,7 @@ Then work through these steps **in order**:
    removed; and `stage-f-review.md` **once**, filled in place under the same
    name (no slug — it's the standing final stage; state this explicitly
    rather than trusting it to infer from the template name).
-   `RUNNER.md` is copied **whole with its placeholders filled and its header
+   `RUNNER.md` is kept **whole with its placeholders filled and its header
    comment's `<version>` set** — it is the stage-runner contract the plan
    carries so any session, cloud included, can run a stage from the one-line
    instruction "run stage \<N> of plan branch \<branch>; first run `git fetch

@@ -193,7 +193,10 @@ Then work through these steps **in order**:
    `RUNNER.md` is copied **whole with its placeholders filled and its header
    comment's `<version>` set** — it is the stage-runner contract the plan
    carries so any session, cloud included, can run a stage from the one-line
-   instruction "run stage \<N> of plan branch \<branch> per `.plan/RUNNER.md`";
+   instruction "run stage \<N> of plan branch \<branch>; first run `git fetch
+   origin <branch> && git checkout -B <branch> origin/<branch>`, then follow
+   `.plan/RUNNER.md`" (the checkout is in the instruction because a cloud
+   clone starts on the default branch, where `RUNNER.md` does not exist);
    it is a deliberate generation-time copy (the header says how it refreshes),
    never a reference to plugin files that a cloud run cannot see. After
    the stage index is filled, compute the **modal `model`** across all stage

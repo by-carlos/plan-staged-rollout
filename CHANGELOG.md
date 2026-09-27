@@ -8,6 +8,20 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Fixed
+
+- **Every cloud-bound stage one-liner now checks out the plan branch first.**
+  The desktop-app chip's prompt, `/plan-stages`' description of the runner
+  instruction and the one-liner scaffolded into each plan's `.plan/README.md`
+  now carry `git fetch origin <branch> && git checkout -B <branch>
+  origin/<branch>` ahead of "follow `.plan/RUNNER.md`", matching the
+  `/plan-run` fix in #170. A cloud session starts on the default branch,
+  where `RUNNER.md` does not exist, so a session told only "per
+  `.plan/RUNNER.md`" could find no plan and stop having done nothing.
+  `RUNNER.md` §1 now says a leading checkout is expected. (#171)
+
 ## [0.10.0] - 2026-09-27
 
 **Codename:** too large

@@ -74,6 +74,14 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **The SessionStart hook can no longer hang a Windows session.** On some
+  Windows machines it never returned, and in stream-json mode (the VS Code
+  extension, `claude --print --output-format stream-json`) the session then
+  failed to start after 60 seconds. The hook now declares `shell: "bash"`, so
+  Claude Code 2.1.81 and later runs it through Git for Windows directly
+  instead of whichever `bash` is first on the `PATH` (possibly the WSL
+  launcher), and a 10-second `timeout`, so a hook that stalls anyway is cut
+  off instead of blocking startup.
 - **`docs/ON-THE-RUN.md` no longer lists effort booking as pending work.** Its
   known-limits entry pointed at #125, closed in 0.8.0. Effort is still not
   booked through `RemoteTrigger`; the entry now says so plainly and explains

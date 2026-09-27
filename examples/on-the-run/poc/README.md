@@ -8,10 +8,10 @@
 > **Re-run on the current mechanism, 25 Sep 2026 (#168), and passed.** Setup
 > steps 1–3 below still hold; replace 4–5 with running `/plan-run` in a clone
 > of the throwaway repository — it backfills `.plan/RUNNER.md` on the plan
-> branch before the first fire. `verify_run.py` needed no change. One known
-> conflict: `stage-f-closeout.md` tells SF to **open** the plan-to-main pull
-> request, while `RUNNER.md` §7 forbids opening it; in that run SF followed
-> the stage file and opened it.
+> branch before the first fire. `verify_run.py` needed no change. In that run
+> SF opened the plan-to-main pull request, because `stage-f-closeout.md` then
+> told it to; the stage file now stops short of it, matching `RUNNER.md` §7
+> (#172).
 
 Everything a full **"on the run"** lifecycle run consumes, ready to drop into a
 throwaway repository: a four-stage plan, and the verification script that
@@ -40,9 +40,9 @@ fixes in them came from the first one, not from review.
 
 Two things stay manual by design, and the run is only a proof if both are
 exercised: the `gate: human` stage, and the final `plan-slugify` → `main`
-merge. Note the split on that last one — SF **opens** the plan-to-main pull
-request as its final act and the maintainer **merges** it. Only the merge is
-manual; a closeout that cannot open the PR just leaves clerical work behind.
+merge. SF does not open the plan-to-main pull request either: `RUNNER.md` §7
+keeps that whole step human, so the maintainer proposes it with `/plan-close`
+from a local session after reading SF's evidence, and merges it by hand.
 
 S2 must exercise the **whole** path — refusal, interactive run, resume. A run
 that only proves the refusal has proved half of it.

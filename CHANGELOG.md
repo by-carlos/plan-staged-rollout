@@ -21,6 +21,12 @@ elsewhere. See 0.4.0 for the split.
   where `RUNNER.md` does not exist, so a session told only "per
   `.plan/RUNNER.md`" could find no plan and stop having done nothing.
   `RUNNER.md` §1 now says a leading checkout is expected. (#171)
+- **The on-the-run proof-of-concept closeout no longer opens the final pull
+  request.** `examples/on-the-run/poc/.plan/stage-f-closeout.md` told stage SF
+  to open the plan → `main` pull request, contradicting `RUNNER.md` §7, which
+  keeps that step permanently human. SF now stops after squash-merging its own
+  stage PR into the plan branch, and the fixture's README says the maintainer
+  proposes the final PR with `/plan-close`. (#172)
 
 ## [0.10.0] - 2026-09-27
 

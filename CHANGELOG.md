@@ -10,6 +10,8 @@ elsewhere. See 0.4.0 for the split.
 
 ## [0.10.0] - 2026-09-27
 
+**Codename:** too large
+
 ### Added
 
 - **A finished stage offers the next runnable stages as desktop-app chips.**

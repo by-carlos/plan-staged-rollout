@@ -74,14 +74,18 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
-- **The SessionStart hook can no longer hang a Windows session.** On some
-  Windows machines it never returned, and in stream-json mode (the VS Code
-  extension, `claude --print --output-format stream-json`) the session then
-  failed to start after 60 seconds. The hook now declares `shell: "bash"`, so
-  Claude Code 2.1.81 and later runs it through Git for Windows directly
-  instead of whichever `bash` is first on the `PATH` (possibly the WSL
-  launcher), and a 10-second `timeout`, so a hook that stalls anyway is cut
-  off instead of blocking startup.
+- **The SessionStart hook no longer stalls Windows sessions on large plans.**
+  Its `.plan/` parser started a new process for nearly every table cell, and
+  Git Bash on Windows pays tens of milliseconds per process, so the hook's run
+  time grew with the plan: about 16 seconds for 34 stages on a fast machine.
+  In stream-json mode (the VS Code extension,
+  `claude --print --output-format stream-json`) session startup waits for the
+  hook, so on a slower machine a large plan ran past the 60-second
+  initialization limit and every session failed. The parser now does its
+  per-row work without starting processes: 34 stages take about 0.4 seconds,
+  99 about 0.6, with byte-identical output. The hook also declares
+  `shell: "bash"`, matching superpowers, and a 30-second `timeout`, so a hook
+  that stalls for any other reason is cut off instead of blocking startup.
 - **`docs/ON-THE-RUN.md` no longer lists effort booking as pending work.** Its
   known-limits entry pointed at #125, closed in 0.8.0. Effort is still not
   booked through `RemoteTrigger`; the entry now says so plainly and explains

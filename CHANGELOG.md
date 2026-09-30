@@ -12,11 +12,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **`CHANGELOG.md` is valid UTF-8 again, and CI now checks tracked text files
+  for it.** A stray Windows-1252 byte in the previous entry made
+  `release-prepare` crash reading the changelog. `validate_plugin.py` now fails
+  the PR when any tracked text file is not UTF-8.
 - **The SessionStart hook understands stage ids with a letter suffix
   (`S12b`) and no longer claims nothing is runnable when it can't read a
   dependency.** A stage inserted between two others, such as `S12b`, was
   dropped from the ledger and index and made every stage depending on it look
-  blocked, so the hook told each session "no stage is currently runnable… Do
+  blocked, so the hook told each session "no stage is currently runnableâ€¦ Do
   not run any stage" on a plan that had a runnable stage. Suffixed ids now
   parse and `describe_stage` emits the right `plan-run 12b` command; a
   dependency the hook still cannot read (unknown id format, or an id with no

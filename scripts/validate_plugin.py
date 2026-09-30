@@ -6,6 +6,7 @@ dependencies."""
 
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -127,7 +128,27 @@ def validate_readme_links():
                 err(f"{readme.relative_to(ROOT)}: broken link to '{target}'")
 
 
+TEXT_SUFFIXES = {".md", ".json", ".yml", ".yaml", ".py", ".sh", ".txt", ".toml"}
+
+
+def validate_utf8():
+    # The release scripts read these files as UTF-8; a stray byte (for example a
+    # Windows-1252 ellipsis) only surfaces when release-prepare crashes.
+    tracked = subprocess.run(
+        ["git", "ls-files", "-z"], cwd=ROOT, capture_output=True, check=True
+    ).stdout.split(b"\0")
+    for name in filter(None, tracked):
+        path = ROOT / name.decode("utf-8")
+        if path.suffix not in TEXT_SUFFIXES or not path.is_file():
+            continue
+        try:
+            path.read_bytes().decode("utf-8")
+        except UnicodeDecodeError as e:
+            err(f"{path.relative_to(ROOT)}: not valid UTF-8 (byte {e.start}: {e.reason})")
+
+
 def main():
+    validate_utf8()
     validate_manifest()
     validate_commands()
     validate_skills()

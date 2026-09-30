@@ -12,6 +12,18 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **The SessionStart hook understands stage ids with a letter suffix
+  (`S12b`) and no longer claims nothing is runnable when it can't read a
+  dependency.** A stage inserted between two others, such as `S12b`, was
+  dropped from the ledger and index and made every stage depending on it look
+  blocked, so the hook told each session "no stage is currently runnable… Do
+  not run any stage" on a plan that had a runnable stage. Suffixed ids now
+  parse and `describe_stage` emits the right `plan-run 12b` command; a
+  dependency the hook still cannot read (unknown id format, or an id with no
+  ledger row) now makes it stay silent, as its fail-silent policy says, rather
+  than assert the plan is stuck. `RUNNER.md` and `/stage-run` now state the id
+  format with the suffix.
+
 - **`/plan-stages` copies the templates itself before dispatching the
   scaffold subagent.** The subagent used to get the plugin's templates path
   and copy them in its own shell command; one that also ran `sed -i` on the

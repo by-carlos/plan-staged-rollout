@@ -49,8 +49,8 @@ Work through these steps **in order**:
    `plan-*` branch matches, so take it without asking; two or more is a hard
    stop, because there is no way to guess which plan was meant.
    Then resolve `$ARGUMENTS` to the stage file `.plan/stage-<N>-<slug>.md` by
-   matching the leading `stage-<$ARGUMENTS>-` token — a digit for an
-   implementation stage, or `f` for the final review stage
+   matching the leading `stage-<$ARGUMENTS>-` token — a digit (with its letter suffix,
+   if any, as in `12b`) for an implementation stage, or `f` for the final review stage
    (`stage-f-review.md`). If nothing matches, stop and list the stage files that
    do exist so the user can pick a valid one.
 

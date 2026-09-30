@@ -85,16 +85,22 @@ split_row() {
     [ "${#cells[@]}" -ge 2 ]
 }
 
-# Set REPLY to the stage id (S<digits> or SF) leading a stage cell; fail
-# otherwise.
+# Succeed when $1 is a well-formed stage id: S<digits> with an optional
+# lowercase letter suffix (S12b, a stage inserted between S12 and S13), or SF.
+is_stage_id() {
+    case "$1" in
+        S[0-9]|S[0-9][0-9]|S[0-9][a-z]|S[0-9][0-9][a-z]|SF) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Set REPLY to the stage id leading a stage cell; fail otherwise.
 stage_id_of() {
     local id
     trim "$1"
     id="${REPLY%%[[:space:]]*}"
-    case "$id" in
-        S[0-9]|S[0-9][0-9]|SF) REPLY="$id" ;;
-        *) return 1 ;;
-    esac
+    is_stage_id "$id" || return 1
+    REPLY="$id"
 }
 
 # Parse the "## Status" table of LEDGER.md. Unrecognized rows and statuses
@@ -173,7 +179,10 @@ index_pos_of() {
 # A Depends cell is satisfied when empty/"—" or every listed stage id is
 # `done` or `skipped` in the ledger — a skip is a settled outcome, not an
 # unmet one, so it must not deadlock a dependent. Anything unrecognized counts
-# as NOT satisfied — the nudge must never claim a stage is runnable on a guess.
+# as NOT satisfied — the nudge must never claim a stage is runnable on a guess —
+# and sets dep_unparsed so main can also refrain from claiming nothing is
+# runnable on a guess.
+dep_unparsed=0
 deps_satisfied() {
     local deps d dep_status
     trim "${1//,/ }"
@@ -182,11 +191,8 @@ deps_satisfied() {
         ''|'—'|'-'|'–') return 0 ;;
     esac
     for d in $deps; do
-        case "$d" in
-            S[0-9]|S[0-9][0-9]|SF) ;;
-            *) return 1 ;;
-        esac
-        status_of "$d" || return 1
+        is_stage_id "$d" || { dep_unparsed=1; return 1; }
+        status_of "$d" || { dep_unparsed=1; return 1; }
         dep_status="$REPLY"
         case "$dep_status" in
             done|skipped) ;;
@@ -202,7 +208,8 @@ describe_stage() {
     local i="$1" id name num model="" effort="" weight="" pos
     id="${ledger_ids[$i]}"
     name="${ledger_names[$i]}"
-    # stage_id_of admits only S<digits> and SF, so SF is the one id to lowercase.
+    # The number is the id less its S; a letter suffix is already lowercase
+    # (12b), so SF is the one id to lowercase.
     num="${id#S}"
     [ "$num" = "F" ] && num="f"
     if index_pos_of "$id"; then
@@ -282,6 +289,9 @@ Surface all of them to the user and wait for their go-ahead — do NOT auto-run 
         if [ "$open" -eq 0 ]; then
             context="**Active staged rollout in this repo** (\`.plan/\` present) — every stage is \`done\` or \`skipped\`, so the plan is ready for closeout. Offer to close it out via \`/plan-staged-rollout:plan-close\`, but do NOT auto-run it: surface this to the user and wait for their go-ahead."
         else
+            # A dependency this hook could not read (unknown id format, or an id
+            # with no ledger row) means "not runnable" is a guess: say nothing.
+            [ "$dep_unparsed" -eq 0 ] || return 0
             context="**Active staged rollout in this repo** (\`.plan/\` present), but no stage is currently runnable — the remaining stages are \`blocked\` or waiting on unmet dependencies. Surface this to the user and point them at \`.plan/LEDGER.md\` — and at \`.plan/BLOCKED.md\` if it exists, which is where an unattended driver, or a stage session that blocked after its stage branch existed, records a block that cannot go in the ledger — for the details. Do not run any stage."
         fi
     fi

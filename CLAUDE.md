@@ -9,6 +9,23 @@ catalog, and this repo's own `.claude-plugin/marketplace.json`, which makes it
 installable standalone with
 `claude plugin marketplace add by-carlos/plan-staged-rollout`.
 
+## Layout
+
+- `skills/staged-rollout/` — the core skill; `commands/` — the slash commands
+  (`plan-stages`, `stage-run`, `plan-run`, `plan-close`).
+- `hooks/` — the session-start hook; `scripts/` — validation and release scripts.
+- `examples/` — sample `.plan/` folders; `docs/` — user documentation.
+- `.github/workflows/` — CI and the release pipeline; its
+  [`CLAUDE.md`](.github/workflows/CLAUDE.md) holds the release mechanics.
+
+## Validate and commit
+
+- Run `python3 scripts/validate_plugin.py` before pushing; CI runs the same
+  check. It also rejects any tracked text file that is not valid UTF-8.
+- Commit with [Conventional Commits](https://www.conventionalcommits.org/) —
+  the release bump is inferred from them. Details in
+  [CONTRIBUTING.md](CONTRIBUTING.md).
+
 ## Git & merge conventions
 
 - **Merge strategy:** Default to **squash merge** for pull requests, unless a
@@ -26,33 +43,20 @@ installable standalone with
 - Merging is never unilateral: propose the merge and wait for the maintainer's OK.
   Never push directly to `main`.
 
-## Capturing follow-up work (GitHub issues)
+## Filing issues — this repo is public
 
-The generic contract — when to file, the issue body format, labels, and the
-Size/Effort discipline — lives in the maintainer's global `CLAUDE.md` /
-`AGENTS.md`. This section adds only what is specific to this repo.
-
-- **Tracker & board:** issues live in `by-carlos/plan-staged-rollout` and go to
-  the **"Claude Plugins"** project (project 3). Its priority scale is **P0–P4**.
-- **That board is shared across every Claude plugin repo**, not scoped to this
-  one — `by-carlos/claude-plugins` and `by-carlos/daikenja` file there too. So
-  don't read the board as a view of this repo: filter by the Repository field
-  before concluding anything about what is open here, and don't assume a
-  neighbouring item is ours.
-- **This repo is public.** Most of the estate is private; this one ships a
-  public plugin, so an issue body is published the moment it is filed — and
-  stays indexed even if edited or deleted afterwards.
-- **Scrub before filing.** No hostnames, LAN IPs or subnets, CT/VM/container
+- An issue body is published the moment it is filed, and stays indexed even if
+  edited or deleted afterwards.
+- **Scrub before filing.** No hostnames, LAN IPs or subnets, VM/container
   names, personal filesystem paths, email addresses, tokens, or raw log/console
-  pastes. Redact to generic placeholders (`<router>`, `<nas>`, `10.x.x.x`,
+  pastes. Redact to generic placeholders (`<host>`, `10.x.x.x`,
   `/path/to/repo`) and keep the reproduction abstract enough to stand on its own.
 - **Show the rendered body and get an explicit OK before filing — every time.**
   This gate is not waived by a general "capture these" from the maintainer;
   public is a one-way door.
-- **Never cross-post homelab evidence here.** If a plugin bug was found while
-  working in `linux`/`openwrt`/`synology`, restate it from the plugin's side —
-  the behaviour, the inputs, the expected result — and leave the estate detail
-  in the private repo, cross-referenced by number rather than quoted.
+- **Restate bugs found elsewhere from the plugin's side** — the behaviour, the
+  inputs, the expected result. Leave detail from private projects there,
+  cross-referenced by number rather than quoted.
 
 ## Secret scanning
 
@@ -90,42 +94,6 @@ No local pre-commit hook — dev environments vary, so this is CI-only by design
   under an `## [Unreleased]` heading as changes land. This records *what* changed
   without declaring a version. Never write a dated/versioned heading or bump
   `plugin.json` mid-batch — that recreates version drift.
-- **Optional codename, hand-added per release.** After `release-prepare.yml` dates
-  a section, a `**Codename:** <name>` line may be added as the first line of that
-  section's body, before merging the release PR. `release-publish.yml` strips it
-  from the release notes and folds it into the release title as `vX.Y.Z (<name>)`.
-  This never touches the tag, the heading, or `plugin.json` — those stay plain
-  semver — and it's a one-off per release, not something `release-prepare.yml`
-  prompts for.
-- **A release is one atomic change, and GitHub Actions performs it.** Don't do
-  these steps by hand — the sequence was easy to half-complete, most
-  damagingly by moving `release` without bumping the version.
-  1. Run **`release-prepare.yml`** from the Actions tab, choosing a bump of
-     `auto`, `patch` or `minor`. It bumps `version` in
-     `.claude-plugin/plugin.json`, renames `## [Unreleased]` to
-     `## [x.y.z] - YYYY-MM-DD`, adds the `[x.y.z]: …/releases/tag/vx.y.z` link
-     and rewrites the `[Unreleased]` compare link, then opens the release pull
-     request. It never tags and never touches `release`.
-  2. Review and merge that pull request. Merging it pushes to `main`, which
-     triggers **`release-publish.yml`**: it notices the version changed, tags
-     `vx.y.z`, cuts the GitHub release with that version's changelog section as
-     the notes, and fast-forwards `release` to the tagged commit.
-- **`release-publish.yml` runs on every push to `main` and does nothing unless
-  the version changed**, so ordinary merges are unaffected.
-- **Both workflows need the `RELEASE_TOKEN` repository secret** — a personal
-  access token with repository write access. The default `GITHUB_TOKEN` cannot
-  be used: pushes it makes do not trigger other workflows, so the release pull
-  request would never reach `release-publish.yml`.
-- **Semver:** a `feat` in the batch ⇒ **minor** bump; only `fix`/`docs`/`chore` ⇒
-  **patch**. Pre-1.0, breaking changes go in a minor. The `auto` bump infers
-  this by looking for a `feat` commit since the last tag, so pass an explicit
-  `minor` or `patch` when you disagree with it.
-- **Version headings now use a plain hyphen** — `## [x.y.z] - YYYY-MM-DD` — because
-  that is the separator the release scripts write and read. Sections dated
-  before this change use an em dash and are left as they are.
-- **Tag per released version** (not per commit, not major-only) — the `CHANGELOG.md`
-  release links assume a tag exists for each version. Keep the two consistent.
-- **Historical wart:** the `v0.2` tag is malformed — it should have been
-  `v0.2.0`. It predates this convention and is left as-is rather than aliased,
-  so `CHANGELOG.md`'s `[0.2]` link points at `v0.2` deliberately. Every tag from
-  `v0.3.0` onward follows `vx.y.z`.
+- **A release is one atomic change, and GitHub Actions performs it** — never by
+  hand. The workflows, the bump rules, changelog heading format, codenames and
+  tags are in [`.github/workflows/CLAUDE.md`](.github/workflows/CLAUDE.md).

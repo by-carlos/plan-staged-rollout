@@ -11,7 +11,9 @@ here; a copy is what drifts. -->
 ## Goal
 
 <One or two sentences: what this stage produces and why the plan needs it.
-State the outcome, not the steps.>
+State the outcome, not the steps. If the outcome is only a finding,
+verification or document, name the later stage that consumes it — no
+consumer means this stage should not exist on its own.>
 
 ## Steps
 

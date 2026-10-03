@@ -76,6 +76,14 @@ context a long session would carry).
   reads as correct while the plan takes three rounds instead of two. For every
   edge, name the artifact the dependent stage consumes; if you can't name one,
   drop the edge.
+- **Every stage changes something or feeds a stage that does.** A stage whose
+  only output is a finding, a verification or documentation — "confirm X",
+  "investigate Y", "record Z" — earns its place only when a later stage lists
+  it in `depends` and names what it consumes from it. No consumer: fold the
+  investigation into the stage that would act on it, or drop it. A finding
+  that nothing downstream uses spends a session and changes nothing. The
+  standing review stage is the one exception, because its three outcomes are
+  themselves actions.
 - **Group by gate.** Alongside "group by effort": put the `gate: human`
   stages — the ones where frozen decisions get settled or amended, or whose
   acceptance needs a person — at the **front** of the dependency graph, and

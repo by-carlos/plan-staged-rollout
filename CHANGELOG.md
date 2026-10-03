@@ -8,6 +8,18 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Changed
+
+- **A stage must change something or feed a stage that does.** A stage whose
+  only output is a finding, a verification or documentation is allowed only
+  when a later stage lists it in `depends` and names what it consumes;
+  otherwise it is folded into the stage that acts on it or dropped. The
+  `stage-N.md` template's Goal now asks for that consumer. Stages that only
+  wrote down what they found, with nothing downstream using it, spent a
+  session and changed nothing.
+
 ## [0.10.1] - 2026-09-30
 
 ### Fixed

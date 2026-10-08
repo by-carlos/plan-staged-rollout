@@ -216,8 +216,9 @@ Work through these steps **in order**:
 
      **When `spawn_task` is not available but `start_session` is** (some
      desktop-app sessions carry one and not the other; the tool is listed as
-     `mcp__ccd_session__start_session`), use `start_session` instead — same
-     once-per-stage rule, same `title`, same `prompt` text, with:
+     `mcp__ccd_session__start_session`), use `start_session` instead — under
+     the same conditions (not a cloud session, not `--unattended`), the same
+     once-per-stage rule, the same `title` and `prompt` text, with:
      - `initiation`: `"own_initiative"` — the operator did not ask for this
        stage to be started, so it waits as a card until they click it or say
        "start it"; on "start it", call `start_session` again with only the
@@ -235,10 +236,18 @@ Work through these steps **in order**:
      - Never `wake_when_done` (refused with `own_initiative`) and never
        `permission_mode`.
 
-     When neither tool exists, print the command and say there is no chip —
-     do not skip the step silently or substitute another surface.
+     When neither tool exists (and the run is attended and not a cloud
+     session), print the command and say in one line that this session has no
+     chip tool — do not skip the step silently or substitute another surface.
 
-     Then tell the operator how to use it, in one plain paragraph: *"In the
+     For a `start_session` card, tell the operator instead: *"Click the card
+     for the stage to start it here, or tell me to start it. It starts on
+     \<model> / \<effort> unless the stage asks for lighter ones; if the stage
+     needs heavier ones it stops and tells you what to switch to, then you type
+     **go**."*
+
+     For a `spawn_task` chip, tell the operator how to use it, in one plain
+     paragraph: *"In the
      desktop app, click the chip for the stage (top right of the window) and
      choose **Start locally** — Send to cloud may use additional credits.
      The new session starts on this session's model and effort (\<model> /

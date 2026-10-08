@@ -289,10 +289,16 @@ choose **Start locally**:
 | Send to cloud | Works for a plan with `.plan/RUNNER.md`, but **may use additional credits**, and refuses a `gate: local` stage. For cloud runs, use [`/plan-run`](#driving-a-plan-remotely--plan-run). |
 | Fix in this session | **No.** It lands in the finished stage's session instead of a fresh one; the stage refuses to start there. |
 
-- **The chip starts on the finishing session's model and effort**, not the
-  stage's: the chip has no way to set them. When the next stage asks for the
-  same weight it runs straight through; when not, it stops before any work
-  and tells you what to switch to — switch in the model menu and type **go**.
+- **The chip usually starts on the finishing session's model and effort**, not
+  the stage's: a `spawn_task` chip has no way to set them, and a `start_session`
+  card can only set them *at or below* the finishing session's. When the next
+  stage asks for the same weight (or lighter, via `start_session`) it runs
+  straight through; when not, it stops before any work and tells you what to
+  switch to — switch in the model menu and type **go**.
+- **Two chip tools exist, and a session may have only one.** Some desktop
+  sessions offer `spawn_task`, others `start_session`; the stage-run step uses
+  whichever is present. A `start_session` card is started by a click, or by
+  telling Claude "start it".
 - **No chip on a phone.** Following the session over Remote Control, or
   working in a terminal, shows no chip — paste the printed command into a
   fresh session instead. The printed command is always there; the chip is an
@@ -560,11 +566,12 @@ effort level:
   protocol verifies it rather than merely reminding — but a session still
   cannot *change* it, so a mismatch is reported, never corrected;
 - the desktop app's suggestion chips, which a finished stage
-  [now offers](#starting-the-next-stage-from-a-chip-desktop-app), carry only a
-  title, a prompt and a working directory — no model, effort or launch-mode
-  field — so a chip-started session inherits the finishing session's model and
-  effort rather than the stage's recommendation. Chips are also app-only; they
-  don't exist in the CLI or on a phone.
+  [now offers](#starting-the-next-stage-from-a-chip-desktop-app), carry either
+  only a title, a prompt and a working directory (`spawn_task`) or a model and
+  effort that may only go *down* from the finishing session's (`start_session`)
+  — so a chip-started session inherits the finishing session's model and
+  effort rather than reliably getting the stage's recommendation. Chips are
+  also app-only; they don't exist in the CLI or on a phone.
 
 Hence the split the protocol actually uses: **verify the model** (readable from
 the session), **remind about effort** (not readable), and hand the human the

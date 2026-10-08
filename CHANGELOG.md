@@ -10,6 +10,15 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Stage chips now work in desktop sessions that have `start_session` but not
+  `spawn_task`.** The chip step was gated on `spawn_task` alone, so such
+  sessions skipped it and offered only the printed command. `stage-run` now
+  falls back to `start_session` (an `own_initiative` card, no app worktree,
+  model/effort only when at or below the current session's) and says so when
+  neither tool exists, instead of skipping silently.
+
 ### Changed
 
 - **A stage must change something or feed a stage that does.** A stage whose

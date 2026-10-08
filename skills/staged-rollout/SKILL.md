@@ -221,7 +221,8 @@ at once. Three rules keep that an advantage rather than a source of confusion:
   operator's action, one session per stage — or an orchestrator's, firing
   cloud stages and honouring `gate`. In the desktop app a stage can *offer*
   each one as a suggestion chip, but the click is still the operator's: the
-  chip cannot pick its launch mode, model or effort, and it exists nowhere
+  chip cannot pick its launch mode and can set model and effort only downward
+  (if at all, depending on which chip tool the session has), and it exists nowhere
   else (not on a phone, not in a terminal), so the printed command stays the
   handoff every surface can use.
 - **Separate working trees are what make it physical.** The semantics below

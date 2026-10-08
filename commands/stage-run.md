@@ -214,6 +214,30 @@ Work through these steps **in order**:
      - `tldr`: the stage's name, its recommended model, effort and `gate`,
        and "Choose **Start locally**."
 
+     **When `spawn_task` is not available but `start_session` is** (some
+     desktop-app sessions carry one and not the other; the tool is listed as
+     `mcp__ccd_session__start_session`), use `start_session` instead — same
+     once-per-stage rule, same `title`, same `prompt` text, with:
+     - `initiation`: `"own_initiative"` — the operator did not ask for this
+       stage to be started, so it waits as a card until they click it or say
+       "start it"; on "start it", call `start_session` again with only the
+       card's `proposal_id`.
+     - `background`: required, at least 80 characters — the plan slug, the
+       stage, what the finished stage left behind, and that the new session
+       must follow the fresh-session rule at the top of this file.
+     - `use_worktree`: `false` — the stage creates its own worktree at
+       protocol step 4, so the app must not make one.
+     - `cwd`: the clone's root, only when this session is not already in it.
+     - `target`: `"local"`; never `"cloud"` (that is `/plan-run`'s job).
+     - `model` / `effort`: pass the stage's recommendation only when it is at
+       or below this session's own (the tool ignores anything higher); omit
+       otherwise and the session inherits, then stops at the model check.
+     - Never `wake_when_done` (refused with `own_initiative`) and never
+       `permission_mode`.
+
+     When neither tool exists, print the command and say there is no chip —
+     do not skip the step silently or substitute another surface.
+
      Then tell the operator how to use it, in one plain paragraph: *"In the
      desktop app, click the chip for the stage (top right of the window) and
      choose **Start locally** — Send to cloud may use additional credits.

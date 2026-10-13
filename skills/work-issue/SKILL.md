@@ -129,8 +129,9 @@ and no `[work]` key can switch one off.
 ## 2. Guide-only (no AI prompt)
 
 Nothing is changed: no branch, no worktree, no commit, no comment and no
-status write. Read the thread (GitHub `thread`; the Jira fetch carries no
-comments, so say they were not read), then give:
+status write. Read the thread (`thread` in `ticket.json`; on Jira a
+`thread_note` says the comments were cut off or could not be read, so say
+it), then give:
 
 - **Interpretation:** what is asked, in plain words, and what is unclear or
   missing (acceptance criteria that cannot be observed, an unnamed place).
@@ -157,13 +158,22 @@ Then run `assess` again with `--repo` and `--base` and continue from its new
 1. **Claim.** When the template sets `[work].status.on_start`:
    `work status --template template.json --tracker <t> --repo <owner/repo> --when on_start --out status.json`.
    A `skip` is said only when it is not "the template sets no status"; a
-   `needs_user: board` is one question. Otherwise
-   `gh-adapter set-fields --payload status.json --number <N> --confirm`, and
-   report a result that is not `VERIFIED` in one line and carry on: a board
+   `needs_user: board` is one question. Otherwise write it:
+   - GitHub: `gh-adapter set-fields --payload status.json --number <N> --confirm`.
+   - Jira: `status.json` carries the status name. Use a fresh run folder for
+     each write, then run
+     `jira-adapter transition --run <dir> --key <KEY> --site <site> --env env.json --status "<status>" --confirm`,
+     relaying its calls as in fetch. It moves the ticket along the workflow
+     transition that leads to that status, then reads it back. It changes
+     nothing when the ticket is already there, and it ends `FAILED`, naming
+     the statuses it can reach, when no transition leads there.
+
+   Report a result that is not `VERIFIED` in one line and carry on: a status
    write that did not land never stops the work.
 2. **Read the full thread**, not only the body: decisions often live in the
    comments. Images or attachments on GitHub are fetched with `gh`'s login
-   and read; one that cannot be read is said, never guessed at.
+   and read; one that cannot be read is said, never guessed at. A Jira
+   `thread_note` (comments cut off or unreadable) is said in one line.
 3. **Scope gate**, before touching anything:
    - **Too big** (several independent deliverables, or acceptance criteria
      too vague to verify): say so with the reason, recommend splitting the
@@ -182,8 +192,8 @@ Then run `assess` again with `--repo` and `--base` and continue from its new
      gap ends on its next action: ask, header `Next step?`, with "Fix it
      now" first only when the fix is mechanical and already located, and
      "Create a follow-up" (through `create-issue`) otherwise. Never close the
-     ticket without a separate yes (header `Close?`); a Jira ticket is never
-     transitioned by this skill.
+     ticket without a separate yes (header `Close?`). A Jira ticket is moved
+     only to the template's `[work].status` names, never to a done status.
    - **Otherwise:** state a one-to-three-line plan and continue.
 
 ## 5. Branch
@@ -346,18 +356,21 @@ Act mode only, right after a confirmed merge and before the closing line. The me
    type **go**. Without `spawn_task` (a terminal, a phone) only the
    printed command appears.
 
-## 10. Defer (`--after`, GitHub only)
+## 10. Defer (`--after`)
 
 One session, one ticket: chaining three tickets means three sessions, each
-waiting on the one before. A Jira ticket cannot be deferred: its state is
-read only through the MCP, which a background watch cannot call. Say so and
-stop.
+waiting on the one before. Both tickets are on the same tracker; a GitHub
+target cannot wait on a Jira blocker or the reverse. Say so and stop.
 
-**The blocker's `state` is the only input.** Its assignee, comments, branch,
-pull request and board status decide nothing; a quiet blocker is the normal
-case. Nothing outside the two named issues is inspected while arming. When
-the wording leaves it unclear which number is the blocker, ask that one
-question and nothing else.
+**The blocker's state is the only input.** On GitHub that is its `state`;
+on Jira it is its status category, because a workflow names its done
+statuses freely ("Dev Done") but the category is fixed. Its assignee,
+comments, branch, pull request and board status decide nothing; a quiet
+blocker is the normal case. Nothing outside the two named tickets is
+inspected while arming. When the wording leaves it unclear which one is the
+blocker, ask that one question and nothing else.
+
+### GitHub
 
 1. **Resolve both:** `gh issue view <n> --repo <owner/repo> --json number,title,state,stateReason`.
    Either lookup failing stops the run.
@@ -395,6 +408,44 @@ question and nothing else.
    blocker named inside the question). `CLOSED COMPLETED`, or closed with no
    reason, continues from section 1. A timeout is one line, and the session
    stands down without re-arming.
+
+### Jira
+
+A Jira ticket's state is read only through the MCP, which no background
+process can call. So the session paces the wait itself: each check is one
+`jira-adapter wait` call, and the session's scheduler fires the next one.
+
+1. **Resolve both:** fetch each ticket as in section 1, each with its own run
+   folder. Either fetch failing stops the run.
+2. **Blocker already done** (its `status_category` is `done`): go straight
+   to section 1 for the target, after the `Proceed?` question when its
+   `resolution` says it was abandoned (Won't Do, Duplicate, Declined).
+3. **Check the target now**, as in the GitHub steps: `assess`, guide-only
+   or not, the model check, and stop if its status already reads the
+   template's `on_start` or `on_pr` status, or it is done.
+4. **Record the dependency** unless the target's `links` already show it:
+   write `{"links": [{"kind": "blocks", "direction": "inward", "target": "<blocker>"}]}`
+   to `links.json`, then
+   `jira-adapter link --run <dir> --key <target> --site <site> --env env.json --template template.json --links links.json --confirm`.
+   The target's status is left alone while it waits.
+5. **Arm the wait.** Use one run folder for the whole wait. Run
+   `jira-adapter wait --run <dir> --key <blocker> --site <site> --env env.json`
+   once now, relaying its read as in fetch. Then schedule the next checks
+   with `CronCreate`: cron `3-59/10 * * * *` (every 10 minutes, off the
+   hour), recurring, prompt "Check Jira blocker <blocker> for work-issue
+   <target>: rerun the same `jira-adapter wait` command with run folder
+   <dir>". Without `CronCreate`, say the wait cannot be paced in this
+   session and stop. One line naming the blocker, the target, this
+   session's model and that the job lives only while this session runs.
+   Do not start the target's work early.
+6. **On each tick:** run the same `wait` command and act on its `status`.
+   - `WAITING`: say nothing and let the next tick fire. A check that failed
+     is retried on the next two ticks before the wait stops.
+   - `CLEARED`: `CronDelete` the job and continue from section 1.
+   - `ABANDONED` (done with a resolution such as Won't Do): `CronDelete`
+     the job, then ask the `Proceed?` question as on GitHub.
+   - `TIMEOUT` (24 hours by default), or any failure: `CronDelete` the job,
+     say it in one line, and stand down without re-arming.
 
 ## 11. Record the run (act mode)
 
@@ -450,7 +501,8 @@ plan is the whole answer.
 | `merge-ask` refuses the description | Rewrite it within 60 plain words. The ask is never skipped. |
 | `merge-command` without `--confirm` | Refused. There is no merge without the yes. |
 | Merge declined or unanswered | Pull request left open, base checked out, one closing line. |
-| `--after` on a Jira ticket | Refused: no background watch can read Jira. |
+| `--after` across trackers (GitHub target, Jira blocker, or the reverse) | Refused; say so and stop. |
+| `--after` on Jira with no `CronCreate` in the session | Refused: the wait cannot be paced. |
 | `--after` blocker is a pull request | Refused; it would never report `CLOSED`. |
 | `--after` blocker closes `NOT_PLANNED` | `Proceed?` question; never starts silently. |
 | Session abandons the ticket without a pull request | One comment on the ticket saying so and why, after a `Post it?` yes. Then record the run as `abandoned` (section 11). |

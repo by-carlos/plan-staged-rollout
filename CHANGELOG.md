@@ -28,12 +28,18 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
-- **`gh-body-guard` no longer denies commands that only mention `gh`.** It
-  matched `gh issue|pr` and `-F` anywhere in the command string, so `git
-  commit -F -` with a message that named "gh issue create" was denied as a
-  corrupting body-file call. It now checks each command segment on its own,
-  and only one that starts with a `gh issue|pr` write. The new
-  `tracker-write-guard` uses the same rule.
+- **`gh-body-guard` judges the commands the shell will run, not words in the
+  string.** It matched `gh issue|pr` and `-F` anywhere, so `git commit -F -`
+  with a message that named a gh command was denied. A new parser,
+  `tickets/scripts/shell_cmd.py`, shared with `tracker-write-guard`, folds line
+  continuations, splits on `;`, `&&`, `||`, `|`, newlines and `$(` only outside
+  quotes, drops heredoc bodies and strips `VAR=x` and `command` prefixes, so
+  the corrupting shapes are still caught across continuations, behind
+  `GH_REPO=` and with a `|` in a quoted title.
+- **`gh-body-guard` no longer answers "allow".** It returned "allow" for
+  every Bash call, which skips the user's own permission rules for that call.
+  It now denies or stays silent, needs no `jq`, and adds less time to an
+  ordinary Bash call.
 - **create-issue can no longer be shortcut silently.** A session that judged
   the pipeline too heavy for one ticket wrote the body by hand from a team
   reference document, skipped the template, check, gap review and estimate,

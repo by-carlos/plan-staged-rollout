@@ -38,6 +38,7 @@ import sys
 import time
 from pathlib import Path
 
+import shell_cmd
 import ticket_template as tmpl
 
 GUARD_KEY = "guard_tracker_creates"
@@ -46,12 +47,6 @@ CREATE_TOOLS = ("createJiraIssue",)
 
 MCP_CREATE_RE = re.compile(r"^mcp__.+__(createJiraIssue)$")
 MCP_EXECUTE_RE = re.compile(r"^mcp__.+__executeWrite$")
-SEGMENT_SPLIT_RE = re.compile(r"&&|\|\||[;|\n]")
-GH_ISSUE_CREATE_RE = re.compile(r"^gh\s+issue\s+create(\s|$)")
-GH_API_RE = re.compile(r"^gh\s+api\s")
-GH_ISSUES_PATH_RE = re.compile(r"repos/[^/\s]+/[^/\s]+/issues/?([\s\"'?]|$)")
-GH_WRITE_FLAG_RE = re.compile(r"\s(-X\s*POST|--method[=\s]+POST|--input|-f|-F|--field|--raw-field)([=\s]|$)",
-                              re.IGNORECASE)
 
 SKILL_HINT = ("Tracker creates go through the plan-staged-rollout create-issue skill and its adapter "
               f"({GUARD_KEY} is on in plan-staged-rollout.toml). Run the skill's pipeline; if a step "
@@ -121,10 +116,20 @@ def _token_key(tool: str, arguments: dict) -> str:
     return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
 
-def issue_token(spec: dict) -> None:
+def issue_token(spec: dict) -> bool:
     """Record that the adapter issued this create call spec, so the hook
     lets exactly that call through once. Written whether or not the guard
-    is on, so turning it on mid-run cannot strand a confirmed create."""
+    is on, so turning it on mid-run cannot strand a confirmed create. A
+    folder that cannot be written never fails the adapter: with the guard
+    off nothing reads the token, and with it on the hook denies the call
+    and says why."""
+    try:
+        return _write_token(spec)
+    except OSError:
+        return False
+
+
+def _write_token(spec: dict) -> bool:
     d = _token_dir()
     d.mkdir(parents=True, exist_ok=True)
     now = time.time()
@@ -136,6 +141,7 @@ def issue_token(spec: dict) -> None:
             pass
     key = _token_key(spec["tool"], spec["arguments"])
     (d / f"{key}.json").write_text(json.dumps({"tool": spec["tool"], "issued": now}), encoding="utf-8")
+    return True
 
 
 def consume_token(tool: str, arguments: dict) -> bool:
@@ -150,17 +156,10 @@ def consume_token(tool: str, arguments: dict) -> bool:
 
 # -------------------------------------------------------------------- hook
 
-def _is_issue_create(segment: str) -> bool:
-    """One command segment that starts with a gh issue create. Only the
-    segment's own words count, so a commit message mentioning one is not."""
-    seg = segment.lstrip(" \t(")
-    if GH_ISSUE_CREATE_RE.match(seg):
-        return True
-    return bool(GH_API_RE.match(seg) and GH_ISSUES_PATH_RE.search(seg) and GH_WRITE_FLAG_RE.search(seg))
-
-
 def decide(event: dict) -> tuple[str, str] | None:
-    """Return (allow|deny, reason), or None to stay out of the decision."""
+    """Return ("deny", reason), or None to stay out of the decision. Never
+    "allow": a hook's allow skips the user's own permission rules, so a call
+    the adapter issued passes with no decision and still meets them."""
     name = event.get("tool_name") or ""
     tin = event.get("tool_input") or {}
     project = Path(event["cwd"]) if event.get("cwd") else None
@@ -169,9 +168,11 @@ def decide(event: dict) -> tuple[str, str] | None:
         if not guard_enabled(project):
             return None
         if consume_token(name, tin):
-            return "allow", "create matches a call spec the create-issue adapter issued"
-        return "deny", ("This createJiraIssue call was not issued by the create-issue Jira adapter "
-                        "(or its arguments were changed). " + SKILL_HINT)
+            return None
+        return "deny", ("This createJiraIssue call does not match an unused call spec from the "
+                        "create-issue Jira adapter: it was written by hand, its arguments were changed, "
+                        "or its one use is spent (a retry after a failed call). To retry, run the "
+                        "adapter's `create --confirm` again, which issues a fresh spec. " + SKILL_HINT)
 
     if MCP_EXECUTE_RE.match(name):
         op = str(tin.get("name") or "")
@@ -181,7 +182,7 @@ def decide(event: dict) -> tuple[str, str] | None:
 
     if name == "Bash":
         cmd = str(tin.get("command") or "")
-        if not any(_is_issue_create(seg) for seg in SEGMENT_SPLIT_RE.split(cmd)) or not guard_enabled(project):
+        if not any(shell_cmd.is_issue_create(seg) for seg in shell_cmd.segments(cmd)) or not guard_enabled(project):
             return None
         return "deny", "Creating a GitHub issue from the Bash tool bypasses create-issue. " + SKILL_HINT
 

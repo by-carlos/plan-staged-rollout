@@ -8,7 +8,8 @@
 #
 # Fail-open when it cannot run at all (no Python): emitting no decision is a
 # pass-through. Once Python runs and the guard is on, write_guard.py fails
-# closed for the calls it guards.
+# closed for the calls it guards. It never emits "allow", only "deny" or
+# nothing, so the user's own permission rules still apply to what passes.
 
 set -uo pipefail
 
@@ -20,7 +21,7 @@ IFS= read -r -d '' input || true
 case "$input" in
   *'"tool_name":"Bash"'*|*'"tool_name": "Bash"'*)
     case "$input" in
-      *'gh issue create'*|*'gh api '*) ;;
+      *gh*issue*|*gh*api*) ;;
       *) exit 0 ;;
     esac
     ;;

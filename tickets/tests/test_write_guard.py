@@ -76,7 +76,13 @@ class On(GuardCase):
                     "cd repo && gh issue create -t x -b y",
                     "gh api repos/o/r/issues -f title=x",
                     "gh api repos/o/r/issues --input body.json",
-                    "gh api -X POST repos/o/r/issues"):
+                    "gh api -X POST repos/o/r/issues",
+                    "gh  issue create -t x",
+                    "GH_REPO=o/r gh issue create -t x",
+                    "command gh issue create -t x",
+                    "echo $(gh issue create -t x)",
+                    "gh api repos/o/r/issues \\\n  --method POST",
+                    "gh api repos/o/r/issues \\\n  -f title=x"):
             self.assertEqual(self.decide("Bash", {"command": cmd})[0], "deny", cmd)
 
     def test_other_gh_calls_pass(self):
@@ -84,18 +90,33 @@ class On(GuardCase):
                     "gh api repos/o/r/issues/4/comments -f body=x", "gh pr create --fill", "ls",
                     "git commit -F - <<'EOF'\nfeat: x\n\ndenies gh issue create from Bash\nEOF",
                     "git commit -m \"block gh api repos/o/r/issues -f title=x\"",
-                    "gh api repos/o/r/issues && git commit -F m.txt"):
+                    "gh api repos/o/r/issues && git commit -F m.txt",
+                    "gh api repos/o/r/issues -X GET -f state=closed",
+                    "cat <<EOF > notes.md\ngh issue create -t x\nEOF",
+                    "git commit -m 'a | gh issue create'"):
             self.assertIsNone(self.decide("Bash", {"command": cmd}), cmd)
 
     def test_token_ignores_the_server_prefix_and_expires(self):
         spec = {"tool": V2 + "createJiraIssue", "arguments": {"summary": "x"}}
         write_guard.issue_token(spec)
-        self.assertEqual(self.decide("mcp__other__createJiraIssue", {"summary": "x"})[0], "allow")
+        self.assertIsNone(self.decide("mcp__other__createJiraIssue", {"summary": "x"}))
         write_guard.issue_token(spec)
         token = next((self.dir / "plan-staged-rollout" / "allowed-writes").glob("*.json"))
         old = token.stat().st_mtime - write_guard.TOKEN_TTL - 60
         os.utime(token, (old, old))
         self.assertEqual(self.decide(V2 + "createJiraIssue", {"summary": "x"})[0], "deny")
+
+    def test_issued_token_passes_with_no_decision_once(self):
+        spec = {"tool": V2 + "createJiraIssue", "arguments": {"summary": "y"}}
+        self.assertTrue(write_guard.issue_token(spec))
+        self.assertIsNone(self.decide(V2 + "createJiraIssue", {"summary": "y"}))
+        decision, reason = self.decide(V2 + "createJiraIssue", {"summary": "y"})
+        self.assertEqual(decision, "deny")
+        self.assertIn("create --confirm", reason)
+
+    def test_unwritable_token_folder_never_fails_the_adapter(self):
+        (self.dir / "plan-staged-rollout").write_text("a file where a folder should be", encoding="utf-8")
+        self.assertFalse(write_guard.issue_token({"tool": V2 + "createJiraIssue", "arguments": {}}))
 
     def test_hook_cli_prints_a_decision(self):
         event = json.dumps({"tool_name": "Bash", "tool_input": {"command": "gh issue create -t x"}})

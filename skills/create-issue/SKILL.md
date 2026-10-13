@@ -281,5 +281,6 @@ says "nothing was posted" in its first line and gives the draft's path.
 | Write denied by hook, policy or permission | Adapter message shown verbatim; run stops; no fallback. |
 | `build` refused by the pipeline gate (write guard on) | Run the step it names, then build again. Never write the missing file by hand. |
 | A hand-made create denied by the write guard | Go back to the adapter. The user alone turns the guard off. |
+| A relayed create denied as already used (retry after a failed call) | Run `create --confirm` again; the adapter issues a fresh call spec. |
 | Create outcome unknown | Duplicate search on the exact title before any retry. |
 | Read-back mismatch after the one repair | `FAILED`, warning naming each field. |

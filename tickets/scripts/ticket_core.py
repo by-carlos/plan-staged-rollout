@@ -583,6 +583,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.op == "review-skip":
         out = {"reason": args.reason, "at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
+        Path(args.work).mkdir(parents=True, exist_ok=True)
         Path(args.work, "review-skipped.json").write_text(json.dumps(out, indent=2, ensure_ascii=False),
                                                           encoding="utf-8")
         print(json.dumps(out, ensure_ascii=False))

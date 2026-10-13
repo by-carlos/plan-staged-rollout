@@ -1,74 +1,43 @@
 #!/usr/bin/env bash
-# PreToolUse guard: deny the two `gh` shapes that corrupt a body silently.
+# PreToolUse guard: deny the gh shapes that corrupt an issue/PR body silently.
 #
-#   gh issue|pr create|comment|edit ... --body-file <f>   -> deny
-#   gh issue|pr create|comment|edit ... -F <f>            -> deny
-#   gh issue|pr create|comment|edit ... --body "@path"    -> deny
-#   anything else                                          -> allow
-#
-# Why each shape is denied:
+#   gh issue|pr create|comment|edit ... --body-file <f> | -F <f>  -> deny
+#   gh issue|pr create|comment|edit ... --body|-b "@path"         -> deny
+#   anything else                                                  -> no decision
 #
 #   --body-file / -F : on native Windows `gh` reads the file as cp1252, not
 #   UTF-8, so every non-ASCII character is double-encoded.
+#   --body "@path"   : only `gh api` expands `@<path>`; `gh issue|pr` posts
+#   the literal path as the body and exits 0.
 #
-#   --body "@path" : `gh api` genuinely expands `@<path>` to file contents, and
-#   `gh issue comment` has a `-F` of its own that means --body-file. The
-#   transfer between the two is natural and `gh` accepts `--body "@path"`
-#   silently as a literal string, exit 0.
+# Plain inline `--body "text"` is safe, and `gh api` is never touched: its
+# `@<path>` expansion and its `-F` are what the GitHub adapter is built on.
 #
-# Plain inline `--body "text"` is safe (the cp1252 bug is in gh's file
-# decoding, not its argument handling) and other tooling depends on it, so it
-# is left alone. `gh api` is never touched — its `@<path>` expansion
-# and its `-F` are the mechanism the GitHub adapter is built on.
+# The rules live in tickets/scripts/shell_cmd.py, which reads the command the
+# way the shell runs it: continuations folded, split into simple commands
+# outside quotes, heredoc bodies dropped, `VAR=x` and `command` prefixes
+# stripped. So `git commit -F -` whose message mentions a gh command is not
+# a gh call, and `GH_REPO=o/r gh issue create \<newline> --body-file b` is.
 #
-# The hook emits only "allow" or "deny", never "ask": whether a hook's "ask" is
-# honoured under defaultMode "auto" has never been reliably measured, and this
-# guard must not rest on an unverified path.
-#
-# Fail-open by construction. Unlike a git-write guard, nothing here protects a
-# remote — a body that fails to post can be posted again. So an unparseable
-# input, a missing jq, or any surprise falls through to "allow" rather than
-# blocking unrelated `gh` work.
+# Never emits "allow": a hook's allow skips the user's own permission rules
+# for the call. It denies or stays silent. Fail-open by construction (no
+# Python 3.11 means no decision): a body that fails to post can be posted
+# again, so nothing here is worth blocking unrelated work over.
 
 set -uo pipefail
 
-decide() { # $1 = allow|deny, $2 = reason  (never "ask" -- see the header)
-  printf '{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"%s","permissionDecisionReason":"%s"}}\n' "$1" "$2"
-  exit 0
-}
+# No forks on the pass-through path: this runs before every Bash call.
+IFS= read -r -d '' input || true
+case "$input" in
+  *gh*issue*|*gh*[[:space:]]pr[[:space:]]*) ;;
+  *) exit 0 ;;
+esac
 
-input=$(cat 2>/dev/null) || decide allow "no hook input"
-command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/null) \
-  || decide allow "hook input not parseable"
-[ -n "$command" ] || decide allow "no command in tool input"
-
-replacement='Use the plan-staged-rollout GitHub adapter instead: python \"${CLAUDE_PLUGIN_ROOT}/tickets/scripts/github_adapter.py\" create|comment|repair ... -- it posts ASCII-escaped JSON through gh api --input and verifies the body that actually landed.'
-
-# Only a command segment that *starts* with a `gh issue|pr` write is in scope,
-# and only that segment's own flags count. Matching anywhere in the string
-# once denied `git commit -F - <<EOF` whose message merely mentioned
-# "gh issue create". Segments split on && || ; | and newlines, so a heredoc
-# line that itself starts with such a gh call is still caught (fail-safe).
-# `gh api` is the sanctioned path and must never be caught here.
-segments=${command//&&/$'\n'}
-segments=${segments//||/$'\n'}
-segments=${segments//;/$'\n'}
-segments=${segments//|/$'\n'}
-re_write='^gh[[:space:]]+(issue|pr)[[:space:]]+(create|comment|edit)([[:space:]]|$)'
-re_file='[[:space:]](--body-file|-F)([[:space:]]|=)'
-re_at="[[:space:]]--body(=|[[:space:]]+)[\"']?@"
-found=
-while IFS= read -r seg; do
-  seg="${seg#"${seg%%[![:space:](]*}"}"
-  [[ $seg =~ $re_write ]] || continue
-  found=1
-  if [[ " $seg" =~ $re_file ]]; then
-    decide deny "gh issue/pr --body-file (and its -F alias) reads the file as cp1252 on native Windows, double-encoding every non-ASCII character. $replacement"
+script="$(cd "$(dirname "$0")/.." && pwd)/tickets/scripts/shell_cmd.py"
+for py in python3 python; do
+  if command -v "$py" >/dev/null 2>&1 && "$py" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; then
+    printf '%s' "$input" | "$py" "$script" gh-body-guard
+    exit 0
   fi
-  if [[ " $seg" =~ $re_at ]]; then
-    decide deny "gh issue/pr --body never expands @<path> -- only gh api does -- so this would post the literal file path as the body text, and gh would exit 0. $replacement"
-  fi
-done <<< "$segments"
-
-[ -n "$found" ] || decide allow "not a gh issue/pr write"
-decide allow "no corrupting body flag"
+done
+exit 0

@@ -442,7 +442,7 @@ class GuardedCreate(AdapterCase):
         self.assertEqual(body["status"], "RELAY", body)
         call = body["calls"][0]
         event = {"tool_name": call["tool"], "tool_input": call["arguments"]}
-        self.assertEqual(write_guard.decide(event)[0], "allow")
+        self.assertIsNone(write_guard.decide(event))  # passes, with no decision of its own
         self.assertEqual(write_guard.decide(event)[0], "deny")
 
     def test_hand_made_create_is_denied(self):

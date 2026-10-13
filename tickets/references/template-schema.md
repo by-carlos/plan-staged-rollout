@@ -57,12 +57,19 @@ it to `true`, a tracker create can only happen at the end of create-issue
   `review-filtered.json` or `review-skipped.json`, and `estimate.json`;
 - the `tracker-write-guard` hook denies a `createJiraIssue` call whose
   arguments the Jira adapter did not issue after `--confirm` (each issued
-  call passes once, within two hours), any `executeWrite` create, and
-  `gh issue create` or a `gh api` POST to an issues endpoint from the Bash
-  tool.
+  call passes once, within two hours; a retry after a failed call needs
+  `create --confirm` again), any `executeWrite` create, and `gh issue create`
+  or a `gh api` POST to an issues endpoint from the Bash tool, judged on the
+  commands the shell will run (`tickets/scripts/shell_cmd.py`), not on words
+  inside quotes or heredocs.
+- the hook never answers "allow": a call it lets through gets no decision
+  from it, so the user's own permission rules still apply.
 
 Edits, comments and links are not guarded. A project file cannot turn off
-what the user file turned on. A config file that cannot be read leaves the
+what the user file turned on; the adapters read the project file from their
+working directory, so run them from the repo for a project-only setting to
+count. The pipeline gate checks that the evidence files exist, not that they
+belong to the current draft. A config file that cannot be read leaves the
 guard off, and the hook passes everything through when no Python 3.11 is on
 `PATH`.
 

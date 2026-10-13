@@ -111,7 +111,8 @@ Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 | `diff` | no | Compares the expected Ticket with the read-back one and returns the per-field list in the Result shape. Whitespace and markdown are normalized; any other difference is reported, not silently accepted. |
 | `repair` | **yes** | Makes one corrective write for the mismatched fields, then runs `readback` and `diff` again. Fields with `repair.after_seconds` (automation overwrite) are read only after that wait. There is **one** repair, never a loop. A mismatch that is still there afterwards is `FAILED`, and the message names each field. |
 
-Every write op ends with `readback` + `diff`, and returns `VERIFIED`
+Every write op ends with a read-back, `readback` + `diff` (Jira's
+`comment` and `transition` read back the comment or status they wrote), and returns `VERIFIED`
 (matched first time), `REPAIRED` (matched after the one repair) or `FAILED`.
 
 ## Safety rules every adapter follows

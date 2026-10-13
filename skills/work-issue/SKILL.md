@@ -13,9 +13,10 @@ Three ways to call it:
   URL). `[base]` is the branch the work lands in, when the user names one.
 - **`work-issue <ticket> --resume`**: continue the ticket's existing branch
   and open pull request instead of starting fresh ("resume issue 124").
-- **`work-issue <ticket> [base] --after <blocker>`**: wait until GitHub
-  issue `<blocker>` closes, then work `<ticket>` as the plain form would
-  ("work 124 after 123"). GitHub only (section 10).
+- **`work-issue <ticket> [base] --after <blocker>`**: wait until the
+  blocking ticket on the same tracker closes (a GitHub issue) or is done (a
+  Jira ticket), then work `<ticket>` as the plain form would ("work 124
+  after 123", "work WID-121 after WID-120"). See section 10.
 
 **The AI prompt decides what happens.** A ticket with an AI prompt section
 is actionable: this skill branches, implements, opens a pull request and

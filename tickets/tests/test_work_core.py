@@ -382,6 +382,20 @@ class UnblockedTests(unittest.TestCase):
         self.assertEqual(r["unblocked"][0]["tier"], "opus-high")
         self.assertEqual(r["unblocked"][0]["mode"], "guide")  # no AI prompt: guide-only, no tier check
 
+    def test_jira_done_category_counts_whatever_the_status_is_called(self):
+        def jira(key, state, links, **kw):
+            return dict(tracker="jira", key=key, title=key, url=None, state=state, links=links,
+                        sections={}, **kw)
+        inn = {"name": "Blocks", "direction": "inward"}
+        merged = jira("WID-1", "Dev Done", [{"name": "Blocks", "direction": "outward", "target": "WID-2"}],
+                      status_category="done")
+        others = [jira("WID-2", "Backlog", [dict(inn, target="WID-1"), dict(inn, target="WID-3")],
+                       status_category="new"),
+                  jira("WID-3", "Dev Done", [], status_category="done")]
+        self.assertEqual([u["key"] for u in wc.unblocked(merged, others, DEFAULT_JIRA)["unblocked"]], ["WID-2"])
+        others[1]["status_category"] = "indeterminate"
+        self.assertEqual(wc.unblocked(merged, others, DEFAULT_JIRA)["still_blocked"][0]["waiting_on"], ["WID-3"])
+
     def test_cli(self):
         d = Path(tempfile.mkdtemp())
         (d / "m.json").write_text(json.dumps(linked("1", blocks=["2"])), encoding="utf-8")

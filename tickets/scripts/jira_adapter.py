@@ -70,6 +70,13 @@ WRITE_OPS = ("create", "edit", "comment", "link")
 SYSTEM_READ_FIELDS = ["summary", "description", "priority", "status", "assignee"]
 STATUS_READ_FIELDS = ["status", "resolution"]
 COMMENT_PAGE = 100  # the most listJiraIssueComments returns in one page
+# Jira's three fixed status categories; a workflow's status names vary, these do not.
+CATEGORY_KEYS = {"to do": "new", "in progress": "indeterminate", "done": "done"}
+# A blocker closed with one of these resolutions was dropped, not finished:
+# the wait asks before it goes on, as GitHub's NOT_PLANNED does.
+ABANDONED_RESOLUTION = re.compile(r"won'?t|duplicate|declined|rejected|cannot|can't|invalid|"
+                                  r"obsolete|incomplete|not a bug|not needed", re.IGNORECASE)
+WAIT_HOURS = 24
 
 
 class Stop(Exception):
@@ -610,7 +617,9 @@ def normalize_issue(raw) -> dict:
         if name in f:
             out[name] = (f[name] or {}).get("name") if isinstance(f[name], dict) else f[name]
     if isinstance(f.get("status"), dict) and isinstance(f["status"].get("statusCategory"), dict):
-        out["status_category"] = f["status"]["statusCategory"].get("key")
+        cat = f["status"]["statusCategory"]
+        # The evidence view carries only the category's name (verified live).
+        out["status_category"] = cat.get("key") or CATEGORY_KEYS.get(str(cat.get("name", "")).lower())
     if "labels" in f:
         out["labels"] = list(f["labels"] or [])
     if "parent" in f:
@@ -1159,6 +1168,59 @@ def transition(run: Path, confirm: bool) -> dict:
 
 
 # --------------------------------------------------------------------------
+# wait (work-issue --after on a Jira blocker)
+
+
+def wait(run: Path) -> dict:
+    """One check of a blocker per call; the session calls it again on each tick.
+
+    No background process can call the MCP, so the session paces the wait
+    itself. Each call relays one status read, then answers WAITING, CLEARED
+    (status category done), ABANDONED (done with a resolution such as Won't
+    Do: ask before going on) or TIMEOUT once the hours have passed. The
+    blocker's status category is the only input; its status name, assignee
+    and comments decide nothing.
+    """
+    payload, state = load_run(run)
+    key = payload["key"]
+    if "started_at" not in state:
+        state["started_at"] = time.time()
+        save_state(run, state)
+    checks = state.get("checks", 0)
+    name = f"wait-{checks + 1}"
+    if not result_path(run, name).exists():
+        if checks and time.time() - state["started_at"] > payload["hours"] * 3600:
+            return {"status": "TIMEOUT", "key": key, "checks": checks,
+                    "message": f"{key} was still not done after {payload['hours']}h."}
+        raise Relay([status_spec(run, payload, key, name)])
+    state["checks"] = checks + 1
+    try:
+        read = normalize_issue(read_result(run, name, payload))
+    except Stop as stop:
+        if stop.code != EXIT_TRACKER or state.get("failures", 0) >= 2:
+            raise
+        state["failures"] = state.get("failures", 0) + 1
+        save_state(run, state)
+        return {"status": "WAITING", "key": key, "checks": state["checks"],
+                "message": f"This check failed and is retried on the next tick: {stop.body['message']}"}
+    state["failures"] = 0
+    save_state(run, state)
+    current, category, resolution = read.get("status"), read.get("status_category"), read.get("resolution")
+    body = {"key": key, "state": current, "status_category": category, "resolution": resolution,
+            "checks": state["checks"]}
+    if category is None:
+        raise Stop(EXIT_TRACKER, {"status": "FAILED", **body, "message":
+                                  f"The status category of {key} could not be read, so the wait "
+                                  "cannot tell when it is done."})
+    if category != "done":
+        return {"status": "WAITING", **body, "message": f"{key} is '{current}', not done yet."}
+    if resolution and ABANDONED_RESOLUTION.search(resolution):
+        return {"status": "ABANDONED", **body,
+                "message": f"{key} was closed as '{resolution}', not finished."}
+    return {"status": "CLEARED", **body, "message": f"{key} is done ('{current}')."}
+
+
+# --------------------------------------------------------------------------
 # CLI
 
 
@@ -1297,6 +1359,14 @@ def cmd_transition(args) -> tuple[int, dict]:
     return EXIT_OK, transition(run, args.confirm)
 
 
+def cmd_wait(args) -> tuple[int, dict]:
+    run = Path(args.run)
+    if not (run / "payload.json").exists():
+        write_payload(run, {"tracker": "jira", "env": load_json(args.env), "cloudId": args.site,
+                            "site_url": site_url(args.site), "key": args.key, "hours": args.hours})
+    return EXIT_OK, wait(run)
+
+
 def cmd_readback(args) -> tuple[int, dict]:
     run = Path(args.run)
     payload, state = load_run(run)
@@ -1386,6 +1456,14 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--status", required=True, help="the target status name, as the board shows it")
     s.add_argument("--confirm", action="store_true")
     s.set_defaults(func=cmd_transition)
+
+    s = sub.add_parser("wait", help="check once whether a blocker is done; call again on each tick")
+    s.add_argument("--run", required=True, help="one run directory for the whole wait")
+    s.add_argument("--key", required=True, help="the blocker")
+    s.add_argument("--site", required=True)
+    s.add_argument("--env", required=True)
+    s.add_argument("--hours", type=float, default=WAIT_HOURS, help="give up after this long")
+    s.set_defaults(func=cmd_wait)
 
     s = sub.add_parser("update", help="rewrite an existing issue from a full draft, then verify it")
     s.add_argument("--run", required=True)

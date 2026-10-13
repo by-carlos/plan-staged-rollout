@@ -505,6 +505,53 @@ class CommentTests(AdapterCase):
         self.assertEqual((code, body["status"], body["actual"]), (ja.EXIT_TRACKER, "FAILED", "truncated"))
 
 
+class WaitTests(AdapterCase):
+    def check(self, *extra):
+        return run_cli("wait", "--run", self.run_dir, "--key", "ABC-9", "--site", "jira.example.com",
+                       "--env", self.env_path, *extra)
+
+    def tick(self, result, *extra):
+        _code, body = self.check(*extra)
+        self.assertEqual(body["calls"][0]["arguments"]["name"], "getJiraIssue")
+        self.answer(body, {Path(body["calls"][0]["result_file"]).stem: result})
+        return self.check(*extra)
+
+    def test_waits_then_clears_on_the_done_category(self):
+        code, body = self.tick(status_read("Work in progress", "indeterminate"))
+        self.assertEqual((code, body["status"], body["checks"]), (ja.EXIT_OK, "WAITING", 1))
+        done = status_read("Dev Done", "done")
+        done["data"]["fields"]["resolution"] = {"name": "Resolved"}
+        code, body = self.tick(done)  # a later tick reads afresh
+        self.assertEqual((body["status"], body["state"], body["checks"]), ("CLEARED", "Dev Done", 2))
+
+    def test_done_as_wont_do_is_abandoned(self):
+        done = status_read("Closed", "done")
+        done["data"]["fields"]["resolution"] = {"name": "Won't Do"}
+        self.assertEqual(self.tick(done)[1]["status"], "ABANDONED")
+
+    def test_checks_once_then_times_out(self):
+        _code, body = self.tick(status_read("Backlog"), "--hours", "0")
+        self.assertEqual(body["status"], "WAITING")
+        _code, body = self.check("--hours", "0")
+        self.assertEqual(body["status"], "TIMEOUT")
+
+    def test_a_failed_check_is_retried_twice_then_stops(self):
+        for expected in ("WAITING", "WAITING"):
+            code, body = self.tick('{"isError": true, "error": "upstream 502"}')
+            self.assertEqual((code, body["status"]), (ja.EXIT_OK, expected))
+        code, body = self.tick('{"isError": true, "error": "upstream 502"}')
+        self.assertEqual((code, body["status"]), (ja.EXIT_TRACKER, "FAILED"))
+
+    def test_unreadable_category_fails_rather_than_waiting_forever(self):
+        code, body = self.tick({"data": {"key": "ABC-9", "fields": {"status": {"name": "Odd"}}}})
+        self.assertEqual((code, body["status"]), (ja.EXIT_TRACKER, "FAILED"))
+
+    def test_evidence_view_category_name_maps_to_its_key(self):
+        read = ja.normalize_issue({"data": {"key": "ABC-1", "fields": {
+            "status": {"name": "Backlog", "statusCategory": {"name": "To Do"}}}}})
+        self.assertEqual(read["status_category"], "new")
+
+
 class TransitionTests(AdapterCase):
     def move(self, status="In review", *extra, env_path=None):
         return run_cli("transition", "--run", self.run_dir, "--key", "ABC-321", "--site", "jira.example.com",

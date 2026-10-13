@@ -15,3 +15,5 @@ jobs:
           python-version: "3.x"
       - run: python3 -m pip install pyyaml
       - run: python3 scripts/validate_plugin.py
+      - run: python3 -m unittest discover -s tickets/tests
+      - run: python3 -m unittest discover -s tickets/scripts/tests

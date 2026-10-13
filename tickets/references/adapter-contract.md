@@ -108,13 +108,16 @@ Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 | `create` | **yes** | Posts the built payload. It needs `--confirm`, which the skill passes only after the user's yes. |
 | `set-fields` | **yes** | Sets fields that the create call cannot carry: GitHub Projects board fields, or Jira fields that are not on the create screen. |
 | `link` | **yes** | Creates links and the parent. It creates the first link, reads it back to confirm the direction, and only then creates the rest. |
-| `comment` | **yes** | Adds a comment, such as the estimate attribution comment. |
-| `fetch` | no | Reads one ticket into a Ticket, sections parsed, for `work-issue`. It also reports whether an `ai_prompt` section exists. |
+| `comment` | **yes** | Adds a comment, such as the estimate attribution comment, then finds it on the ticket again and compares its text. |
+| `fetch` | no | Reads one ticket into a Ticket, sections parsed, with its comments as `thread`, for `work-issue`. It also reports whether an `ai_prompt` section exists. |
+| `transition` | **yes** | Jira only. Moves a ticket to a named status through a workflow transition that leads there, then reads the status back. GitHub's status lives on the board and goes through `set-fields`. |
+| `wait` | no | Jira only. One check of whether a blocking ticket is done, for `work-issue --after`; the session calls it again on each tick. GitHub's wait is a background `gh` loop in the skill. |
 | `readback` | no | Like `fetch`, but asks for every field the payload set, **by explicit field id**. Create and edit responses do not echo custom fields, so a write is never confirmed from its own response. |
 | `diff` | no | Compares the expected Ticket with the read-back one and returns the per-field list in the Result shape. Whitespace and markdown are normalized; any other difference is reported, not silently accepted. |
 | `repair` | **yes** | Makes one corrective write for the mismatched fields, then runs `readback` and `diff` again. Fields with `repair.after_seconds` (automation overwrite) are read only after that wait. There is **one** repair, never a loop. A mismatch that is still there afterwards is `FAILED`, and the message names each field. |
 
-Every write op ends with `readback` + `diff`, and returns `VERIFIED`
+Every write op ends with a read-back, `readback` + `diff` (Jira's
+`comment` and `transition` read back the comment or status they wrote), and returns `VERIFIED`
 (matched first time), `REPAIRED` (matched after the one repair) or `FAILED`.
 
 ## Safety rules every adapter follows
@@ -195,6 +198,25 @@ to a different tool or server. A denial is an answer, not an obstacle.
   have not changed since it was posted) and the same read-back and diff. It never
   changes the issue type and never re-creates links. Jira only; GitHub has
   no equivalent yet.
+- **`fetch`** (comments added for issue 196) also reads the comments into
+  `thread`, oldest first: `listJiraIssueComments` on v2, the `comment`
+  field on v1. When they were cut off or could not be read, `thread_note`
+  says so and the ticket is still returned. It also returns
+  `status_category` (`new`, `indeterminate` or `done`) and `resolution`.
+- **`comment`** finds the posted comment on the ticket again and compares
+  its text before it reports `VERIFIED`.
+- **`transition`** reads the current status and the transitions open to
+  this user, and picks the one whose **target status** has the requested
+  name, case-insensitive (a transition's own name often differs). It makes
+  that transition only with `--confirm`, then reads the status back. A
+  ticket already in that status is not moved (`changed: false`). When no
+  transition leads there it exits 2, naming the statuses reachable now.
+- **`wait`** makes one status read per call and answers `WAITING`,
+  `CLEARED` (status category `done`), `ABANDONED` (done, with a resolution
+  such as Won't Do or Duplicate) or `TIMEOUT` (after `--hours`, 24 by
+  default, and at least one check). The status category is the only input.
+  A failed read is retried on the next two calls before it stops the wait.
+  No background process can call the MCP, so the session paces the calls.
 - **The template it takes is the resolved one** (`ticket_template.py resolve`
   output, or a bare resolved template). The adapter does not resolve
   layering. Its tracker-independent checks and body rendering are

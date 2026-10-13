@@ -724,7 +724,8 @@ template can set — sections, story-point matrix, guarded fields, board
 routing, merge command — is in
 [`tickets/references/template-schema.md`](tickets/references/template-schema.md).
 Keep your organization's field ids and names in a private template file, not
-in a public repo.
+in a public repo. New to this? Start with
+[Customizing the ticket template](docs/ticket-templates.md).
 
 ### `work-issue` or a plan?
 

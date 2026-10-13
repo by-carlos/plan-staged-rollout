@@ -28,6 +28,12 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **`gh-body-guard` no longer denies commands that only mention `gh`.** It
+  matched `gh issue|pr` and `-F` anywhere in the command string, so `git
+  commit -F -` with a message that named "gh issue create" was denied as a
+  corrupting body-file call. It now checks each command segment on its own,
+  and only one that starts with a `gh issue|pr` write. The new
+  `tracker-write-guard` uses the same rule.
 - **create-issue can no longer be shortcut silently.** A session that judged
   the pipeline too heavy for one ticket wrote the body by hand from a team
   reference document, skipped the template, check, gap review and estimate,

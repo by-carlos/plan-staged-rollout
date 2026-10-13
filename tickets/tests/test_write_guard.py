@@ -81,7 +81,10 @@ class On(GuardCase):
 
     def test_other_gh_calls_pass(self):
         for cmd in ("gh issue list", "gh issue edit 4 --body x", "gh api repos/o/r/issues",
-                    "gh api repos/o/r/issues/4/comments -f body=x", "gh pr create --fill", "ls"):
+                    "gh api repos/o/r/issues/4/comments -f body=x", "gh pr create --fill", "ls",
+                    "git commit -F - <<'EOF'\nfeat: x\n\ndenies gh issue create from Bash\nEOF",
+                    "git commit -m \"block gh api repos/o/r/issues -f title=x\"",
+                    "gh api repos/o/r/issues && git commit -F m.txt"):
             self.assertIsNone(self.decide("Bash", {"command": cmd}), cmd)
 
     def test_token_ignores_the_server_prefix_and_expires(self):

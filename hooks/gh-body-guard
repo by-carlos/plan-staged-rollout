@@ -42,21 +42,33 @@ command=$(printf '%s' "$input" | jq -r '.tool_input.command // empty' 2>/dev/nul
   || decide allow "hook input not parseable"
 [ -n "$command" ] || decide allow "no command in tool input"
 
-# Only `gh issue ...` and `gh pr ...` writes are in scope. `gh api` is the
-# sanctioned path and must never be caught here.
-printf '%s' "$command" | grep -Eq '(^|[;&|[:space:]])gh[[:space:]]+(issue|pr)[[:space:]]' \
-  || decide allow "not a gh issue/pr command"
-printf '%s' "$command" | grep -Eq '[[:space:]](create|comment|edit)([[:space:]]|$)' \
-  || decide allow "gh issue/pr command is not a write"
-
 replacement='Use the plan-staged-rollout GitHub adapter instead: python \"${CLAUDE_PLUGIN_ROOT}/tickets/scripts/github_adapter.py\" create|comment|repair ... -- it posts ASCII-escaped JSON through gh api --input and verifies the body that actually landed.'
 
-if printf '%s' "$command" | grep -Eq '[[:space:]](--body-file|-F)([[:space:]]|=)'; then
-  decide deny "gh issue/pr --body-file (and its -F alias) reads the file as cp1252 on native Windows, double-encoding every non-ASCII character. $replacement"
-fi
+# Only a command segment that *starts* with a `gh issue|pr` write is in scope,
+# and only that segment's own flags count. Matching anywhere in the string
+# once denied `git commit -F - <<EOF` whose message merely mentioned
+# "gh issue create". Segments split on && || ; | and newlines, so a heredoc
+# line that itself starts with such a gh call is still caught (fail-safe).
+# `gh api` is the sanctioned path and must never be caught here.
+segments=${command//&&/$'\n'}
+segments=${segments//||/$'\n'}
+segments=${segments//;/$'\n'}
+segments=${segments//|/$'\n'}
+re_write='^gh[[:space:]]+(issue|pr)[[:space:]]+(create|comment|edit)([[:space:]]|$)'
+re_file='[[:space:]](--body-file|-F)([[:space:]]|=)'
+re_at="[[:space:]]--body(=|[[:space:]]+)[\"']?@"
+found=
+while IFS= read -r seg; do
+  seg="${seg#"${seg%%[![:space:](]*}"}"
+  [[ $seg =~ $re_write ]] || continue
+  found=1
+  if [[ " $seg" =~ $re_file ]]; then
+    decide deny "gh issue/pr --body-file (and its -F alias) reads the file as cp1252 on native Windows, double-encoding every non-ASCII character. $replacement"
+  fi
+  if [[ " $seg" =~ $re_at ]]; then
+    decide deny "gh issue/pr --body never expands @<path> -- only gh api does -- so this would post the literal file path as the body text, and gh would exit 0. $replacement"
+  fi
+done <<< "$segments"
 
-if printf '%s' "$command" | grep -Eq "[[:space:]]--body(=|[[:space:]]+)[\"']?@"; then
-  decide deny "gh issue/pr --body never expands @<path> -- only gh api does -- so this would post the literal file path as the body text, and gh would exit 0. $replacement"
-fi
-
+[ -n "$found" ] || decide allow "not a gh issue/pr write"
 decide allow "no corrupting body flag"

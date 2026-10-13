@@ -46,8 +46,9 @@ CREATE_TOOLS = ("createJiraIssue",)
 
 MCP_CREATE_RE = re.compile(r"^mcp__.+__(createJiraIssue)$")
 MCP_EXECUTE_RE = re.compile(r"^mcp__.+__executeWrite$")
-GH_ISSUE_CREATE_RE = re.compile(r"(^|[;&|(\s])gh\s+issue\s+create(\s|$)")
-GH_API_RE = re.compile(r"(^|[;&|(\s])gh\s+api\s")
+SEGMENT_SPLIT_RE = re.compile(r"&&|\|\||[;|\n]")
+GH_ISSUE_CREATE_RE = re.compile(r"^gh\s+issue\s+create(\s|$)")
+GH_API_RE = re.compile(r"^gh\s+api\s")
 GH_ISSUES_PATH_RE = re.compile(r"repos/[^/\s]+/[^/\s]+/issues/?([\s\"'?]|$)")
 GH_WRITE_FLAG_RE = re.compile(r"\s(-X\s*POST|--method[=\s]+POST|--input|-f|-F|--field|--raw-field)([=\s]|$)",
                               re.IGNORECASE)
@@ -149,6 +150,15 @@ def consume_token(tool: str, arguments: dict) -> bool:
 
 # -------------------------------------------------------------------- hook
 
+def _is_issue_create(segment: str) -> bool:
+    """One command segment that starts with a gh issue create. Only the
+    segment's own words count, so a commit message mentioning one is not."""
+    seg = segment.lstrip(" \t(")
+    if GH_ISSUE_CREATE_RE.match(seg):
+        return True
+    return bool(GH_API_RE.match(seg) and GH_ISSUES_PATH_RE.search(seg) and GH_WRITE_FLAG_RE.search(seg))
+
+
 def decide(event: dict) -> tuple[str, str] | None:
     """Return (allow|deny, reason), or None to stay out of the decision."""
     name = event.get("tool_name") or ""
@@ -171,9 +181,7 @@ def decide(event: dict) -> tuple[str, str] | None:
 
     if name == "Bash":
         cmd = str(tin.get("command") or "")
-        hit = GH_ISSUE_CREATE_RE.search(cmd) or (
-            GH_API_RE.search(cmd) and GH_ISSUES_PATH_RE.search(cmd) and GH_WRITE_FLAG_RE.search(cmd))
-        if not hit or not guard_enabled(project):
+        if not any(_is_issue_create(seg) for seg in SEGMENT_SPLIT_RE.split(cmd)) or not guard_enabled(project):
             return None
         return "deny", "Creating a GitHub issue from the Bash tool bypasses create-issue. " + SKILL_HINT
 

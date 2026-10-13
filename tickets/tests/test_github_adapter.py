@@ -506,6 +506,15 @@ class HookTests(unittest.TestCase):
                     "git status"):
             self.assertEqual(self.decision(cmd), "allow", cmd)
 
+    def test_gh_words_in_another_command_are_not_a_gh_call(self):
+        # A commit message that mentions gh, next to git's own -F, once read as
+        # a gh issue --body-file call and was denied.
+        for cmd in ("git commit -q -F - <<'EOF'\nfeat: x\n\ndenies gh issue creates from Bash\nEOF",
+                    "git commit -F msg.txt -m \"see gh issue create\"",
+                    "echo 'gh pr edit 3 -F b.md'",
+                    "gh issue create --title t --body x && git commit -F msg.txt"):
+            self.assertEqual(self.decision(cmd), "allow", cmd)
+
     def test_hook_config_points_at_the_script(self):
         config = json.loads((HOOKS / "hooks.json").read_text(encoding="utf-8"))
         command = config["hooks"]["PreToolUse"][0]["hooks"][0]["command"]

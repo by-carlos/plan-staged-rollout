@@ -12,6 +12,11 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Stage-to-issue linking.** A stage file may carry an optional `Issue:` line
+  (`#123`, `owner/repo#123` or an issue URL) under its title. `/stage-run`
+  prints the linked issue when it picks the stage up, and `/plan-close` lists
+  every stage's linked issue in the closeout. Plans without the field run
+  unchanged, and nothing posts to the issue or changes its status.
 - **Opt-in write guard for tracker creates.** With `guard_tracker_creates =
   true` in `plan-staged-rollout.toml`, both adapters refuse to `build` a create
   unless the draft's work folder holds the resolved `template.json`, the gap

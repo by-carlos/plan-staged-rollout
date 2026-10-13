@@ -54,6 +54,13 @@ Work through these steps **in order**:
    (`stage-f-review.md`). If nothing matches, stop and list the stage files that
    do exist so the user can pick a valid one.
 
+   **Linked issue.** Read the stage file's optional `Issue:` line (the
+   `staged-rollout` skill's *Linking a stage to its issue* defines the
+   format). When it names an issue, print one line — `Linked issue: <ref>` —
+   before anything else about the stage, so it shows even when a later check
+   stops the run. When it is absent, print nothing. Never comment on the
+   issue or change its status.
+
 2. **Defer to the project protocol.** Read `.plan/PLAN.md` and follow its
    **Operating protocol** verbatim for this stage — starting with its
    **Preflight & sync** block (protocol step 0) before reading any status or

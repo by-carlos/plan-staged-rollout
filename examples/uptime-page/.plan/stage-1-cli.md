@@ -1,5 +1,7 @@
 # S1 — CLI runner
 
+Issue: #12
+
 <!-- This stage's flags (depends / mode / exec / model / effort / gate) live ONLY in
 the PLAN.md stage index — the single authoritative home. Do not restate them
 here; a copy is what drifts. -->

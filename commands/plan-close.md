@@ -98,6 +98,13 @@ Work through these steps **in order**:
    vanishing, but they do not by themselves make a merged, fully-pushed
    worktree unsafe.
 
+   **Linked issues.** Once the gate has passed, read the optional `Issue:` line
+   of every `.plan/stage-*.md` file (the `staged-rollout` skill's *Linking a
+   stage to its issue* defines the format) — before step 4 can delete them —
+   and print one list, `Linked issues:`, one row per stage that has one
+   (`S<N> — <ref>`). A plan whose stages carry none prints nothing. This is
+   report-only: never comment on an issue or change its status.
+
 3. **Distill the story — dispatch a subagent.** `.plan/PLAN.md` and the full
    `.plan/LEDGER.md` are the largest material this command touches, and
    nothing after this step needs them once the PR body exists — so don't keep
@@ -168,5 +175,6 @@ Work through these steps **in order**:
 6. **End announcement.** State explicitly: the plan is **closed**, the final
    PR has been proposed (or opened, if the user acted on it during this
    session, or always under `--unattended`) with its URL, which worktrees
-   were removed and which `.plan/` decision was applied, and that there is
+   were removed, which `.plan/` decision was applied, the linked issues from
+   step 2 (when any), and that there is
    nothing left to run **except the merge, which is the user's**. Then stop.

@@ -1,12 +1,25 @@
 # Why staged rollouts
 
-[Home](../README.md) · [Install](install.md) · [Staged rollout](staged-rollout.md) ·
-[Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [FAQ](faq.md) ·
-[Reference](reference.md)
+[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · **Why**
 
-**In short:** one long session for a big build gets expensive, drifts and
-is hard to resume or undo. Making each *session* small, with the plan and the
-proof written down in the repo, fixes all four.
+**In short:** one long session for a big build gets expensive, drifts, hides
+its progress and is hard to undo. Making each *session* small, with the plan
+and the proof written down in the repo, fixes all four.
+
+```mermaid
+flowchart TB
+    subgraph one["One long session: each part carries everything before it"]
+      direction LR
+      a1["part 1<br/>context: 1"] --> a2["part 2<br/>context: 1 + 2"] --> a3["part 3<br/>context: 1 + 2 + 3"]
+    end
+    subgraph many["Staged rollout: each stage starts fresh"]
+      direction LR
+      b1["stage 1<br/>fresh session"] --> L[("plan +<br/>ledger")]
+      L --> b2["stage 2<br/>fresh session"]
+      L --> b3["stage 3<br/>fresh session"]
+    end
+    one ~~~ many
+```
 
 ## The problem
 
@@ -56,10 +69,10 @@ stop and resume whenever you have time.
 
 | Goal | Mechanism |
 |---|---|
-| **Token reduction** | Fresh session per stage: cost per stage is `O(PLAN.md + stage file + ledger table)`, flat no matter how many stages preceded it. No compaction spiral. |
+| **Token reduction** | A fresh session per stage reads only `PLAN.md`, its stage file and the ledger table, so each stage costs about the same however many came before. No compaction spiral. |
 | **Tracking** | Ledger with fixed statuses and pasted acceptance evidence. "Where were we?" is a 10-line table, not a transcript. |
 | **Control** | Sessions stop at stage boundaries. You choose pace and order; PR-per-stage gives you an acceptance gate on every unit. Human-gated work becomes an explicit `blocked` + runbook, never faked progress. |
-| **Versioning / undo** | `main → plan-<slug> → plan-<slug>-s<N>`. Undo the last stage = discard its branch, but only before its PR merges into the plan branch — after merge, undo is a revert on the plan branch instead. Stage PRs squash-merge into the plan branch; the final PR merges into `main` with a merge commit, so `main` gets one clean commit per stage while `git log --first-parent main` stays one merge per project. |
+| **Versioning / undo** | Undo the last stage by discarding its branch before its PR merges, or reverting its squash commit on the plan branch after. `main` gets one commit per stage. Details: [Branches and worktrees](staged-rollout.md#branches-and-worktrees). |
 
 ## When *not* to use this
 
@@ -117,7 +130,7 @@ earlier stage's assumptions were written down.
 
 ## Roadmap
 
-- Parallel waves in the remote orchestrator (it is sequential today)
+- Parallel waves in the cloud orchestrator (it runs one stage at a time today)
 - Subagent fan-out for independent sub-steps within a stage
 - Progress dashboard rendered from the ledger
 - Skill evals (triggering accuracy, protocol adherence)

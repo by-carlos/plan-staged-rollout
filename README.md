@@ -4,11 +4,14 @@
 
 **Run big projects as many small sessions — not one huge one.**
 
-A Claude Code plugin. It splits a build that is too big for one session into
-small **stages**. Each stage runs in its own fresh session, and records proof
-that it works before the stages that depend on it start. For smaller work, it
-also has two skills: one writes a GitHub issue or Jira ticket, and the other
-has Claude work one.
+A Claude Code plugin. It splits a build too big for one session into small
+**stages** and runs each stage in its own fresh session. A stage counts as
+done only when its acceptance check has run and the output is recorded in
+`LEDGER.md`, the plan's progress file in your repo.
+
+It also includes two skills for single tickets: `create-issue` writes a
+GitHub issue or Jira ticket, and `work-issue` has Claude work one. See
+[Tickets](docs/tickets.md).
 
 ## Is it for me?
 
@@ -19,35 +22,43 @@ has Claude work one.
 | One task that fits in **one to three sessions** | a **ticket**: `create-issue`, then `work-issue` |
 | Exploring, with no design you could write down yet | neither, for now |
 
+**What it costs you:** one planning session on an Opus-class model, then one
+session per stage, each on the model its stage recommends. The example plan
+below has three stages plus a review; the pilot rollout had eight.
+
 ## How a plan runs
 
 ```mermaid
 flowchart LR
-    idea([Project idea]) --> plan["<b>plan-stages</b><br/>design, split into stages,<br/>commit .plan/"]
-    plan --> stage["<b>stage-run N</b><br/>one fresh session<br/>per stage"]
-    stage -->|"PR into the plan branch,<br/>proof in the ledger"| ledger[("LEDGER.md")]
-    ledger -->|"next runnable stage"| stage
-    ledger -->|"all stages done"| review["<b>review stage</b><br/>lists loose ends"]
-    review -->|"follow-up stages"| stage
-    review --> close["<b>plan-close</b><br/>final PR to main,<br/>you merge it"]
+    idea([Your idea]) --> plan["<b>1. Plan</b><br/>split into stages"]
+    plan --> run["<b>2. Run a stage</b><br/>new session each time"]
+    run -->|"more stages left"| run
+    run --> review["<b>3. Review</b><br/>catch loose ends"]
+    review --> close["<b>4. Close</b><br/>one PR into main"]
+    close --> merge([You merge it])
 ```
 
-- **A fresh session for each stage.** A stage reads the plan, its own stage
-  file and the ledger, never the whole history, so the cost of each stage
-  stays flat however many came before it.
-- **One branch and one pull request (PR) per stage**, merged into a plan
-  branch. `main` is not touched until the final PR, and you merge that one
-  yourself.
-- **A stage is done when its check has run** and the output is pasted into
-  `LEDGER.md`. The model saying it finished is not enough.
-- **The whole plan is committed** in a `.plan/` folder in your repo. Close
-  the laptop whenever you like: the next session reads where things stand.
+- **Each stage gets a fresh session**, so a stage costs about the same
+  however many came before it.
+- **Each stage is its own branch and pull request (PR)** into a plan branch.
+  `main` is not touched until the final PR, and you merge that one yourself.
+- **Everything is committed** in a `.plan/` folder in your repo. Close the
+  laptop whenever you like: the next session reads where things stand.
+
+What the progress file looks like halfway through (from the
+[example plan](examples/uptime-page/.plan/LEDGER.md)):
+
+| Stage | Status | Verified | Date | Result |
+|---|---|---|---|---|
+| S0 Checker core | done | yes | 2026-07-08 | Checker + config parsing landed; PR #1 squash-merged |
+| S1 CLI runner | doing | — | 2026-07-10 | Args + dispatch done; `--config` override and exit codes left (see notes) |
+| S2 Status page | todo | — | — | — |
+| SF Plan review | todo | — | — | — |
 
 ## Install
 
-**Desktop app** (the **Code** tab): click **+** next to the prompt box,
-choose **Plugins**, then **Add**. Enter `by-carlos/plan-staged-rollout` and
-click **Sync**. Then click the **+** next to Plan-Staged Rollout.
+**Needs:** Claude Code (the CLI, or the desktop app's **Code** tab), and a git
+repo on GitHub with the `gh` CLI signed in.
 
 **CLI:**
 
@@ -56,8 +67,12 @@ claude plugin marketplace add by-carlos/plan-staged-rollout
 claude plugin install plan-staged-rollout@plan-staged-rollout
 ```
 
-There is nothing to configure. For other install routes, requirements and
-updating, see [Install and update](docs/install.md).
+**Desktop app:** in the **Code** tab, click **+** next to the prompt box,
+then **Plugins** → **Add**. Enter `by-carlos/plan-staged-rollout`, click
+**Sync**, then click the **+** beside Plan-Staged Rollout to install it.
+
+There is nothing to configure. Other routes, full requirements and updating:
+[Install and update](docs/install.md).
 
 ## Try it
 
@@ -65,39 +80,38 @@ updating, see [Install and update](docs/install.md).
 2. Run `/plan-staged-rollout:plan-stages <your idea>`. It asks about the
    design, splits the work into stages and commits `.plan/`. **It does not
    run any stage.**
-3. Open a **new** session. It tells you which stage is next. Say yes.
-4. Repeat step 3 until every stage is done, then run
-   `/plan-staged-rollout:plan-close`.
-
-To see a plan before you make one, [`examples/uptime-page/`](examples/) is a
-real `.plan/` captured halfway through a rollout.
+3. Open a **new** session. It lists the stages that can run now; say yes to
+   one. (If it says nothing, run `/plan-staged-rollout:stage-run 0`.)
+4. Repeat step 3 until every stage is done, including the final review
+   stage. Then run `/plan-staged-rollout:plan-close` and merge the PR it
+   opens.
 
 ## Commands and skills
 
-Each one starts from its slash command, or from plain language once the
-plugin is installed.
+All commands start with `/plan-staged-rollout:`. Each also starts from plain
+language once the plugin is installed.
 
-| To… | Type | Or say |
+| To… | Command | Or say |
 |---|---|---|
-| Split a project into stages | `/plan-staged-rollout:plan-stages <idea>` | "break this project into stages" |
-| Run one stage in this session | `/plan-staged-rollout:stage-run <N>` | "run stage 2", "run the next stage" |
-| Run every remaining stage in the cloud | `/plan-staged-rollout:plan-run` | "run the plan" |
-| Finish the plan and open the final PR | `/plan-staged-rollout:plan-close` | "close the plan" |
-| Write one ticket | `/plan-staged-rollout:create-issue` | "create an issue for …" |
-| Have Claude work one ticket | `/plan-staged-rollout:work-issue <ticket>` | "work issue 124" |
+| Split a project into stages | `plan-stages <idea>` | "break this project into stages" |
+| Run one stage in this session | `stage-run <N>` | "run stage 2", "run the next stage" |
+| Run every remaining stage in the cloud, instead of one by one | `plan-run` | "run the plan" |
+| Finish the plan and open the final PR | `plan-close` | "close the plan" |
+| Write one ticket | `create-issue` | "create an issue for …" |
+| Have Claude work one ticket | `work-issue <ticket>` | "work issue 124" |
 
 ## Documentation
 
 | Page | Read it when |
 |---|---|
 | [Install and update](docs/install.md) | you install, update, or can't find the plugin |
-| [How a staged rollout works](docs/staged-rollout.md) | before your first plan: the steps, branches, review and closeout |
+| [How a staged rollout works](docs/staged-rollout.md) | before your first plan: the steps, branches, review and close |
 | [Running a plan in the cloud](docs/ON-THE-RUN.md) | you want stages to run without opening each session yourself |
 | [Tickets](docs/tickets.md) | you want to use `create-issue` or `work-issue` |
 | [Customizing the ticket template](docs/ticket-templates.md) | your team's tickets follow their own format |
 | [FAQ](docs/faq.md) | is my plan saved? How do I resume, skip, undo or stop? |
 | [Reference](docs/reference.md) | you want every flag, status and `.plan/` file |
-| [Why staged rollouts](docs/why.md) | you want the problem it solves and how it compares |
+| [Why staged rollouts](docs/why.md) | you want the problem it solves, when not to use it, and how it compares |
 
 ## Contributing
 
@@ -114,4 +128,4 @@ Built by **Carlos Eng** —
 
 [FSL-1.1-ALv2](LICENSE) © Carlos Eng — free for any use except building a
 competing commercial product, and each release becomes Apache-2.0 two years
-after it is made available. Versions released before this change remain MIT.
+after it is made available. Versions before 0.6.0 remain MIT.

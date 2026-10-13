@@ -1,15 +1,13 @@
 # Running a plan in the cloud — `plan-run`
 
-[Home](../README.md) · [Install](install.md) · [Staged rollout](staged-rollout.md) ·
-**Cloud runs** · [Tickets](tickets.md) · [FAQ](faq.md) ·
-[Reference](reference.md)
+[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · **Cloud runs** · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
 **In short:** instead of opening a new session for every stage, keep one
 local session open (the **orchestrator**) and run `plan-run`. It fires each
 remaining stage as its own cloud session against your GitHub repo, one after
 another, so a whole build can run while you watch from your phone. The
-computer running the orchestrator still has to stay on, and the final merge
-into `main` is still yours.
+computer running the orchestrator has to stay on, and the final merge into
+`main` is always yours.
 
 ```mermaid
 sequenceDiagram
@@ -21,7 +19,7 @@ sequenceDiagram
     loop each stage that can run
         O->>G: read LEDGER.md
         O->>C: fire the stage
-        C->>G: work, open and merge the stage PR,<br/>mark the stage done or blocked
+        C->>G: work, open the stage PR, merge it<br/>(merge: auto), mark the stage done
         O-->>C: check in every few minutes
     end
     O->>You: stops: all done, a stage that needs you,<br/>or a run that died
@@ -38,24 +36,26 @@ repository. From there:
 2. It fires that stage as a cloud session, using Claude Code's built-in
    `RemoteTrigger` tool. No script, no credential to set up.
 3. The cloud session runs the stage on its own: writes the code, opens a pull
-   request, merges it into the plan branch, and records `done` (or `blocked`)
-   in the ledger. Nothing it does needs you.
+   request, and records `done` (or `blocked`) in the ledger. Under the plan
+   flag **`merge: auto`** it also squash-merges the stage PR into the plan
+   branch once checks are green. Under `merge: manual` it leaves the PR open
+   for you and the row at `doing`, so a plan meant to run unattended should
+   set `merge: auto`.
 4. The orchestrator checks in every few minutes, watching the run and
    re-reading the ledger, then fires the next stage that can run.
-
-It stops when nothing is left to run, when a stage needs a person, or when a
-run goes dead. The last merge, plan branch into `main`, is always yours.
 
 ## What you need first
 
 - **The plugin installed locally.** `plan-run` is a command in your local
   session, not something that runs by itself.
-- **A plan already pushed to GitHub**, with `.plan/RUNNER.md` in it. Make the
-  plan the usual way with `plan-stages` on the branch `plan-<slug>`, and push
-  it. New plans get `RUNNER.md` automatically; an older plan gets it
+- **A plan on GitHub**, with `.plan/RUNNER.md` in it. `plan-stages` creates
+  and pushes the plan branch `plan-<slug>`; check it is on GitHub before you
+  start. New plans get `RUNNER.md` automatically; an older plan gets it
   backfilled from the plugin's template before its first cloud run.
-- **Cloud access enabled on your Claude account.** `RemoteTrigger` needs it:
-  no claude.ai/code cloud, no cloud runs.
+- **`merge: auto`** on the plan flags line in `PLAN.md`, if you want stages to
+  run one after another without you (see [Plan flags](reference.md#plan-flags)).
+- **Cloud access on your Claude account.** `RemoteTrigger` very likely needs
+  it (not yet checked across account types).
 - **GitHub connected to claude.ai/code for this repository**, so a cloud
   session can clone it and open pull requests through the GitHub MCP server.
 
@@ -74,19 +74,21 @@ says that:
 
 Say yes, and it starts firing.
 
-While it runs, your local session prints what it's doing: which stage it
-fired, the cloud session's link, and its status each time it checks in. You
-don't have to watch: leave the terminal open and come back to it.
+While it runs, your local session prints which stage it fired, the cloud
+session's link, and its status each time it checks in. You don't have to
+watch: leave the terminal open and come back to it. Each fired stage is an
+ordinary cloud session; open its link at [claude.ai/code](https://claude.ai/code)
+on desktop or in the phone app to watch it or read its log.
 
-Each fired stage is an ordinary cloud session. Open the link the orchestrator
-prints, at [claude.ai/code](https://claude.ai/code) on desktop or in the
-phone app, to watch it work or read its log. It is just another session in
-your account's list.
+It stops when:
 
-It ends one of two ways. Either every stage is `done` or `skipped` and it
-tells you so, or it reaches a `gate: human` or `gate: local` stage, a
-dependency that isn't ready, or a dead run, and stops in front of it. Either
-way, merging the plan branch into `main` is left to you.
+- every stage is `done` or `skipped` (it tells you so);
+- it reaches a `gate: human` or `gate: local` stage, or a dependency that
+  isn't ready; or
+- a run died (see below).
+
+Either way, merging the plan branch into `main` is left to you. To carry on
+after a stop, run `plan-run` again.
 
 ## What a cloud stage can't reach
 
@@ -100,70 +102,54 @@ tells you to run it yourself.
 
 - **Blocked** means the ledger says so: a `gate: human` or `gate: local`
   stage, or a row the stage itself marked `blocked` with a note. Read the
-  note, fix or run what it needs, then run `plan-run` again to pick up from
-  there.
+  note, fix or run what it needs, then run `plan-run` again.
 - **Dead** means the cloud run ended but the ledger row never moved, even
   after the orchestrator's grace period. The orchestrator reports the session
   id, its claude.ai link, what its log showed, and whether the stage branch or
-  its pull request exist on the remote. It never writes to the plan branch on
-  the stage's behalf. You decide what happens next: fire the stage again, fix
-  it by hand, or open a normal local session for it.
+  its pull request exist on GitHub. It never writes to the plan branch on the
+  stage's behalf. You decide: fire the stage again, fix it by hand, or run it
+  in a normal local session.
 
 ## Known limits
 
-- **Reasoning effort isn't booked.** `RemoteTrigger` books a stage's `model`
-  but has no measured way to book its `effort`, so the `effort` column is
-  restated in the fired prompt rather than set. The fired stage is meant to
-  read the effort it actually got from `CLAUDE_EFFORT` and block on a
-  mismatch, but in the 25 Sep 2026 end-to-end run no fired stage read it:
-  each reported "effort matches" by taking the value from its own prompt.
-  Treat a cloud stage's effort as requested, not confirmed.
-- **Spent routines aren't cleaned up automatically.** Each fire leaves a
-  used-up routine behind. They switch themselves off but stay listed, and the
-  API can't delete them: clear them out at claude.ai/code/routines once a plan
-  finishes.
-- **A cloud run can't delete remote branches** (403 from the git proxy), so
-  merged stage branches linger on the remote until someone deletes them.
-- **No path persists outside the primary clone between tool calls**, so a
-  sibling worktree can vanish mid-stage. A cloud run therefore uses one
-  branch per stage rather than one worktree per stage.
-- **The branch name may look wrong.** A fired stage runs from a checkout whose
-  *content* is the plan branch but whose HEAD may show a platform-named
-  branch. The stage prompt tells the session this is expected.
-- **Cloud access on the account is a likely prerequisite, not a measured
-  one.** `RemoteTrigger`'s availability probably tracks it, but that hasn't
-  been checked across account types.
-- **Proven end to end once, on a small fixture** (25 Sep 2026, #168). A
-  four-stage plan ran to completion on a disposable repo: two dependent auto
-  stages fired and settled `done` without a person (2 and 4 minutes each),
-  the `gate: human` stage was refused and run by hand, the auto closeout
-  passed its verification script 43/43, and the hand-made plan→main merge
-  left every stage as its own commits on `main`. Four cloud sessions were
-  fired, leaving four spent routines and three merged stage branches to
-  clear by hand. Two gaps surfaced and are fixed in the contract: the fired
-  prompt must spell out the plan-branch checkout (a Sonnet stage told only
-  "per `.plan/RUNNER.md`" looked at the default branch, found no plan and
-  gave up), and a finished run keeps `status: active` — the end signal is
-  `worker_status: idle`. No dead run past the grace period and no
-  grace-period behaviour were observed beyond that one failed fire. One
-  small plan is one data point: a long plan with slow stages is still
-  unmeasured.
+| Limit | What it means for you |
+|---|---|
+| **Effort isn't booked.** `RemoteTrigger` books a stage's `model` but has no measured way to book its `effort`, so the effort is only restated in the fired prompt. In the proof run below, no fired stage actually read `CLAUDE_EFFORT`; each took the value from its own prompt. | Treat a cloud stage's effort as requested, not confirmed. |
+| **Spent routines stay listed.** Each fire leaves a used-up routine that switches itself off but can't be deleted through the API. | Clear them out at claude.ai/code/routines once a plan finishes. |
+| **A cloud run can't delete remote branches** (the git proxy refuses with 403). | Merged stage branches linger on GitHub until you delete them. |
+| **No worktrees.** Nothing outside the primary clone persists between tool calls, so a sibling worktree could vanish mid-stage. | A cloud run uses one branch per stage, without a worktree per stage. |
+| **The branch name may look wrong.** The checkout's content is the plan branch, but its HEAD may show a platform-named branch. | Expected; the stage prompt tells the session so. |
+| **Cloud access is a likely requirement, not a measured one.** | If `plan-run` can't fire, check that cloud sessions work on your account. |
+| **Proven once, on a small plan** (see below). | A long plan with slow stages is still unmeasured. |
+
+**The proof run** ([#168](https://github.com/by-carlos/plan-staged-rollout/issues/168),
+25 Sep 2026): a four-stage plan ran to completion on a disposable repo.
+
+- **What worked:** two dependent `gate: auto` stages fired and settled `done`
+  without a person (2 and 4 minutes each); the `gate: human` stage was
+  refused and run by hand; the unattended `plan-close` passed its
+  verification script 43/43; and the hand-made merge into `main` kept every
+  stage as its own commit.
+- **What it left behind:** four spent routines and three merged stage
+  branches to clear by hand.
+- **Two gaps, both fixed since:** the fired prompt must spell out the
+  plan-branch checkout (a Sonnet stage told only "per `.plan/RUNNER.md`"
+  looked at the default branch, found no plan and gave up); and a finished
+  run keeps `status: active`, so the end signal is `worker_status: idle`.
+- **Not observed:** a dead run past the grace period, or any grace-period
+  behaviour beyond that one failed fire.
 
 ## Under the hood
 
-The orchestrator is an ordinary interactive Claude Code session in a clone of
-your repo, running `plan-run` with no arguments. It moves every *remaining*
-stage off your machine, not just the next one. Each fired stage is a
-first-class session at claude.ai/code that you can open, watch and resume.
-The orchestrator itself stays local, so the machine running it has to stay
-on: close the laptop and the stage already fired runs to its end, but nothing
-fires the next one. The full command is
-[`commands/plan-run.md`](../commands/plan-run.md).
+The orchestrator is an ordinary interactive Claude Code session running
+`plan-run` with no arguments. Each fired stage is a first-class session at
+claude.ai/code that you can open, watch and resume. Close the laptop and the
+stage already fired runs to its end, but nothing fires the next one. The full
+command is [`commands/plan-run.md`](../commands/plan-run.md).
 
-There is nothing to install and no credential to manage. It fires stages
-through **`RemoteTrigger`**, a tool built into Claude Code that talks to the
-claude.ai routines API, with your account's own authentication handled
-in-process. For each stage it:
+It fires stages through **`RemoteTrigger`**, a tool built into Claude Code
+that talks to the claude.ai routines API with your account's own
+authentication. For each stage it:
 
 1. creates a run-once routine to hold the stage's settings: the repository,
    the stage prompt, and the stage's `model` from the index;
@@ -172,47 +158,39 @@ in-process. For each stage it:
 3. polls the run's condensed log to see it finish, fail or crash before
    firing the next.
 
-The guarantees, which carry over unchanged from the retired local driver:
+Its guarantees:
 
-- **`gate: human` and `gate: local` stages are never fired.** A cloud
-  container has strictly less access than your machine, so the orchestrator
-  stops in front of them.
+- **`gate: human` and `gate: local` stages are never fired.** A cloud session
+  has strictly less access than your machine.
 - **Dependencies must read `done` or `skipped` in the ledger** before a stage
-  fires. Firing out of order is a deliberate operator choice, never a
-  default.
-- **It refuses to drive from a protected branch**, and **the plan→main merge
-  stays manual and done by a person in every mode.**
-- **The ledger is the only state.** Stop driving whenever you like and pick
-  the plan up later, from this or any other session, from what is written
-  down.
+  fires. Firing out of order is a deliberate choice by you, never a default.
+- **It refuses to run from a protected branch** (such as `main`), and **the
+  merge into `main` is always done by a person.**
+- **The ledger is the only state.** Stop whenever you like and pick the plan
+  up later, from this or any other session.
 
-**Plugins do not load in cloud containers**, so a fired session has no
-`plan-run` or `stage-run` to call. It doesn't need one: the plan carries its
-own instructions. `.plan/RUNNER.md`, scaffolded by `plan-stages`, tells a
-cold session how to run one stage, and `.plan/PLAN.md` carries the operating
-protocol it defers to. The fired prompt is a short instruction to check out
-the plan branch and follow them, which is why the plan branch must be pushed
-before anything fires. A plan made before `RUNNER.md` existed gets it
-backfilled from the plugin's templates (see
-[`remote-driver.md`](../skills/staged-rollout/references/remote-driver.md)).
+**Plugins don't load in cloud sessions**, so a fired session has no
+`stage-run` to call. It doesn't need one: `.plan/RUNNER.md`, scaffolded by
+`plan-stages`, tells a cold session how to run one stage, and `.plan/PLAN.md`
+carries the operating protocol it follows. The fired prompt tells the session
+to check out the plan branch and follow them, which is why the plan branch
+must be on GitHub before anything fires.
 
-## What was tried before
-
-Two earlier designs didn't make it into the current one: hand-provisioning
-one cloud routine per model named in the stage table, and driving stages with
-a Python script posting directly to the session-creation API (no native tool,
-and it meant hand-maintaining an OAuth credential, which a public plugin
-should not ship). `claude --cloud` was also considered and rejected: it needs
-an interactive terminal and can't be scripted or called from a session.
+**Designs tried before:** one hand-made cloud routine per model in the stage
+table; and a Python script posting directly to the session-creation API,
+which meant hand-maintaining an OAuth credential that a public plugin should
+not ship. `claude --cloud` was rejected because it needs an interactive
+terminal and can't be called from a session. The current guarantees carry
+over from those earlier designs unchanged.
 
 ## If you want the details
 
 - [`remote-driver.md`](../skills/staged-rollout/references/remote-driver.md) —
-  the authoritative contract: the exact `RemoteTrigger` calls, the poll
-  cadence, the dead-run definition, every refusal, and what is measured and
-  what is still open.
+  the authoritative contract: the fired prompt's shape, the exact
+  `RemoteTrigger` calls, the poll cadence, the dead-run definition, every
+  refusal, and what is measured and what is still open.
 - [`.plan/RUNNER.md`](../skills/staged-rollout/references/templates/RUNNER.md) —
-  what a fired cloud session actually follows to run its one stage.
+  what a fired cloud session follows to run its one stage.
 - [`examples/on-the-run/`](../examples/on-the-run/) — retired prompt
   contracts from the earlier routine-based design, kept only so old links
   resolve.

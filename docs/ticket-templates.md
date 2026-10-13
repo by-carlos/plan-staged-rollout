@@ -1,8 +1,10 @@
 # Customizing the ticket template
 
-[Home](../README.md) · [Install](install.md) · [Staged rollout](staged-rollout.md) ·
-[Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [FAQ](faq.md) ·
-[Reference](reference.md)
+[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · **Ticket template** · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
+
+**In short:** you don't need a template. To change the ticket format, write a
+small TOML file that says `extends = "default"` and states only what
+differs, point `ticket_template` at it, and validate it.
 
 `create-issue` and `work-issue` write and read tickets in the shape a
 **template** describes: which sections a ticket has, the title rules, the
@@ -67,11 +69,11 @@ tracker's template and inherit the other.
 ## Check it
 
 ```
-python <plugin>/tickets/scripts/ticket_template.py validate <your-template.toml>
+python3 <plugin>/tickets/scripts/ticket_template.py validate <your-template.toml>
 ```
 
-The plugin directory is under your Claude config folder, in
-`plugins/cache/`. A template that is missing or invalid never stops a run: the
+Use `python` instead of `python3` on Windows. `<plugin>` is the installed
+plugin's folder, under your Claude config folder in `plugins/cache/`. A template that is missing or invalid never stops a run: the
 skill prints one notice that names the path and the first error, then uses the
 built-in default.
 

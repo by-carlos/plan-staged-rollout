@@ -1,12 +1,12 @@
 # Install and update
 
-[Home](../README.md) · **Install** · [Staged rollout](staged-rollout.md) ·
-[Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [FAQ](faq.md) ·
-[Reference](reference.md)
+[Home](../README.md) · **Install** · [How it works](staged-rollout.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
-**In short:** install it from the desktop app's **Plugins** pane or with two
-CLI commands. There is nothing to configure. To update, use the CLI: the
-desktop app does not always notice a new version.
+**In short:** install it with two CLI commands or from the desktop app's
+**Plugins** pane; there is nothing to configure. It runs only in the Claude
+Code CLI and the desktop app's **Code** tab, not in Chat, Cowork or
+claude.ai. To update, use the CLI: the desktop app does not always notice a
+new version.
 
 ## Install
 
@@ -85,17 +85,15 @@ Some parts need more than a session:
 
 | Part | Needs | Without it |
 |---|---|---|
-| [Session-start nudge](staged-rollout.md#session-start-nudge) | `bash` (on Windows, Git Bash). The hook ships as a cmd/bash wrapper, so it runs on Linux, macOS and Windows. | No nudge. Everything else works: the commands are run by the model, not by shell scripts. |
-| [Running a plan in the cloud](ON-THE-RUN.md) | Cloud access on your Claude account, and GitHub connected to claude.ai/code for the repo. The orchestrator fires stages through Claude Code's built-in `RemoteTrigger` tool, so there is nothing to install. | No cloud runs. Run stages locally. |
+| [Session-start nudge](staged-rollout.md#session-start-nudge) and the `gh-body-guard` ticket check | `bash` (on Windows, Git Bash). Both hooks run through a cmd/bash wrapper, so they work on Linux, macOS and Windows. | No nudge, and `gh` commands go unchecked. Everything else works: the commands are run by the model, not by shell scripts. |
+| [Running a plan in the cloud](ON-THE-RUN.md) | Cloud access on your Claude account (very likely required), and GitHub connected to claude.ai/code for the repo. The orchestrator (the local session running `plan-run`) fires stages through Claude Code's built-in `RemoteTrigger` tool, so there is nothing to install. | No cloud runs. Run stages locally. |
 | [Ticket skills](tickets.md) | Python 3.11 or later. `gh` for GitHub; the Atlassian MCP server for Jira. | That tracker is unavailable. |
 
-**Typing `/plan-staged-rollout:<command>` always works.** Claude Code can also
-start a command from plain language ("run stage 3 of the plan"), but only
-when it has room to read the command descriptions. A smaller-context model
-with many plugins installed may fall back to names alone, and then plain
-language stops working. This plugin is small, so that is unlikely. If it
-happens, use the slash form, or give descriptions more room with
-`skillListingBudgetFraction` in your Claude Code settings.
+**Typing `/plan-staged-rollout:<command>` always works.** Plain language
+("run stage 3 of the plan") needs Claude Code to have room to read the
+command descriptions; a smaller-context model with many plugins installed
+may not. If it stops working, use the slash form, or give descriptions more
+room with `skillListingBudgetFraction` in your Claude Code settings.
 
 ## Update
 
@@ -116,14 +114,18 @@ claude plugin update plan-staged-rollout
 
 Inside a session, `/plugin marketplace update` does the same one-off refresh.
 
-To stay current without thinking about it, run `/plugin`, open the
-**Marketplaces** tab and select this plugin's marketplace. It offers
-**Update marketplace** for a one-off refresh and **Enable auto-update**,
-which refreshes the marketplace and its plugins in the background shortly
-after each session starts. The tab also shows which state you are in. Check
-it rather than assume: Claude Code turns auto-update on by default for
-Anthropic's own marketplaces, not necessarily for others. The desktop app has
-no equivalent toggle.
+**Turning on auto-update is worth it.** Run `/plugin`, open the
+**Marketplaces** tab and select this plugin's marketplace:
+
+- **Enable auto-update** refreshes the marketplace and its plugins in the
+  background shortly after each session starts.
+- **Update marketplace** does a one-off refresh.
+- The tab also shows which state you are in. Check it rather than assume:
+  Claude Code turns auto-update on by default for Anthropic's own
+  marketplaces, not necessarily for others.
+
+The desktop app has no equivalent toggle, which makes the CLI the reliable
+way to stay current.
 
 ### Claude desktop app
 

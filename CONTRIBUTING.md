@@ -56,7 +56,7 @@ python3 scripts/validate_plugin.py
 templates are implemented; the user documentation is the README plus the
 pages in `docs/`. The staged-rollout pieces were built with the method
 itself — decomposed into a `.plan/` and executed stage by stage in this repo
-(the plan folder was removed at closeout, as the method prescribes; its full
+(the plan folder was removed at close, as the method prescribes; its full
 history is in git). See [`CHANGELOG.md`](CHANGELOG.md) for what shipped when.
 
 Layout:
@@ -78,17 +78,17 @@ Layout:
   skills/staged-rollout/
     SKILL.md                     # method: principles, decomposition guidance,
                                  #   flag heuristics, anti-patterns
-    references/templates/        # PLAN.md, LEDGER.md, stage-N.md, stage-f-review.md, README.md
+    references/templates/        # PLAN.md, LEDGER.md, stage-N.md, stage-f-review.md, README.md, RUNNER.md
     references/remote-driver.md  # the RemoteTrigger contract for firing stages remotely
   examples/
     uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
-    on-the-run/                  # prompt contracts for unattended cloud runs
+    on-the-run/                  # retired routine-based prompt contracts, kept so old links resolve
       poc/                     #   end-to-end proof-of-concept plan + verify_run.py
   commands/
-    plan-stages.md               # /plan-stages <idea>  — bootstrap .plan/
-    stage-run.md                 # /stage-run <N>       — execute one stage, in this session
-    plan-run.md                  # /plan-run             — drive every remaining stage remotely
-    plan-close.md                # /plan-close          — final PR + cleanup
+    plan-stages.md               # plan-stages <idea>  — split a project into stages, write .plan/
+    stage-run.md                 # stage-run <N>       — run one stage, in this session
+    plan-run.md                  # plan-run            — run every remaining stage in the cloud
+    plan-close.md                # plan-close          — final PR + cleanup
   skills/create-issue/SKILL.md   # draft, review, post and verify one ticket
   skills/work-issue/SKILL.md     # work one named ticket to a confirmed merge
   tickets/

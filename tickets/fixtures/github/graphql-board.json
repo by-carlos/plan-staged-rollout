@@ -1,0 +1,11 @@
+{"data": {"repository": {"issue": {"projectItems": {"nodes": [
+  {"project": {"title": "Widgets", "number": 7},
+   "fieldValues": {"nodes": [
+     {},
+     {"name": "P1", "field": {"name": "Priority"}},
+     {"name": "S", "field": {"name": "Size"}},
+     {"name": "low", "field": {"name": "Effort"}}
+   ]}},
+  {"project": {"title": "Other", "number": 9},
+   "fieldValues": {"nodes": [{"name": "P4", "field": {"name": "Priority"}}]}}
+]}}}}}

@@ -1,0 +1,35 @@
+{
+  "tracker": "github",
+  "target": {
+    "repo": "example-org/widgets"
+  },
+  "key": "42",
+  "url": "https://github.com/example-org/widgets/issues/42",
+  "type": null,
+  "title": "Decide how long exports are kept",
+  "body": "## In plain terms\n\nExports fail for people whose names contain an accent. They see an error page instead of a file, and have to ask support for the data. This started after the last release.\n\n## Context\n\nSupport logged several reports this week. The export writes the file with the system code page instead of UTF-8.\n\n## Acceptance Criteria\n\n- An export with an accented name downloads and opens with the name intact.\n- Existing exports are unchanged.",
+  "sections": {
+    "In plain terms": "Exports fail for people whose names contain an accent. They see an error page instead of a file, and have to ask support for the data. This started after the last release.",
+    "Context": "Support logged several reports this week. The export writes the file with the system code page instead of UTF-8.",
+    "Acceptance Criteria": "- An export with an accented name downloads and opens with the name intact.\n- Existing exports are unchanged."
+  },
+  "labels": [
+    "bug"
+  ],
+  "priority": null,
+  "estimate": null,
+  "fields": {},
+  "parent": null,
+  "links": [],
+  "state": "open",
+  "assignee": null,
+  "thread": [],
+  "has_ai_prompt": false,
+  "ai_prompt": null,
+  "board": {
+    "Status": "Backlog",
+    "Priority": "P1",
+    "Size": "S",
+    "Effort": "high"
+  }
+}

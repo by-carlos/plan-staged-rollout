@@ -1,0 +1,33 @@
+# Example GitHub template on placeholder values for work-issue: board routing
+# with a Status field, the claim and review statuses, and a stricter merge
+# command than the default.
+
+schema = 1
+name = "work-routed"
+tracker = "github"
+extends = "default"
+description = "Fixture: work-issue status flips on a routed board, and a tightened merge command."
+
+[routing]
+owner = "example-org"
+fallback = "stop"
+repos = { "widgets" = { board = 7 }, "scratch" = { board = "none" } }
+board_fields = { Priority = "priority", Size = "size", Effort = "effort", Status = "status" }
+
+[fields.effort]
+id = "Effort"
+kind = "select"
+values = { low = "low", high = "high" }
+
+[fields.status]
+id = "Status"
+kind = "select"
+values = { Backlog = "Backlog", "In progress" = "In progress", "In review" = "In review", Done = "Done" }
+default = "Backlog"
+
+[work]
+branch = "{type}/{number}-{slug}"
+commit_style = "conventional"
+merge_command = "gh pr merge {pr} --squash --delete-branch --match-head-commit HEAD"
+merge_ask_header = "Merge?"
+status = { on_start = "In progress", on_pr = "In review" }

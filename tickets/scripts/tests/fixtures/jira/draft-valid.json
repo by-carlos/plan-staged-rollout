@@ -1,0 +1,18 @@
+{
+  "tracker": "jira",
+  "target": {"site": "https://jira.example.com", "project": "ABC"},
+  "type": "Story",
+  "title": "Add a retry to the nightly export job",
+  "sections": {
+    "In plain terms": "The nightly export sometimes fails on a short network blip and nobody notices until morning.",
+    "Context": "* The job ran without a retry for two years.\n* Three failures last month, each one a timeout.",
+    "Acceptance Criteria": "1. A failed run retries once after five minutes.\n2. A second failure pages the on-call person."
+  },
+  "labels": ["backend"],
+  "priority": "High",
+  "estimate": {"kind": "points", "value": 3},
+  "draft_notes": {"investigated": true},
+  "fields": {"team": "Alpha"},
+  "parent": "ABC-100",
+  "links": [{"kind": "blocks", "direction": "outward", "target": "ABC-200"}]
+}

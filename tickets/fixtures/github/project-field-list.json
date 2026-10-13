@@ -1,0 +1,6 @@
+{"fields": [
+  {"id": "F1", "name": "Title", "type": "ProjectV2Field"},
+  {"id": "F2", "name": "Priority", "options": [{"id": "o1", "name": "P0"}, {"id": "o2", "name": "P1"}]},
+  {"id": "F3", "name": "Size", "options": [{"id": "o3", "name": "XS"}, {"id": "o4", "name": "S"}]},
+  {"id": "F4", "name": "Effort", "options": [{"id": "o5", "name": "low"}, {"id": "o6", "name": "high"}]}
+]}

@@ -1,0 +1,26 @@
+{
+  "v2": [
+    "Read", "Bash",
+    "mcp__plugin_atlassian_atlassian__getJiraIssue",
+    "mcp__plugin_atlassian_atlassian__createJiraIssue",
+    "mcp__plugin_atlassian_atlassian__editJiraIssue",
+    "mcp__plugin_atlassian_atlassian__searchJiraIssuesUsingJql",
+    "mcp__plugin_atlassian_atlassian__addOrEditJiraIssueComment",
+    "mcp__plugin_atlassian_atlassian__discover",
+    "mcp__plugin_atlassian_atlassian__executeRead",
+    "mcp__plugin_atlassian_atlassian__executeWrite"
+  ],
+  "v1": [
+    "mcp__plugin_productivity_atlassian__getJiraIssue",
+    "mcp__plugin_productivity_atlassian__createJiraIssue",
+    "mcp__plugin_productivity_atlassian__editJiraIssue",
+    "mcp__plugin_productivity_atlassian__searchJiraIssuesUsingJql",
+    "mcp__plugin_productivity_atlassian__addCommentToJiraIssue",
+    "mcp__plugin_productivity_atlassian__createIssueLink"
+  ],
+  "readonly": [
+    "mcp__atlassian__getJiraIssue",
+    "mcp__atlassian__searchJiraIssuesUsingJql"
+  ],
+  "none": ["Read", "Bash", "mcp__plugin_slack_slack__slack_read_channel"]
+}

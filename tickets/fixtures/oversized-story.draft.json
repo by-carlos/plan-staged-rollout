@@ -1,0 +1,24 @@
+{
+  "tracker": "jira",
+  "target": {
+    "site": "example.atlassian.net",
+    "project": "DEMO"
+  },
+  "type": "Story",
+  "title": "Build partner onboarding from sign-up to approval, with data migration",
+  "sections": {
+    "In plain terms": "New partners should be able to sign up on their own, confirm their email address, and be approved by an admin, with every approval recorded. Approved partners can be exported as a spreadsheet. The partners we hold today in an old spreadsheet move into the new system so they can log in too.",
+    "Context": "Partner onboarding today is manual: partners are added by hand to a spreadsheet, which does not scale and leaves no record of who approved whom. About 40,000 existing partners live in that spreadsheet. Email verification has never been built here before. Email sending is owned by the identity team, so the verification step depends on them.",
+    "Out of scope": "- Changing what an approved partner can do after login\n- Partner self-service profile editing",
+    "Acceptance Criteria": "1. A new partner can submit the sign-up form and receives a verification email\n2. A verified partner appears in the admin approval queue\n3. An admin can approve or reject a partner, and each decision is written to an audit log with who and when\n4. Admins can download a CSV of approved partners\n5. All 40,000 partners from the old spreadsheet are migrated and each can log in\n6. A new partner can go from sign-up to approved end to end",
+    "AI prompt": "Repository `example-org/partner-portal`, base branch `main`. Implement partner self sign-up with email verification, an admin approval queue with an audit log, a CSV export of approved partners, and a one-off migration of the legacy spreadsheet. Verify by running the test suite and an end-to-end sign-up-to-approval test, and by checking the migrated row count matches the spreadsheet."
+  },
+  "labels": [],
+  "fields": {},
+  "draft_notes": {
+    "confirmations": {},
+    "waivers": [],
+    "investigated": false
+  },
+  "priority": "Medium"
+}

@@ -1,0 +1,1195 @@
+#!/usr/bin/env python3
+"""Jira tracker adapter for the tickets plugin (relay transport).
+
+Implements references/adapter-contract.md for Jira through the Atlassian
+MCP server. Only the model can call an MCP tool, so this script never talks
+to Jira itself. It prints call specs; the model makes exactly those calls,
+saves each raw result to the named file, and runs the same command again.
+Every op is a small state machine over a run directory, so a re-run is
+always safe and resumes where the last one stopped.
+
+The relay loop the skill follows, for every op:
+
+    run the command
+    while stdout says {"status": "RELAY", "calls": [...]}:
+        make each call with its arguments unchanged
+        write each raw result (or the error text) to its result_file
+        run the same command again
+    stdout is now the op's output; the exit code is per the contract
+
+Standard library only. Python 3.11 or later. Shares ticket_core.py (S2).
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import sys
+import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ticket_core as core  # shared checks and body rendering
+
+EXIT_OK, EXIT_INVALID, EXIT_TRACKER, EXIT_DENIED, EXIT_UNREACHABLE = 0, 1, 2, 3, 4
+
+KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
+
+# Call shapes per MCP generation. v2 is verified against the live server
+# (2026-10-08). v1 comes from reading skills that pin /v1/mcp (issue #236,
+# "Atlassian MCP facts") and has not been exercised live yet.
+GENERATIONS = {
+    "v2": {
+        "create": "createJiraIssue",
+        "edit": "editJiraIssue",
+        "get": "getJiraIssue",
+        "search": "searchJiraIssuesUsingJql",
+        "comment": "addOrEditJiraIssueComment",
+        "link": ("executeWrite", "createJiraIssueLink"),
+        "read_op": ("executeRead", "getJiraIssue"),
+    },
+    "v1": {
+        "create": "createJiraIssue",
+        "edit": "editJiraIssue",
+        "get": "getJiraIssue",
+        "search": "searchJiraIssuesUsingJql",
+        "comment": "addCommentToJiraIssue",
+        "link": "createIssueLink",
+        "read_op": None,
+    },
+}
+WRITE_OPS = ("create", "edit", "comment", "link")
+SYSTEM_READ_FIELDS = ["summary", "description", "priority", "status", "assignee"]
+
+
+class Stop(Exception):
+    """Ends the op with an exit code and a JSON body for stdout."""
+
+    def __init__(self, code: int, body: dict):
+        super().__init__(body.get("message", ""))
+        self.code = code
+        self.body = body
+
+
+class Relay(Exception):
+    """Ends the op early: these calls must be made before it can go on."""
+
+    def __init__(self, calls: list[dict]):
+        super().__init__("relay")
+        self.calls = calls
+
+
+# --------------------------------------------------------------------------
+# detect
+
+
+def detect(tool_names: list[str]) -> dict:
+    """Find the Atlassian MCP generation and tool-name prefix from the tool list."""
+    prefixes: dict[str, set[str]] = {}
+    known = {name for gen in GENERATIONS.values() for name in _flat_names(gen)}
+    known |= {"discover", "executeRead", "executeWrite"}
+    for full in tool_names:
+        for bare in known:
+            if full.endswith(bare) and full != bare:
+                prefix = full[: -len(bare)]
+                if prefix.startswith("mcp__") and prefix.endswith("__"):
+                    prefixes.setdefault(prefix, set()).add(bare)
+    candidates = []
+    for prefix, bares in prefixes.items():
+        if "getJiraIssue" not in bares:
+            continue
+        generation = "v2" if {"discover", "executeWrite"} & bares else "v1"
+        ops = GENERATIONS[generation]
+        tools, missing = {}, []
+        for op, bare in ops.items():
+            if bare is None:
+                continue
+            tool = bare[0] if isinstance(bare, tuple) else bare
+            if tool in bares:
+                tools[op] = prefix + tool
+            else:
+                missing.append(op)
+        writes = all(op in tools for op in WRITE_OPS)
+        candidates.append({"prefix": prefix, "generation": generation,
+                           "tools": tools, "writes": writes, "missing": missing})
+    if not candidates:
+        return {"status": "not-configured",
+                "message": "No Atlassian MCP server is connected in this session."}
+    candidates.sort(key=lambda c: (not c["writes"], c["generation"] != "v2", c["prefix"]))
+    best = dict(candidates[0])
+    best["status"] = "ok"
+    best["candidates"] = [c["prefix"] for c in candidates]
+    if not best["writes"]:
+        best["message"] = ("The Atlassian MCP server here is read-only "
+                           f"(missing: {', '.join(best['missing'])}).")
+    return best
+
+
+def _flat_names(gen: dict) -> list[str]:
+    out = []
+    for bare in gen.values():
+        if isinstance(bare, tuple):
+            out.extend(bare[:1])
+        elif bare:
+            out.append(bare)
+    return out
+
+
+# --------------------------------------------------------------------------
+# template and ticket loading
+
+
+def load_json(path: str | Path) -> dict:
+    with open(path, encoding="utf-8") as fh:
+        return json.load(fh)
+
+
+def load_template(path: str) -> dict:
+    """Load a *resolved* template: `ticket_template.py resolve` output, or a bare one."""
+    template = core.load_template(path)
+    if template.get("extends"):
+        raise Stop(EXIT_INVALID, {"status": "INVALID", "message":
+                                  f"{path} still has 'extends'; pass the template the loader resolved."})
+    return template
+
+
+# --------------------------------------------------------------------------
+# build
+
+
+def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], list[str]]:
+    """Validate a draft against the template; return (payload, errors, warnings).
+
+    The tracker-independent checks and the body rendering are ticket_core's;
+    this adds only what is specific to Jira and to the MCP call shapes.
+    """
+    errors, warnings = core.check_draft(template, ticket)
+    if env.get("status") != "ok":
+        errors.append("env: detect found no Atlassian MCP server; run detect first")
+    if ticket.get("tracker") != "jira":
+        errors.append(f"tracker: {ticket.get('tracker')!r}, this is the Jira adapter")
+    target = ticket.get("target") or {}
+    site, project = target.get("site"), target.get("project")
+    if not site:
+        errors.append("target.site: required")
+    if not project:
+        errors.append("target.project: required")
+
+    title = (ticket.get("title") or "").strip()
+    issue_type = ticket.get("type") or template.get("types", {}).get("default")
+    if not issue_type:
+        errors.append("type: missing, and the template has no default")
+    if ticket.get("sections") is not None:
+        body = core.render_body(template, ticket).strip()
+    else:
+        body = (ticket.get("body") or "").strip()
+
+    notes = ticket.get("draft_notes") or {}
+    confirmations = notes.get("confirmations") or {}
+    fdefs = template.get("fields", {})
+    values = {k: v for k, v in (ticket.get("fields") or {}).items() if v not in (None, "unset")}
+
+    priority = None
+    pcfg = template.get("priority", {})
+    pvalue = ticket.get("priority") or pcfg.get("default")
+    if pvalue is not None:
+        pfield = pcfg.get("field", "priority")
+        if pfield == "priority":
+            priority = pvalue
+        else:
+            values.setdefault(pfield, pvalue)
+
+    comment = None
+    estimate = ticket.get("estimate") or {}
+    ecfg = template.get("estimate", {})
+    if estimate.get("value") is not None and ecfg.get("kind", "none") != "none":
+        evalue = estimate["value"]
+        ceiling = ecfg.get("ceiling")
+        if ceiling is not None and isinstance(evalue, (int, float)) and evalue > ceiling:
+            errors.append(f"estimate.value: {evalue} is above the ceiling {ceiling}; propose a split instead")
+        if ecfg.get("set_only_if") == "investigated" and not notes.get("investigated"):
+            warnings.append("estimate: not set, the template sets it only after an investigation")
+        else:
+            efield = ecfg.get("field")
+            if not efield or efield not in fdefs:
+                errors.append(f"estimate.field: {efield!r} is not declared under [fields]")
+            else:
+                values[efield] = evalue
+                if ecfg.get("comment"):
+                    comment = ecfg["comment"].replace("{guide}", ecfg.get("guide", ""))
+
+    for key, fdef in fdefs.items():
+        default = fdef.get("default", "unset")
+        if key not in values and default != "unset":
+            values[key] = default
+
+    parent = ticket.get("parent")
+    links_cfg = template.get("links", {})
+    parent_mode = links_cfg.get("parent", "native")
+    if parent and not KEY_RE.match(str(parent)):
+        errors.append(f"parent: {parent!r} is not an issue key")
+    if parent and parent_mode != "native":
+        values[parent_mode] = parent
+        parent = None
+
+    expected_fields, additional = {}, {}
+    for key, value in values.items():
+        fdef = fdefs.get(key)
+        if fdef is None:
+            continue  # check_draft has already reported it
+        if value in (fdef.get("confirm_values") or []) and confirmations.get(key) != value:
+            continue  # check_draft has already reported it
+        if not fdef.get("id"):
+            errors.append(f"fields.{key}: the template gives no id")
+            continue
+        shaped = shape_value(key, fdef, value, errors)
+        if shaped is None:
+            continue
+        additional[fdef["id"]] = shaped
+        expected_fields[key] = {"id": fdef["id"], "kind": fdef.get("kind", "text"),
+                                "value": value, "jira": shaped}
+    unset_guarded = {}
+    for key, fdef in fdefs.items():
+        if fdef.get("confirm_values") and key not in expected_fields and fdef.get("id"):
+            unset_guarded[key] = {"id": fdef["id"], "confirm_values": fdef["confirm_values"],
+                                  "option_ids": [str((fdef.get("values") or {}).get(v, v))
+                                                 for v in fdef["confirm_values"]]}
+
+    links = []
+    for link in ticket.get("links") or []:
+        kind = link.get("kind")
+        lcfg_kind = links_cfg.get(kind) if kind != "parent" else None
+        if not isinstance(lcfg_kind, dict):
+            errors.append(f"links: kind {kind!r} is not declared under [links]")
+            continue
+        if not lcfg_kind.get("name"):
+            errors.append(f"links.{kind}: no 'name'; the Jira MCP needs the link type name")
+            continue
+        direction = link.get("direction", "outward")
+        if direction not in ("outward", "inward"):
+            errors.append(f"links: direction {direction!r} must be 'outward' or 'inward'")
+            continue
+        if not KEY_RE.match(str(link.get("target", ""))):
+            errors.append(f"links: target {link.get('target')!r} is not an issue key")
+            continue
+        links.append({"kind": kind, "name": lcfg_kind["name"], "direction": direction,
+                      "target": link["target"]})
+
+    repair_wait = max([int((f.get("repair") or {}).get("after_seconds", 0))
+                       for f in fdefs.values()] or [0])
+    expected = {"title": title, "type": issue_type, "body": body,
+                "labels": core.effective_labels(template, ticket), "priority": priority, "parent": parent,
+                "fields": expected_fields, "unset_guarded": unset_guarded, "links": links}
+    payload = {"tracker": "jira", "env": env, "cloudId": site, "project": project,
+               "site_url": site_url(site), "expected": expected, "comment": comment,
+               "assignee": ticket.get("assignee"), "additional_fields": additional,
+               "repair_wait": repair_wait, "write": "create"}
+    return payload, errors, warnings
+
+
+def shape_value(key: str, fdef: dict, value, errors: list[str]):
+    kind = fdef.get("kind", "text")
+    if kind == "number":
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            errors.append(f"fields.{key}: needs a number, got {value!r}")
+            return None
+        return value
+    if kind == "select":
+        options = fdef.get("values") or {}
+        if options:
+            return {"id": str(options[value])} if value in options else None
+        return {"value": str(value)}
+    if kind == "user":
+        return {"accountId": str(value)}
+    if kind == "date":
+        if not re.match(r"^\d{4}-\d{2}-\d{2}$", str(value)):
+            errors.append(f"fields.{key}: needs a YYYY-MM-DD date, got {value!r}")
+            return None
+        return str(value)
+    if kind == "text":
+        return str(value)
+    errors.append(f"fields.{key}: unknown kind {kind!r}")
+    return None
+
+
+def parse_sections(body: str, level: int = 2) -> dict[str, str]:
+    marker = re.compile(rf"^#{{{level}}}\s+(.+?)\s*#*\s*$")
+    sections: dict[str, list[str]] = {}
+    current = None
+    for line in (body or "").splitlines():
+        m = marker.match(line)
+        if m and not line.startswith("#" * (level + 1)):
+            current = core.strip_icon(m.group(1))
+            sections[current] = []
+        elif current is not None:
+            sections[current].append(line)
+    return {k: "\n".join(v).strip() for k, v in sections.items()}
+
+
+def site_url(site: str | None) -> str:
+    if not site:
+        return ""
+    return site if site.startswith("http") else f"https://{site}"
+
+
+# --------------------------------------------------------------------------
+# call specs
+
+
+def tool(payload: dict, op: str) -> str:
+    env = payload["env"]
+    if op not in env.get("tools", {}):
+        if op in WRITE_OPS:
+            raise Stop(EXIT_DENIED, denied_body(payload, "read-only server"))
+        raise Stop(EXIT_UNREACHABLE, {"status": "UNREACHABLE", "message":
+                                      f"The Atlassian MCP server here has no '{op}' tool."})
+    return env["tools"][op]
+
+
+def spec(run: Path, name: str, tool_name: str, arguments: dict) -> dict:
+    return {"tool": tool_name, "arguments": arguments,
+            "result_file": str(result_path(run, name))}
+
+
+def result_path(run: Path, name: str) -> Path:
+    return run / "results" / f"{name}.json"
+
+
+def create_spec(run: Path, payload: dict) -> dict:
+    exp, gen = payload["expected"], payload["env"]["generation"]
+    args = {"cloudId": payload["cloudId"], "projectKey": payload["project"],
+            "summary": exp["title"], "description": exp["body"], "contentFormat": "markdown"}
+    extra = dict(payload["additional_fields"])
+    if gen == "v2":
+        args["issueType"] = exp["type"]
+        if exp["labels"]:
+            args["labels"] = exp["labels"]
+        if exp["priority"]:
+            args["priority"] = exp["priority"]
+        if exp["parent"]:
+            args["parent"] = exp["parent"]
+        if payload.get("assignee"):
+            args["assignee"] = payload["assignee"]
+    else:
+        args["issueTypeName"] = exp["type"]
+        if exp["labels"]:
+            extra["labels"] = exp["labels"]
+        if exp["priority"]:
+            extra["priority"] = {"name": exp["priority"]}
+        if exp["parent"]:
+            extra["parent"] = {"key": exp["parent"]}
+        if payload.get("assignee"):
+            args["assignee_account_id"] = payload["assignee"]
+    if extra:
+        args["additional_fields"] = extra
+    return spec(run, "create", tool(payload, "create"), args)
+
+
+def edit_spec(run: Path, payload: dict, key: str, fields: dict, name: str) -> dict:
+    args = {"cloudId": payload["cloudId"], "issueIdOrKey": key, "fields": fields}
+    if "description" in fields:
+        args["contentFormat"] = "markdown"
+    return spec(run, name, tool(payload, "edit"), args)
+
+
+def link_spec(run: Path, payload: dict, key: str, link: dict, name: str) -> dict:
+    # The link reads inwardIssue -> outwardIssue with the type's outward
+    # wording ("A blocks B"). "outward" means this ticket is the subject.
+    inward, outward = (key, link["target"]) if link["direction"] == "outward" else (link["target"], key)
+    if payload["env"]["generation"] == "v2":
+        return spec(run, name, tool(payload, "link"),
+                    {"name": GENERATIONS["v2"]["link"][1], "cloudId": payload["cloudId"],
+                     "inputs": {"linkType": link["name"], "inwardIssue": inward,
+                                "outwardIssue": outward}})
+    return spec(run, name, tool(payload, "link"),
+                {"cloudId": payload["cloudId"], "linkType": link["name"],
+                 "inwardIssue": inward, "outwardIssue": outward})
+
+
+def comment_spec(run: Path, payload: dict, key: str, text: str) -> dict:
+    return spec(run, "comment", tool(payload, "comment"),
+                {"cloudId": payload["cloudId"], "issueIdOrKey": key, "commentBody": text})
+
+
+def readback_specs(run: Path, payload: dict, key: str, suffix: str) -> list[dict]:
+    """Read back every field the payload set, custom fields by explicit id."""
+    exp, gen = payload["expected"], payload["env"]["generation"]
+    ids = [f["id"] for f in exp["fields"].values()] + [g["id"] for g in exp["unset_guarded"].values()]
+    get = tool(payload, "get")
+    calls = [spec(run, f"readback-fields{suffix}", get,
+                  {"cloudId": payload["cloudId"], "issueIdOrKey": key,
+                   "fields": SYSTEM_READ_FIELDS + sorted(set(ids))})]
+    needs_links = bool(exp["parent"] or exp["links"])
+    if gen == "v2":
+        # getJiraIssue drops issuetype, labels, parent and issuelinks from an
+        # explicit field list; the evidence view carries them.
+        if needs_links:
+            calls.append(spec(run, f"readback-evidence{suffix}", get,
+                              {"cloudId": payload["cloudId"], "issueIdOrKey": key,
+                               "view": "evidence"}))
+        else:
+            calls.append(spec(run, f"readback-system{suffix}", tool(payload, "read_op"),
+                              {"name": GENERATIONS["v2"]["read_op"][1], "cloudId": payload["cloudId"],
+                               "inputs": {"issueIdOrKey": key, "view": "evidence"},
+                               "responseFields": ["key", "fields.issuetype.name", "fields.labels"]}))
+    else:
+        extra = ["issuetype", "labels"] + (["parent", "issuelinks"] if needs_links else [])
+        calls.append(spec(run, f"readback-system{suffix}", get,
+                          {"cloudId": payload["cloudId"], "issueIdOrKey": key, "fields": extra}))
+    return calls
+
+
+def search_spec(run: Path, payload: dict, name: str, jql: str) -> dict:
+    return spec(run, name, tool(payload, "search"),
+                {"cloudId": payload["cloudId"], "jql": jql, "maxResults": 10,
+                 "fields": ["summary", "status", "issuetype"]})
+
+
+# --------------------------------------------------------------------------
+# reading relay results
+
+
+def read_result(run: Path, name: str, payload: dict | None = None, key: str | None = None):
+    """Return the parsed result, or None if the file is not there yet.
+
+    An error result stops the op: exit 3 when it is a denial, else exit 2.
+    """
+    path = result_path(run, name)
+    if not path.exists():
+        return None
+    text = path.read_text(encoding="utf-8").strip()
+    data = None
+    try:
+        data = json.loads(text) if text else None
+    except json.JSONDecodeError:
+        pass
+    error = error_text(data, text)
+    if error is not None:
+        blocker = classify_denial(error)
+        if blocker and payload is not None:
+            raise Stop(EXIT_DENIED, denied_body(payload, blocker, key=key, step=name))
+        raise Stop(EXIT_TRACKER, {"status": "FAILED", "key": key, "step": name,
+                                  "message": f"Jira call '{name}' failed: {error[:300]}"})
+    return data
+
+
+def error_text(data, text: str) -> str | None:
+    if data is None:
+        return text or "empty result"
+    if isinstance(data, dict) and (data.get("isError") or data.get("error") or data.get("errors")):
+        parts = [data.get("error"), data.get("errors"), data.get("message"), data.get("repairHint")]
+        return " ".join(json.dumps(p) if not isinstance(p, str) else p for p in parts if p)
+    return None
+
+
+DENIAL_PATTERNS = [
+    ("hook", re.compile(r"\bhook\b|PreToolUse", re.IGNORECASE)),
+    ("read-only server", re.compile(r"read[- ]only", re.IGNORECASE)),
+    ("policy", re.compile(r"\bpolicy\b|managed setting|not allowed by", re.IGNORECASE)),
+    ("permission", re.compile(r"permission|denied|doesn't want to proceed|rejected|forbidden|"
+                              r"\b403\b|\b401\b|scope|unauthori[sz]ed|not permitted", re.IGNORECASE)),
+]
+
+
+def classify_denial(error: str) -> str | None:
+    for label, pattern in DENIAL_PATTERNS:
+        if pattern.search(error):
+            return label
+    return None
+
+
+def denied_body(payload: dict, blocker: str, key: str | None = None, step: str | None = None) -> dict:
+    where = payload.get("_path", "the run directory")
+    if key:
+        message = (f"Writes to Jira are blocked in this session ({blocker}). {key} was created, "
+                   f"but step '{step}' was not applied. The validated payload is saved at {where}. "
+                   "Finish it from a session where writes are allowed, or by hand.")
+    else:
+        message = (f"Writes to Jira are blocked in this session ({blocker}). Nothing was posted. "
+                   f"The validated payload is saved at {where}. Post it from a session where "
+                   "writes are allowed, or paste it in by hand.")
+    return {"status": "DENIED", "key": key, "blocker": blocker, "message": message}
+
+
+def unwrap(data):
+    if isinstance(data, dict) and "data" in data and isinstance(data["data"], (dict, list)):
+        data = data["data"]
+    if isinstance(data, dict) and isinstance(data.get("issues"), list):
+        data = data["issues"][0] if data["issues"] else {}
+    return data
+
+
+def find_key(data) -> str | None:
+    data = unwrap(data)
+    if isinstance(data, dict):
+        if isinstance(data.get("key"), str) and KEY_RE.match(data["key"]):
+            return data["key"]
+        for value in data.values():
+            found = find_key(value) if isinstance(value, (dict, list)) else None
+            if found:
+                return found
+    if isinstance(data, list):
+        for value in data:
+            found = find_key(value)
+            if found:
+                return found
+    return None
+
+
+_ABSENT = object()
+
+
+def normalize_issue(raw) -> dict:
+    """Map one getJiraIssue result (v2 customFields shape or raw REST) to flat keys.
+
+    Only keys present in the result are set, so partial reads can be merged.
+    """
+    data = unwrap(raw)
+    if not isinstance(data, dict):
+        return {}
+    f = data.get("fields") or {}
+    out: dict = {}
+    if data.get("key"):
+        out["key"] = data["key"]
+    for name in ("summary", "description"):
+        if name in f:
+            out[name] = f[name]
+    for name in ("priority", "issuetype", "status"):
+        if name in f:
+            out[name] = (f[name] or {}).get("name") if isinstance(f[name], dict) else f[name]
+    if "labels" in f:
+        out["labels"] = list(f["labels"] or [])
+    if "parent" in f:
+        out["parent"] = (f["parent"] or {}).get("key")
+    if "issuelinks" in f:
+        out["links"] = [link_view(link) for link in f["issuelinks"] or []]
+    custom = {}
+    for entry in (f.get("customFields") or {}).values():
+        if isinstance(entry, dict) and entry.get("id"):
+            custom[entry["id"]] = entry.get("value")
+    for name, value in f.items():
+        if name.startswith("customfield_"):
+            custom[name] = value
+    if custom:
+        out["custom"] = custom
+    return out
+
+
+def link_view(link: dict) -> dict:
+    ltype = (link.get("type") or {}).get("name")
+    if link.get("outwardIssue"):
+        return {"name": ltype, "direction": "outward", "target": link["outwardIssue"].get("key")}
+    return {"name": ltype, "direction": "inward", "target": (link.get("inwardIssue") or {}).get("key")}
+
+
+def merge_reads(reads: list[dict]) -> dict:
+    merged: dict = {"custom": {}}
+    for read in reads:
+        for name, value in read.items():
+            if name == "custom":
+                merged["custom"].update(value)
+            else:
+                merged[name] = value
+    return merged
+
+
+# --------------------------------------------------------------------------
+# diff
+
+
+def norm_text(text) -> str:
+    text = str(text or "").replace("\r\n", "\n")
+    text = re.sub(r"\\([\\`*_{}\[\]()#+\-.!|>~])", r"\1", text)  # markdown escapes
+    text = re.sub(r"^(\s*)[*+]\s", r"\1- ", text, flags=re.MULTILINE)      # bullet markers
+    text = re.sub(r"[ \t]+$", "", text, flags=re.MULTILINE)                # trailing spaces / hard breaks
+    text = re.sub(r"\n{2,}", "\n", text)
+    return text.strip()
+
+
+def custom_matches(fexp: dict, actual) -> bool:
+    kind = fexp["kind"]
+    if actual is None:
+        return False
+    if kind == "number":
+        try:
+            return float(actual) == float(fexp["value"])
+        except (TypeError, ValueError):
+            return False
+    if kind == "select":
+        jira = fexp["jira"]
+        if isinstance(actual, list):
+            actual = actual[0] if actual else None
+        if isinstance(actual, dict):
+            if "id" in jira:
+                return str(actual.get("id")) == jira["id"]
+            return actual.get("value") == jira.get("value") or actual.get("name") == jira.get("value")
+        return str(actual) in (jira.get("id"), jira.get("value"), str(fexp["value"]))
+    if kind == "user":
+        aid = actual.get("accountId") if isinstance(actual, dict) else actual
+        return aid == fexp["jira"]["accountId"]
+    if kind == "date":
+        return str(actual)[:10] == fexp["jira"]
+    if isinstance(actual, dict):  # an object field set by id, such as Team, reads back as an object
+        return norm_text(fexp["value"]) in {norm_text(actual.get(k)) for k in ("id", "value", "name") if actual.get(k)}
+    return norm_text(actual) == norm_text(fexp["value"])
+
+
+def show(value):
+    if isinstance(value, dict):
+        return value.get("value") or value.get("name") or value.get("id") or value
+    return value
+
+
+def diff(expected: dict, actual: dict) -> list[dict]:
+    rows = []
+
+    def row(name, exp, act, ok, repair=None):
+        rows.append({"name": name, "expected": exp, "actual": act, "ok": bool(ok),
+                     "_repair": repair})
+
+    missing = "(not returned by the read-back)"
+    if expected.get("title"):
+        act = actual.get("summary", missing)
+        row("title", expected["title"], act, act != missing and act.strip() == expected["title"],
+            ("summary", expected["title"]))
+    if expected.get("body"):
+        act = actual.get("description", missing)
+        row("description", "(body as built)", "(matches)" if act != missing and
+            norm_text(act) == norm_text(expected["body"]) else "(differs)" if act != missing else missing,
+            act != missing and norm_text(act) == norm_text(expected["body"]),
+            ("description", expected["body"]))
+    if expected.get("type"):
+        act = actual.get("issuetype", missing)
+        row("type", expected["type"], act, act == expected["type"])
+    if expected.get("priority"):
+        act = actual.get("priority", missing)
+        row("priority", expected["priority"], act, act == expected["priority"],
+            ("priority", {"name": expected["priority"]}))
+    if expected.get("labels"):
+        act = actual.get("labels", missing)
+        row("labels", sorted(expected["labels"]), sorted(act) if act != missing else act,
+            act != missing and set(act) == set(expected["labels"]), ("labels", expected["labels"]))
+    if expected.get("parent"):
+        act = actual.get("parent", missing)
+        row("parent", expected["parent"], act, act == expected["parent"],
+            ("parent", {"key": expected["parent"]}))
+    custom = actual.get("custom", {})
+    for key, fexp in expected.get("fields", {}).items():
+        act = custom.get(fexp["id"], missing)
+        ok = act is not missing and act != missing and custom_matches(fexp, act)
+        row(key, fexp["value"], show(act) if act is not missing else missing, ok,
+            (fexp["id"], fexp["jira"]))
+    for key, guard in expected.get("unset_guarded", {}).items():
+        act = custom.get(guard["id"], None)
+        shown = show(act)
+        bad = act is not None and (str(shown) in guard["confirm_values"] or
+                                   (isinstance(act, dict) and str(act.get("id")) in guard["option_ids"]))
+        row(key, f"not {' or '.join(guard['confirm_values'])} (unconfirmed)",
+            shown if act is not None else "unset", not bad, (guard["id"], None))
+    actual_links = actual.get("links")
+    for link in expected.get("links", []):
+        name = f"link {link['kind']} {link['direction']} {link['target']}"
+        if actual_links is None:
+            row(name, "present", missing, False)
+            continue
+        found = any(a["name"] == link["name"] and a["direction"] == link["direction"]
+                    and a["target"] == link["target"] for a in actual_links)
+        row(name, "present", "present" if found else "absent", found)
+    return rows
+
+
+def public_rows(rows: list[dict]) -> list[dict]:
+    return [{k: v for k, v in r.items() if not k.startswith("_")} for r in rows]
+
+
+# --------------------------------------------------------------------------
+# the write driver (create, set-fields, link, comment all end here)
+
+
+def load_run(run: Path) -> tuple[dict, dict]:
+    payload_path = run / "payload.json"
+    if not payload_path.exists():
+        raise Stop(EXIT_INVALID, {"status": "INVALID", "message": f"no payload.json in {run}; run build first"})
+    payload = load_json(payload_path)
+    payload["_path"] = str(payload_path)
+    state_path = run / "state.json"
+    state = load_json(state_path) if state_path.exists() else {}
+    return payload, state
+
+
+def save_state(run: Path, state: dict) -> None:
+    (run / "state.json").write_text(json.dumps(state, indent=2), encoding="utf-8")
+
+
+def drive(run: Path, confirm: bool) -> dict:
+    payload, state = load_run(run)
+    exp = payload["expected"]
+    key = state.get("key") or payload.get("key")
+
+    def need_confirm(step):
+        if not confirm:
+            raise Stop(EXIT_INVALID, {"status": "INVALID", "message":
+                                      f"refusing to {step} without --confirm; nothing was sent"})
+
+    # 1. the write itself
+    if payload.get("write") == "create" and not key:
+        if state.get("create_unknown"):
+            return unknown_create(run, payload)
+        result_file = result_path(run, "create")
+        if not result_file.exists():
+            need_confirm("create the issue")
+            if not payload["env"].get("writes"):
+                raise Stop(EXIT_DENIED, denied_body(payload, "read-only server"))
+            raise Relay([create_spec(run, payload)])
+        try:
+            data = read_result(run, "create", payload)
+        except Stop as stop:
+            if stop.code == EXIT_TRACKER and re.search(r"time(d)? ?out|lost|unknown|empty result",
+                                                       stop.body["message"], re.IGNORECASE):
+                state["create_unknown"] = True
+                save_state(run, state)
+                return unknown_create(run, payload)
+            raise
+        key = find_key(data)
+        if not key:
+            state["create_unknown"] = True
+            save_state(run, state)
+            return unknown_create(run, payload)
+        state.update({"key": key, "created_at": result_file.stat().st_mtime})
+        save_state(run, state)
+    elif payload.get("write") == "edit" and not state.get("edited"):
+        if not result_path(run, "edit").exists():
+            need_confirm("edit the issue")
+            raise Relay([edit_spec(run, payload, key, payload["edit_fields"], "edit")])
+        read_result(run, "edit", payload, key)
+        state.update({"edited": True, "created_at": result_path(run, "edit").stat().st_mtime})
+        save_state(run, state)
+
+    # 2. links: the first one, read back to confirm direction, then the rest
+    links = exp.get("links", [])
+    for i, link in enumerate(links, start=1):
+        name = f"link-{i}"
+        if not result_path(run, name).exists():
+            need_confirm("create links")
+            if i == 1:
+                raise Relay([link_spec(run, payload, key, link, name)])
+            raise Relay([link_spec(run, payload, key, lk, f"link-{j}")
+                         for j, lk in enumerate(links, start=1) if j >= i])
+        read_result(run, name, payload, key)
+        if i == 1 and not state.get("link_checked"):
+            check = "link-1-check"
+            if not result_path(run, check).exists():
+                raise Relay([spec(run, check, tool(payload, "get"),
+                                  {"cloudId": payload["cloudId"], "issueIdOrKey": key,
+                                   **({"view": "evidence"} if payload["env"]["generation"] == "v2"
+                                      else {"fields": ["issuelinks"]})})])
+            seen = normalize_issue(read_result(run, check, payload, key)).get("links") or []
+            if not any(a["name"] == link["name"] and a["direction"] == link["direction"]
+                       and a["target"] == link["target"] for a in seen):
+                raise Stop(EXIT_TRACKER, {"status": "FAILED", "key": key, "message":
+                                          f"The first link did not land as {link['kind']} "
+                                          f"{link['direction']} {link['target']}. Links cannot be "
+                                          "deleted from this session: fix it by hand in Jira, then "
+                                          "create the remaining links."})
+            state["link_checked"] = True
+            save_state(run, state)
+
+    # 3. the comment (the estimate attribution, or an explicit one)
+    if payload.get("comment") and not state.get("commented"):
+        if not result_path(run, "comment").exists():
+            need_confirm("add the comment")
+            raise Relay([comment_spec(run, payload, key, payload["comment"])])
+        read_result(run, "comment", payload, key)
+        state["commented"] = True
+        save_state(run, state)
+
+    # 4. read back (after any automation-overwrite wait), diff, repair once
+    if not any(exp.get(k) for k in ("title", "body", "type", "priority", "labels", "parent",
+                                    "fields", "unset_guarded", "links")):
+        return result_body("VERIFIED", payload, key, [], "Done; no field to read back.")
+    rows = read_back_and_diff(run, payload, state, key, "")
+    if all(r["ok"] for r in rows):
+        return result_body("VERIFIED", payload, key, rows, "Every field landed as built.")
+    fix = {r["_repair"][0]: r["_repair"][1] for r in rows if not r["ok"] and r["_repair"]}
+    if fix and not result_path(run, "repair").exists():
+        need_confirm("repair the issue")
+        raise Relay([edit_spec(run, payload, key, fix, "repair")])
+    if fix:
+        read_result(run, "repair", payload, key)
+        rows = read_back_and_diff(run, payload, state, key, "-2", wait=False)
+        if all(r["ok"] for r in rows):
+            return result_body("REPAIRED", payload, key, rows, "Fixed after one repair.")
+    bad = ", ".join(r["name"] for r in rows if not r["ok"])
+    raise Stop(EXIT_TRACKER, result_body("FAILED", payload, key, rows,
+                                         f"Still wrong after one repair: {bad}." if fix else
+                                         f"Wrong and not repairable by an edit: {bad}."))
+
+
+def read_back_and_diff(run: Path, payload: dict, state: dict, key: str, suffix: str,
+                       wait: bool = True) -> list[dict]:
+    calls = readback_specs(run, payload, key, suffix)
+    pending = [c for c in calls if not Path(c["result_file"]).exists()]
+    if pending:
+        if wait and payload.get("repair_wait") and state.get("created_at"):
+            remaining = state["created_at"] + payload["repair_wait"] - time.time()
+            if remaining > 0:
+                time.sleep(remaining)
+        raise Relay(pending)
+    reads = [normalize_issue(read_result(run, Path(c["result_file"]).stem, payload, key))
+             for c in calls]
+    return diff(payload["expected"], merge_reads(reads))
+
+
+def result_body(status: str, payload: dict, key: str, rows: list[dict], message: str) -> dict:
+    url = f"{payload['site_url'].rstrip('/')}/browse/{key}" if payload.get("site_url") else None
+    return {"status": status, "key": key, "url": url, "fields": public_rows(rows), "message": message}
+
+
+def unknown_create(run: Path, payload: dict) -> dict:
+    """A create whose outcome is unknown: look for the exact title before anything else."""
+    title = payload["expected"]["title"]
+    name = "create-unknown-search"
+    jql = f'project = "{payload["project"]}" AND summary ~ "\\"{jql_escape(title)}\\"" ORDER BY created DESC'
+    if not result_path(run, name).exists():
+        raise Relay([search_spec(run, payload, name, jql)])
+    hits = search_hits(read_result(run, name, payload))
+    exact = [h for h in hits if h["summary"].strip() == title]
+    if exact:
+        msg = (f"The create's outcome was unknown, and {exact[0]['key']} has this exact title. "
+               "Check it before doing anything else; do not post again.")
+    else:
+        msg = ("The create's outcome was unknown, and no issue with this exact title exists. "
+               f"Post again only if the user says yes: delete {result_path(run, 'create')}, "
+               f"{result_path(run, name)} and state.json, then re-run with --confirm.")
+    raise Stop(EXIT_TRACKER, {"status": "FAILED", "key": exact[0]["key"] if exact else None,
+                              "hits": exact, "message": msg})
+
+
+# --------------------------------------------------------------------------
+# duplicates and fetch
+
+
+def jql_escape(text: str) -> str:
+    return text.replace("\\", "\\\\").replace('"', '\\"')
+
+
+def search_terms(title: str) -> str:
+    words = [w for w in re.findall(r"[A-Za-z0-9]+", title) if len(w) >= 3]
+    return " ".join(words[:6])
+
+
+def search_hits(data) -> list[dict]:
+    data = data.get("data", data) if isinstance(data, dict) else data
+    issues = data.get("issues", []) if isinstance(data, dict) else []
+    hits = []
+    for issue in issues:
+        f = issue.get("fields") or {}
+        hits.append({"key": issue.get("key"), "summary": f.get("summary", ""),
+                     "status": (f.get("status") or {}).get("name")})
+    return hits
+
+
+def duplicates(run: Path) -> dict:
+    payload, _ = load_run(run)
+    exp = payload["expected"]
+    terms = jql_escape(search_terms(exp["title"]))
+    plan = []
+    if exp.get("parent"):
+        plan.append(("dup-children", f'parent = {exp["parent"]} AND summary ~ "{terms}"'))
+    plan.append(("dup-keyword",
+                 f'project = "{payload["project"]}" AND summary ~ "{terms}" ORDER BY created DESC'))
+    pending = [search_spec(run, payload, n, q) for n, q in plan if not result_path(run, n).exists()]
+    if pending:
+        raise Relay(pending)
+    seen, hits = set(), []
+    for name, _ in plan:
+        for hit in search_hits(read_result(run, name, payload)):
+            if hit["key"] in seen:
+                continue
+            seen.add(hit["key"])
+            hit["match"] = "child" if name == "dup-children" else "keyword"
+            hit["exact_title"] = hit["summary"].strip().lower() == exp["title"].lower()
+            hits.append(hit)
+    return {"status": "OK", "hits": hits}
+
+
+def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> dict:
+    payload = {"env": env, "cloudId": site, "_path": str(run)}
+    name = "fetch"
+    if not result_path(run, name).exists():
+        args = {"cloudId": site, "issueIdOrKey": key}
+        if env["generation"] == "v2":
+            args["view"] = "evidence"
+        raise Relay([spec(run, name, tool(payload, "get"), args)])
+    raw = normalize_issue(read_result(run, name, payload, key))
+    bcfg = (template or {}).get("body", {})
+    sections = parse_sections(raw.get("description") or "", int(bcfg.get("heading_level", 2)))
+    ai_titles = {s["title"] for s in bcfg.get("sections", []) if s.get("kind") == "ai_prompt"} or {"AI prompt"}
+    ai = next((t for t in sections if t.lower() in {a.lower() for a in ai_titles}), None)
+    fields = {}
+    for fkey, fdef in ((template or {}).get("fields") or {}).items():
+        if fdef.get("id") in raw.get("custom", {}):
+            fields[fkey] = show(raw["custom"][fdef["id"]])
+    return {"tracker": "jira", "target": {"site": site, "project": key.split("-")[0]},
+            "key": raw.get("key", key), "url": f"{site_url(site).rstrip('/')}/browse/{key}",
+            "type": raw.get("issuetype"), "title": raw.get("summary"), "body": raw.get("description"),
+            "sections": sections, "labels": raw.get("labels", []), "priority": raw.get("priority"),
+            "fields": fields, "parent": raw.get("parent"), "links": raw.get("links", []),
+            "state": raw.get("status"), "has_ai_prompt": ai is not None, "ai_prompt_section": ai}
+
+
+# --------------------------------------------------------------------------
+# CLI
+
+
+def write_payload(run: Path, payload: dict) -> None:
+    run.mkdir(parents=True, exist_ok=True)
+    (run / "results").mkdir(exist_ok=True)
+    (run / "payload.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def cmd_detect(args) -> tuple[int, dict]:
+    names = load_json(args.tools) if args.tools != "-" else json.load(sys.stdin)
+    if isinstance(names, dict):
+        names = names.get("tools", [])
+    result = detect(names)
+    return (EXIT_OK if result["status"] == "ok" else EXIT_UNREACHABLE), result
+
+
+def cmd_build(args) -> tuple[int, dict]:
+    ticket = load_json(args.ticket)
+    template = load_template(args.template)
+    env = load_json(args.env)
+    payload, errors, warnings = build(ticket, template, env)
+    if errors:
+        return EXIT_INVALID, {"status": "INVALID", "errors": errors, "warnings": warnings,
+                              "message": f"{len(errors)} validation error(s); nothing was sent"}
+    run = Path(args.run)
+    write_payload(run, payload)
+    return EXIT_OK, {"status": "BUILT", "payload": str(run / "payload.json"), "warnings": warnings,
+                     "create": create_spec(run, payload)}
+
+
+def cmd_set_fields(args) -> tuple[int, dict]:
+    """Prepare an edit run from {"fields": {...}, "confirmations": {...}} and drive it."""
+    run = Path(args.run)
+    if not (run / "payload.json").exists():
+        template = load_template(args.template)
+        env = load_json(args.env)
+        req = load_json(args.fields)
+        draft = {"target": {"site": args.site, "project": args.key.split("-")[0]},
+                 "title": "-", "type": "-", "fields": req.get("fields", {}),
+                 "confirmations": req.get("confirmations", {})}
+        trimmed = {"fields": template.get("fields", {}), "links": template.get("links", {})}
+        payload, errors, _ = build(draft, trimmed, env)
+        if errors:
+            return EXIT_INVALID, {"status": "INVALID", "errors": errors,
+                                  "message": f"{len(errors)} validation error(s); nothing was sent"}
+        exp = payload["expected"]
+        exp.update({"title": "", "type": None, "body": "", "labels": [], "priority": None,
+                    "parent": None, "links": []})
+        exp["unset_guarded"] = {}
+        payload.update({"write": "edit", "key": args.key, "comment": None,
+                        "edit_fields": payload["additional_fields"]})
+        write_payload(run, payload)
+    return EXIT_OK, drive(run, args.confirm)
+
+
+def cmd_update(args) -> tuple[int, dict]:
+    """Rewrite an existing issue from a full draft, then read it back and diff.
+
+    Title, description, priority, labels, parent and template fields are
+    edited; the issue type and existing links are left alone (an edit cannot
+    change the type, and links already made are not re-created). The
+    estimate comment is added as on create. Added in S7, when the maintainer
+    asked for the trial tickets to be re-run in place.
+    """
+    run = Path(args.run)
+    if not (run / "payload.json").exists():
+        ticket = load_json(args.ticket)
+        payload, errors, warnings = build(ticket, load_template(args.template), load_json(args.env))
+        if errors:
+            return EXIT_INVALID, {"status": "INVALID", "errors": errors, "warnings": warnings,
+                                  "message": f"{len(errors)} validation error(s); nothing was sent"}
+        exp = payload["expected"]
+        fields = {"summary": exp["title"], "description": exp["body"], **payload["additional_fields"]}
+        if exp["priority"]:
+            fields["priority"] = {"name": exp["priority"]}
+        if exp["labels"]:
+            fields["labels"] = exp["labels"]
+        if exp["parent"]:
+            fields["parent"] = {"key": exp["parent"]}
+        exp["links"] = []
+        payload.update({"write": "edit", "key": args.key, "edit_fields": fields})
+        if args.no_comment:
+            payload["comment"] = None
+        write_payload(run, payload)
+    return EXIT_OK, drive(run, args.confirm)
+
+
+def cmd_link(args) -> tuple[int, dict]:
+    run = Path(args.run)
+    if not (run / "payload.json").exists():
+        template = load_template(args.template)
+        env = load_json(args.env)
+        req = load_json(args.links)
+        draft = {"target": {"site": args.site, "project": args.key.split("-")[0]},
+                 "title": "-", "type": "-", "links": req.get("links", []),
+                 "parent": req.get("parent")}
+        payload, errors, _ = build(draft, {"links": template.get("links", {})}, env)
+        if errors:
+            return EXIT_INVALID, {"status": "INVALID", "errors": errors,
+                                  "message": f"{len(errors)} validation error(s); nothing was sent"}
+        exp = payload["expected"]
+        parent = exp["parent"]
+        exp.update({"title": "", "type": None, "body": "", "labels": [], "priority": None,
+                    "fields": {}, "unset_guarded": {}})
+        payload.update({"write": "edit" if parent else None, "key": args.key, "comment": None,
+                        "edit_fields": {"parent": {"key": parent}} if parent else {}})
+        write_payload(run, payload)
+    return EXIT_OK, drive(run, args.confirm)
+
+
+def cmd_comment(args) -> tuple[int, dict]:
+    run = Path(args.run)
+    if not (run / "payload.json").exists():
+        env = load_json(args.env)
+        text = Path(args.body).read_text(encoding="utf-8") if args.body else ""
+        if not text.strip():
+            return EXIT_INVALID, {"status": "INVALID", "message": "comment body is empty"}
+        payload = {"tracker": "jira", "env": env, "cloudId": args.site, "site_url": site_url(args.site),
+                   "project": args.key.split("-")[0], "key": args.key, "write": None,
+                   "comment": text, "additional_fields": {}, "repair_wait": 0,
+                   "expected": {"title": "", "type": None, "body": "", "labels": [], "priority": None,
+                                "parent": None, "fields": {}, "unset_guarded": {}, "links": []}}
+        write_payload(run, payload)
+    payload, state = load_run(run)
+    if not state.get("commented"):
+        drive_comment_only = drive(run, args.confirm)
+        return EXIT_OK, drive_comment_only
+    return EXIT_OK, {"status": "VERIFIED", "key": args.key, "message": "Comment added."}
+
+
+def cmd_readback(args) -> tuple[int, dict]:
+    run = Path(args.run)
+    payload, state = load_run(run)
+    key = state.get("key") or payload.get("key")
+    calls = readback_specs(run, payload, key, args.suffix)
+    pending = [c for c in calls if not Path(c["result_file"]).exists()]
+    if pending:
+        raise Relay(pending)
+    reads = [normalize_issue(read_result(run, Path(c["result_file"]).stem, payload, key)) for c in calls]
+    return EXIT_OK, {"status": "OK", "key": key, "read": merge_reads(reads)}
+
+
+def cmd_diff(args) -> tuple[int, dict]:
+    run = Path(args.run)
+    payload, state = load_run(run)
+    key = state.get("key") or payload.get("key")
+    calls = readback_specs(run, payload, key, args.suffix)
+    if any(not Path(c["result_file"]).exists() for c in calls):
+        return EXIT_INVALID, {"status": "INVALID", "message": "run readback first"}
+    reads = [normalize_issue(read_result(run, Path(c["result_file"]).stem, payload, key)) for c in calls]
+    rows = diff(payload["expected"], merge_reads(reads))
+    status = "VERIFIED" if all(r["ok"] for r in rows) else "FAILED"
+    return (EXIT_OK if status == "VERIFIED" else EXIT_TRACKER), result_body(
+        status, payload, key, rows, "Every field matches." if status == "VERIFIED" else
+        "Mismatched: " + ", ".join(r["name"] for r in rows if not r["ok"]))
+
+
+def cmd_create(args) -> tuple[int, dict]:
+    return EXIT_OK, drive(Path(args.run), args.confirm)
+
+
+def cmd_duplicates(args) -> tuple[int, dict]:
+    return EXIT_OK, duplicates(Path(args.run))
+
+
+def cmd_fetch(args) -> tuple[int, dict]:
+    template = load_template(args.template) if args.template else None
+    run = Path(args.run)
+    (run / "results").mkdir(parents=True, exist_ok=True)
+    return EXIT_OK, fetch(run, load_json(args.env), args.site, args.key, template)
+
+
+def parser() -> argparse.ArgumentParser:
+    p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
+    sub = p.add_subparsers(dest="op", required=True)
+
+    s = sub.add_parser("detect", help="find the MCP generation and tool prefix")
+    s.add_argument("--tools", required=True, help="JSON list of this session's tool names, or - for stdin")
+    s.set_defaults(func=cmd_detect)
+
+    s = sub.add_parser("build", help="validate a draft and write the run's payload")
+    s.add_argument("--ticket", required=True)
+    s.add_argument("--template", required=True, help="ticket_template.py resolve output (or a bare resolved template)")
+    s.add_argument("--env", required=True, help="detect's output")
+    s.add_argument("--run", required=True, help="run directory")
+    s.set_defaults(func=cmd_build)
+
+    for name, func in (("duplicates", cmd_duplicates), ("create", cmd_create),
+                       ("readback", cmd_readback), ("diff", cmd_diff), ("repair", cmd_create)):
+        s = sub.add_parser(name)
+        s.add_argument("--run", required=True)
+        if name in ("create", "repair"):
+            s.add_argument("--confirm", action="store_true")
+        if name in ("readback", "diff"):
+            s.add_argument("--suffix", default="")
+        s.set_defaults(func=func)
+
+    for name, func, extra in (("set-fields", cmd_set_fields, "--fields"),
+                              ("link", cmd_link, "--links"),
+                              ("comment", cmd_comment, "--body")):
+        s = sub.add_parser(name)
+        s.add_argument("--run", required=True)
+        s.add_argument("--key", required=True)
+        s.add_argument("--site", required=True)
+        s.add_argument("--env", required=True)
+        if name != "comment":
+            s.add_argument("--template", required=True)
+        s.add_argument(extra, required=True)
+        s.add_argument("--confirm", action="store_true")
+        s.set_defaults(func=func)
+
+    s = sub.add_parser("update", help="rewrite an existing issue from a full draft, then verify it")
+    s.add_argument("--run", required=True)
+    s.add_argument("--key", required=True)
+    s.add_argument("--ticket", required=True)
+    s.add_argument("--template", required=True)
+    s.add_argument("--env", required=True)
+    s.add_argument("--no-comment", action="store_true",
+                   help="skip the estimate comment, when the points are unchanged since it was posted")
+    s.add_argument("--confirm", action="store_true")
+    s.set_defaults(func=cmd_update)
+
+    s = sub.add_parser("fetch")
+    s.add_argument("--run", required=True)
+    s.add_argument("--key", required=True)
+    s.add_argument("--site", required=True)
+    s.add_argument("--env", required=True)
+    s.add_argument("--template")
+    s.set_defaults(func=cmd_fetch)
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = parser().parse_args(argv)
+    try:
+        code, body = args.func(args)
+    except Relay as relay:
+        code, body = EXIT_OK, {"status": "RELAY", "calls": relay.calls,
+                               "message": "Make each call unchanged, save each raw result to its "
+                                          "result_file, then run the same command again."}
+    except Stop as stop:
+        code, body = stop.code, stop.body
+    except (OSError, json.JSONDecodeError) as exc:
+        code, body = EXIT_INVALID, {"status": "INVALID", "message": f"{type(exc).__name__}: {exc}"}
+    sys.stdout.write(json.dumps(body, indent=2, ensure_ascii=False) + "\n")
+    return code
+
+
+if __name__ == "__main__":
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    sys.exit(main())

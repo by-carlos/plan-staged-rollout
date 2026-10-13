@@ -1,0 +1,17 @@
+{"data": {"appliedContentFormat": "markdown", "id": "500001", "key": "ABC-321", "fields": {
+  "summary": "Add a retry to the nightly export job",
+  "description": "## In plain terms\n\nThe nightly export sometimes fails on a short network blip and nobody notices until morning.\n\n## Context\n\n- The job ran without a retry for two years.\n- Three failures last month, each one a timeout.\n\n## Acceptance Criteria\n\n1. A failed run retries once after five minutes.\n2. A second failure pages the on-call person.\n\nAI-assisted draft",
+  "status": {"name": "Backlog", "statusCategory": {"name": "To Do"}},
+  "priority": {"name": "High"},
+  "issuetype": {"id": "10001", "name": "Story"},
+  "labels": ["backend"],
+  "parent": {"id": "500000", "key": "ABC-100", "fields": {"summary": "Parent epic"}},
+  "issuelinks": [{"id": "1", "type": {"name": "Blocks", "inward": "is blocked by", "outward": "blocks"},
+                  "outwardIssue": {"key": "ABC-200"}}],
+  "customFields": {
+    "Story Points": {"id": "customfield_00000", "value": 3},
+    "Sensitive data review": {"id": "customfield_00001"},
+    "Team": {"id": "customfield_00002", "value": {"value": "Alpha", "id": "90010"}},
+    "Unrelated text field": {"id": "customfield_00099", "value": "template boilerplate"}
+  }
+}}}

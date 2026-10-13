@@ -207,12 +207,21 @@ structural fact and four rules about timing.
         approval.
    1. **Fetch:** `git fetch origin`.
    2. **Sync the plan branch:** fast-forward local `plan-uptime-page` to
-      `origin/plan-uptime-page` — `git merge --ff-only origin/plan-uptime-page`
-      when it is checked out, `git fetch origin plan-uptime-page:plan-uptime-page`
-      otherwise (both refuse non-fast-forward updates). This holds under both
-      remote squash-merge and merge-commit: either way the remote plan branch
-      only moves forward. If it won't fast-forward, the branch has diverged —
-      stop and report.
+      `origin/plan-uptime-page` — `git merge --ff-only origin/plan-uptime-page` when it
+      is checked out, `git fetch origin plan-uptime-page:plan-uptime-page` otherwise.
+      This holds under both remote squash-merge and merge-commit: either way
+      the remote plan branch only moves forward. If it won't fast-forward, the
+      branch has diverged — stop and report. Then **check the branch is not
+      ahead**, whichever command ran: `git rev-list --count
+      origin/plan-uptime-page..plan-uptime-page`. The check is needed because
+      `git merge --ff-only` (unlike the fetch form, which refuses)
+      prints `Already up to date.` and exits 0 when the local branch holds
+      commits the remote lacks. If the count is non-zero,
+      stop and report that many unpushed commits on `plan-uptime-page`, with the two
+      ways out: push the plan branch, or discard the commits. Never push or
+      reset on its own — unpushed commits flow into every stage worktree cut
+      from this branch and into the remote squash merge, and publishing or
+      destroying them is the user's call.
    3. **Verify the trees:** a clean working tree is required in *this* tree
       **and** in the main clone. The clone matters even when the stage runs
       elsewhere: the `done` write (finish step 5) is a commit there, so a

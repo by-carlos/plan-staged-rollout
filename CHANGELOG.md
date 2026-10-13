@@ -10,6 +10,16 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Preflight now stops when the plan branch is ahead of its upstream.** Protocol
+  step 0.2 synced with `git merge --ff-only`, which prints `Already up to date.`
+  and passes when the local plan branch holds unpushed commits, so those commits
+  flowed into stage worktrees and the remote squash merge. Step 0.2 now also
+  checks `git rev-list --count origin/plan-<slug>..plan-<slug>` and, when it is
+  non-zero, stops and reports the count without pushing or resetting. The inaccurate
+  "(both refuse non-fast-forward updates)" note is gone.
+
 ### Added
 
 - `docs/ticket-templates.md`: a short guide to writing a team ticket template,

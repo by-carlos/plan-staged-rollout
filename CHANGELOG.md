@@ -10,6 +10,19 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **`create-issue` and `work-issue`: tickets for GitHub and Jira.**
+  `create-issue` drafts one ticket from a template, has a Sonnet-tier reviewer
+  challenge its gaps, proposes size and priority, posts after approval, and
+  reads the ticket back to diff every field. `work-issue` works a named
+  ticket: with an AI prompt it branches, implements and opens a pull request,
+  merging only after an explicit yes; without one it is guide-only. Team
+  conventions plug in as a TOML template selected by `ticket_template` in
+  `plan-staged-rollout.toml`. A new `gh-body-guard` `PreToolUse` hook denies
+  the `gh` body shapes that corrupt non-ASCII text, and CI now runs the
+  ticket scripts' unit tests.
+
 ### Fixed
 
 - **Stage chips now work in desktop sessions that have `start_session` but not

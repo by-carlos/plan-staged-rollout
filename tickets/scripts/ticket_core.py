@@ -11,6 +11,15 @@ the skill calls it as a CLI. Every subcommand takes the output of
     ticket_core.py estimate      --template T.json ANSWERS.json
     ticket_core.py review-prompt --template T.json DRAFT.json [--duplicates D.json] [--source S.txt] [--siblings TITLES.txt]
     ticket_core.py review-filter --template T.json REVIEW.json
+    ticket_core.py review-skip   --work DIR --reason TEXT
+    ticket_core.py prepare       --work DIR --tracker github|jira [--project-dir DIR]
+
+`review-filter` also writes its output to review-filtered.json beside
+REVIEW.json; `review-skip` records why no review ran. With the opt-in write
+guard on (write_guard.py), an adapter builds a create only when one of the
+two exists. `prepare` runs the mechanical steps of a run in one call: it
+resolves the template into the work folder, and once draft.json exists it
+checks it and writes review-prompt.md.
 
 A draft is a Ticket (references/adapter-contract.md) plus an optional
 `draft_notes` object that is never rendered or posted:
@@ -510,10 +519,50 @@ def review_filter(t: dict, raw: str) -> dict:
     }
 
 
+# ----------------------------------------------------------------- prepare
+
+def prepare(work: Path, tracker: str, project_dir: Path) -> dict:
+    """The mechanical steps of a run, in one call. Resolves the template
+    into work/template.json once; when work/draft.json exists, checks it
+    and, if it passes, writes work/review-prompt.md from the optional
+    source.md, siblings.txt and dupes.json beside it. `next` names the
+    step the skill takes after this call."""
+    import ticket_template  # local: the template loader is only needed here
+
+    work.mkdir(parents=True, exist_ok=True)
+    tpath = work / "template.json"
+    out: dict = {"work": str(work), "template": str(tpath)}
+    if not tpath.is_file():
+        resolved = ticket_template.resolve(tracker, project_dir, None, None)
+        tpath.write_text(json.dumps(resolved, indent=2, ensure_ascii=False), encoding="utf-8")
+        out["notice"] = resolved.get("notice")
+    t = load_template(str(tpath))
+    draft = work / "draft.json"
+    if not draft.is_file():
+        out["next"] = "draft: write draft.json following the template's sections (step 3)"
+        return out
+    errors, warnings = check_draft(t, load_json(str(draft)))
+    out["check"] = {"ok": not errors, "errors": errors, "warnings": warnings}
+    if errors:
+        out["next"] = "fix every check error in draft.json, then run prepare again"
+        return out
+    optional = {name: work / name for name in ("source.md", "siblings.txt", "dupes.json")}
+    source = optional["source.md"].read_text(encoding="utf-8") if optional["source.md"].is_file() else None
+    siblings = ([s.strip() for s in optional["siblings.txt"].read_text(encoding="utf-8").splitlines() if s.strip()]
+                if optional["siblings.txt"].is_file() else None)
+    dupes = load_json(str(optional["dupes.json"])) if optional["dupes.json"].is_file() else None
+    (work / "review-prompt.md").write_text(review_prompt(t, load_json(str(draft)), dupes, source, siblings),
+                                           encoding="utf-8")
+    out["review_prompt"] = str(work / "review-prompt.md")
+    out["next"] = "gap review: dispatch the Sonnet reviewer on review-prompt.md (step 4)"
+    return out
+
+
 # --------------------------------------------------------------------- CLI
 
 def main(argv: list[str] | None = None) -> int:
-    sys.stdout.reconfigure(encoding="utf-8")
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="op", required=True)
     for name in ("check", "render", "estimate", "review-prompt", "review-filter"):
@@ -524,7 +573,27 @@ def main(argv: list[str] | None = None) -> int:
             p.add_argument("--duplicates")
             p.add_argument("--source", help="the material the ask was drafted from (text file)")
             p.add_argument("--siblings", help="for a split: the other tickets' titles, one per line")
+    p = sub.add_parser("review-skip")
+    p.add_argument("--work", required=True)
+    p.add_argument("--reason", required=True, help="the [review].skip_when rule, or why the review failed")
+    p = sub.add_parser("prepare")
+    p.add_argument("--work", required=True)
+    p.add_argument("--tracker", required=True, choices=("github", "jira"))
+    p.add_argument("--project-dir", default=".")
     args = ap.parse_args(argv)
+
+    if args.op == "review-skip":
+        out = {"reason": args.reason, "at": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds")}
+        Path(args.work).mkdir(parents=True, exist_ok=True)
+        Path(args.work, "review-skipped.json").write_text(json.dumps(out, indent=2, ensure_ascii=False),
+                                                          encoding="utf-8")
+        print(json.dumps(out, ensure_ascii=False))
+        return 0
+    if args.op == "prepare":
+        out = prepare(Path(args.work), args.tracker, Path(args.project_dir).resolve())
+        print(json.dumps(out, indent=2, ensure_ascii=False))
+        return 1 if out.get("check", {}).get("errors") else 0
+
     t = load_template(args.template)
 
     if args.op == "review-filter":
@@ -534,8 +603,12 @@ def main(argv: list[str] | None = None) -> int:
         except (ValueError, json.JSONDecodeError) as exc:
             print(json.dumps({"errors": [f"unreadable review output: {exc}"]}))
             return 1
+        unreadable = out["errors"] and not out["questions"] and not out["nits"]
+        if args.input != "-" and not unreadable:
+            Path(args.input).with_name("review-filtered.json").write_text(
+                json.dumps(out, indent=2, ensure_ascii=False), encoding="utf-8")
         print(json.dumps(out, indent=2, ensure_ascii=False))
-        return 1 if out["errors"] and not out["questions"] and not out["nits"] else 0
+        return 1 if unreadable else 0
 
     data = load_json(args.input)
     if args.op == "estimate":

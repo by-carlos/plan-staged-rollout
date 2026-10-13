@@ -31,6 +31,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ticket_core as core  # shared checks and body rendering
+import write_guard  # opt-in pipeline gate and relay tokens
 
 EXIT_OK, EXIT_INVALID, EXIT_TRACKER, EXIT_DENIED, EXIT_UNREACHABLE = 0, 1, 2, 3, 4
 
@@ -746,7 +747,9 @@ def drive(run: Path, confirm: bool) -> dict:
             need_confirm("create the issue")
             if not payload["env"].get("writes"):
                 raise Stop(EXIT_DENIED, denied_body(payload, "read-only server"))
-            raise Relay([create_spec(run, payload)])
+            call = create_spec(run, payload)
+            write_guard.issue_token(call)
+            raise Relay([call])
         try:
             data = read_result(run, "create", payload)
         except Stop as stop:
@@ -1007,6 +1010,8 @@ def cmd_build(args) -> tuple[int, dict]:
     template = load_template(args.template)
     env = load_json(args.env)
     payload, errors, warnings = build(ticket, template, env)
+    if write_guard.guard_enabled(Path.cwd()):
+        errors += write_guard.pipeline_gate(Path(args.ticket).resolve().parent, template)
     if errors:
         return EXIT_INVALID, {"status": "INVALID", "errors": errors, "warnings": warnings,
                               "message": f"{len(errors)} validation error(s); nothing was sent"}

@@ -26,6 +26,9 @@ HOOKS = ROOT.parent / "hooks"  # the plugin's hooks sit at its root, beside tick
 import github_adapter as ga
 import ticket_template
 
+# Keep the user's own plan-staged-rollout.toml (which may turn the write guard on) out of these tests.
+os.environ["CLAUDE_CONFIG_DIR"] = tempfile.mkdtemp(prefix="psr-test-config-")
+
 FIX = ROOT / "fixtures" / "github"
 REPO = "example-org/widgets"
 
@@ -480,20 +483,27 @@ def find_bash() -> str | None:
     return None if os.name == "nt" else shutil.which("bash")
 
 
-@unittest.skipUnless(find_bash() and shutil.which("jq"), "needs bash and jq")
+@unittest.skipUnless(find_bash(), "needs bash")
 class HookTests(unittest.TestCase):
     def decision(self, command: str) -> str:
         proc = subprocess.run([find_bash(), str(HOOKS / "gh-body-guard")],
                               input=json.dumps({"tool_input": {"command": command}}),
                               capture_output=True, text=True, encoding="utf-8", check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)
+        if not proc.stdout.strip():
+            return "pass"  # no decision: the user's own permission rules apply
         return json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecision"]
 
     def test_denies_the_corrupting_shapes(self):
         for cmd in ("gh issue create --title t --body-file b.md",
                     "gh pr comment 3 -F b.md",
                     "gh issue edit 4 --body \"@b.md\"",
-                    "cd x && gh issue create --body=@b.md"):
+                    "cd x && gh issue create --body=@b.md",
+                    "gh issue create --title t \\\n  --body-file body.md",
+                    "GH_REPO=o/r gh issue create -t x --body-file b.md",
+                    "gh issue create --title \"a|b\" --body-file body.md",
+                    "command gh pr create -b @b.md",
+                    "gh pr comment 3 -Fb.md"):
             self.assertEqual(self.decision(cmd), "deny", cmd)
 
     def test_allows_everything_else(self):
@@ -501,7 +511,17 @@ class HookTests(unittest.TestCase):
                     "gh issue list --repo o/r",
                     "gh issue create --title t --body \"plain text\"",
                     "git status"):
-            self.assertEqual(self.decision(cmd), "allow", cmd)
+            self.assertEqual(self.decision(cmd), "pass", cmd)
+
+    def test_gh_words_in_another_command_are_not_a_gh_call(self):
+        # A commit message that mentions gh, next to git's own -F, once read as
+        # a gh issue --body-file call and was denied.
+        for cmd in ("git commit -q -F - <<'EOF'\nfeat: x\n\ndenies gh issue creates from Bash\nEOF",
+                    "git commit -F msg.txt -m \"see gh issue create\"",
+                    "echo 'gh pr edit 3 -F b.md'",
+                    "gh issue create --title t --body x && git commit -F msg.txt",
+                    "git commit -F - <<EOF\nfix: gh issue create -F x\nEOF"):
+            self.assertEqual(self.decision(cmd), "pass", cmd)
 
     def test_hook_config_points_at_the_script(self):
         config = json.loads((HOOKS / "hooks.json").read_text(encoding="utf-8"))

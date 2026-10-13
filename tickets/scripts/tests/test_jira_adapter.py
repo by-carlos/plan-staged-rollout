@@ -7,6 +7,7 @@ Run from the repo root:
 import copy
 import io
 import json
+import os
 import sys
 import tempfile
 import unittest
@@ -18,6 +19,11 @@ FIX = HERE / "fixtures" / "jira"
 sys.path.insert(0, str(HERE.parent))
 
 import jira_adapter as ja
+import write_guard
+
+# Keep the user's own plan-staged-rollout.toml (which may turn the write guard
+# on) and the guard's relay tokens out of these tests.
+os.environ["CLAUDE_CONFIG_DIR"] = tempfile.mkdtemp(prefix="psr-test-config-")
 
 V2 = "mcp__plugin_atlassian_atlassian__"
 
@@ -440,6 +446,69 @@ class ReadTests(AdapterCase):
         code, body = self.build_run(draft)
         self.assertEqual(code, ja.EXIT_INVALID, body)
         self.assertTrue(any("source_key" in e for e in body["errors"]), body)
+
+
+class GuardedCreate(AdapterCase):
+    """guard_tracker_creates on: build needs the pipeline's evidence, and the
+    hook lets through exactly the create call the adapter issued, once."""
+
+    def setUp(self):
+        super().setUp()
+        self.cfg = self.dir / "cfg"
+        self.cfg.mkdir()
+        (self.cfg / "plan-staged-rollout.toml").write_text("guard_tracker_creates = true\n", encoding="utf-8")
+        self._old = os.environ["CLAUDE_CONFIG_DIR"]
+        os.environ["CLAUDE_CONFIG_DIR"] = str(self.cfg)
+
+    def tearDown(self):
+        os.environ["CLAUDE_CONFIG_DIR"] = self._old
+        super().tearDown()
+
+    def evidence_files(self):
+        self.write("template.json", {"template": ja.load_template(str(self.template_path)), "source": "test"})
+        self.write("review-filtered.json", {"questions": [], "nits": [], "blockers": 0})
+        self.write("estimate.json", {"outcome": "estimate"})
+
+    def test_build_refuses_without_the_pipeline_evidence(self):
+        code, body = self.build_run()
+        self.assertEqual(code, ja.EXIT_INVALID, body)
+        gate = [e for e in body["errors"] if e.startswith("pipeline gate")]
+        self.assertEqual(len(gate), 3, gate)
+
+    def test_build_refuses_a_template_other_than_the_resolved_one(self):
+        self.evidence_files()
+        other = ja.load_template(str(self.template_path))
+        other["title"] = {"max_length": 7}
+        self.write("template.json", {"template": other, "source": "test"})
+        code, body = self.build_run()
+        self.assertEqual(code, ja.EXIT_INVALID, body)
+        self.assertTrue(any("differs from the one in template.json" in e for e in body["errors"]), body)
+
+    def test_issued_create_passes_the_hook_once(self):
+        self.evidence_files()
+        code, body = self.build_run()
+        self.assertEqual(code, ja.EXIT_OK, body)
+        code, body = run_cli("create", "--run", self.run_dir, "--confirm")
+        self.assertEqual(body["status"], "RELAY", body)
+        call = body["calls"][0]
+        event = {"tool_name": call["tool"], "tool_input": call["arguments"]}
+        self.assertIsNone(write_guard.decide(event))  # passes, with no decision of its own
+        self.assertEqual(write_guard.decide(event)[0], "deny")
+
+    def test_hand_made_create_is_denied(self):
+        event = {"tool_name": V2 + "createJiraIssue",
+                 "tool_input": {"cloudId": "x", "projectKey": "ABC", "summary": "Hand made"}}
+        decision, reason = write_guard.decide(event)
+        self.assertEqual(decision, "deny")
+        self.assertIn("create-issue", reason)
+
+    def test_retyped_arguments_are_denied(self):
+        self.evidence_files()
+        self.build_run()
+        _, body = run_cli("create", "--run", self.run_dir, "--confirm")
+        args = dict(body["calls"][0]["arguments"], summary="Retyped title")
+        self.assertEqual(write_guard.decide({"tool_name": body["calls"][0]["tool"], "tool_input": args})[0],
+                         "deny")
 
 
 if __name__ == "__main__":

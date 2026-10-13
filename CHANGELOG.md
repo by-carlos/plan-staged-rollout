@@ -10,6 +10,14 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **`work-issue` records each act-mode run in the run log.** After a merge, a
+  pull request left open or an abandoned ticket it appends one line through
+  `effortlog.py log` (ticket, estimated tier, outcome, one-line note), the same
+  record `stage-run` writes, so the tiers on tickets can be checked against how
+  runs went. Still opt-in: nothing is written unless `CLAUDE_EFFORT_LOG` is set.
+
 ### Changed
 
 - **`work-issue` triggers on plain requests again.** The skill no longer sets

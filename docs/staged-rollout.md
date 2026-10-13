@@ -3,8 +3,8 @@
 [Home](../README.md) · [Install](install.md) · **How it works** · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
 **In short:** plan once, run each stage in its own fresh session, review,
-close. Every stage ends with a PR into the plan branch and proof in the
-ledger; the one PR into `main` is yours to merge.
+close. Every stage ends with a merged PR into the plan branch and proof in
+the ledger; `plan-close` proposes the one PR into `main`, and you merge it.
 
 ```mermaid
 flowchart TD
@@ -101,20 +101,24 @@ Run each stage in a **new session**. The session follows the operating
 protocol in `PLAN.md`:
 
 ```mermaid
-flowchart LR
-    start(["stage-run N<br/>in a new session"]) --> w{"Right model<br/>and effort?"}
-    w -->|no| sw["Stops. Switch,<br/>then type go"]
-    w -->|yes| d{"Dependencies<br/>done?"}
-    d -->|no| st["Stops and names<br/>the blocker"]
-    d -->|yes| work["Works in its<br/>own worktree"]
-    work --> check["Runs the<br/>acceptance check"]
-    check --> rec["Records the output<br/>in the ledger"]
-    rec --> pr["Opens the PR into<br/>the plan branch"]
-    pr --> next(["Names the stages<br/>that can run now"])
+flowchart TD
+    start(["stage-run N, in a new session"]) --> w["Checks model and effort"]
+    w -->|mismatch| sw["Stops: switch, then type go"]
+    w --> d["Checks its dependencies<br/>are done and merged"]
+    d -->|not yet| st["Stops: names the blocker"]
+    d --> work["Works in its own worktree,<br/>runs the acceptance check,<br/>records the output"]
+    work --> pr["Opens the PR into the plan branch"]
+    pr --> m["Merges it: on your yes,<br/>or by itself under merge: auto"]
+    pr -->|not merged yet| wait["Row stays doing"]
+    m --> done["Marks the stage done,<br/>removes its worktree"]
+    done --> next(["Names the stages that can run now"])
 ```
 
 What the picture leaves out:
 
+- **Preflight comes first.** Before anything else the session checks the git
+  state (branches, worktrees, open PRs, `.plan/BLOCKED.md`) and stops on
+  anything it can't explain, such as a crashed earlier attempt at this stage.
 - **The weight check is strict.** On a mismatch there is no "continue
   anyway". A heavier model alone is not a mismatch, and an unset
   `CLAUDE_EFFORT` is reported, not treated as one. Why it can't switch for
@@ -129,11 +133,14 @@ What the picture leaves out:
   so the churn stays out of its context.
 - **It stays in scope.** Work spotted for another stage is noted in the
   ledger and left alone; it may become a new stage.
-- **At the end** it updates the ledger row and notes, and changes a frozen
-  decision in `PLAN.md` (and nowhere else) if one changed. When it names the
-  stages that can run now, it gives each one's exact command, its
-  recommended model and effort, and whether they can run at the same time.
-  Then it stops.
+- **At the end** it updates the ledger row and notes on its stage branch,
+  changes a frozen decision in `PLAN.md` (and nowhere else) if one changed,
+  and opens the stage PR. It **offers** the merge and merges only on your
+  yes, or by itself under `merge: auto` once checks are green. After the
+  merge it marks the stage `done` on the plan branch and removes its
+  worktree. When it names the stages that can run now, it gives each one's
+  exact command, its recommended model and effort, and whether they can run
+  at the same time. Then it stops.
 
 All flags are in the [Reference](reference.md#stage-flags).
 
@@ -143,6 +150,11 @@ Stage steps are checkboxes. If a session has to stop mid-stage (blocked,
 context getting long, or you interrupt it), it marks the stage `doing`, ticks
 the completed boxes and writes a handoff note. Running `stage-run <N>` again
 (or asking to "run stage \<N> of the plan") resumes from the unticked boxes.
+
+If a session **crashed** instead, the plan branch still reads `todo` for that
+stage while its branch and worktree exist. The next `stage-run <N>` notices,
+stops and tells you what it found; tell it to resume that attempt or discard
+it. It never runs over it on its own.
 
 **Statuses:** `todo → doing → done`, plus `blocked` (waiting on a person or
 an outside gate: the stage becomes a **runbook**, exact steps for you to
@@ -158,7 +170,11 @@ block*). It depends on whether the stage's branch exists yet:
 | The block happens | The record goes |
 |---|---|
 | **Before the stage branch exists**: the weight check, a `gate: human` or `gate: local` stop, a refused redo | Straight onto the plan branch, readable the moment it happens |
-| **Mid-stage** | Onto the stage branch, where its runbook rides the stage PR, **and** a `### S<N>` section in `.plan/BLOCKED.md` on the plan branch, so the block is visible without waiting for a merge |
+| **Mid-stage** | The full runbook goes on the stage branch, in the stage PR (never merged while blocked). A `### S<N>` section in `.plan/BLOCKED.md` on the plan branch points at that PR, so the block is visible without waiting for a merge. |
+
+Nothing clears a `.plan/BLOCKED.md` section automatically: delete it by hand
+once the stage is resolved. Until you do, `plan-run` treats the stage as
+`blocked` and never fires it.
 
 ## Starting the next stage
 
@@ -257,9 +273,11 @@ alone. Then it:
    the as-built story survive on `main`;
 2. removes the stage worktrees that are finished (branch merged, nothing
    unpushed), and stops on any that still holds work git cannot recover;
-3. deletes `.plan/` as the last commit on the plan branch. Nothing is lost:
-   the full plan history stays in git. To keep the folder, for a project
-   where the plan doubles as documentation, set `plan-dir: keep`;
+3. offers to delete `.plan/` as the last commit on the plan branch,
+   recommending what the `plan-dir` flag says (`delete` by default), and
+   commits only after your OK. Nothing is lost: the full plan history stays
+   in git. Keep the folder (`plan-dir: keep`) for a project where the plan
+   doubles as documentation;
 4. proposes the PR from `plan-<slug>` to `main`. You review and merge it.
 
 It runs unattended too: `plan-close --unattended` applies the plan flags
@@ -282,18 +300,21 @@ gitGraph
     commit id: "S0 work"
     checkout plan-uptime
     merge plan-uptime-s0 id: "S0"
+    commit id: "S0 done"
     branch plan-uptime-s1
     commit id: "S1 work"
     checkout plan-uptime
     merge plan-uptime-s1 id: "S1"
+    commit id: "S1 done"
     commit id: "rm .plan/"
     checkout main
     merge plan-uptime id: "final PR"
 ```
 
-The picture shows which branch feeds which. Each stage PR is actually
-**squash-merged** into the plan branch and its branch deleted, so each stage
-is one commit there. The final PR into `main` is a real **merge commit**, so
+The picture shows which branch feeds which. Mermaid draws each squash as a
+merge, but each stage PR is actually **squash-merged** into the plan branch
+(one commit) and its branch deleted; a small `done` commit for the
+ledger follows it. The final PR into `main` is a real **merge commit**, so
 each stage lands on `main` as its own commit, while
 `git log --first-parent main` still shows one merge per project.
 

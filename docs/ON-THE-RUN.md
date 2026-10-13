@@ -5,9 +5,9 @@
 **In short:** instead of opening a new session for every stage, keep one
 local session open (the **orchestrator**) and run `plan-run`. It fires each
 remaining stage as its own cloud session against your GitHub repo, one after
-another, so a whole build can run while you watch from your phone. The
-computer running the orchestrator has to stay on, and the final merge into
-`main` is always yours.
+another, so a whole build can run while you watch from your phone. It needs
+the plan flag `merge: auto`. The computer running the orchestrator has to
+stay on, and the final merge into `main` is always yours.
 
 ```mermaid
 sequenceDiagram
@@ -22,8 +22,8 @@ sequenceDiagram
         C->>G: work, open the stage PR, merge it<br/>(merge: auto), mark the stage done
         O-->>C: check in every few minutes
     end
-    O->>You: stops: all done, a stage that needs you,<br/>or a run that died
-    You->>G: merge the plan branch into main
+    O->>You: nothing left to fire: lists the stages<br/>left for you, points at plan-close
+    You->>G: plan-close, then merge the final PR
 ```
 
 ## What it does
@@ -36,11 +36,11 @@ repository. From there:
 2. It fires that stage as a cloud session, using Claude Code's built-in
    `RemoteTrigger` tool. No script, no credential to set up.
 3. The cloud session runs the stage on its own: writes the code, opens a pull
-   request, and records `done` (or `blocked`) in the ledger. Under the plan
-   flag **`merge: auto`** it also squash-merges the stage PR into the plan
-   branch once checks are green. Under `merge: manual` it leaves the PR open
-   for you and the row at `doing`, so a plan meant to run unattended should
-   set `merge: auto`.
+   request into the plan branch, squash-merges it once checks are green, and
+   records `done` in the ledger (or records `blocked`). It merges only
+   because the plan says **`merge: auto`**: under the default
+   `merge: manual` it leaves the PR open and stops, the ledger row on the
+   plan branch never moves, and the orchestrator reports the run as dead.
 4. The orchestrator checks in every few minutes, watching the run and
    re-reading the ledger, then fires the next stage that can run.
 
@@ -52,8 +52,9 @@ repository. From there:
   and pushes the plan branch `plan-<slug>`; check it is on GitHub before you
   start. New plans get `RUNNER.md` automatically; an older plan gets it
   backfilled from the plugin's template before its first cloud run.
-- **`merge: auto`** on the plan flags line in `PLAN.md`, if you want stages to
-  run one after another without you (see [Plan flags](reference.md#plan-flags)).
+- **`merge: auto`** on the plan flags line in `PLAN.md` (see
+  [Plan flags](reference.md#plan-flags)). Without it, the first cloud stage
+  stops with its PR open and the run ends there.
 - **Cloud access on your Claude account.** `RemoteTrigger` very likely needs
   it (not yet checked across account types).
 - **GitHub connected to claude.ai/code for this repository**, so a cloud
@@ -80,15 +81,14 @@ watch: leave the terminal open and come back to it. Each fired stage is an
 ordinary cloud session; open its link at [claude.ai/code](https://claude.ai/code)
 on desktop or in the phone app to watch it or read its log.
 
-It stops when:
+It **skips** a `gate: human` or `gate: local` stage and carries on with the
+others. It ends when a round has nothing left to fire: every stage is `done`
+or `skipped`, or what is left is gated, `blocked`, or waiting on those. It
+stops outright only on a dead run. The end report lists every gated stage
+with the command to run it yourself.
 
-- every stage is `done` or `skipped` (it tells you so);
-- it reaches a `gate: human` or `gate: local` stage, or a dependency that
-  isn't ready; or
-- a run died (see below).
-
-Either way, merging the plan branch into `main` is left to you. To carry on
-after a stop, run `plan-run` again.
+When every stage is settled, run `plan-close`: it proposes the final PR into
+`main`, which you merge yourself. `plan-run` never opens or merges that PR.
 
 ## What a cloud stage can't reach
 
@@ -98,11 +98,15 @@ but not committed to the repo. That's what `gate: local` is for: mark a stage
 that needs something only your machine has, and the orchestrator skips it and
 tells you to run it yourself.
 
-## When a stage is reported dead or blocked
+## When a stage is gated, blocked or dead
 
-- **Blocked** means the ledger says so: a `gate: human` or `gate: local`
-  stage, or a row the stage itself marked `blocked` with a note. Read the
-  note, fix or run what it needs, then run `plan-run` again.
+- **Gated** (`gate: human` or `gate: local`): never fired; its row stays
+  `todo`. Run it yourself with `stage-run <N>`, then run `plan-run` again for
+  the stages after it.
+- **Blocked:** the stage marked itself `blocked`, with a runbook in its stage
+  PR and a `### S<N>` section in `.plan/BLOCKED.md`. `plan-run` never
+  retries it. Do what the runbook says, run the stage yourself with
+  `stage-run <N>`, and delete its `.plan/BLOCKED.md` section by hand.
 - **Dead** means the cloud run ended but the ledger row never moved, even
   after the orchestrator's grace period. The orchestrator reports the session
   id, its claude.ai link, what its log showed, and whether the stage branch or

@@ -19,7 +19,7 @@ Everything lives in `.plan/` at the repo root, committed on the plan branch.
 |---|---|---|
 | `README.md` | Entry point: what the plan is and how to run a stage | `plan-stages` |
 | `PLAN.md` | Architecture, **frozen decisions** (the design choices settled during planning), the stage index with each stage's flags, the plan flags line, and the operating protocol every stage follows. The single source of truth. | `plan-stages`; a stage changes it only when a frozen decision changes |
-| `LEDGER.md` | A one-line-per-stage status table, plus a notes block per stage: acceptance output, as-built detail, gotchas, handoff notes | every stage, at the end of its session |
+| `LEDGER.md` | A one-line-per-stage status table, plus a notes block per stage: acceptance output, as-built detail, gotchas, handoff notes | `plan-stages`; then each stage on its own branch as it works, and its `done` row directly on the plan branch after its PR merges |
 | `stage-N-<slug>.md` | One stage: its goal, steps as checkboxes, and its acceptance check | `plan-stages`, or the review stage for a follow-up stage |
 | `stage-f-review.md` | The review stage, `SF` | `plan-stages` |
 | `RUNNER.md` | What a cloud session follows to run one stage, since plugins don't load in the cloud | `plan-stages`; backfilled for older plans before their first cloud run |
@@ -30,12 +30,14 @@ Everything lives in `.plan/` at the repo root, committed on the plan branch.
 | Status | Meaning | What happens next |
 |---|---|---|
 | `todo` | Not started | Can run once every stage in its `depends` is `done` or `skipped` |
-| `doing` | Started, not finished: ticked checkboxes and a handoff note | `stage-run <N>` resumes from the unticked boxes |
+| `doing` | Started and not yet recorded `done`: stopped mid-stage (ticked checkboxes and a handoff note), or finished with its stage PR not yet merged | `stage-run <N>` resumes it |
 | `done` | The acceptance check ran, its output is in the ledger, and the stage PR is merged | Stages that depend on it can run |
 | `blocked` | Waiting on a person or an outside gate. The stage becomes a runbook of exact steps. A stage that finds mid-run that it needs the local machine uses the literal reason `needs-local`. | You do the steps, then run the stage again |
 | `skipped` | Decided against, with a one-line reason | Counts like `done` for `depends`, so nothing deadlocks. If the stage owned a check nothing else covers, its note says so and the review stage reassigns it or accepts the gap. |
 
-A stage left half done is a normal, resumable state, not a failure.
+A stage left half done is a normal, resumable state, not a failure. The plan
+branch shows a stage's own edits only after its PR merges, so a stage that is
+running right now still reads `todo` there.
 
 ## Stage flags
 
@@ -64,9 +66,10 @@ stage index:
 | `plan-dir` | `delete` \| `keep` | What `plan-close` does with `.plan/`: remove it as the last commit on the plan branch, or leave it in place for a plan that doubles as documentation. |
 
 These two are the plan's **declared defaults**: the answers a session applies
-when there is nobody to ask. An interactive session still asks you each one,
-with the declared value as its recommendation; `--unattended` is what makes
-it apply the default instead of asking. Which questions have a default and
+when there is nobody to ask. `merge: auto` is your OK given in advance, so a
+stage merges its own PR without asking. `plan-dir` is still asked in an
+interactive `plan-close`, with the flag as the recommendation;
+`--unattended` applies it without asking. Which questions have a default and
 which are hard stops in every mode is in the skill's *Unattended mode*
 section ([`SKILL.md`](../skills/staged-rollout/SKILL.md)).
 
@@ -91,7 +94,8 @@ Raise a stage above the defaults only where it needs it:
 |---|---|
 | Plan branch | `plan-<slug>`, where `<slug>` is a short name for the project chosen during planning |
 | Stage branch | `plan-<slug>-s<N>` (flat: git can't nest a branch under an existing branch name) |
-| Stage worktree | `../<repo>-s<N>`, a sibling folder of your clone |
+| Stage worktree | `../<repo>-s<N>`, a sibling folder of your clone (`<repo>` is your clone's folder name) |
+| Redo branch and worktree | `plan-<slug>-s<N>-redo-<K>` in `../<repo>-s<N>-redo-<K>`, when a merged stage is redone |
 | Stage ids | `S0`, `S1`, … in dependency order; `S0` is the keystone |
 | Review stage | id `SF`, file `stage-f-review.md`, run with `stage-run f` |
 

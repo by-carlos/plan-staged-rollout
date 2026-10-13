@@ -78,8 +78,10 @@ It does not appear in these places:
 
 - the desktop app's **Chat** and **Cowork** tabs, or claude.ai itself: none
   of them run Claude Code plugins;
-- a desktop **cloud** session: it loads plugins from your claude.ai account,
-  not from your machine, so a copy you installed locally is not there.
+- a **cloud** session (the desktop app's **Send to cloud**, claude.ai/code, or
+  a stage `plan-run` fires): a copy installed on your machine is not there.
+  Cloud stages don't need it: they follow `.plan/RUNNER.md`, which every
+  plan carries.
 
 Some parts need more than a session:
 
@@ -147,7 +149,9 @@ to it. A plan keeps running exactly as it was split up, whatever version is
 installed when you come back to it. A new version changes what the *next*
 `plan-stages` scaffolds, not what a plan in progress does.
 
-The one exception is `plan-run`'s own orchestrator loop. It is not scaffolded
-into `.plan/`, so an update changes what it does the next time you run it.
-What each fired stage follows is still `.plan/RUNNER.md`, which is versioned
-and backfilled like the rest of `.plan/`.
+What an update *can* change is the plugin-side layer around that protocol:
+`stage-run`'s model-tier check and handoff chips, the session-start nudge,
+and `plan-run`'s orchestrator loop. None of these is scaffolded into
+`.plan/`, so they follow the installed version. What each fired cloud stage
+follows is still `.plan/RUNNER.md`, which is versioned and backfilled like
+the rest of `.plan/`.

@@ -54,8 +54,10 @@ flowchart LR
 7. **Post and read back.** It posts through the tracker, reads the ticket
    back, compares every field and repairs a mismatch once.
 
-**Dry run:** say "dry run", "don't post" or "just draft". It does steps 1–6
-and stops at the preview, saying plainly that nothing was posted.
+**Dry run:** say "dry run", "don't post" or "just draft" (it also runs as one
+when the tracker's adapter isn't available). It does steps 1–5, shows the
+preview without asking **Post it?**, and says plainly that nothing was
+posted.
 
 ## Work a ticket — `work-issue`
 
@@ -81,7 +83,7 @@ flowchart LR
 | "work issue 124" | `work-issue 124` | Works that ticket: a GitHub number, `owner/repo#124`, a URL, or a Jira key |
 | | `work-issue 124 <base>` | Same, landing the work in the base branch you name |
 | "resume issue 124" | `work-issue 124 --resume` | Continues the ticket's existing branch and open pull request |
-| "work 124 after 123" | `work-issue 124 --after 123` | Waits until GitHub issue 123 closes, then works 124. GitHub only. |
+| "work 124 after 123" | `work-issue 124 --after 123` | Records 124 as blocked by 123, then watches 123 from this session for up to 24 hours. Closed as completed: it works 124. Closed as not planned: it asks first. Keep the session open. GitHub only. |
 
 **The AI prompt decides what happens.** There is no other switch:
 
@@ -94,8 +96,11 @@ flowchart LR
   branch, no commit, no comment.
 
 **Every outward step waits for your yes:** posting a comment (**Post it?**),
-the push with its pull request (**Push?**), and the merge (**Merge?**, always
-its own question). Before the merge question it runs a gap check, plus an
+the push with its pull request and linking comment (**Push?**), and the
+merge (**Merge?**, always its own question). Two writes need no extra yes,
+because naming the ticket authorizes them: the status changes your template
+sets (for example, moving the ticket to in-progress), and the blocked-by link
+that `--after` records. Before the merge question it runs a gap check, plus an
 acceptance check when there is something a person can verify. After a merge,
 it lists any tickets that were waiting on this one and are now free.
 

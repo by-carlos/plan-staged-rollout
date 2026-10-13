@@ -6,8 +6,8 @@
 
 A Claude Code plugin. It splits a build too big for one session into small
 **stages** and runs each stage in its own fresh session. A stage counts as
-done only when its acceptance check has run and the output is recorded in
-`LEDGER.md`, the plan's progress file in your repo.
+done only when its acceptance check has run, the output is recorded in
+`LEDGER.md` (the plan's progress file in your repo), and its PR is merged.
 
 It also includes two skills for single tickets: `create-issue` writes a
 GitHub issue or Jira ticket, and `work-issue` has Claude work one. See
@@ -81,10 +81,12 @@ There is nothing to configure. Other routes, full requirements and updating:
    design, splits the work into stages and commits `.plan/`. **It does not
    run any stage.**
 3. Open a **new** session. It lists the stages that can run now; say yes to
-   one. (If it says nothing, run `/plan-staged-rollout:stage-run 0`.)
+   one. (If it says nothing, run `/plan-staged-rollout:stage-run 0`.) When
+   the stage finishes, it opens a PR into the plan branch and offers to merge
+   it: say yes.
 4. Repeat step 3 until every stage is done, including the final review
-   stage. Then run `/plan-staged-rollout:plan-close` and merge the PR it
-   opens.
+   stage. Then run `/plan-staged-rollout:plan-close`; it proposes the final
+   PR into `main`, and you merge it.
 
 ## Commands and skills
 
@@ -96,7 +98,7 @@ language once the plugin is installed.
 | Split a project into stages | `plan-stages <idea>` | "break this project into stages" |
 | Run one stage in this session | `stage-run <N>` | "run stage 2", "run the next stage" |
 | Run every remaining stage in the cloud, instead of one by one | `plan-run` | "run the plan" |
-| Finish the plan and open the final PR | `plan-close` | "close the plan" |
+| Finish the plan and propose the final PR | `plan-close` | "close the plan" |
 | Write one ticket | `create-issue` | "create an issue for …" |
 | Have Claude work one ticket | `work-issue <ticket>` | "work issue 124" |
 

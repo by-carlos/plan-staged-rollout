@@ -113,16 +113,15 @@ class AdapterCase(unittest.TestCase):
 class DetectTests(AdapterCase):
     def test_v2_prefix_and_tools(self):
         env = ja.detect(self.tools["v2"])
-        self.assertEqual((env["status"], env["generation"], env["prefix"]), ("ok", "v2", V2))
+        self.assertEqual((env["status"], env["prefix"]), ("ok", V2))
         self.assertTrue(env["writes"])
         self.assertEqual(env["tools"]["link"], V2 + "executeWrite")
 
-    def test_v1(self):
-        env = ja.detect(self.tools["v1"])
-        self.assertEqual(env["generation"], "v1")
-        self.assertEqual(env["prefix"], "mcp__plugin_productivity_atlassian__")
-        self.assertEqual(env["tools"]["comment"], env["prefix"] + "addCommentToJiraIssue")
-        self.assertTrue(env["writes"])
+    def test_v1_only_server_is_refused(self):
+        code, body = run_cli("detect", "--tools", self.write("t.json", self.tools["v1"]))
+        self.assertEqual((code, body["status"]), (ja.EXIT_UNREACHABLE, "unsupported"))
+        self.assertEqual(body["candidates"], ["mcp__plugin_productivity_atlassian__"])
+        self.assertIn(ja.V2_ENDPOINT, body["message"])
 
     def test_read_only_server(self):
         env = ja.detect(self.tools["readonly"])
@@ -135,8 +134,8 @@ class DetectTests(AdapterCase):
 
     def test_prefers_full_v2_when_several_servers(self):
         env = ja.detect(self.tools["readonly"] + self.tools["v1"] + self.tools["v2"])
-        self.assertEqual((env["prefix"], env["generation"]), (V2, "v2"))
-        self.assertEqual(len(env["candidates"]), 3)
+        self.assertEqual((env["status"], env["prefix"]), ("ok", V2))
+        self.assertEqual(len(env["candidates"]), 2)  # the v1-only server is not one
 
 
 class UpdateTests(AdapterCase):
@@ -184,15 +183,6 @@ class BuildTests(AdapterCase):
         payload = json.loads((self.run_dir / "payload.json").read_text(encoding="utf-8"))
         self.assertIn("sensitive_review", payload["expected"]["unset_guarded"])
         self.assertEqual(payload["comment"], "Estimate proposed by AI using https://example.com/estimation-guide")
-
-    def test_v1_shape(self):
-        code, body = self.build_run(env=ja.detect(self.tools["v1"]))
-        self.assertEqual(code, ja.EXIT_OK, body)
-        args = body["create"]["arguments"]
-        self.assertEqual(args["issueTypeName"], "Story")
-        self.assertNotIn("issueType", args)
-        self.assertEqual(args["additional_fields"]["priority"], {"name": "High"})
-        self.assertEqual(args["additional_fields"]["parent"], {"key": "ABC-100"})
 
     def test_every_error_reported_at_once(self):
         code, body = self.build_run(draft=fixture("draft-invalid.json"))
@@ -444,16 +434,12 @@ class ReadTests(AdapterCase):
         self.assertEqual((code, body["thread"]), (ja.EXIT_OK, []))
         self.assertIn("run detect again", body["thread_note"])
 
-    def test_v1_comments_come_from_the_comment_field_as_adf(self):
-        env = ja.detect(self.tools["v1"])
+    def test_adf_comment_bodies_are_read_as_text(self):
         raw = {"key": "ABC-321", "fields": {"comment": {"total": 1, "comments": [{
             "id": "7", "author": {"displayName": "Pat Example"}, "created": "2026-10-01T09:00:00.000+1300",
             "body": {"type": "doc", "content": [{"type": "paragraph", "content": [
                 {"type": "text", "text": "First line"}, {"type": "hardBreak"},
                 {"type": "text", "text": "second line"}]}]}}]}}}
-        spec = ja.comments_spec(self.run_dir, {"env": env, "cloudId": "s"}, "ABC-321", "x")
-        self.assertEqual((spec["tool"], spec["arguments"]["fields"]),
-                         (env["prefix"] + "getJiraIssue", ["comment"]))
         comments, total = ja.parse_comments(raw)
         self.assertEqual((comments[0]["body"], total), ("First line\nsecond line", 1))
 
@@ -717,17 +703,6 @@ class TransitionTests(AdapterCase):
         self.answer(body, {"transition": "The user doesn't want to proceed with this tool use."})
         code, body = self.move("In review", "--confirm")
         self.assertEqual((code, body["status"]), (ja.EXIT_DENIED, "DENIED"))
-
-    def test_v1_shapes(self):
-        env_path = self.write("env-v1.json", ja.detect(self.tools["v1"]))
-        _code, body = self.move(env_path=env_path)
-        prefix = "mcp__plugin_productivity_atlassian__"
-        self.assertEqual([c["tool"] for c in body["calls"]],
-                         [prefix + "getJiraIssue", prefix + "getTransitionsForJiraIssue"])
-        self.answer(body, {"transition-before": {"key": "ABC-321", "fields": {"status": {"name": "Backlog"}}},
-                           "transition-options": TRANSITIONS["data"]})
-        _code, body = self.move("In review", "--confirm", env_path=env_path)
-        self.assertEqual(body["calls"][0]["arguments"]["transition"], {"id": "171"})
 
 
 if __name__ == "__main__":

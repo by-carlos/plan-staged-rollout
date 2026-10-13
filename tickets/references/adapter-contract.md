@@ -109,7 +109,7 @@ Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 
 | Op | Writes? | What it does |
 |---|---|---|
-| `detect` | no | Checks what this session can reach. GitHub: `gh auth status`, plus the repo's visibility (a public repo raises the publication warning). Jira: takes the list of tool names the session has, and returns the MCP generation (v1 or v2), the tool-name prefix and the call shapes to use. With no Atlassian tools present, it returns `not-configured`. |
+| `detect` | no | Checks what this session can reach. GitHub: `gh auth status`, plus the repo's visibility (a public repo raises the publication warning). Jira: takes the list of tool names the session has, and returns the tool-name prefix and the v2 tools to call. With no Atlassian tools present, it returns `not-configured`; with only the retired v1 tool set, it returns `unsupported` and names the v2 endpoint to reconnect to. |
 | `build` | no | Takes a draft Ticket and the resolved template, and returns the create payload: a call spec for relay, or the exact `gh api` input for direct. Returns every validation error at once: a missing required section, a value outside a scale, an unknown field, or a guarded value with no recorded confirmation. |
 | `duplicates` | no | Returns a search for likely duplicates (same title words, same source ticket, same external reference). Jira searches children first, then the draft's `source_key` in the key and text fields, then the title's keywords: every word longer than three letters that is not a common stop word, combined with OR. Hits come back with `words_matched` and are ranked source key first, then by words matched. The skill shows the hits and asks before creating. |
 | `create` | **yes** | Posts the built payload. It needs `--confirm`, which the skill passes only after the user's yes. |
@@ -165,16 +165,18 @@ to a different tool or server. A denial is an answer, not an obstacle.
 | 1 | Validation error in the input or the template; nothing was sent |
 | 2 | Tracker error (a call failed or returned something unexpected), or `FAILED` after the repair |
 | 3 | Write denied (message above) |
-| 4 | Tracker not reachable or not configured (`detect`) |
+| 4 | Tracker not reachable, not configured, or an unsupported tool set (`detect`) |
 
 ## Jira specifics (S3)
 
-- **Generations:**
-  - v1 (`/v1/mcp`): `createJiraIssue` takes `issueTypeName`,
-    `assignee_account_id` and `additional_fields` (snake_case).
-  - v2 (`/v2/mcp`): it takes `issueType` and `assignee`, and adds
-    `discover` and `executeRead` / `executeWrite` / `executeDestructive`.
-  - `detect` decides which from the tool list, never from a guess.
+- **v2 tools only.** `createJiraIssue` takes `issueType` and `assignee`,
+  and the server adds `discover` and `executeRead` / `executeWrite` /
+  `executeDestructive`. Atlassian serves these tools on the `/v1/mcp`
+  endpoints too ("existing v1 connections automatically start to expose and
+  use v2 tools", per the [Atlassian MCP server README](https://github.com/atlassian/atlassian-mcp-server#how-it-works)),
+  so the retired v1 tool set (`issueTypeName`, `addCommentToJiraIssue`,
+  `createIssueLink`) is not supported. `detect` refuses a server that offers
+  only those tools, with exit 4 and status `unsupported` (issue #199).
 - **Prefix:** at least three tool-name prefixes exist in the wild. `detect`
   finds the one present at runtime and never hard-codes one.
 - **Body:** markdown with `contentFormat: "markdown"`, which applies only
@@ -206,9 +208,9 @@ to a different tool or server. A denial is an answer, not an obstacle.
   changes the issue type and never re-creates links. Jira only; GitHub has
   no equivalent yet.
 - **`fetch`** (comments added for issue 196) also reads the comments into
-  `thread`, oldest first: `listJiraIssueComments` on v2, the `comment`
-  field on v1. When they were cut off or could not be read, `thread_note`
-  says so and the ticket is still returned. It also returns
+  `thread`, oldest first, through `listJiraIssueComments`. When they
+  were cut off or could not be read, `thread_note` says so and the
+  ticket is still returned. It also returns
   `status_category` (`new`, `indeterminate` or `done`) and `resolution`.
 - **`comment`** finds the posted comment on the ticket again and compares
   its text before it reports `VERIFIED`.
@@ -243,10 +245,6 @@ to a different tool or server. A denial is an answer, not an obstacle.
   - Issue links go through `executeWrite` with `createJiraIssueLink`,
     which takes the link type **name** (`linkType`), `inwardIssue` and
     `outwardIssue`. "`inwardIssue` Blocks `outwardIssue`".
-- **v1 call shapes are not verified live.** They come from skills that pin
-  `/v1/mcp`: `issueTypeName`, `additional_fields` for priority, labels and
-  parent, `addCommentToJiraIssue`, `createIssueLink`. The S7 trial confirms
-  them, or a v1 session reports the first mismatch.
 - **Denial classification** is by the error text the model saved: a hook,
   a read-only server, a policy, or a permission/scope refusal gives exit 3
   and the message above. Any other error gives exit 2. A create with an

@@ -303,12 +303,14 @@ Fix what the gap check finds, or name it in the merge ask.
    `gh pr view <PR> --json state` that it reads `MERGED`, then
    `git switch <base>`, `git pull --ff-only`, and `git branch -D <branch>`
    (the squash merge means git cannot see the branch as merged).
-   Then offer the tickets this merge freed ("After the merge" below).
+   Then offer the tickets this merge freed ("After the merge" below), and
+   record the run as `merged` (section 11).
 5. **On "Deploy first":** run section 8's acceptance, then ask again.
 6. **On "Not yet", or no answer:** nothing is merged and nothing is cleaned
    up. Switch back to the base branch so the feature branch is not left
-   checked out, and end with one line: the branch is kept, and so is its
-   pull request when one was opened (a declined push opens none).
+   checked out. Record the run as `pr-open` (section 11), or as `abandoned`
+   when no pull request was opened, and end with one line: the branch is kept,
+   and so is its pull request when one was opened (a declined push opens none).
 
 ### After the merge: the tickets it freed
 
@@ -394,6 +396,28 @@ question and nothing else.
    reason, continues from section 1. A timeout is one line, and the session
    stands down without re-arming.
 
+## 11. Record the run (act mode)
+
+The last step of every act-mode run, before the closing line, whatever the
+outcome: merged, pull request left open, or abandoned. A guide-only run
+writes nothing and is not logged. Log the easy runs too: a ticket that
+sailed through on a heavy tier is the only evidence the tier could have been
+lighter, and a log of only the bad runs can say nothing but "go heavier".
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" log   --source work-issue --repo <owner/repo> --target <ticket number or key>   --estimated-tier <effort from assess.json>   --outcome <merged|pr-open|abandoned>   --note "<one line: what made this ticket easy or hard>"
+```
+
+- `--estimated-tier` is the `effort` value `assess` returned, verbatim, never a
+  fresh judgement of what the tier should have been. Leave the flag out when
+  the ticket had no tier. For a Jira ticket, `--repo` is the repository the
+  AI prompt names.
+- The `--note` is context for a person reading the log later. Nothing here
+  asks the session to grade its own run.
+- Writing is opt-in: with `CLAUDE_EFFORT_LOG` unset the script writes nothing
+  and exits 0, which is the normal state for anyone who has not asked for it.
+  A failure is one line and never blocks the run.
+
 ## Reporting
 
 **Deliverables:** everything written outside the session: commits, the
@@ -429,4 +453,5 @@ plan is the whole answer.
 | `--after` on a Jira ticket | Refused: no background watch can read Jira. |
 | `--after` blocker is a pull request | Refused; it would never report `CLOSED`. |
 | `--after` blocker closes `NOT_PLANNED` | `Proceed?` question; never starts silently. |
-| Session abandons the ticket without a pull request | One comment on the ticket saying so and why, after a `Post it?` yes. |
+| Session abandons the ticket without a pull request | One comment on the ticket saying so and why, after a `Post it?` yes. Then record the run as `abandoned` (section 11). |
+| `effortlog.py log` fails, or `CLAUDE_EFFORT_LOG` is unset | One line and finish normally. Unset is the expected state; a lost row is not a failed run. |

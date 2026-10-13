@@ -188,6 +188,10 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
 
     notes = ticket.get("draft_notes") or {}
     confirmations = notes.get("confirmations") or {}
+    source_key = notes.get("source_key")
+    if source_key is not None and not KEY_RE.match(str(source_key)):
+        errors.append(f"draft_notes.source_key: {source_key!r} is not an issue key")
+        source_key = None
     fdefs = template.get("fields", {})
     values = {k: v for k, v in (ticket.get("fields") or {}).items() if v not in (None, "unset")}
 
@@ -285,7 +289,8 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
     payload = {"tracker": "jira", "env": env, "cloudId": site, "project": project,
                "site_url": site_url(site), "expected": expected, "comment": comment,
                "assignee": ticket.get("assignee"), "additional_fields": additional,
-               "repair_wait": repair_wait, "write": "create"}
+               "repair_wait": repair_wait, "write": "create",
+               "source_key": source_key}
     return payload, errors, warnings
 
 
@@ -877,9 +882,41 @@ def jql_escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def search_terms(title: str) -> str:
-    words = [w for w in re.findall(r"[A-Za-z0-9]+", title) if len(w) >= 3]
-    return " ".join(words[:6])
+STOP_WORDS = frozenset("""
+    about above after again also another because been before being between both
+    could does doing done each else even every from have having here into just
+    like make many more most much must only other over same should since some
+    such than that their them then there these they this those through under
+    until upon very want were what when where which while will with within
+    without would your
+""".split())
+
+
+def search_words(title: str) -> list[str]:
+    """Title words longer than three letters that are not common stop words,
+    in order and without repeats, at most eight."""
+    words, seen = [], set()
+    for w in re.findall(r"[A-Za-z0-9]+", title):
+        low = w.lower()
+        if len(w) > 3 and low not in STOP_WORDS and low not in seen:
+            seen.add(low)
+            words.append(w)
+    return words[:8]
+
+
+def keyword_jql(words: list[str]) -> str:
+    """One summary clause per word, joined with OR, so a reworded title still
+    finds its ticket; duplicates() ranks the hits by how many words match."""
+    return "(" + " OR ".join(f'summary ~ "{jql_escape(w)}"' for w in words) + ")"
+
+
+def source_jql(source_key: str) -> str:
+    return f'(key = {source_key} OR text ~ "{jql_escape(source_key)}")'
+
+
+def words_matched(words: list[str], summary: str) -> int:
+    have = {w.lower() for w in re.findall(r"[A-Za-z0-9]+", summary)}
+    return sum(1 for w in words if w.lower() in have)
 
 
 def search_hits(data) -> list[dict]:
@@ -896,12 +933,16 @@ def search_hits(data) -> list[dict]:
 def duplicates(run: Path) -> dict:
     payload, _ = load_run(run)
     exp = payload["expected"]
-    terms = jql_escape(search_terms(exp["title"]))
+    words = search_words(exp["title"])
+    source_key = payload.get("source_key")
     plan = []
-    if exp.get("parent"):
-        plan.append(("dup-children", f'parent = {exp["parent"]} AND summary ~ "{terms}"'))
-    plan.append(("dup-keyword",
-                 f'project = "{payload["project"]}" AND summary ~ "{terms}" ORDER BY created DESC'))
+    if exp.get("parent") and words:
+        plan.append(("dup-children", f'parent = {exp["parent"]} AND {keyword_jql(words)}'))
+    if source_key:
+        plan.append(("dup-source", f'project = "{payload["project"]}" AND {source_jql(source_key)}'))
+    if words:
+        plan.append(("dup-keyword",
+                     f'project = "{payload["project"]}" AND {keyword_jql(words)} ORDER BY created DESC'))
     pending = [search_spec(run, payload, n, q) for n, q in plan if not result_path(run, n).exists()]
     if pending:
         raise Relay(pending)
@@ -911,9 +952,13 @@ def duplicates(run: Path) -> dict:
             if hit["key"] in seen:
                 continue
             seen.add(hit["key"])
-            hit["match"] = "child" if name == "dup-children" else "keyword"
+            hit["match"] = {"dup-children": "child", "dup-source": "source"}.get(name, "keyword")
+            hit["words_matched"] = words_matched(words, hit["summary"])
             hit["exact_title"] = hit["summary"].strip().lower() == exp["title"].lower()
             hits.append(hit)
+    # Source-key hits first, then the most matched words; the sort is stable,
+    # so ties keep the order the searches returned them in.
+    hits.sort(key=lambda h: (h["match"] != "source", -h["words_matched"]))
     return {"status": "OK", "hits": hits}
 
 

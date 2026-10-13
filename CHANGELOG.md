@@ -28,6 +28,13 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **The Jira duplicate search no longer needs every title word to match.** The
+  `duplicates` operation required all words, so a reworded title found nothing and
+  one recorded case missed its source ticket. It now ORs the title words longer than
+  three letters that are not common stop words and ranks hits by words matched. A
+  draft can record `draft_notes.source_key`, and the search then also looks for that
+  key in the Jira key and text fields. The workaround wording in the `create-issue`
+  skill is gone. Jira only; the GitHub adapter is unchanged.
 - **`gh-body-guard` judges the commands the shell will run, not words in the
   string.** It matched `gh issue|pr` and `-F` anywhere, so `git commit -F -`
   with a message that named a gh command was denied. A new parser,

@@ -28,7 +28,8 @@ A draft is a Ticket (references/adapter-contract.md) plus an optional
       "confirmations": {"<field key>": "<value name the user chose>"},
       "waivers": ["<check>: <why the user waived it>"],
       "investigated": true,
-      "provenance": {"tool": "Claude Code", "session": "<id>"}
+      "provenance": {"tool": "Claude Code", "session": "<id>"},
+      "source_key": "<key of the ticket this one is written from>"
     }
 
 Exit codes: 0 ok, 1 validation errors (listed on stdout as JSON).
@@ -52,7 +53,7 @@ TICKET_KEYS = {
     "labels", "priority", "estimate", "fields", "parent", "links", "state",
     "assignee", "draft_notes",
 }
-NOTES_KEYS = {"confirmations", "waivers", "investigated", "provenance"}
+NOTES_KEYS = {"confirmations", "waivers", "investigated", "provenance", "source_key"}
 SEVERITIES = ("blocker", "gap", "nit")
 
 DATE_RE = re.compile(

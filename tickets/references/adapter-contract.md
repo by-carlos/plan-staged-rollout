@@ -70,9 +70,14 @@ rendered or posted:
   "confirmations": {"<field key>": "<value name the user explicitly chose>"},
   "waivers": ["<check>: <why the user waived it>"],
   "investigated": true,
-  "provenance": {"tool": "...", "session": "..."}
+  "provenance": {"tool": "...", "session": "..."},
+  "source_key": "ABC-123"
 }
 ```
+
+`source_key` is optional: the key of the existing ticket this draft is a
+rewrite or split of. Jira only; the GitHub adapter ignores it. When set,
+`duplicates` also searches for that key in the Jira key and text fields.
 
 `confirmations` is where `build` looks for the record that a guarded value
 was confirmed. The tracker-independent checks and the body rendering live in
@@ -99,7 +104,7 @@ Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 |---|---|---|
 | `detect` | no | Checks what this session can reach. GitHub: `gh auth status`, plus the repo's visibility (a public repo raises the publication warning). Jira: takes the list of tool names the session has, and returns the MCP generation (v1 or v2), the tool-name prefix and the call shapes to use. With no Atlassian tools present, it returns `not-configured`. |
 | `build` | no | Takes a draft Ticket and the resolved template, and returns the create payload: a call spec for relay, or the exact `gh api` input for direct. Returns every validation error at once: a missing required section, a value outside a scale, an unknown field, or a guarded value with no recorded confirmation. |
-| `duplicates` | no | Returns a search for likely duplicates (same title, same source thread, same external reference). Jira searches children first, then keywords. The skill shows the hits and asks before creating. |
+| `duplicates` | no | Returns a search for likely duplicates (same title words, same source ticket, same external reference). Jira searches children first, then the draft's `source_key` in the key and text fields, then the title's keywords: every word longer than three letters that is not a common stop word, combined with OR. Hits come back with `words_matched` and are ranked source key first, then by words matched. The skill shows the hits and asks before creating. |
 | `create` | **yes** | Posts the built payload. It needs `--confirm`, which the skill passes only after the user's yes. |
 | `set-fields` | **yes** | Sets fields that the create call cannot carry: GitHub Projects board fields, or Jira fields that are not on the create screen. |
 | `link` | **yes** | Creates links and the parent. It creates the first link, reads it back to confirm the direction, and only then creates the rest. |

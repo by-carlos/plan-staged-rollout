@@ -1,7 +1,6 @@
 ---
 name: work-issue
 description: 'Works one GitHub issue or Jira ticket that the user names by number or key. When the ticket carries an AI prompt it reads the thread, branches, implements, opens a pull request and merges only after an explicit yes; without one it guides a person through the work and changes nothing. It can also resume a ticket''s existing branch, or wait for a blocking issue to close first. Use only when the user explicitly asks to work a named ticket, such as "work issue 124", "work WID-120", "resume issue 124" or "work 124 after 123". Never start it on your own initiative.'
-disable-model-invocation: true
 ---
 
 # work-issue
@@ -24,11 +23,9 @@ merges after an explicit yes. A ticket without one is guide-only: an
 interpretation and a step plan, no branch and no writes. There is no other
 switch.
 
-**Invocation.** Until the maintainer's older skill of the same name is
-retired, this skill keeps `disable-model-invocation: true` and runs only when
-invoked by its full name. The flag is removed at that retirement; the
-description above is what then limits triggering to an explicit request
-naming a ticket.
+**Invocation.** The skill can be triggered in plain language ("work issue 12"),
+but only by an explicit request naming a ticket. The description above is what
+limits triggering; it never starts on its own initiative.
 
 The design lives in `${CLAUDE_PLUGIN_ROOT}/tickets/references/`:
 `template-schema.md` (the `[work]` section and the AI prompt's `requires`)

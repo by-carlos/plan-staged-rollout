@@ -8,6 +8,15 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Changed
+
+- **`work-issue` triggers on plain requests again.** The skill no longer sets
+  `disable-model-invocation`, so "work issue 12" starts it without the full
+  `/plan-staged-rollout:work-issue` name. Its description still limits triggering
+  to an explicit request that names a ticket.
+
 ## [0.11.0] - 2026-10-13
 
 ### Added

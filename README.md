@@ -705,8 +705,8 @@ ticket.
   prompt*, it reads the thread, branches, implements and opens a pull
   request, and it merges only after an explicit yes. Without an AI prompt it
   is guide-only: an interpretation and a step plan, with no branch and no
-  writes. Push and merge each have their own gate. For now it runs only when
-  invoked by its full name, `/plan-staged-rollout:work-issue <ticket>`.
+  writes. Push and merge each have their own gate. Say "work issue 12" or invoke
+  `/plan-staged-rollout:work-issue <ticket>`; it never starts on its own.
 
 GitHub goes through `gh`; Jira goes through the Atlassian MCP server (v1 or
 v2, detected at runtime). The scripts need Python 3.11 or later and the

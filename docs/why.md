@@ -1,5 +1,13 @@
 # Why staged rollouts
 
+[Home](../README.md) · [Install](install.md) · [Staged rollout](staged-rollout.md) ·
+[Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [FAQ](faq.md) ·
+[Reference](reference.md)
+
+**In short:** one long session for a big build gets expensive, drifts and
+is hard to resume or undo. Making each *session* small, with the plan and the
+proof written down in the repo, fixes all four.
+
 ## The problem
 
 When you hand an AI a project that is too big for one sitting, the usual

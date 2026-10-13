@@ -34,7 +34,7 @@ pushes to `main`. It runs `scripts/validate_plugin.py`, which checks that:
   `description` in their frontmatter.
 - The templates referenced by each `SKILL.md` (`PLAN.md`, `LEDGER.md`, `stage-N.md`,
   `README.md`) exist under `references/templates/`.
-- Relative links in `README.md` files resolve.
+- Relative links in `README.md` files and in `docs/*.md` pages resolve.
 
 The script is stdlib-only Python (no external dependencies). Run it locally before
 pushing:
@@ -46,13 +46,15 @@ python3 scripts/validate_plugin.py
 ## Ground rules
 
 - Match the existing style and structure of the code you're touching.
-- Update the relevant README and `CHANGELOG.md` when your change is user-facing.
+- Update the relevant page (the README or a page in `docs/`) and `CHANGELOG.md`
+  when your change is user-facing.
 - Be respectful and constructive — assume good faith on all sides.
 
 ## Status and layout
 
-**Shipped.** This README is the method document; the skill, the three
-commands, and the templates are implemented. They were built with the method
+**Shipped.** The skill, the four commands, the two ticket skills and the
+templates are implemented; the user documentation is the README plus the
+pages in `docs/`. The staged-rollout pieces were built with the method
 itself — decomposed into a `.plan/` and executed stage by stage in this repo
 (the plan folder was removed at closeout, as the method prescribes; its full
 history is in git). See [`CHANGELOG.md`](CHANGELOG.md) for what shipped when.
@@ -63,9 +65,16 @@ Layout:
 .
   .claude-plugin/plugin.json
   .claude-plugin/marketplace.json  # lists this repo as its own marketplace
-  README.md                      ← you are here
+  README.md                      # landing page: what it is, install, try it
   docs/
-    ON-THE-RUN.md                # quickstart: drive a plan from your phone
+    install.md                   # install, requirements, updating
+    staged-rollout.md            # how a plan runs, bootstrap to closeout
+    ON-THE-RUN.md                # running a plan in the cloud (/plan-run)
+    tickets.md                   # create-issue and work-issue
+    ticket-templates.md          # customizing the ticket template
+    faq.md                       # short answers to common questions
+    reference.md                 # flags, statuses, .plan/ files
+    why.md                       # the problem, the idea, how it compares
   skills/staged-rollout/
     SKILL.md                     # method: principles, decomposition guidance,
                                  #   flag heuristics, anti-patterns

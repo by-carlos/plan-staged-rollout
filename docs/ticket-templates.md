@@ -1,5 +1,9 @@
 # Customizing the ticket template
 
+[Home](../README.md) · [Install](install.md) · [Staged rollout](staged-rollout.md) ·
+[Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [FAQ](faq.md) ·
+[Reference](reference.md)
+
 `create-issue` and `work-issue` write and read tickets in the shape a
 **template** describes: which sections a ticket has, the title rules, the
 priority and size scales, and how a branch is named. You do not need one. With

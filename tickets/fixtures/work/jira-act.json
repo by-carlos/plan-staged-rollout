@@ -22,5 +22,6 @@
   "links": [],
   "state": "To Do",
   "has_ai_prompt": true,
+  "ai_prompt": "Repository: `example-org/widgets`\nBase branch: `develop`\n\nWrite the CSV export as UTF-8 in the export writer. Add a test with an accented name.\nVerify: the export tests pass and an accented name round-trips.",
   "ai_prompt_section": "AI prompt"
 }

@@ -33,6 +33,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **Both ticket adapters return the AI prompt under the same keys, and the estimate
+  ceiling applies to every tracker.** GitHub's `fetch` returned the prompt text as
+  `ai_prompt` while Jira's returned only the section title as `ai_prompt_section`,
+  and `work_core.py` bridged the two. Both now return `has_ai_prompt`, `ai_prompt`
+  and `ai_prompt_section`, built by one helper in `ticket_core.py`, and `assess` reads
+  them directly (documented in `adapter-contract.md`). The `ceiling` check moved from
+  the Jira adapter into `check_draft`, so a GitHub draft above it now fails `check`
+  too. A ticket fetched without `--template` no longer has `assess` look up a custom
+  AI prompt title.
 - **The Jira duplicate search no longer needs every title word to match.** The
   `duplicates` operation required all words, so a reworded title found nothing and
   one recorded case missed its source ticket. It now ORs the title words longer than

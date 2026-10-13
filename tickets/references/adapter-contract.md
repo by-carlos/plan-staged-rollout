@@ -60,6 +60,12 @@ classify it.
 }
 ```
 
+A fetched Ticket also carries `has_ai_prompt`, `ai_prompt` (the AI prompt
+section's text, or `null`) and `ai_prompt_section` (that section's title, or
+`null`). Both adapters return these same three keys, filled by
+`ticket_core.ai_prompt_of`; an empty section is no prompt. `work_core.py` reads
+them as they are.
+
 For Jira, `target` is `{"site": "...", "project": "KEY"}`.
 
 A **draft** is a Ticket plus an optional `draft_notes` object, which is never
@@ -82,7 +88,8 @@ rewrite or split of. Jira only; the GitHub adapter ignores it. When set,
 `confirmations` is where `build` looks for the record that a guarded value
 was confirmed. The tracker-independent checks and the body rendering live in
 `scripts/ticket_core.py` (`check`, `render`); an adapter's `build` calls them
-rather than re-implementing them.
+rather than re-implementing them. That includes the estimate's `ceiling` and
+`split_above`: a draft above either fails `check` on every tracker.
 
 A link's `direction` is from this ticket's side: `outward` means "this
 ticket blocks the target", `inward` means "the target blocks this ticket".
@@ -109,7 +116,7 @@ Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 | `set-fields` | **yes** | Sets fields that the create call cannot carry: GitHub Projects board fields, or Jira fields that are not on the create screen. |
 | `link` | **yes** | Creates links and the parent. It creates the first link, reads it back to confirm the direction, and only then creates the rest. |
 | `comment` | **yes** | Adds a comment, such as the estimate attribution comment. |
-| `fetch` | no | Reads one ticket into a Ticket, sections parsed, for `work-issue`. It also reports whether an `ai_prompt` section exists. |
+| `fetch` | no | Reads one ticket into a Ticket, sections parsed, for `work-issue`. It also returns the AI prompt as `has_ai_prompt`, `ai_prompt` and `ai_prompt_section`. |
 | `readback` | no | Like `fetch`, but asks for every field the payload set, **by explicit field id**. Create and edit responses do not echo custom fields, so a write is never confirmed from its own response. |
 | `diff` | no | Compares the expected Ticket with the read-back one and returns the per-field list in the Result shape. Whitespace and markdown are normalized; any other difference is reported, not silently accepted. |
 | `repair` | **yes** | Makes one corrective write for the mismatched fields, then runs `readback` and `diff` again. Fields with `repair.after_seconds` (automation overwrite) are read only after that wait. There is **one** repair, never a loop. A mismatch that is still there afterwards is `FAILED`, and the message names each field. |
@@ -257,8 +264,7 @@ Implemented in `scripts/github_adapter.py`; tests in `tests/`.
 - **Links.** `blocks` links use `gh issue edit --add-blocked-by` (`inward`)
   and `--add-blocking` (`outward`); the first is read back before the rest.
   A parent uses the sub-issues endpoint. Other kinds exit 1.
-- **`fetch`** returns the Ticket plus `thread` (the comments), `has_ai_prompt`
-  and `ai_prompt`. Pass `--with-board` to include board fields.
+- **`fetch`** returns the Ticket plus `thread` (the comments). Pass `--with-board` to include board fields.
 - **`detect`** warns on a public repo and exits 4 when issues are disabled.
 
 ## Not designed out: stage-to-issue linking

@@ -970,8 +970,7 @@ def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> d
     raw = normalize_issue(read_result(run, name, payload, key))
     bcfg = (template or {}).get("body", {})
     sections = parse_sections(raw.get("description") or "", int(bcfg.get("heading_level", 2)))
-    ai_titles = {s["title"] for s in bcfg.get("sections", []) if s.get("kind") == "ai_prompt"} or {"AI prompt"}
-    ai = next((t for t in sections if t.lower() in {a.lower() for a in ai_titles}), None)
+    ai_section, ai_prompt = core.ai_prompt_of(template or {}, sections)
     fields = {}
     for fkey, fdef in ((template or {}).get("fields") or {}).items():
         if fdef.get("id") in raw.get("custom", {}):
@@ -981,7 +980,8 @@ def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> d
             "type": raw.get("issuetype"), "title": raw.get("summary"), "body": raw.get("description"),
             "sections": sections, "labels": raw.get("labels", []), "priority": raw.get("priority"),
             "fields": fields, "parent": raw.get("parent"), "links": raw.get("links", []),
-            "state": raw.get("status"), "has_ai_prompt": ai is not None, "ai_prompt_section": ai}
+            "state": raw.get("status"), "has_ai_prompt": ai_prompt is not None, "ai_prompt": ai_prompt,
+            "ai_prompt_section": ai_section}
 
 
 # --------------------------------------------------------------------------

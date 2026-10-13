@@ -335,6 +335,7 @@ class ReadTests(AdapterCase):
         self.assertEqual(out["state"], "open")
         self.assertTrue(out["has_ai_prompt"])
         self.assertIn("Fix the query", out["ai_prompt"])
+        self.assertEqual(out["ai_prompt_section"], "AI prompt")
         self.assertEqual(list(out["sections"]), ["In plain terms", "Context", "Acceptance Criteria", "AI prompt"])
         self.assertNotIn("\r", out["body"])
         self.assertEqual([c["author"] for c in out["thread"]], ["octocat", "hubot"])
@@ -348,6 +349,7 @@ class ReadTests(AdapterCase):
         self.fake.on("issue view 42", view)
         code, out = self.run_op("fetch", "--repo", REPO, "--number", 42)
         self.assertEqual((code, out["has_ai_prompt"], out["ai_prompt"]), (0, False, None))
+        self.assertIsNone(out["ai_prompt_section"])
 
     def test_fetch_reads_the_shape_gh_returns_for_an_issue_with_no_relations(self):
         """Recorded from a live read: relation fields are empty node lists, type and parent null."""

@@ -381,6 +381,7 @@ class ReadTests(AdapterCase):
                              "--template", self.template_path)
         self.assertEqual(code, ja.EXIT_OK, body)
         self.assertTrue(body["has_ai_prompt"])
+        self.assertEqual((body["ai_prompt_section"], body["ai_prompt"]), ("AI prompt", "Repo: org/repo, base main."))
         self.assertIn("Context", body["sections"])
         self.assertEqual(body["fields"], {"story_points": 3, "sensitive_review": None, "team": "Alpha"})
 

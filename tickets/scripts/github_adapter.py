@@ -762,9 +762,7 @@ def op_fetch(args) -> int:
     t = core.load_template(args.template) if args.template else {}
     level = (t.get("body") or {}).get("heading_level", 2)
     sections = parse_sections(data.get("body"), level)
-    prompt_titles = [s["title"] for s in (t.get("body") or {}).get("sections", [])
-                     if s.get("kind") == "ai_prompt"] or [k for k in sections if k.lower() == "ai prompt"]
-    ai_prompt = next((sections[k] for k in prompt_titles if sections.get(k)), None)
+    ai_section, ai_prompt = core.ai_prompt_of(t, sections)
     links = [{"kind": "blocks", "direction": "inward", "target": str(x.get("number"))}
              for x in nodes(data.get("blockedBy"))]
     links += [{"kind": "blocks", "direction": "outward", "target": str(x.get("number"))}
@@ -786,6 +784,7 @@ def op_fetch(args) -> int:
                     "body": (c.get("body") or "").replace("\r\n", "\n")}
                    for c in data.get("comments") or []],
         "has_ai_prompt": ai_prompt is not None, "ai_prompt": ai_prompt,
+        "ai_prompt_section": ai_section,
     }
     if args.with_board:
         try:

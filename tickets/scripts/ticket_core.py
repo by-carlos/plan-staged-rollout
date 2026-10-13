@@ -81,6 +81,22 @@ def _sections(t: dict) -> list[dict]:
     return t.get("body", {}).get("sections", [])
 
 
+def ai_prompt_of(t: dict, sections: dict) -> tuple[str | None, str | None]:
+    """(title, text) of a fetched ticket's AI prompt, or (None, None).
+
+    The title is matched case-insensitively against the template's
+    `ai_prompt` sections, then "AI prompt". An empty section is no prompt.
+    Both adapters' `fetch` call this, so a Ticket carries one answer.
+    """
+    titles = [s["title"] for s in _sections(t) if s.get("kind") == "ai_prompt"] + ["AI prompt"]
+    lowered = {k.lower(): k for k in sections}
+    for title in titles:
+        key = lowered.get(title.lower())
+        if key is not None and (sections[key] or "").strip():
+            return key, sections[key].strip()
+    return None, None
+
+
 def effective_labels(t: dict, d: dict) -> list[str]:
     """The draft's labels plus the template's `[labels].always` (for example a
     marker that an AI drafted the ticket), each once, draft order first."""

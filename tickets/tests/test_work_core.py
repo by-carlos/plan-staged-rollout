@@ -29,6 +29,13 @@ def ticket(name: str) -> dict:
     return json.loads((FIX / name).read_text(encoding="utf-8"))
 
 
+def with_prompt(t: dict, text: str) -> dict:
+    """The ticket with `text` as its AI prompt, as a fetch returns it: the section and the two keys."""
+    t["sections"]["AI prompt"] = t["ai_prompt"] = text
+    t["ai_prompt_section"] = "AI prompt"
+    return t
+
+
 def template(ref: str, tracker: str) -> dict:
     resolved, _ = ticket_template.validate_template(ref, tracker)
     return resolved
@@ -65,8 +72,8 @@ class AssessTests(unittest.TestCase):
 
     def test_empty_prompt_section_is_guide_only(self):
         t = ticket("github-act.json")
-        t["sections"]["AI prompt"] = "  \n"
-        t["ai_prompt"] = None
+        with_prompt(t, "  \n")
+        t["ai_prompt"] = t["ai_prompt_section"] = None
         self.assertEqual(wc.assess(t, DEFAULT_GH)["mode"], "guide")
 
     def test_jira_reads_repo_and_base_from_the_prompt(self):
@@ -88,8 +95,8 @@ class AssessTests(unittest.TestCase):
 
     def test_jira_two_repos_is_ambiguous(self):
         t = ticket("jira-act.json")
-        t["sections"]["AI prompt"] = ("Change the exporter in repo `example-org/widgets` and the "
-                                      "client in `example-org/gadgets` repository.\nBase branch: main\nVerify: tests pass.")
+        with_prompt(t, "Change the exporter in repo `example-org/widgets` and the "
+                    "client in `example-org/gadgets` repository.\nBase branch: main\nVerify: tests pass.")
         a = wc.assess(t, DEFAULT_JIRA)
         self.assertEqual(a["mode"], "ask")
         self.assertEqual(a["needs_user"], ["repo"])
@@ -97,22 +104,22 @@ class AssessTests(unittest.TestCase):
 
     def test_branch_named_in_passing_is_not_the_base(self):
         t = ticket("jira-act.json")
-        t["sections"]["AI prompt"] = ("Repository: https://github.com/example-org/widgets\n"
-                                      "Work on a new branch `feat/x` off `main`.\nVerify: tests pass.")
+        with_prompt(t, "Repository: https://github.com/example-org/widgets\n"
+                    "Work on a new branch `feat/x` off `main`.\nVerify: tests pass.")
         a = wc.assess(t, DEFAULT_JIRA)
         self.assertEqual(a["target"]["repo"], "example-org/widgets")
         self.assertEqual(a["needs_user"], ["base_branch"])
 
     def test_github_prompt_naming_another_repo_asks(self):
         t = ticket("github-act.json")
-        t["sections"]["AI prompt"] = "> Repository: `example-org/gadgets`\n> Verify: tests pass."
+        with_prompt(t, "> Repository: `example-org/gadgets`\n> Verify: tests pass.")
         a = wc.assess(t, DEFAULT_GH)
         self.assertEqual(a["mode"], "ask")
         self.assertEqual(a["needs_user"], ["repo"])
 
     def test_labelled_base_in_a_block_quote(self):
         t = ticket("github-act.json")
-        t["sections"]["AI prompt"] = "> **Base branch:** `release/2.x`\n> Verify: tests pass."
+        with_prompt(t, "> **Base branch:** `release/2.x`\n> Verify: tests pass.")
         a = wc.assess(t, DEFAULT_GH)
         self.assertEqual(a["target"]["base_branch"], "release/2.x")
 
@@ -122,7 +129,7 @@ class AssessTests(unittest.TestCase):
 
     def test_missing_verification_warns(self):
         t = ticket("jira-act.json")
-        t["sections"]["AI prompt"] = "Repository: `example-org/widgets`\nBase branch: `develop`\nMake it UTF-8."
+        with_prompt(t, "Repository: `example-org/widgets`\nBase branch: `develop`\nMake it UTF-8.")
         a = wc.assess(t, DEFAULT_JIRA)
         self.assertEqual(a["mode"], "act")
         self.assertIn("no way to verify", a["warnings"][0])
@@ -231,7 +238,7 @@ class StatusTests(unittest.TestCase):
 def prompted(text: str) -> dict:
     """A GitHub ticket with no board field, so the AI prompt is the only tier source."""
     t = ticket("github-act.json")
-    return dict(t, board={}, sections=dict(t["sections"], **{"AI prompt": text}), ai_prompt=text)
+    return with_prompt(dict(t, board={}), text)
 
 
 BODY = "Repository: example-org/widgets\nBase branch: develop\nVerify: run the export tests."
@@ -344,7 +351,8 @@ class UnblockedTests(unittest.TestCase):
         merged = linked("1", blocks=["2", "3", "4", "5"])
         prompt = "Proposed model/effort: sonnet-low\n" + BODY
         others = [
-            linked("2", blocked_by=["1"], sections={"AI prompt": prompt}),
+            linked("2", blocked_by=["1"], sections={"AI prompt": prompt},
+                   ai_prompt=prompt, ai_prompt_section="AI prompt"),
             linked("3", blocked_by=["1", "9"]),               # 9 is still open
             linked("4", state="closed", blocked_by=["1"]),    # already done
             linked("9", state="open"),

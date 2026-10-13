@@ -119,6 +119,17 @@ class SectionShape(unittest.TestCase):
 
 
 
+class AiPromptOf(unittest.TestCase):
+    def test_finds_the_prompt_case_insensitively_and_ignores_an_empty_one(self):
+        t = {"body": {"sections": [{"title": "Agent brief", "kind": "ai_prompt"}]}}
+        self.assertEqual(ticket_core.ai_prompt_of(t, {"agent brief": "  Do it.\n"}), ("agent brief", "Do it."))
+        self.assertEqual(ticket_core.ai_prompt_of(t, {"AI prompt": "Do it."}), ("AI prompt", "Do it."))
+        self.assertEqual(ticket_core.ai_prompt_of(t, {"Agent brief": " \n", "AI prompt": "Fallback."}),
+                         ("AI prompt", "Fallback."))
+        self.assertEqual(ticket_core.ai_prompt_of(t, {"AI prompt": " "}), (None, None))
+        self.assertEqual(ticket_core.ai_prompt_of({}, {}), (None, None))
+
+
 class EstimateCeiling(unittest.TestCase):
     """The ceiling is checked here, so every tracker's draft is held to it."""
 

@@ -1,0 +1,16 @@
+{
+  "tracker": "github",
+  "target": {"repo": "example-org/widgets"},
+  "type": "Task",
+  "title": "Restore the monthly sales report load time to under 5 seconds",
+  "sections": {
+    "In plain terms": "The monthly sales report has become slow to open since a recent release. It used to load in about 2 seconds and should load in under 5 again.",
+    "Context": "Since last Tuesday's release the report loads slowly. Finance uses it all day during month-end close \u2014 caf\u00e9 \u2713.",
+    "Acceptance Criteria": "1. The report loads in under 5 seconds on the reports page\n2. The cause is named in the pull request"
+  },
+  "labels": ["bug"],
+  "fields": {"effort": "low"},
+  "priority": "P1",
+  "estimate": {"kind": "size", "value": "S"},
+  "draft_notes": {"confirmations": {}, "waivers": [], "investigated": true}
+}

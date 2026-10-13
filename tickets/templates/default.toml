@@ -1,0 +1,84 @@
+# Built-in default template. Used when no `ticket_template` is configured, and
+# as the base every team template extends (`extends = "default"`).
+#
+# It names no tracker: the tracker comes from the request or from the
+# template that extends this one. Values that differ between trackers live
+# under [per_tracker.<tracker>], merged last for the active tracker.
+
+schema = 1
+name = "default"
+description = "Built-in default: works with no setup on GitHub or Jira."
+
+[body]
+sections = [
+  { title = "In plain terms", required = true, no_identifiers = true, guidance = "3-5 sentences a newcomer understands: what is wanted and why. No ticket keys, ids, paths or codenames." },
+  { title = "Context", required = true, guidance = "Why this work exists, why now if it is urgent, and the evidence. Summarize any linked thread or document; do not only link it." },
+  { title = "Out of scope", required = false, guidance = "The obvious neighbouring work someone could assume is included, and is not." },
+  { title = "Acceptance Criteria", required = true, kind = "acceptance", guidance = "A numbered list. Each one names a result someone other than the author can observe." },
+  { title = "AI prompt", required = false, kind = "ai_prompt", guidance = "Self-contained instructions an AI agent can follow, ending with how to verify the change. Its presence makes the ticket actionable." },
+]
+heading_level = 2
+list_style = "bullets"
+
+[body.ai_prompt]
+requires = ["verification"]
+
+[title]
+verb_first = true
+keep_existing_tags = true
+max_length = 80
+no_dates = true
+
+[types]
+allowed = ["Story", "Task", "Bug", "Spike"]
+default = "Task"
+spike_when = "the work cannot be estimated until something is investigated"
+
+[labels]
+create = false
+
+[priority]
+field = "priority"
+scale = ["P0", "P1", "P2", "P3", "P4"]
+default = "P2"
+rubric = { P0 = "outage, data loss or security exposure happening now", P1 = "blocks other work or many people", P2 = "normal planned work", P3 = "useful, can wait", P4 = "nice to have" }
+
+[estimate]
+kind = "size"
+field = "size"
+scale = ["XS", "S", "M", "L", "XL"]
+ceiling = "XL"
+split_above = "L"
+proposal_only = true
+set_only_if = "investigated"
+
+[review]
+max_questions = 5
+
+[work]
+branch = "{type}/{number}-{slug}"
+commit_style = "conventional"
+merge_command = "gh pr merge {pr} --squash --delete-branch"
+merge_ask_header = "Merge?"
+
+# --- Jira: native priority names, story points, and an AI prompt that must
+# name the repository and base branch (a Jira ticket does not map to a repo).
+[per_tracker.jira.types]
+default = "Story"
+
+[per_tracker.jira.priority]
+scale = ["Highest", "High", "Medium", "Low", "Lowest"]
+default = "Medium"
+rubric = { Highest = "outage, data loss or security exposure happening now", High = "blocks other work or many people", Medium = "normal planned work", Low = "useful, can wait", Lowest = "nice to have" }
+
+[per_tracker.jira.estimate]
+kind = "points"
+scale = [1, 2, 3, 5, 8, 13]
+ceiling = 13
+split_above = 8
+# No `field`: a story-points field id differs per site, so the default only
+# proposes the number. A team template declares the field.
+field = ""
+
+[per_tracker.jira.body.ai_prompt]
+requires = ["repo", "base_branch", "verification"]

@@ -1,0 +1,22 @@
+# Example GitHub template on placeholder values: routing to a board by repo,
+# board fields mapped from the draft, a closed label list.
+
+schema = 1
+name = "github-routed"
+tracker = "github"
+extends = "default"
+description = "Fixture: a GitHub owner with a board per repo and one extra select field."
+
+[labels]
+allowed = ["bug", "docs"]
+
+[routing]
+owner = "example-org"
+fallback = "stop"
+repos = { "widgets" = { board = 7 }, "scratch" = { board = "none" } }
+board_fields = { Priority = "priority", Size = "size", Effort = "effort" }
+
+[fields.effort]
+id = "Effort"
+kind = "select"
+values = { low = "low", high = "high" }

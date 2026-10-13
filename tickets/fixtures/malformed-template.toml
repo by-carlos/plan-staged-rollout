@@ -1,0 +1,34 @@
+# Deliberately invalid. The loader must reject it and list every error.
+
+schema = 1
+name = "malformed"
+tracker = "jira"
+extends = "default"
+colour = "blue"                      # unknown top-level key
+
+[body]
+sections = [
+  { title = "Context", required = true },
+  { title = "Prompt one", kind = "ai_prompt" },
+  { title = "Prompt two", kind = "ai_prompt" },   # second ai_prompt section
+]
+
+[estimate]
+field = "points_field"               # not a [fields] key
+ceiling = 21                         # not in the scale
+
+[estimate.matrix]
+rows = ["known", "unknown"]
+columns = ["small", "large"]
+cells = [[1, 2], [3]]                # second row too short
+
+[fields.sensitive_review]
+id = "customfield_00001"
+kind = "select"
+values = { Yes = "1", No = "2" }
+default = "Yes"                      # a guarded value as the default
+confirm_values = ["Yes"]
+ask_when = "regulated data"
+
+[work]
+skip_merge_confirmation = true       # would loosen a rule; has no name

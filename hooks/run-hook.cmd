@@ -35,7 +35,9 @@ if %ERRORLEVEL% equ 0 (
 )
 
 REM No bash found - exit silently rather than error
-REM (plugin still works, just without SessionStart context injection)
+REM (plugin still works, just without SessionStart context injection; for
+REM  gh-body-guard, emitting no decision is a pass-through, which is what
+REM  that fail-open guard wants when it cannot run at all)
 exit /b 0
 CMDBLOCK
 

@@ -1,0 +1,27 @@
+{
+  "tracker": "jira",
+  "target": {
+    "site": "example.atlassian.net",
+    "project": "DEMO"
+  },
+  "type": "Story",
+  "title": "Export refunds from the payments table nightly for finance reconciliation",
+  "sections": {
+    "In plain terms": "Finance needs a file every morning listing the previous day's refunds so they can reconcile them. The file is produced overnight from the payments data and dropped into finance's shared folder before the working day starts.",
+    "Context": "Finance reconciles refunds by hand today. They asked for a nightly export of the payments table that includes the cardholder name, the card's last four digits and the refund amount, delivered to their shared folder by 06:00 every day.",
+    "Acceptance Criteria": "1. A file with the previous day's refunds is in finance's shared folder by 06:00 every day\n2. Each row holds the cardholder name, the card's last four digits and the refund amount\n3. A failed run alerts the team before 06:00",
+    "AI prompt": "Repository `example-org/payments-jobs`, base branch `main`. Add a nightly job that exports the previous day's refunds (cardholder name, last four digits, refund amount) from the payments table to the finance shared folder by 06:00. Verify with a test against a seeded payments table and a dry run of the job that writes to a temporary folder."
+  },
+  "labels": [],
+  "fields": {},
+  "draft_notes": {
+    "confirmations": {},
+    "waivers": [],
+    "investigated": false
+  },
+  "priority": "Medium",
+  "estimate": {
+    "kind": "points",
+    "value": 2
+  }
+}

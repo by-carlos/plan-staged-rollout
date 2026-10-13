@@ -1,0 +1,42 @@
+# Example Jira template on placeholder values. Exercises a guarded field,
+# a story-point matrix with a bump, and an estimate attribution comment.
+
+schema = 1
+name = "guarded-example"
+tracker = "jira"
+extends = "default"
+description = "Fixture: a Jira team with a sensitive-data field and matrix pointing."
+
+[estimate]
+field = "story_points"
+ceiling = 8
+split_above = 8
+comment = "Story points proposed by AI using {guide}"
+guide = "<link to the team's estimation guide>"
+
+[estimate.matrix]
+rows = ["known process", "some unknowns", "many unknowns"]
+columns = ["<= 1 day", "2-3 days", "about a week", "more than a week"]
+cells = [
+  [1, 2, 3, 5],
+  [2, 3, 5, "timebox:8"],
+  ["-", 3, 5, "split"],
+]
+bump = { when = "depends on another team", cells = [
+  [2, 3, 5, 8],
+  [3, 5, 8, "split"],
+  ["-", 5, 8, "split"],
+] }
+questions = ["Is there an existing process?", "Roughly how many days?", "How many unknowns?", "Does it depend on another team?"]
+
+[fields.story_points]
+id = "customfield_00000"
+kind = "number"
+
+[fields.sensitive_review]
+id = "customfield_00001"
+kind = "select"
+values = { Yes = "10001", No = "10002" }
+default = "unset"
+confirm_values = ["Yes"]
+ask_when = "stored or transmitted payment-card data"

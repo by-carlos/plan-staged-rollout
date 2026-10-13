@@ -1,0 +1,17 @@
+{
+  "tracker": "jira",
+  "target": {"site": "https://jira.example.com"},
+  "type": "Epic",
+  "title": "Make the nightly export job retry on failure and also page someone when it fails twice in a row",
+  "sections": {
+    "In plain terms": "Short.",
+    "Context": "",
+    "Notes": "A section the template does not declare."
+  },
+  "labels": ["backend", "frontend", "misc"],
+  "priority": "Urgent",
+  "estimate": {"kind": "points", "value": 13},
+  "draft_notes": {"investigated": true},
+  "fields": {"sensitive_review": "Yes", "colour": "blue"},
+  "links": [{"kind": "duplicates", "direction": "outward", "target": "ABC-1"}]
+}

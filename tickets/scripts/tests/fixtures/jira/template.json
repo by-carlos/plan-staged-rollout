@@ -1,0 +1,47 @@
+{
+  "schema": 1,
+  "name": "example-jira",
+  "tracker": "jira",
+  "description": "Synthetic resolved template for the adapter tests. Placeholder ids only.",
+  "body": {
+    "sections": [
+      {"title": "In plain terms", "required": true, "no_identifiers": true},
+      {"title": "Context", "required": true},
+      {"title": "Out of scope", "required": false},
+      {"title": "Acceptance Criteria", "required": true},
+      {"title": "AI prompt", "required": false, "kind": "ai_prompt"}
+    ],
+    "heading_level": 2,
+    "footer": {"text": "AI-assisted draft"}
+  },
+  "title": {"max_length": 80},
+  "types": {"allowed": ["Story", "Task", "Bug", "Spike"], "default": "Story"},
+  "labels": {"allowed": ["backend", "frontend", "ops"], "groups": {"area": ["backend", "frontend"]}},
+  "priority": {"field": "priority", "scale": ["Highest", "High", "Medium", "Low", "Lowest"], "default": "Medium"},
+  "estimate": {
+    "kind": "points",
+    "field": "story_points",
+    "scale": [1, 2, 3, 5, 8],
+    "ceiling": 8,
+    "set_only_if": "investigated",
+    "comment": "Estimate proposed by AI using {guide}",
+    "guide": "https://example.com/estimation-guide"
+  },
+  "fields": {
+    "story_points": {"id": "customfield_00000", "kind": "number"},
+    "sensitive_review": {
+      "id": "customfield_00001",
+      "kind": "select",
+      "values": {"Yes": "90001", "No": "90002"},
+      "default": "unset",
+      "confirm_values": ["Yes"],
+      "ask_when": "the work touches regulated data"
+    },
+    "team": {"id": "customfield_00002", "kind": "select", "values": {"Alpha": "90010", "Beta": "90011"}}
+  },
+  "links": {
+    "blocks": {"id": "00000", "name": "Blocks"},
+    "relates": {"id": "10003", "name": "Relates"},
+    "parent": "native"
+  }
+}

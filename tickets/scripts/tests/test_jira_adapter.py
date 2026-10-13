@@ -1,0 +1,396 @@
+"""Unit tests for jira_adapter.py, on synthetic fixtures only.
+
+Run from the repo root:
+    python -m unittest discover -s tickets/scripts/tests -v
+"""
+
+import copy
+import io
+import json
+import sys
+import tempfile
+import unittest
+from contextlib import redirect_stdout
+from pathlib import Path
+
+HERE = Path(__file__).resolve().parent
+FIX = HERE / "fixtures" / "jira"
+sys.path.insert(0, str(HERE.parent))
+
+import jira_adapter as ja
+
+V2 = "mcp__plugin_atlassian_atlassian__"
+
+
+def fixture(name):
+    return json.loads((FIX / name).read_text(encoding="utf-8"))
+
+
+def run_cli(*argv):
+    out = io.StringIO()
+    with redirect_stdout(out):
+        code = ja.main([str(a) for a in argv])
+    return code, json.loads(out.getvalue())
+
+
+def fields_only(evidence):
+    """What getJiraIssue returns for an explicit field list: no type, labels, parent or links."""
+    data = copy.deepcopy(evidence)
+    f = data["data"]["fields"]
+    for name in ("issuetype", "labels", "parent", "issuelinks"):
+        f.pop(name, None)
+    return data
+
+
+class AdapterCase(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.run_dir = self.dir / "run"
+        self.tools = fixture("tools.json")
+        self.env = ja.detect(self.tools["v2"])
+        self.env_path = self.write("env.json", self.env)
+        self.template_path = FIX / "template.json"
+        self.template = fixture("template.json")
+        self.evidence = fixture("readback-v2-evidence.json")
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def write(self, name, data):
+        path = self.dir / name
+        path.write_text(json.dumps(data) if not isinstance(data, str) else data, encoding="utf-8")
+        return path
+
+    def build_run(self, draft=None, env=None):
+        draft_path = self.write("draft.json", draft or fixture("draft-valid.json"))
+        env_path = self.write("env-b.json", env) if env else self.env_path
+        return run_cli("build", "--ticket", draft_path, "--template", self.template_path,
+                       "--env", env_path, "--run", self.run_dir)
+
+    def answer(self, body, results):
+        """Play the model: write each relayed call's result file."""
+        self.assertEqual(body["status"], "RELAY", body)
+        for call in body["calls"]:
+            stem = Path(call["result_file"]).stem
+            value = results[stem] if stem in results else results[stem.rsplit("-", 1)[0]]
+            Path(call["result_file"]).write_text(
+                value if isinstance(value, str) else json.dumps(value), encoding="utf-8")
+        return [Path(c["result_file"]).stem for c in body["calls"]]
+
+
+class DetectTests(AdapterCase):
+    def test_v2_prefix_and_tools(self):
+        env = ja.detect(self.tools["v2"])
+        self.assertEqual((env["status"], env["generation"], env["prefix"]), ("ok", "v2", V2))
+        self.assertTrue(env["writes"])
+        self.assertEqual(env["tools"]["link"], V2 + "executeWrite")
+
+    def test_v1(self):
+        env = ja.detect(self.tools["v1"])
+        self.assertEqual(env["generation"], "v1")
+        self.assertEqual(env["prefix"], "mcp__plugin_productivity_atlassian__")
+        self.assertEqual(env["tools"]["comment"], env["prefix"] + "addCommentToJiraIssue")
+        self.assertTrue(env["writes"])
+
+    def test_read_only_server(self):
+        env = ja.detect(self.tools["readonly"])
+        self.assertFalse(env["writes"])
+        self.assertIn("read-only", env["message"])
+
+    def test_not_configured(self):
+        code, body = run_cli("detect", "--tools", self.write("t.json", self.tools["none"]))
+        self.assertEqual((code, body["status"]), (ja.EXIT_UNREACHABLE, "not-configured"))
+
+    def test_prefers_full_v2_when_several_servers(self):
+        env = ja.detect(self.tools["readonly"] + self.tools["v1"] + self.tools["v2"])
+        self.assertEqual((env["prefix"], env["generation"]), (V2, "v2"))
+        self.assertEqual(len(env["candidates"]), 3)
+
+
+class UpdateTests(AdapterCase):
+    """S7: re-run a ticket in place instead of creating a new one."""
+
+    def test_update_edits_every_field_then_reads_back_without_new_links(self):
+        draft = fixture("draft-valid.json")
+        draft["links"] = [{"kind": "blocks", "direction": "inward", "target": "ABC-1"}]
+        args = ["update", "--run", self.run_dir, "--key", "ABC-7", "--ticket", self.write("d.json", draft),
+                "--template", self.template_path, "--env", self.env_path]
+        code, body = run_cli(*args)
+        self.assertEqual(body["status"], "INVALID", body)  # no --confirm, nothing sent
+        code, body = run_cli(*args, "--confirm")
+        call = body["calls"][0]
+        self.assertEqual((call["tool"], call["arguments"]["issueIdOrKey"]), (V2 + "editJiraIssue", "ABC-7"))
+        fields = call["arguments"]["fields"]
+        self.assertEqual((fields["summary"], fields["priority"], fields["parent"]),
+                         (draft["title"], {"name": "High"}, {"key": "ABC-100"}))
+        self.assertTrue(fields["description"].startswith("## In plain terms"))
+        self.assertEqual(call["arguments"]["contentFormat"], "markdown")
+        stems = []
+        for _ in range(3):
+            stems += self.answer(body, {"edit": {"key": "ABC-7"}, "comment": {"id": "1"}})
+            code, body = run_cli(*args, "--confirm")
+            if not any(c["result_file"].endswith(("edit.json", "comment.json")) for c in body["calls"]):
+                break
+        self.assertEqual(stems, ["edit", "comment"])
+        self.assertFalse([c for c in body["calls"] if "link" in Path(c["result_file"]).stem], body)
+
+
+class BuildTests(AdapterCase):
+    def test_valid_draft_builds_v2_call(self):
+        code, body = self.build_run()
+        self.assertEqual(code, ja.EXIT_OK, body)
+        args = body["create"]["arguments"]
+        self.assertEqual(body["create"]["tool"], V2 + "createJiraIssue")
+        self.assertEqual((args["projectKey"], args["issueType"], args["priority"], args["parent"]),
+                         ("ABC", "Story", "High", "ABC-100"))
+        self.assertEqual(args["contentFormat"], "markdown")
+        self.assertEqual(args["additional_fields"],
+                         {"customfield_00000": 3, "customfield_00002": {"id": "90010"}})
+        self.assertTrue(args["description"].startswith("## In plain terms\n\n"))
+        self.assertTrue(args["description"].endswith("AI-assisted draft"))
+        self.assertNotIn("## Out of scope", args["description"])
+        payload = json.loads((self.run_dir / "payload.json").read_text(encoding="utf-8"))
+        self.assertIn("sensitive_review", payload["expected"]["unset_guarded"])
+        self.assertEqual(payload["comment"], "Estimate proposed by AI using https://example.com/estimation-guide")
+
+    def test_v1_shape(self):
+        code, body = self.build_run(env=ja.detect(self.tools["v1"]))
+        self.assertEqual(code, ja.EXIT_OK, body)
+        args = body["create"]["arguments"]
+        self.assertEqual(args["issueTypeName"], "Story")
+        self.assertNotIn("issueType", args)
+        self.assertEqual(args["additional_fields"]["priority"], {"name": "High"})
+        self.assertEqual(args["additional_fields"]["parent"], {"key": "ABC-100"})
+
+    def test_every_error_reported_at_once(self):
+        code, body = self.build_run(draft=fixture("draft-invalid.json"))
+        self.assertEqual(code, ja.EXIT_INVALID)
+        errors = "\n".join(body["errors"])
+        for needle in ("target.project: required", "limit is 80", "type: 'Epic'",
+                       "sections.Notes: not a section", "sections.Context: required",
+                       "sections.Acceptance Criteria: required", "labels: 'misc'",
+                       "at most one area label", "priority: 'Urgent'", "above the ceiling",
+                       "estimate.value: 13 is not in", "fields.sensitive_review: 'Yes' is a guarded value",
+                       "fields.colour: not declared", "links: kind 'duplicates'"):
+            self.assertIn(needle, errors)
+        self.assertFalse((self.run_dir / "payload.json").exists())
+
+    def test_guarded_value_accepted_with_confirmation(self):
+        draft = fixture("draft-valid.json")
+        draft["fields"]["sensitive_review"] = "Yes"
+        draft["draft_notes"]["confirmations"] = {"sensitive_review": "Yes"}
+        code, body = self.build_run(draft=draft)
+        self.assertEqual(code, ja.EXIT_OK, body)
+        self.assertEqual(body["create"]["arguments"]["additional_fields"]["customfield_00001"],
+                         {"id": "90001"})
+
+    def test_guarded_confirmation_must_match_value(self):
+        draft = fixture("draft-valid.json")
+        draft["fields"]["sensitive_review"] = "Yes"
+        draft["draft_notes"]["confirmations"] = {"sensitive_review": "No"}
+        code, _body = self.build_run(draft=draft)
+        self.assertEqual(code, ja.EXIT_INVALID)
+
+    def test_estimate_withheld_until_investigated(self):
+        draft = fixture("draft-valid.json")
+        draft["draft_notes"]["investigated"] = False
+        code, body = self.build_run(draft=draft)
+        self.assertEqual(code, ja.EXIT_OK, body)
+        self.assertNotIn("customfield_00000", body["create"]["arguments"]["additional_fields"])
+        self.assertTrue(body["warnings"])
+
+    def test_link_without_name_is_rejected(self):
+        template = fixture("template.json")
+        del template["links"]["blocks"]["name"]
+        _payload, errors, _ = ja.build(fixture("draft-valid.json"), template, self.env)
+        self.assertTrue(any("needs the link type name" in e for e in errors))
+
+    def test_template_with_extends_is_refused(self):
+        tpl = self.write("t.json", {"schema": 1, "name": "x", "extends": "default"})
+        code, body = run_cli("build", "--ticket", FIX / "draft-valid.json", "--template", tpl,
+                             "--env", self.env_path, "--run", self.run_dir)
+        self.assertEqual(code, ja.EXIT_INVALID)
+        self.assertIn("extends", body["message"])
+
+
+class DriveTests(AdapterCase):
+    def create(self):
+        return run_cli("create", "--run", self.run_dir, "--confirm")
+
+    def walk_to_readback(self):
+        self.assertEqual(self.build_run()[0], ja.EXIT_OK)
+        _code, body = self.create()
+        self.assertEqual(self.answer(body, {"create": {"data": {"key": "ABC-321", "id": "500001"}}}),
+                         ["create"])
+        _code, body = self.create()
+        self.assertEqual(body["calls"][0]["arguments"]["inputs"],
+                         {"linkType": "Blocks", "inwardIssue": "ABC-321", "outwardIssue": "ABC-200"})
+        self.answer(body, {"link-1": {"data": {"ok": True}}})
+        _code, body = self.create()
+        self.answer(body, {"link-1-check": self.evidence})
+        _code, body = self.create()
+        self.assertEqual(body["calls"][0]["tool"], V2 + "addOrEditJiraIssueComment")
+        self.answer(body, {"comment": {"data": {"commentId": "1"}}})
+        _code, body = self.create()
+        return body
+
+    def test_no_write_without_confirm(self):
+        self.build_run()
+        code, body = run_cli("create", "--run", self.run_dir)
+        self.assertEqual(code, ja.EXIT_INVALID)
+        self.assertIn("without --confirm", body["message"])
+
+    def test_full_create_verified(self):
+        body = self.walk_to_readback()
+        stems = self.answer(body, {"readback-fields": fields_only(self.evidence),
+                                   "readback-evidence": self.evidence})
+        self.assertEqual(stems, ["readback-fields", "readback-evidence"])
+        fields_call = body["calls"][0]["arguments"]["fields"]
+        self.assertIn("customfield_00001", fields_call)  # guarded field read by explicit id
+        code, body = self.create()
+        self.assertEqual((code, body["status"], body["key"]), (ja.EXIT_OK, "VERIFIED", "ABC-321"), body)
+        self.assertEqual(body["url"], "https://jira.example.com/browse/ABC-321")
+        self.assertTrue(all(r["ok"] for r in body["fields"]))
+        self.assertNotIn("_repair", body["fields"][0])
+
+    def test_automation_overwrite_is_repaired_once(self):
+        body = self.walk_to_readback()
+        overwritten = copy.deepcopy(self.evidence)
+        overwritten["data"]["fields"]["customFields"]["Team"]["value"] = {"value": "Beta", "id": "90011"}
+        self.answer(body, {"readback-fields": fields_only(overwritten), "readback-evidence": overwritten})
+        code, body = self.create()
+        self.assertEqual(body["calls"][0]["arguments"]["fields"], {"customfield_00002": {"id": "90010"}})
+        self.answer(body, {"repair": {"data": {"key": "ABC-321"}}})
+        code, body = self.create()
+        self.assertEqual([Path(c["result_file"]).stem for c in body["calls"]],
+                         ["readback-fields-2", "readback-evidence-2"])
+        self.answer(body, {"readback-fields-2": fields_only(self.evidence),
+                           "readback-evidence-2": self.evidence})
+        code, body = self.create()
+        self.assertEqual((code, body["status"]), (ja.EXIT_OK, "REPAIRED"), body)
+
+    def test_still_wrong_after_repair_fails(self):
+        body = self.walk_to_readback()
+        bad = copy.deepcopy(self.evidence)
+        bad["data"]["fields"]["priority"] = {"name": "Low"}
+        self.answer(body, {"readback-fields": fields_only(bad), "readback-evidence": bad})
+        code, body = self.create()
+        self.answer(body, {"repair": {"data": {}}})
+        code, body = self.create()
+        self.answer(body, {"readback-fields-2": fields_only(bad), "readback-evidence-2": bad})
+        code, body = self.create()
+        self.assertEqual((code, body["status"]), (ja.EXIT_TRACKER, "FAILED"))
+        self.assertIn("priority", body["message"])
+
+    def test_guarded_value_set_by_automation_is_cleared(self):
+        body = self.walk_to_readback()
+        bad = copy.deepcopy(self.evidence)
+        bad["data"]["fields"]["customFields"]["Sensitive data review"]["value"] = {"value": "Yes", "id": "90001"}
+        self.answer(body, {"readback-fields": fields_only(bad), "readback-evidence": bad})
+        _code, body = self.create()
+        self.assertEqual(body["calls"][0]["arguments"]["fields"], {"customfield_00001": None})
+
+    def test_hook_denial_stops_with_message(self):
+        self.build_run()
+        code, body = self.create()
+        self.answer(body, {"create": "PreToolUse:mcp__plugin_atlassian_atlassian__createJiraIssue "
+                                     "hook error: Atlassian writes are denied in this repo"})
+        code, body = self.create()
+        self.assertEqual((code, body["status"], body["blocker"]), (ja.EXIT_DENIED, "DENIED", "hook"))
+        self.assertIn("Nothing was posted", body["message"])
+        self.assertIn("payload.json", body["message"])
+
+    def test_read_only_server_refuses_before_any_call(self):
+        self.build_run(env=ja.detect(self.tools["readonly"] + self.tools["none"]))
+        code, body = self.create()
+        self.assertEqual((code, body["blocker"]), (ja.EXIT_DENIED, "read-only server"))
+
+    def test_tracker_error_is_not_a_denial(self):
+        self.build_run()
+        code, body = self.create()
+        self.answer(body, {"create": {"error": "Field 'customfield_00000' cannot be set. "
+                                               "It is not on the appropriate screen."}})
+        code, body = self.create()
+        self.assertEqual((code, body["status"]), (ja.EXIT_TRACKER, "FAILED"))
+
+    def test_unknown_create_searches_instead_of_reposting(self):
+        self.build_run()
+        code, body = self.create()
+        self.answer(body, {"create": "Request timed out after 60 seconds"})
+        code, body = self.create()
+        self.assertEqual(body["calls"][0]["tool"], V2 + "searchJiraIssuesUsingJql")
+        self.assertIn('summary ~ "\\"Add a retry', body["calls"][0]["arguments"]["jql"])
+        self.answer(body, {"create-unknown-search": {"data": {"issues": [
+            {"key": "ABC-321", "fields": {"summary": "Add a retry to the nightly export job"}}]}}})
+        code, body = self.create()
+        self.assertEqual((code, body["key"]), (ja.EXIT_TRACKER, "ABC-321"))
+        self.assertIn("do not post again", body["message"])
+        code, body = self.create()  # a re-run never re-emits the create
+        self.assertNotEqual(body.get("status"), "RELAY")
+
+    def test_reversed_first_link_stops(self):
+        self.build_run()
+        code, body = self.create()
+        self.answer(body, {"create": {"data": {"key": "ABC-321"}}})
+        code, body = self.create()
+        self.answer(body, {"link-1": {"data": {}}})
+        code, body = self.create()
+        reversed_links = copy.deepcopy(self.evidence)
+        reversed_links["data"]["fields"]["issuelinks"] = [
+            {"type": {"name": "Blocks"}, "inwardIssue": {"key": "ABC-200"}}]
+        self.answer(body, {"link-1-check": reversed_links})
+        code, body = self.create()
+        self.assertEqual((code, body["status"]), (ja.EXIT_TRACKER, "FAILED"))
+        self.assertIn("cannot be deleted", body["message"])
+
+
+class ReadTests(AdapterCase):
+    def test_normalize_v2_and_rest_shapes(self):
+        v2 = ja.normalize_issue(self.evidence)
+        self.assertEqual((v2["issuetype"], v2["parent"], v2["labels"]), ("Story", "ABC-100", ["backend"]))
+        self.assertEqual(v2["custom"]["customfield_00000"], 3)
+        self.assertIsNone(v2["custom"]["customfield_00001"])
+        self.assertEqual(v2["links"], [{"name": "Blocks", "direction": "outward", "target": "ABC-200"}])
+        rest = ja.normalize_issue({"key": "ABC-1", "fields": {"customfield_00000": 5,
+                                                              "issuetype": {"name": "Bug"}}})
+        self.assertEqual((rest["custom"]["customfield_00000"], rest["issuetype"]), (5, "Bug"))
+
+    def test_body_normalization_tolerates_round_trip(self):
+        built = "## Context\n\n* one\n* two [link](https://x.y)\n\nAI-assisted draft"
+        returned = "## Context\n\n- one  \n- two \\[link\\](https://x.y)\n\n\nAI-assisted draft\n"
+        self.assertEqual(ja.norm_text(built), ja.norm_text(returned))
+        self.assertNotEqual(ja.norm_text(built), ja.norm_text(built.replace("two", "three")))
+
+    def test_fetch_parses_sections_and_ai_prompt(self):
+        issue = copy.deepcopy(self.evidence)
+        issue["data"]["fields"]["description"] += "\n\n## AI prompt\n\nRepo: org/repo, base main."
+        (self.run_dir / "results").mkdir(parents=True)
+        code, body = run_cli("fetch", "--run", self.run_dir, "--key", "ABC-321", "--site",
+                             "https://jira.example.com", "--env", self.env_path,
+                             "--template", self.template_path)
+        self.answer(body, {"fetch": issue})
+        code, body = run_cli("fetch", "--run", self.run_dir, "--key", "ABC-321", "--site",
+                             "https://jira.example.com", "--env", self.env_path,
+                             "--template", self.template_path)
+        self.assertEqual(code, ja.EXIT_OK, body)
+        self.assertTrue(body["has_ai_prompt"])
+        self.assertIn("Context", body["sections"])
+        self.assertEqual(body["fields"], {"story_points": 3, "sensitive_review": None, "team": "Alpha"})
+
+    def test_duplicates_children_then_keyword(self):
+        self.build_run()
+        _code, body = run_cli("duplicates", "--run", self.run_dir)
+        jqls = [c["arguments"]["jql"] for c in body["calls"]]
+        self.assertTrue(jqls[0].startswith("parent = ABC-100"))
+        self.assertTrue(jqls[1].startswith('project = "ABC"'))
+        hit = {"data": {"issues": [{"key": "ABC-9", "fields": {
+            "summary": "Add a retry to the nightly export job", "status": {"name": "Done"}}}]}}
+        self.answer(body, {"dup-children": {"data": {"issues": []}}, "dup-keyword": hit})
+        _code, body = run_cli("duplicates", "--run", self.run_dir)
+        self.assertEqual(body["hits"], [{"key": "ABC-9", "summary": "Add a retry to the nightly export job",
+                                         "status": "Done", "match": "keyword", "exact_title": True}])
+
+
+if __name__ == "__main__":
+    unittest.main()

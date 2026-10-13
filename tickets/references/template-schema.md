@@ -401,8 +401,10 @@ more shapes at run time: a `merge_command` that does not start with
 `gh pr merge` or lacks `{pr}`, and a `merge_ask_header` longer than 12
 characters (the dialog's chip limit). `branch` may use only `{type}`,
 `{number}` (a Jira key for Jira) and `{slug}`. `status` names are written
-to a GitHub board field mapped to `status` in `[routing].board_fields`;
-Jira statuses are not written (the adapter has no transition operation).
+to a GitHub board field mapped to `status` in `[routing].board_fields`. On
+Jira the ticket is moved to the status of that name through the Jira
+adapter's `transition` op, so each name must match a status in the
+project's workflow that a transition can reach from the one before.
 
 ## Validation
 

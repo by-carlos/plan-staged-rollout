@@ -78,6 +78,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **`work-issue` works Jira tickets end to end.** The Jira `fetch` reads the
+  ticket's comments into `thread`, so the thread is read on Jira as on GitHub. A
+  new `transition` operation moves a ticket to the template's `[work].status`
+  names and reads the status back, so the claim and review statuses now land on
+  Jira. `comment` reads the posted comment back before it reports `VERIFIED`.
+  `--after` now works on Jira: a new `wait` operation checks the blocker once
+  per call, and the session paces the checks with `CronCreate`, every 10
+  minutes for up to 24 hours. A blocker counts as done by its status category,
+  whatever its workflow calls the status. GitHub behaviour is unchanged.
 - `docs/ticket-templates.md`: a short guide to writing a team ticket template,
   selecting it with `ticket_template` and validating it, linked from the README.
 

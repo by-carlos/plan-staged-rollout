@@ -272,6 +272,13 @@ def is_blocks(link: dict) -> bool:
     return (link.get("kind") or link.get("name") or "").lower() == "blocks"
 
 
+def is_done(ticket: dict) -> bool:
+    """Closed by state name, or, for Jira, in the done status category: a
+    workflow names its done statuses freely ("Dev Done"), the category is fixed."""
+    return (str(ticket.get("state") or "").lower() in CLOSED_STATES
+            or ticket.get("status_category") == "done")
+
+
 def unblocked(merged: dict, others: list[dict], template: dict) -> dict:
     """After `merged` landed: the tickets it blocks whose every other blocker
     is done. `others` holds each blocked ticket and each of their other
@@ -288,7 +295,7 @@ def unblocked(merged: dict, others: list[dict], template: dict) -> dict:
         if cand is None:
             result["unchecked"].append({"key": key, "reason": "the ticket was not fetched"})
             continue
-        if str(cand.get("state") or "").lower() in CLOSED_STATES:
+        if is_done(cand):
             result["already_closed"].append({"key": key, "title": cand.get("title")})
             continue
         waiting, missing = [], []
@@ -301,7 +308,7 @@ def unblocked(merged: dict, others: list[dict], template: dict) -> dict:
             blocker = by_key.get(bkey)
             if blocker is None:
                 missing.append(bkey)
-            elif str(blocker.get("state") or "").lower() not in CLOSED_STATES:
+            elif not is_done(blocker):
                 waiting.append(bkey)
         title = {"key": key, "title": cand.get("title"), "url": cand.get("url")}
         if missing:
@@ -341,7 +348,7 @@ def assess(ticket: dict, template: dict, *, base: str | None = None, repo: str |
         "title": ticket.get("title"),
         "url": ticket.get("url"),
         "state": state,
-        "closed": state.lower() in CLOSED_STATES,
+        "closed": is_done(ticket),
         "plain_terms": (plain or "").strip() or None,
         "ai_prompt_section": ai_title if ai_text else None,
         "ai_prompt": ai_text,
@@ -483,13 +490,16 @@ def merge_command(template: dict, pr: str, confirmed: bool) -> str:
 
 def status_payload(template: dict, tracker: str, repo: str, when: str,
                    board: int | None = None) -> dict:
-    """A set-fields payload for one [work].status flip, or {"skip": reason}."""
+    """A set-fields payload for one [work].status flip, or {"skip": reason}.
+
+    For Jira it is the status name the Jira adapter's `transition` op takes:
+    the ticket moves in its workflow, so no board or routing is involved.
+    """
     name = (work_rules(template).get("status") or {}).get(when)
     if not name:
         return {"skip": f"the template sets no status for {when}"}
-    if tracker != "github":
-        return {"skip": "status flips are written to GitHub boards only; the Jira adapter "
-                        "has no transition operation"}
+    if tracker == "jira":
+        return {"tracker": "jira", "status": name, "when": when}
     routing = template.get("routing") or {}
     fields = [f for f, src in (routing.get("board_fields") or {}).items() if src == "status"]
     if not fields:

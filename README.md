@@ -711,7 +711,11 @@ ticket.
 GitHub goes through `gh`; Jira goes through the Atlassian MCP server (v1 or
 v2, detected at runtime). The scripts need Python 3.11 or later and the
 standard library only. A `PreToolUse` hook, `gh-body-guard`, denies the `gh`
-argument shapes that silently corrupt a non-ASCII issue body.
+argument shapes that silently corrupt a non-ASCII issue body. A second,
+opt-in hook, `tracker-write-guard`, makes create-issue the only way to create
+a ticket: set `guard_tracker_creates = true` in `plan-staged-rollout.toml` and
+a create the adapter did not issue, or one built before the template, gap
+review and estimate steps ran, is refused.
 
 **Team conventions are a template, not a fork.** With no configuration, the
 built-in default template applies. To use your own, set `ticket_template` in
@@ -826,6 +830,7 @@ Layout:
     run-hook.cmd                 # polyglot cmd/bash wrapper (Windows + Unix)
     session-start                # .plan/-aware nudge: next runnable stage
     gh-body-guard                # denies gh body shapes that corrupt non-ASCII
+    tracker-write-guard          # opt-in: tracker creates only through create-issue
 ```
 
 ## Updating

@@ -26,6 +26,9 @@ HOOKS = ROOT.parent / "hooks"  # the plugin's hooks sit at its root, beside tick
 import github_adapter as ga
 import ticket_template
 
+# Keep the user's own plan-staged-rollout.toml (which may turn the write guard on) out of these tests.
+os.environ["CLAUDE_CONFIG_DIR"] = tempfile.mkdtemp(prefix="psr-test-config-")
+
 FIX = ROOT / "fixtures" / "github"
 REPO = "example-org/widgets"
 

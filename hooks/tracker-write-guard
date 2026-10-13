@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# PreToolUse guard: a tracker create happens only at the end of create-issue.
+#
+# Off unless plan-staged-rollout.toml sets `guard_tracker_creates = true`;
+# tickets/scripts/write_guard.py holds the rules and the reasons. This wrapper
+# only keeps the common case cheap: a Bash call that cannot be an issue create
+# is passed through here, without starting Python.
+#
+# Fail-open when it cannot run at all (no Python): emitting no decision is a
+# pass-through. Once Python runs and the guard is on, write_guard.py fails
+# closed for the calls it guards.
+
+set -uo pipefail
+
+# No forks on the pass-through path: on Windows (Git Bash) each subshell or
+# pipe costs tens of milliseconds, and this runs before every Bash call.
+IFS= read -r -d '' input || true
+[ -n "$input" ] || exit 0
+
+case "$input" in
+  *'"tool_name":"Bash"'*|*'"tool_name": "Bash"'*)
+    case "$input" in
+      *'gh issue create'*|*'gh api '*) ;;
+      *) exit 0 ;;
+    esac
+    ;;
+esac
+
+script="$(cd "$(dirname "$0")/.." && pwd)/tickets/scripts/write_guard.py"
+for py in python3 python; do
+  if command -v "$py" >/dev/null 2>&1 && "$py" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; then
+    printf '%s' "$input" | "$py" "$script" hook
+    exit 0
+  fi
+done
+exit 0

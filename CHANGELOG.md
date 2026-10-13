@@ -10,8 +10,31 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **Opt-in write guard for tracker creates.** With `guard_tracker_creates =
+  true` in `plan-staged-rollout.toml`, both adapters refuse to `build` a create
+  unless the draft's work folder holds the resolved `template.json`, the gap
+  review's `review-filtered.json` (or a recorded `review-skipped.json`) and
+  `estimate.json`, and a new `tracker-write-guard` `PreToolUse` hook denies any
+  `createJiraIssue` call whose arguments the Jira adapter did not issue, any
+  `executeWrite` create, and `gh issue create` or a `gh api` POST to an issues
+  endpoint from the Bash tool. Off by default; edits, comments and links are
+  not guarded.
+- **`ticket_core.py prepare`** runs the mechanical steps of a create-issue
+  run in one call (resolve the template, check the draft, write the review
+  prompt), and **`review-skip`** records why no gap review ran.
+  `review-filter` now also writes `review-filtered.json`.
+
 ### Fixed
 
+- **create-issue can no longer be shortcut silently.** A session that judged
+  the pipeline too heavy for one ticket wrote the body by hand from a team
+  reference document, skipped the template, check, gap review and estimate,
+  and posted with a direct MCP call, without saying so. "Rules that never
+  bend" now make the pipeline mandatory once invoked, require any skipped step
+  to be named in the preview and the report, forbid hand-made tracker creates,
+  and rank a separate filing guide below the resolved template.
 - **Preflight now stops when the plan branch is ahead of its upstream.** Protocol
   step 0.2 synced with `git merge --ff-only`, which prints `Already up to date.`
   and passes when the local plan branch holds unpushed commits, so those commits

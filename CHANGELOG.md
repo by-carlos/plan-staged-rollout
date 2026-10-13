@@ -42,6 +42,10 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **The create-issue preview no longer promises an issue type GitHub will not apply.**
+  The preview now runs `build` first and shows the type only when the owner supports
+  it, otherwise the note that it will not be applied. The adapter test pins that note.
+
 - **Both ticket adapters return the AI prompt under the same keys, and the estimate
   ceiling applies to every tracker.** GitHub's `fetch` returned the prompt text as
   `ai_prompt` while Jira's returned only the section title as `ai_prompt_section`,

@@ -191,7 +191,10 @@ A short ticket, a simple ask or a clear source is never a reason to skip.
 Show the preview first, in its own message:
 
 - title, type, labels, priority with its reason, estimate with its reason
-  (and whether it will be set or only proposed)
+  (and whether it will be set or only proposed). On GitHub, run `build` first
+  (it only reads) and take the type from its output: show it when the payload's
+  `issue` carries one, otherwise show the `proposal_only` note that the type
+  will not be applied. Never show the draft's type unchecked.
 - every field that will be set; guarded fields show their recorded answer
   or "unset"
 - the body: `core render --template template.json draft.json > body.md`,

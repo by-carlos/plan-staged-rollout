@@ -170,6 +170,8 @@ class BuildTests(AdapterCase):
         self.assertEqual(code, 0, out)
         self.assertNotIn("type", out["issue"])
         self.assertEqual(out["proposal_only"][0]["what"], "type")
+        self.assertEqual(out["proposal_only"][0]["value"], "Task")
+        self.assertIn("not applied", out["proposal_only"][0]["reason"])
 
     def test_repo_without_routing_stops_and_asks(self):
         draft = fixture("draft-routed.json")

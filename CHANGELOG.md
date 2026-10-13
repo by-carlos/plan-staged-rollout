@@ -8,6 +8,13 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- `docs/ticket-templates.md`: a short guide to writing a team ticket template,
+  selecting it with `ticket_template` and validating it, linked from the README.
+
 ## [0.12.0] - 2026-10-13
 
 ### Added

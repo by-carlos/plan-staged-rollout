@@ -87,7 +87,7 @@ Some parts need more than a session:
 
 | Part | Needs | Without it |
 |---|---|---|
-| [Session-start nudge](staged-rollout.md#session-start-nudge) and the `gh-body-guard` ticket check | `bash` (on Windows, Git Bash). Both hooks run through a cmd/bash wrapper, so they work on Linux, macOS and Windows. | No nudge, and `gh` commands go unchecked. Everything else works: the commands are run by the model, not by shell scripts. |
+| [Session-start nudge](staged-rollout.md#session-start-nudge), the `gh-body-guard` ticket check and the opt-in [`tracker-write-guard`](tickets.md#trackers-and-requirements) | `bash` (on Windows, Git Bash). The hooks run through a cmd/bash wrapper, so they work on Linux, macOS and Windows. The write guard also needs Python 3.11 or later on `PATH`. | No nudge, and `gh` commands and ticket creates go unchecked. Everything else works: the commands are run by the model, not by shell scripts. |
 | [Running a plan in the cloud](ON-THE-RUN.md) | The plan flag `merge: auto`; cloud access on your Claude account (very likely required); and GitHub connected to claude.ai/code for the repo. The orchestrator (the local session running `plan-run`) fires stages through Claude Code's built-in `RemoteTrigger` tool, so there is nothing to install. | No cloud runs. Run stages locally. |
 | [Ticket skills](tickets.md) | Python 3.11 or later. `gh` for GitHub; the Atlassian MCP server for Jira. | That tracker is unavailable. |
 

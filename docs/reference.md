@@ -20,7 +20,7 @@ Everything lives in `.plan/` at the repo root, committed on the plan branch.
 | `README.md` | Entry point: what the plan is and how to run a stage | `plan-stages` |
 | `PLAN.md` | Architecture, **frozen decisions** (the design choices settled during planning), the stage index with each stage's flags, the plan flags line, and the operating protocol every stage follows. The single source of truth. | `plan-stages`; a stage changes it only when a frozen decision changes |
 | `LEDGER.md` | A one-line-per-stage status table, plus a notes block per stage: acceptance output, as-built detail, gotchas, handoff notes | `plan-stages`; then each stage on its own branch as it works, and its `done` row directly on the plan branch after its PR merges |
-| `stage-N-<slug>.md` | One stage: its goal, steps as checkboxes, and its acceptance check | `plan-stages`, or the review stage for a follow-up stage |
+| `stage-N-<slug>.md` | One stage: its goal, steps as checkboxes, and its acceptance check. An optional `Issue:` line under the title (`#123`, `owner/repo#123` or a URL) names the issue the stage came from; `stage-run` prints it and `plan-close` lists them all. Nothing posts to the issue or changes its status. | `plan-stages`, or the review stage for a follow-up stage |
 | `stage-f-review.md` | The review stage, `SF` | `plan-stages` |
 | `RUNNER.md` | What a cloud session follows to run one stage, since plugins don't load in the cloud | `plan-stages`; backfilled for older plans before their first cloud run |
 | `BLOCKED.md` | A `### S<N>` section per stage that blocked mid-run, so the block shows on the plan branch before the stage PR merges | a stage that blocks mid-run; nothing clears it automatically |

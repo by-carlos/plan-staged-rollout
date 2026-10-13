@@ -30,6 +30,19 @@ elsewhere. See 0.4.0 for the split.
   run in one call (resolve the template, check the draft, write the review
   prompt), and **`review-skip`** records why no gap review ran.
   `review-filter` now also writes `review-filtered.json`.
+- **`work-issue` works Jira tickets end to end.** The Jira `fetch` reads the
+  ticket's comments into `thread`, so the thread is read on Jira as on GitHub. A
+  new `transition` operation moves a ticket to the template's `[work].status`
+  names and reads the status back, so the claim and review statuses now land on
+  Jira. `comment` reads the posted comment back before it reports `VERIFIED`.
+  `--after` now works on Jira: a new `wait` operation checks the blocker once
+  per call, and the session paces the checks with `CronCreate`, every 10
+  minutes for up to 24 hours. A blocker counts as done by its status category,
+  whatever its workflow calls the status. GitHub behaviour is unchanged.
+- `docs/ticket-templates.md`: a short guide to writing a team ticket template,
+  selecting it with `ticket_template` and validating it, linked from the README.
+- `docs/faq.md`: short answers to common questions (is my plan saved, resume,
+  skip, add, undo, abandon, parallel stages, cloud runs, tickets, install).
 
 ### Changed
 
@@ -39,6 +52,25 @@ elsewhere. See 0.4.0 for the split.
   The v1 table and its code paths are gone. `detect` returns `unsupported` (exit
   4) for a server that offers only the v1 tools, naming the v2 endpoint to
   reconnect to.
+- **The README is a landing page now.** It says what the plugin is, who it is
+  for, what it costs, how to install it and how to try it, with one diagram
+  and a page index. The method moved into task pages under `docs/`:
+  `install.md`, `staged-rollout.md`, `reference.md`, `tickets.md` and `why.md`,
+  plus the existing `ON-THE-RUN.md` (retitled "Running a plan in the cloud").
+  Each page opens with a short summary and shares one nav line; Mermaid
+  diagrams show the plan lifecycle, a stage session, the review outcomes, the
+  branch model, parallel waves, the cloud run and the ticket flows.
+- **Docs corrected against the commands and protocol.** Skipping a stage goes
+  through its own stage PR; a stopped or crashed stage makes preflight ask
+  whether to resume or discard; `plan-run` needs `merge: auto`, skips gated
+  stages and ends by pointing at `plan-close`; `plan-close` asks before
+  deleting `.plan/`; undoing a merged stage is a redo; `.plan/BLOCKED.md`
+  sections are cleared by hand; the model-and-effort check reads both.
+- The plugin and marketplace descriptions mention the ticket skills.
+- The task pages cover the stage `Issue:` line, the opt-in
+  `tracker-write-guard`, Jira-only-v2 and `--after` on Jira.
+- `scripts/validate_plugin.py` checks relative links in `docs/*.md` as well as
+  in README files.
 
 ### Fixed
 
@@ -88,42 +120,6 @@ elsewhere. See 0.4.0 for the split.
   checks `git rev-list --count origin/plan-<slug>..plan-<slug>` and, when it is
   non-zero, stops and reports the count without pushing or resetting. The inaccurate
   "(both refuse non-fast-forward updates)" note is gone.
-
-### Added
-
-- **`work-issue` works Jira tickets end to end.** The Jira `fetch` reads the
-  ticket's comments into `thread`, so the thread is read on Jira as on GitHub. A
-  new `transition` operation moves a ticket to the template's `[work].status`
-  names and reads the status back, so the claim and review statuses now land on
-  Jira. `comment` reads the posted comment back before it reports `VERIFIED`.
-  `--after` now works on Jira: a new `wait` operation checks the blocker once
-  per call, and the session paces the checks with `CronCreate`, every 10
-  minutes for up to 24 hours. A blocker counts as done by its status category,
-  whatever its workflow calls the status. GitHub behaviour is unchanged.
-- `docs/ticket-templates.md`: a short guide to writing a team ticket template,
-  selecting it with `ticket_template` and validating it, linked from the README.
-- `docs/faq.md`: short answers to common questions (is my plan saved, resume,
-  skip, add, undo, abandon, parallel stages, cloud runs, tickets, install).
-
-### Changed
-
-- **The README is a landing page now.** It says what the plugin is, who it is
-  for, what it costs, how to install it and how to try it, with one diagram
-  and a page index. The method moved into task pages under `docs/`:
-  `install.md`, `staged-rollout.md`, `reference.md`, `tickets.md` and `why.md`,
-  plus the existing `ON-THE-RUN.md` (retitled "Running a plan in the cloud").
-  Each page opens with a short summary and shares one nav line; Mermaid
-  diagrams show the plan lifecycle, a stage session, the review outcomes, the
-  branch model, parallel waves, the cloud run and the ticket flows.
-- **Docs corrected against the commands and protocol.** Skipping a stage goes
-  through its own stage PR; a stopped or crashed stage makes preflight ask
-  whether to resume or discard; `plan-run` needs `merge: auto`, skips gated
-  stages and ends by pointing at `plan-close`; `plan-close` asks before
-  deleting `.plan/`; undoing a merged stage is a redo; `.plan/BLOCKED.md`
-  sections are cleared by hand; the model-and-effort check reads both.
-- The plugin and marketplace descriptions mention the ticket skills.
-- `scripts/validate_plugin.py` checks relative links in `docs/*.md` as well as
-  in README files.
 
 ## [0.12.0] - 2026-10-13
 

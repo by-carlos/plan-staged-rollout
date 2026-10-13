@@ -234,7 +234,8 @@ doesn't have your locally installed copy either. See
 ### A new session doesn't tell me the next stage
 
 The session-start nudge needs `bash`; on Windows, install Git Bash. Without
-bash you also lose the `gh-body-guard` ticket check. Everything else works:
+bash you also lose the `gh-body-guard` ticket check and the opt-in
+`tracker-write-guard`. Everything else works:
 run `stage-run <N>` yourself.
 
 ### The desktop app won't update the plugin

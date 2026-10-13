@@ -101,6 +101,7 @@ Layout:
     run-hook.cmd                 # polyglot cmd/bash wrapper (Windows + Unix)
     session-start                # .plan/-aware nudge: next runnable stage
     gh-body-guard                # denies gh body shapes that corrupt non-ASCII
+    tracker-write-guard          # opt-in: tracker creates only through create-issue
   scripts/                       # validate_plugin.py and release scripts
   .github/workflows/             # CI and the release pipeline
   CHANGELOG.md

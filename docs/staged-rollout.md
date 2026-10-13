@@ -124,6 +124,9 @@ What the picture leaves out:
   anyway". A heavier model alone is not a mismatch, and an unset
   `CLAUDE_EFFORT` is reported, not treated as one. Why it can't switch for
   you: [Reference](reference.md#why-model-and-effort-are-hints-not-automation).
+- **A linked issue is printed first.** If the stage file has an `Issue:`
+  line, the session names that issue before anything else. It never posts
+  to it or changes its status.
 - **It reads only what's needed:** `PLAN.md`, its stage file, the ledger
   table and the notes of the stages it depends on. It never scans the repo.
 - **`mode`:** `direct` means a one-line plan, then implement. `brainstorm`
@@ -277,7 +280,8 @@ alone. Then it:
    the as-built story survive on `main`;
 2. offers to remove the stage worktrees that are finished (branch merged,
    nothing unpushed), and stops on any that still holds work git cannot
-   recover;
+   recover. It also lists the issues the stages link to, if any, without
+   commenting on or closing them;
 3. offers to delete `.plan/` as the last commit on the plan branch,
    recommending what the `plan-dir` flag says (`delete` by default), and
    commits only after your OK. Nothing is lost: the full plan history stays

@@ -83,7 +83,7 @@ flowchart LR
 | "work issue 124" | `work-issue 124` | Works that ticket: a GitHub number, `owner/repo#124`, a URL, or a Jira key |
 | | `work-issue 124 <base>` | Same, landing the work in the base branch you name |
 | "resume issue 124" | `work-issue 124 --resume` | Continues the ticket's existing branch and open pull request |
-| "work 124 after 123" | `work-issue 124 --after 123` | Waits for issue 123 to close (up to 24 hours, session kept open), then works 124. GitHub only; [details](#waiting-on-another-ticket). |
+| "work 124 after 123" | `work-issue 124 --after 123` | Waits for ticket 123 to close or be done (up to 24 hours, session kept open), then works 124. Both on the same tracker; [details](#waiting-on-another-ticket). |
 
 **The AI prompt decides what happens.** There is no other switch:
 
@@ -116,17 +116,35 @@ ask, never a commit to the default branch, never a force-push.
 `work-issue 124 --after 123` records 124 as blocked by 123, then watches 123
 from this session for up to 24 hours (keep the session open). If 123 closes
 as completed, it works 124; if it closes as not planned, it asks first. After
-24 hours it stops without re-arming. GitHub only, and 123 must be an issue,
-not a pull request.
+24 hours it stops without re-arming.
+
+- **Both tickets must be on the same tracker.** A GitHub ticket can't wait on
+  a Jira one, or the reverse.
+- **GitHub:** 123 must be an issue, not a pull request.
+- **Jira:** "done" means the blocker's status category is done, whatever your
+  workflow calls that status ("Dev Done"). Done as Won't Do, Duplicate or
+  Declined counts as abandoned, so it asks first. The session checks every 10
+  minutes through Claude Code's `CronCreate` tool; without that tool it
+  refuses.
 
 ## Trackers and requirements
 
-- **GitHub** goes through `gh`. **Jira** goes through the Atlassian MCP server
-  (v1 or v2, detected at runtime).
+- **GitHub** goes through `gh`. **Jira** goes through the Atlassian MCP
+  server's v2 tool set, which Atlassian also serves on its `/v1/mcp`
+  endpoints. A server that offers only the old v1 tools is refused, with the
+  endpoint to reconnect to.
 - The scripts need **Python 3.11 or later**, standard library only.
 - A `PreToolUse` hook, `gh-body-guard`, blocks the `gh` command shapes that
   silently corrupt an issue body containing non-ASCII characters. It runs
   through `bash`, like the session-start nudge.
+- **Optional: make `create-issue` the only way to create a ticket.** Set
+  `guard_tracker_creates = true` in `plan-staged-rollout.toml`. The adapters
+  then refuse a create unless the template, gap review (or a recorded skip)
+  and estimate steps ran, and a second hook, `tracker-write-guard`, denies a
+  create that didn't come from the adapter: `gh issue create`, a `gh api`
+  POST to an issues endpoint, or a Jira create by hand. Edits, comments and
+  links stay unguarded. Details:
+  [template schema](../tickets/references/template-schema.md).
 
 ## Your team's ticket format
 

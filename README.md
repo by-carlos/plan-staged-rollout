@@ -708,9 +708,9 @@ ticket.
   writes. Push and merge each have their own gate. Say "work issue 12" or invoke
   `/plan-staged-rollout:work-issue <ticket>`; it never starts on its own.
 
-GitHub goes through `gh`; Jira goes through the Atlassian MCP server (v1 or
-v2, detected at runtime). The scripts need Python 3.11 or later and the
-standard library only. A `PreToolUse` hook, `gh-body-guard`, denies the `gh`
+GitHub goes through `gh`; Jira goes through the Atlassian MCP server's v2
+tool set, which Atlassian also serves on its `/v1/mcp` endpoints. The scripts
+need Python 3.11 or later and the standard library only. A `PreToolUse` hook, `gh-body-guard`, denies the `gh`
 argument shapes that silently corrupt a non-ASCII issue body. A second,
 opt-in hook, `tracker-write-guard`, makes create-issue the only way to create
 a ticket: set `guard_tracker_creates = true` in `plan-staged-rollout.toml` and

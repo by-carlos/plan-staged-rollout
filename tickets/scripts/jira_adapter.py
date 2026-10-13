@@ -37,29 +37,24 @@ EXIT_OK, EXIT_INVALID, EXIT_TRACKER, EXIT_DENIED, EXIT_UNREACHABLE = 0, 1, 2, 3,
 
 KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
 
-# Call shapes per MCP generation. v2 is verified against the live server
-# (2026-10-08). v1 comes from reading skills that pin /v1/mcp (issue #236,
-# "Atlassian MCP facts") and has not been exercised live yet.
-GENERATIONS = {
-    "v2": {
-        "create": "createJiraIssue",
-        "edit": "editJiraIssue",
-        "get": "getJiraIssue",
-        "search": "searchJiraIssuesUsingJql",
-        "comment": "addOrEditJiraIssueComment",
-        "link": ("executeWrite", "createJiraIssueLink"),
-        "read_op": ("executeRead", "getJiraIssue"),
-    },
-    "v1": {
-        "create": "createJiraIssue",
-        "edit": "editJiraIssue",
-        "get": "getJiraIssue",
-        "search": "searchJiraIssuesUsingJql",
-        "comment": "addCommentToJiraIssue",
-        "link": "createIssueLink",
-        "read_op": None,
-    },
+# Call shapes for the Atlassian MCP v2 tool set, verified against the live
+# server (2026-10-08). It is the only tool set supported: Atlassian serves
+# v2 tools on the /v1/mcp endpoints too, so a server still exposing the
+# retired v1 tools is refused by detect() rather than driven (issue #199).
+TOOLS = {
+    "create": "createJiraIssue",
+    "edit": "editJiraIssue",
+    "get": "getJiraIssue",
+    "search": "searchJiraIssuesUsingJql",
+    "comment": "addOrEditJiraIssueComment",
+    "link": ("executeWrite", "createJiraIssueLink"),
+    "read_op": ("executeRead", "getJiraIssue"),
 }
+# Tools only the retired v1 tool set has; their presence without the v2
+# meta-tools marks a server detect() refuses.
+V1_ONLY = {"addCommentToJiraIssue", "createIssueLink"}
+V2_ONLY = {"discover", "executeRead", "executeWrite"}
+V2_ENDPOINT = "https://mcp.atlassian.com/v2/mcp"
 WRITE_OPS = ("create", "edit", "comment", "link")
 SYSTEM_READ_FIELDS = ["summary", "description", "priority", "status", "assignee"]
 
@@ -86,38 +81,40 @@ class Relay(Exception):
 
 
 def detect(tool_names: list[str]) -> dict:
-    """Find the Atlassian MCP generation and tool-name prefix from the tool list."""
+    """Find the Atlassian MCP tool-name prefix and its v2 tools from the tool list."""
     prefixes: dict[str, set[str]] = {}
-    known = {name for gen in GENERATIONS.values() for name in _flat_names(gen)}
-    known |= {"discover", "executeRead", "executeWrite"}
+    known = {b[0] if isinstance(b, tuple) else b for b in TOOLS.values()} | V1_ONLY | V2_ONLY
     for full in tool_names:
         for bare in known:
             if full.endswith(bare) and full != bare:
                 prefix = full[: -len(bare)]
                 if prefix.startswith("mcp__") and prefix.endswith("__"):
                     prefixes.setdefault(prefix, set()).add(bare)
-    candidates = []
+    candidates, legacy = [], []
     for prefix, bares in prefixes.items():
         if "getJiraIssue" not in bares:
             continue
-        generation = "v2" if {"discover", "executeWrite"} & bares else "v1"
-        ops = GENERATIONS[generation]
+        if bares & V1_ONLY and not bares & V2_ONLY:
+            legacy.append(prefix)
+            continue
         tools, missing = {}, []
-        for op, bare in ops.items():
-            if bare is None:
-                continue
+        for op, bare in TOOLS.items():
             tool = bare[0] if isinstance(bare, tuple) else bare
             if tool in bares:
                 tools[op] = prefix + tool
             else:
                 missing.append(op)
         writes = all(op in tools for op in WRITE_OPS)
-        candidates.append({"prefix": prefix, "generation": generation,
-                           "tools": tools, "writes": writes, "missing": missing})
+        candidates.append({"prefix": prefix, "tools": tools, "writes": writes, "missing": missing})
     if not candidates:
+        if legacy:
+            return {"status": "unsupported", "candidates": legacy,
+                    "message": ("The Atlassian MCP server here exposes the retired v1 tool set, "
+                                "which is not supported. Reconnect it to "
+                                f"{V2_ENDPOINT} and start a new session.")}
         return {"status": "not-configured",
                 "message": "No Atlassian MCP server is connected in this session."}
-    candidates.sort(key=lambda c: (not c["writes"], c["generation"] != "v2", c["prefix"]))
+    candidates.sort(key=lambda c: (not c["writes"], c["prefix"]))
     best = dict(candidates[0])
     best["status"] = "ok"
     best["candidates"] = [c["prefix"] for c in candidates]
@@ -125,16 +122,6 @@ def detect(tool_names: list[str]) -> dict:
         best["message"] = ("The Atlassian MCP server here is read-only "
                            f"(missing: {', '.join(best['missing'])}).")
     return best
-
-
-def _flat_names(gen: dict) -> list[str]:
-    out = []
-    for bare in gen.values():
-        if isinstance(bare, tuple):
-            out.extend(bare[:1])
-        elif bare:
-            out.append(bare)
-    return out
 
 
 # --------------------------------------------------------------------------
@@ -363,30 +350,19 @@ def result_path(run: Path, name: str) -> Path:
 
 
 def create_spec(run: Path, payload: dict) -> dict:
-    exp, gen = payload["expected"], payload["env"]["generation"]
+    exp = payload["expected"]
     args = {"cloudId": payload["cloudId"], "projectKey": payload["project"],
-            "summary": exp["title"], "description": exp["body"], "contentFormat": "markdown"}
+            "summary": exp["title"], "description": exp["body"], "contentFormat": "markdown",
+            "issueType": exp["type"]}
+    if exp["labels"]:
+        args["labels"] = exp["labels"]
+    if exp["priority"]:
+        args["priority"] = exp["priority"]
+    if exp["parent"]:
+        args["parent"] = exp["parent"]
+    if payload.get("assignee"):
+        args["assignee"] = payload["assignee"]
     extra = dict(payload["additional_fields"])
-    if gen == "v2":
-        args["issueType"] = exp["type"]
-        if exp["labels"]:
-            args["labels"] = exp["labels"]
-        if exp["priority"]:
-            args["priority"] = exp["priority"]
-        if exp["parent"]:
-            args["parent"] = exp["parent"]
-        if payload.get("assignee"):
-            args["assignee"] = payload["assignee"]
-    else:
-        args["issueTypeName"] = exp["type"]
-        if exp["labels"]:
-            extra["labels"] = exp["labels"]
-        if exp["priority"]:
-            extra["priority"] = {"name": exp["priority"]}
-        if exp["parent"]:
-            extra["parent"] = {"key": exp["parent"]}
-        if payload.get("assignee"):
-            args["assignee_account_id"] = payload["assignee"]
     if extra:
         args["additional_fields"] = extra
     return spec(run, "create", tool(payload, "create"), args)
@@ -403,14 +379,10 @@ def link_spec(run: Path, payload: dict, key: str, link: dict, name: str) -> dict
     # The link reads inwardIssue -> outwardIssue with the type's outward
     # wording ("A blocks B"). "outward" means this ticket is the subject.
     inward, outward = (key, link["target"]) if link["direction"] == "outward" else (link["target"], key)
-    if payload["env"]["generation"] == "v2":
-        return spec(run, name, tool(payload, "link"),
-                    {"name": GENERATIONS["v2"]["link"][1], "cloudId": payload["cloudId"],
-                     "inputs": {"linkType": link["name"], "inwardIssue": inward,
-                                "outwardIssue": outward}})
     return spec(run, name, tool(payload, "link"),
-                {"cloudId": payload["cloudId"], "linkType": link["name"],
-                 "inwardIssue": inward, "outwardIssue": outward})
+                {"name": TOOLS["link"][1], "cloudId": payload["cloudId"],
+                 "inputs": {"linkType": link["name"], "inwardIssue": inward,
+                            "outwardIssue": outward}})
 
 
 def comment_spec(run: Path, payload: dict, key: str, text: str) -> dict:
@@ -420,29 +392,23 @@ def comment_spec(run: Path, payload: dict, key: str, text: str) -> dict:
 
 def readback_specs(run: Path, payload: dict, key: str, suffix: str) -> list[dict]:
     """Read back every field the payload set, custom fields by explicit id."""
-    exp, gen = payload["expected"], payload["env"]["generation"]
+    exp = payload["expected"]
     ids = [f["id"] for f in exp["fields"].values()] + [g["id"] for g in exp["unset_guarded"].values()]
     get = tool(payload, "get")
     calls = [spec(run, f"readback-fields{suffix}", get,
                   {"cloudId": payload["cloudId"], "issueIdOrKey": key,
                    "fields": SYSTEM_READ_FIELDS + sorted(set(ids))})]
-    needs_links = bool(exp["parent"] or exp["links"])
-    if gen == "v2":
-        # getJiraIssue drops issuetype, labels, parent and issuelinks from an
-        # explicit field list; the evidence view carries them.
-        if needs_links:
-            calls.append(spec(run, f"readback-evidence{suffix}", get,
-                              {"cloudId": payload["cloudId"], "issueIdOrKey": key,
-                               "view": "evidence"}))
-        else:
-            calls.append(spec(run, f"readback-system{suffix}", tool(payload, "read_op"),
-                              {"name": GENERATIONS["v2"]["read_op"][1], "cloudId": payload["cloudId"],
-                               "inputs": {"issueIdOrKey": key, "view": "evidence"},
-                               "responseFields": ["key", "fields.issuetype.name", "fields.labels"]}))
+    # getJiraIssue drops issuetype, labels, parent and issuelinks from an
+    # explicit field list; the evidence view carries them.
+    if exp["parent"] or exp["links"]:
+        calls.append(spec(run, f"readback-evidence{suffix}", get,
+                          {"cloudId": payload["cloudId"], "issueIdOrKey": key,
+                           "view": "evidence"}))
     else:
-        extra = ["issuetype", "labels"] + (["parent", "issuelinks"] if needs_links else [])
-        calls.append(spec(run, f"readback-system{suffix}", get,
-                          {"cloudId": payload["cloudId"], "issueIdOrKey": key, "fields": extra}))
+        calls.append(spec(run, f"readback-system{suffix}", tool(payload, "read_op"),
+                          {"name": TOOLS["read_op"][1], "cloudId": payload["cloudId"],
+                           "inputs": {"issueIdOrKey": key, "view": "evidence"},
+                           "responseFields": ["key", "fields.issuetype.name", "fields.labels"]}))
     return calls
 
 
@@ -790,8 +756,7 @@ def drive(run: Path, confirm: bool) -> dict:
             if not result_path(run, check).exists():
                 raise Relay([spec(run, check, tool(payload, "get"),
                                   {"cloudId": payload["cloudId"], "issueIdOrKey": key,
-                                   **({"view": "evidence"} if payload["env"]["generation"] == "v2"
-                                      else {"fields": ["issuelinks"]})})])
+                                   "view": "evidence"})])
             seen = normalize_issue(read_result(run, check, payload, key)).get("links") or []
             if not any(a["name"] == link["name"] and a["direction"] == link["direction"]
                        and a["target"] == link["target"] for a in seen):
@@ -966,9 +931,7 @@ def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> d
     payload = {"env": env, "cloudId": site, "_path": str(run)}
     name = "fetch"
     if not result_path(run, name).exists():
-        args = {"cloudId": site, "issueIdOrKey": key}
-        if env["generation"] == "v2":
-            args["view"] = "evidence"
+        args = {"cloudId": site, "issueIdOrKey": key, "view": "evidence"}
         raise Relay([spec(run, name, tool(payload, "get"), args)])
     raw = normalize_issue(read_result(run, name, payload, key))
     bcfg = (template or {}).get("body", {})
@@ -1167,7 +1130,7 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="op", required=True)
 
-    s = sub.add_parser("detect", help="find the MCP generation and tool prefix")
+    s = sub.add_parser("detect", help="find the Atlassian MCP tool prefix and its v2 tools")
     s.add_argument("--tools", required=True, help="JSON list of this session's tool names, or - for stdin")
     s.set_defaults(func=cmd_detect)
 

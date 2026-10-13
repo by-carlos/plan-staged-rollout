@@ -88,16 +88,15 @@ class AdapterCase(unittest.TestCase):
 class DetectTests(AdapterCase):
     def test_v2_prefix_and_tools(self):
         env = ja.detect(self.tools["v2"])
-        self.assertEqual((env["status"], env["generation"], env["prefix"]), ("ok", "v2", V2))
+        self.assertEqual((env["status"], env["prefix"]), ("ok", V2))
         self.assertTrue(env["writes"])
         self.assertEqual(env["tools"]["link"], V2 + "executeWrite")
 
-    def test_v1(self):
-        env = ja.detect(self.tools["v1"])
-        self.assertEqual(env["generation"], "v1")
-        self.assertEqual(env["prefix"], "mcp__plugin_productivity_atlassian__")
-        self.assertEqual(env["tools"]["comment"], env["prefix"] + "addCommentToJiraIssue")
-        self.assertTrue(env["writes"])
+    def test_v1_only_server_is_refused(self):
+        code, body = run_cli("detect", "--tools", self.write("t.json", self.tools["v1"]))
+        self.assertEqual((code, body["status"]), (ja.EXIT_UNREACHABLE, "unsupported"))
+        self.assertEqual(body["candidates"], ["mcp__plugin_productivity_atlassian__"])
+        self.assertIn(ja.V2_ENDPOINT, body["message"])
 
     def test_read_only_server(self):
         env = ja.detect(self.tools["readonly"])
@@ -110,8 +109,8 @@ class DetectTests(AdapterCase):
 
     def test_prefers_full_v2_when_several_servers(self):
         env = ja.detect(self.tools["readonly"] + self.tools["v1"] + self.tools["v2"])
-        self.assertEqual((env["prefix"], env["generation"]), (V2, "v2"))
-        self.assertEqual(len(env["candidates"]), 3)
+        self.assertEqual((env["status"], env["prefix"]), ("ok", V2))
+        self.assertEqual(len(env["candidates"]), 2)  # the v1-only server is not one
 
 
 class UpdateTests(AdapterCase):
@@ -159,15 +158,6 @@ class BuildTests(AdapterCase):
         payload = json.loads((self.run_dir / "payload.json").read_text(encoding="utf-8"))
         self.assertIn("sensitive_review", payload["expected"]["unset_guarded"])
         self.assertEqual(payload["comment"], "Estimate proposed by AI using https://example.com/estimation-guide")
-
-    def test_v1_shape(self):
-        code, body = self.build_run(env=ja.detect(self.tools["v1"]))
-        self.assertEqual(code, ja.EXIT_OK, body)
-        args = body["create"]["arguments"]
-        self.assertEqual(args["issueTypeName"], "Story")
-        self.assertNotIn("issueType", args)
-        self.assertEqual(args["additional_fields"]["priority"], {"name": "High"})
-        self.assertEqual(args["additional_fields"]["parent"], {"key": "ABC-100"})
 
     def test_every_error_reported_at_once(self):
         code, body = self.build_run(draft=fixture("draft-invalid.json"))

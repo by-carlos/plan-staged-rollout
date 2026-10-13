@@ -31,6 +31,15 @@ elsewhere. See 0.4.0 for the split.
   prompt), and **`review-skip`** records why no gap review ran.
   `review-filter` now also writes `review-filtered.json`.
 
+### Changed
+
+- **The Jira adapter supports only the Atlassian MCP v2 tool set.** The v1 call
+  shapes (`issueTypeName`, `addCommentToJiraIssue`, `createIssueLink`) were never
+  run live, and Atlassian now serves v2 tools on its `/v1/mcp` endpoints as well.
+  The v1 table and its code paths are gone. `detect` returns `unsupported` (exit
+  4) for a server that offers only the v1 tools, naming the v2 endpoint to
+  reconnect to.
+
 ### Fixed
 
 - **The Jira duplicate search no longer needs every title word to match.** The

@@ -50,7 +50,8 @@ one a step names when that step needs more than this file says.
   It will be summarized into Context, never only linked. Save it, as text and
   unedited, to `source.md`: the gap review checks the draft against it. When
   the ask is a rewrite or split of an existing ticket, that ticket is the
-  source, and its own title goes to the duplicate search as well. For a
+  source: record its key as `draft_notes.source_key` (Jira) so the duplicate
+  search finds it. For a
   split, also write the other tickets' titles, one per line, to
   `siblings.txt`, so the review can tell moved content from dropped.
 - **Intake-form tickets.** When the ask is a one-liner followed by

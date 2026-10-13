@@ -389,7 +389,57 @@ class ReadTests(AdapterCase):
         self.answer(body, {"dup-children": {"data": {"issues": []}}, "dup-keyword": hit})
         _code, body = run_cli("duplicates", "--run", self.run_dir)
         self.assertEqual(body["hits"], [{"key": "ABC-9", "summary": "Add a retry to the nightly export job",
-                                         "status": "Done", "match": "keyword", "exact_title": True}])
+                                         "status": "Done", "match": "keyword", "words_matched": 3,
+                                         "exact_title": True}])
+
+    def issues(self, *rows):
+        return {"data": {"issues": [{"key": k, "fields": {"summary": s, "status": {"name": "Open"}}}
+                                    for k, s in rows]}}
+
+    def test_keyword_search_ors_the_meaningful_words(self):
+        self.build_run()
+        _code, body = run_cli("duplicates", "--run", self.run_dir)
+        jql = body["calls"][1]["arguments"]["jql"]
+        self.assertIn('summary ~ "retry" OR summary ~ "nightly"', jql)
+        self.assertNotIn(" AND summary", jql)
+        for dropped in ('"Add"', '"a"', '"to"', '"the"'):
+            self.assertNotIn(dropped, jql)
+
+    def test_stop_words_and_short_words_are_dropped(self):
+        self.assertEqual(ja.search_words("Fix the search so that it finds the source ticket"),
+                         ["search", "finds", "source", "ticket"])
+
+    def test_reworded_title_still_returns_the_source_ticket(self):
+        self.build_run()
+        _code, body = run_cli("duplicates", "--run", self.run_dir)
+        other = ("ABC-7", "Nightly report layout")
+        source = ("ABC-9", "Retry failed export runs overnight")
+        self.answer(body, {"dup-children": self.issues(),
+                           "dup-keyword": self.issues(other, source)})
+        _code, body = run_cli("duplicates", "--run", self.run_dir)
+        self.assertEqual([h["key"] for h in body["hits"]], ["ABC-9", "ABC-7"])
+        self.assertEqual([h["words_matched"] for h in body["hits"]], [2, 1])
+
+    def test_source_key_search_returns_its_ticket(self):
+        draft = fixture("draft-valid.json")
+        draft["draft_notes"]["source_key"] = "ABC-55"
+        self.build_run(draft)
+        _code, body = run_cli("duplicates", "--run", self.run_dir)
+        jqls = {Path(c["result_file"]).stem: c["arguments"]["jql"] for c in body["calls"]}
+        self.assertIn('key = ABC-55 OR text ~ "ABC-55"', jqls["dup-source"])
+        source = ("ABC-55", "Unrelated wording entirely")
+        self.answer(body, {"dup-children": self.issues(), "dup-source": self.issues(source),
+                           "dup-keyword": self.issues(("ABC-7", "Export job retry"))})
+        _code, body = run_cli("duplicates", "--run", self.run_dir)
+        self.assertEqual(body["hits"][0]["key"], "ABC-55")
+        self.assertEqual(body["hits"][0]["match"], "source")
+
+    def test_build_rejects_a_source_key_that_is_not_an_issue_key(self):
+        draft = fixture("draft-valid.json")
+        draft["draft_notes"]["source_key"] = "not a key"
+        code, body = self.build_run(draft)
+        self.assertEqual(code, ja.EXIT_INVALID, body)
+        self.assertTrue(any("source_key" in e for e in body["errors"]), body)
 
 
 if __name__ == "__main__":

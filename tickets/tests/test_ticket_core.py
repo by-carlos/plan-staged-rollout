@@ -20,7 +20,7 @@ import ticket_template
 
 TEMPLATE, _ = ticket_template.validate_template("default", "jira")
 TEMPLATE["fields"] = {
-    "regulated_review": {"id": "customfield_1", "kind": "select", "values": {"Yes": "1", "No": "2"},
+    "regulated_review": {"id": "customfield_00001", "kind": "select", "values": {"Yes": "1", "No": "2"},
                    "default": "unset", "confirm_values": ["Yes"],
                    "ask_when": "the work stores, transmits or processes cardholder data"},
 }

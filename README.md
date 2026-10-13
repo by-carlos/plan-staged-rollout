@@ -24,7 +24,8 @@ GitHub issue or Jira ticket, and `work-issue` has Claude work one. See
 
 **What it costs you:** one planning session on an Opus-class model, then one
 session per stage, each on the model its stage recommends. The example plan
-below has three stages plus a review; the pilot rollout had eight.
+below has three stages plus a review; the
+[pilot rollout](docs/why.md#provenance) had eight.
 
 ## How a plan runs
 
@@ -40,13 +41,15 @@ flowchart LR
 
 - **Each stage gets a fresh session**, so a stage costs about the same
   however many came before it.
-- **Each stage is its own branch and pull request (PR)** into a plan branch.
+- **Each stage is its own branch and pull request (PR)** into a plan branch
+  (`plan-<slug>`, which lives until the plan is closed).
   `main` is not touched until the final PR, and you merge that one yourself.
 - **Everything is committed** in a `.plan/` folder in your repo. Close the
   laptop whenever you like: the next session reads where things stand.
 
 What the progress file looks like halfway through (from the
-[example plan](examples/uptime-page/.plan/LEDGER.md)):
+[example plan](examples/uptime-page/.plan/LEDGER.md); `Verified` says whether
+the acceptance check ran):
 
 | Stage | Status | Verified | Date | Result |
 |---|---|---|---|---|
@@ -97,7 +100,7 @@ language once the plugin is installed.
 |---|---|---|
 | Split a project into stages | `plan-stages <idea>` | "break this project into stages" |
 | Run one stage in this session | `stage-run <N>` | "run stage 2", "run the next stage" |
-| Run every remaining stage in the cloud, instead of one by one | `plan-run` | "run the plan" |
+| Run every remaining stage in the cloud, instead of one by one (the plan needs `merge: auto`) | `plan-run` | "run the plan" |
 | Finish the plan and propose the final PR | `plan-close` | "close the plan" |
 | Write one ticket | `create-issue` | "create an issue for …" |
 | Have Claude work one ticket | `work-issue <ticket>` | "work issue 124" |
@@ -111,7 +114,7 @@ language once the plugin is installed.
 | [Running a plan in the cloud](docs/ON-THE-RUN.md) | you want stages to run without opening each session yourself |
 | [Tickets](docs/tickets.md) | you want to use `create-issue` or `work-issue` |
 | [Customizing the ticket template](docs/ticket-templates.md) | your team's tickets follow their own format |
-| [FAQ](docs/faq.md) | is my plan saved? How do I resume, skip, undo or stop? |
+| [FAQ](docs/faq.md) | is my plan saved? How do I resume, skip, undo or abandon? |
 | [Reference](docs/reference.md) | you want every flag, status and `.plan/` file |
 | [Why staged rollouts](docs/why.md) | you want the problem it solves, when not to use it, and how it compares |
 

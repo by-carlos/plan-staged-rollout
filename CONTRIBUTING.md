@@ -68,8 +68,8 @@ Layout:
   README.md                      # landing page: what it is, install, try it
   docs/
     install.md                   # install, requirements, updating
-    staged-rollout.md            # how a plan runs, bootstrap to closeout
-    ON-THE-RUN.md                # running a plan in the cloud (/plan-run)
+    staged-rollout.md            # how a plan runs, from planning to close
+    ON-THE-RUN.md                # running a plan in the cloud (plan-run)
     tickets.md                   # create-issue and work-issue
     ticket-templates.md          # customizing the ticket template
     faq.md                       # short answers to common questions
@@ -83,7 +83,7 @@ Layout:
   examples/
     uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
     on-the-run/                  # retired routine-based prompt contracts, kept so old links resolve
-      poc/                     #   end-to-end proof-of-concept plan + verify_run.py
+      poc/                       # end-to-end proof-of-concept plan + verify_run.py
   commands/
     plan-stages.md               # plan-stages <idea>  — split a project into stages, write .plan/
     stage-run.md                 # stage-run <N>       — run one stage, in this session
@@ -101,4 +101,7 @@ Layout:
     run-hook.cmd                 # polyglot cmd/bash wrapper (Windows + Unix)
     session-start                # .plan/-aware nudge: next runnable stage
     gh-body-guard                # denies gh body shapes that corrupt non-ASCII
+  scripts/                       # validate_plugin.py and release scripts
+  .github/workflows/             # CI and the release pipeline
+  CHANGELOG.md
 ```

@@ -59,27 +59,23 @@ Open a new session in the repo. The [session-start
 nudge](staged-rollout.md#session-start-nudge) lists every stage that can
 run, with its exact command; say yes. Without the nudge, read the status
 table at the top of `.plan/LEDGER.md` (one line per stage) and run
-`stage-run <N>` yourself. A stage left at `doing` resumes from its unticked
-checkboxes. A stage someone is running right now still reads `todo` on the
-plan branch, because its edits live on its own branch until its PR merges.
+`stage-run <N>` yourself: for a stage that was stopped halfway, it asks
+whether to resume or discard that attempt. A stage someone is running right
+now still reads `todo` on the plan branch, because its edits live on its own
+branch until its PR merges.
 
 ### A session died mid-stage
 
-Run `stage-run <N>` again in a fresh session. Its preflight check finds the
-branch and worktree the dead session left, stops, and tells you what it
-found. Tell it to resume (it carries on in that worktree from the unticked
-boxes and the handoff note) or to discard that attempt. It never runs over
-it on its own.
+Run `stage-run <N>` again in a fresh session. It finds what the dead session
+left and asks whether to resume or discard that attempt. See [Stopping
+halfway](staged-rollout.md#stopping-halfway).
 
 ### A stage says it is blocked on me. What now?
 
-It wrote you a runbook: exact steps plus a check. If it blocked before
-starting work, the runbook is in the stage's notes in `.plan/LEDGER.md`. If
-it blocked midway, `.plan/BLOCKED.md` has a `### S<N>` section pointing at
-the stage PR, and the runbook is in that PR. Do the steps and run the stage
-again. Once it is resolved, delete its `.plan/BLOCKED.md` section yourself:
-nothing clears it, and `plan-run` never fires a stage that still has one.
-See [Where a blocked record lands](staged-rollout.md#where-a-blocked-record-lands).
+It wrote you a runbook: exact steps plus a check, either in the stage's
+ledger notes or in its stage PR. Do the steps and run the stage again. If it
+blocked midway, also delete its `.plan/BLOCKED.md` section by hand. Details:
+[Where a blocked record lands](staged-rollout.md#where-a-blocked-record-lands).
 
 ## Changing the plan
 
@@ -231,8 +227,8 @@ on each other: a plan. See [Tickets](tickets.md).
 ### I can't find the plugin
 
 It only runs in Claude Code: the CLI, or the desktop app's **Code** tab. It
-does not appear in **Chat**, **Cowork** or claude.ai. A desktop **cloud**
-session loads plugins from your claude.ai account, not your machine. See
+does not appear in **Chat**, **Cowork** or claude.ai, and a **cloud** session
+doesn't have your locally installed copy either. See
 [Where it runs](install.md#where-it-runs).
 
 ### A new session doesn't tell me the next stage

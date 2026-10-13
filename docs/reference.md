@@ -30,10 +30,10 @@ Everything lives in `.plan/` at the repo root, committed on the plan branch.
 | Status | Meaning | What happens next |
 |---|---|---|
 | `todo` | Not started | Can run once every stage in its `depends` is `done` or `skipped` |
-| `doing` | Started and not yet recorded `done`: stopped mid-stage (ticked checkboxes and a handoff note), or finished with its stage PR not yet merged | `stage-run <N>` resumes it |
+| `doing` | Started and not yet recorded `done`: stopped mid-stage (ticked checkboxes and a handoff note), or finished with its stage PR not yet merged | `stage-run <N>` resumes it; if its PR has already merged, it just records `done` |
 | `done` | The acceptance check ran, its output is in the ledger, and the stage PR is merged | Stages that depend on it can run |
 | `blocked` | Waiting on a person or an outside gate. The stage becomes a runbook of exact steps. A stage that finds mid-run that it needs the local machine uses the literal reason `needs-local`. | You do the steps, then run the stage again |
-| `skipped` | Decided against, with a one-line reason | Counts like `done` for `depends`, so nothing deadlocks. If the stage owned a check nothing else covers, its note says so and the review stage reassigns it or accepts the gap. |
+| `skipped` | Decided against, with a one-line reason | Counts like `done` for `depends` once its stage PR is merged, so nothing deadlocks. If the stage owned a check nothing else covers, its note says so and the review stage reassigns it or accepts the gap. |
 
 A stage left half done is a normal, resumable state, not a failure. The plan
 branch shows a stage's own edits only after its PR merges, so a stage that is
@@ -52,8 +52,8 @@ don't skimp on the hard parts:
 | `exec` | `inline` \| `subagent(<model>)` | Where the implementation churn lives: this session, or a subagent it coordinates |
 | `model` / `effort` | launch hints | The recommended session weight; checked at the start of the stage, never faked |
 | `gate: auto` | | The stage may be launched with nobody watching |
-| `gate: human` | | Never launched unattended: a person's judgment or presence is part of the stage. Unattended sessions and the cloud orchestrator stop in front of it. |
-| `gate: local` | | Never launched by the cloud orchestrator: the stage needs a resource only the local machine has. The orchestrator stops in front of it. |
+| `gate: human` | | Never started unattended: a person's judgment or presence is part of the stage. `stage-run --unattended` refuses it, and `plan-run` skips it and carries on with the other stages. |
+| `gate: local` | | Never run unattended or in a cloud session: the stage needs a resource only the local machine has. `stage-run --unattended`, any cloud session, and `plan-run` (which skips it) all refuse it. Run it yourself in a local session. |
 
 ## Plan flags
 
@@ -62,7 +62,7 @@ stage index:
 
 | Flag | Values | Meaning |
 |---|---|---|
-| `merge` | `manual` \| `auto` | Under `auto`, the session squash-merges its own stage PR into the plan branch once checks are green, instead of offering it. Stage PRs only: the PR into `main` is manual in every mode. |
+| `merge` | `manual` \| `auto` | Under `auto`, the session squash-merges its own stage PR into the plan branch once checks are green, instead of offering it. Stage PRs only: the PR into `main` is manual whatever the plan flags. |
 | `plan-dir` | `delete` \| `keep` | What `plan-close` does with `.plan/`: remove it as the last commit on the plan branch, or leave it in place for a plan that doubles as documentation. |
 
 These two are the plan's **declared defaults**: the answers a session applies
@@ -105,7 +105,8 @@ Every stage session reads the ledger, so its size taxes every future session.
 It is therefore split in two:
 
 - a **status table**, strictly one line per stage
-  (`Stage | Status | Verified | Date | Result`), easy to grep, so "which stage
+  (`Stage | Status | Verified | Date | Result`; `Verified` says whether the
+  acceptance check ran), easy to grep, so "which stage
   can run next" is trivial to find for you, the agent and the session-start
   nudge;
 - a **notes section**, one block per stage, for as-built detail, acceptance
@@ -148,4 +149,4 @@ The cloud path is the partial exception: a
 the stage index when it is fired, and that booking is measured to take
 effect. Booking `effort` remotely is still an open question
 ([#125](https://github.com/by-carlos/plan-staged-rollout/issues/125)), so the
-effort column stays a reminder that the stage prompt restates in every mode.
+effort column stays a reminder that the stage prompt restates in every run.

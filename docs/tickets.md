@@ -83,7 +83,7 @@ flowchart LR
 | "work issue 124" | `work-issue 124` | Works that ticket: a GitHub number, `owner/repo#124`, a URL, or a Jira key |
 | | `work-issue 124 <base>` | Same, landing the work in the base branch you name |
 | "resume issue 124" | `work-issue 124 --resume` | Continues the ticket's existing branch and open pull request |
-| "work 124 after 123" | `work-issue 124 --after 123` | Records 124 as blocked by 123, then watches 123 from this session for up to 24 hours. Closed as completed: it works 124. Closed as not planned: it asks first. Keep the session open. GitHub only. |
+| "work 124 after 123" | `work-issue 124 --after 123` | Waits for issue 123 to close (up to 24 hours, session kept open), then works 124. GitHub only; [details](#waiting-on-another-ticket). |
 
 **The AI prompt decides what happens.** There is no other switch:
 
@@ -95,17 +95,29 @@ flowchart LR
   check for each step, and what the ticket needs to become actionable. No
   branch, no commit, no comment.
 
-**Every outward step waits for your yes:** posting a comment (**Post it?**),
-the push with its pull request and linking comment (**Push?**), and the
-merge (**Merge?**, always its own question). Two writes need no extra yes,
-because naming the ticket authorizes them: the status changes your template
-sets (for example, moving the ticket to in-progress), and the blocked-by link
-that `--after` records. Before the merge question it runs a gap check, plus an
-acceptance check when there is something a person can verify. After a merge,
-it lists any tickets that were waiting on this one and are now free.
+**What asks you first:**
+
+| Step | Asks? |
+|---|---|
+| Posting a comment on the ticket | **Post it?** |
+| Pushing, opening the PR and linking it from the ticket | **Push?** (one yes for all three) |
+| Merging | **Merge?**, always its own question, after a gap check and, when there is something a person can check, a verification step |
+| Status changes your template sets (for example, to in-progress) | No: naming the ticket authorizes them |
+| The blocked-by link that `--after` records | No: same reason |
+
+After a merge, it lists any tickets that were waiting on this one and are now
+free.
 
 It works in your current clone: one branch per ticket, no worktree unless you
 ask, never a commit to the default branch, never a force-push.
+
+### Waiting on another ticket
+
+`work-issue 124 --after 123` records 124 as blocked by 123, then watches 123
+from this session for up to 24 hours (keep the session open). If 123 closes
+as completed, it works 124; if it closes as not planned, it asks first. After
+24 hours it stops without re-arming. GitHub only, and 123 must be an issue,
+not a pull request.
 
 ## Trackers and requirements
 

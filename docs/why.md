@@ -70,9 +70,9 @@ stop and resume whenever you have time.
 | Goal | Mechanism |
 |---|---|
 | **Token reduction** | A fresh session per stage reads only `PLAN.md`, its stage file and the ledger table, so each stage costs about the same however many came before. No compaction spiral. |
-| **Tracking** | Ledger with fixed statuses and pasted acceptance evidence. "Where were we?" is a 10-line table, not a transcript. |
+| **Tracking** | Ledger with fixed statuses and pasted acceptance evidence. "Where were we?" is a one-line-per-stage table, not a transcript. |
 | **Control** | Sessions stop at stage boundaries. You choose pace and order; PR-per-stage gives you an acceptance gate on every unit. Human-gated work becomes an explicit `blocked` + runbook, never faked progress. |
-| **Versioning / undo** | Undo the last stage by discarding its branch before its PR merges, or reverting its squash commit on the plan branch after. `main` gets one commit per stage. Details: [Branches and worktrees](staged-rollout.md#branches-and-worktrees). |
+| **Versioning / undo** | Undo a stage by discarding its branch before its PR merges, or by redoing it on a fresh branch after. `main` gets one commit per stage. Details: [How do I undo a stage?](faq.md#how-do-i-undo-a-stage) |
 
 ## When *not* to use this
 

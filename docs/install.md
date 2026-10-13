@@ -88,7 +88,7 @@ Some parts need more than a session:
 | Part | Needs | Without it |
 |---|---|---|
 | [Session-start nudge](staged-rollout.md#session-start-nudge) and the `gh-body-guard` ticket check | `bash` (on Windows, Git Bash). Both hooks run through a cmd/bash wrapper, so they work on Linux, macOS and Windows. | No nudge, and `gh` commands go unchecked. Everything else works: the commands are run by the model, not by shell scripts. |
-| [Running a plan in the cloud](ON-THE-RUN.md) | Cloud access on your Claude account (very likely required), and GitHub connected to claude.ai/code for the repo. The orchestrator (the local session running `plan-run`) fires stages through Claude Code's built-in `RemoteTrigger` tool, so there is nothing to install. | No cloud runs. Run stages locally. |
+| [Running a plan in the cloud](ON-THE-RUN.md) | The plan flag `merge: auto`; cloud access on your Claude account (very likely required); and GitHub connected to claude.ai/code for the repo. The orchestrator (the local session running `plan-run`) fires stages through Claude Code's built-in `RemoteTrigger` tool, so there is nothing to install. | No cloud runs. Run stages locally. |
 | [Ticket skills](tickets.md) | Python 3.11 or later. `gh` for GitHub; the Atlassian MCP server for Jira. | That tracker is unavailable. |
 
 **Typing `/plan-staged-rollout:<command>` always works.** Plain language
@@ -153,5 +153,6 @@ What an update *can* change is the plugin-side layer around that protocol:
 `stage-run`'s model-tier check and handoff chips, the session-start nudge,
 and `plan-run`'s orchestrator loop. None of these is scaffolded into
 `.plan/`, so they follow the installed version. What each fired cloud stage
-follows is still `.plan/RUNNER.md`, which is versioned and backfilled like
-the rest of `.plan/`.
+follows is the plan's own `.plan/RUNNER.md`: `plan-run` writes one from the
+installed version's template only when a plan has none, and uses an existing
+one as it is.

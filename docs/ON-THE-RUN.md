@@ -19,10 +19,10 @@ sequenceDiagram
     loop each stage that can run
         O->>G: read LEDGER.md
         O->>C: fire the stage
-        C->>G: work, open the stage PR, merge it<br/>(merge: auto), mark the stage done
-        O-->>C: check in every few minutes
+        C->>G: work, open the stage PR, merge it<br/>(merge: auto), mark the stage done or blocked
+        O->>G: every few minutes: run status and<br/>LEDGER.md, until the row moves
     end
-    O->>You: nothing left to fire: lists the stages<br/>left for you, points at plan-close
+    O->>You: nothing left to fire: the stages left for you,<br/>or plan-close if every stage is done
     You->>G: plan-close, then merge the final PR
 ```
 
@@ -38,9 +38,7 @@ repository. From there:
 3. The cloud session runs the stage on its own: writes the code, opens a pull
    request into the plan branch, squash-merges it once checks are green, and
    records `done` in the ledger (or records `blocked`). It merges only
-   because the plan says **`merge: auto`**: under the default
-   `merge: manual` it leaves the PR open and stops, the ledger row on the
-   plan branch never moves, and the orchestrator reports the run as dead.
+   because the plan says `merge: auto` (see below).
 4. The orchestrator checks in every few minutes, watching the run and
    re-reading the ledger, then fires the next stage that can run.
 
@@ -53,8 +51,9 @@ repository. From there:
   start. New plans get `RUNNER.md` automatically; an older plan gets it
   backfilled from the plugin's template before its first cloud run.
 - **`merge: auto`** on the plan flags line in `PLAN.md` (see
-  [Plan flags](reference.md#plan-flags)). Without it, the first cloud stage
-  stops with its PR open and the run ends there.
+  [Plan flags](reference.md#plan-flags)). Under the default `merge: manual`
+  the first cloud stage leaves its PR open and stops, the ledger row on the
+  plan branch never moves, and the orchestrator reports the run as dead.
 - **Cloud access on your Claude account.** `RemoteTrigger` very likely needs
   it (not yet checked across account types).
 - **GitHub connected to claude.ai/code for this repository**, so a cloud
@@ -103,12 +102,12 @@ tells you to run it yourself.
 - **Gated** (`gate: human` or `gate: local`): never fired; its row stays
   `todo`. Run it yourself with `stage-run <N>`, then run `plan-run` again for
   the stages after it.
-- **Blocked:** the stage marked itself `blocked`, with a runbook in its stage
-  PR and a `### S<N>` section in `.plan/BLOCKED.md`. `plan-run` never
-  retries it. Do what the runbook says, run the stage yourself with
-  `stage-run <N>`, and delete its `.plan/BLOCKED.md` section by hand.
+- **Blocked:** the stage recorded a block and wrote you a runbook. `plan-run`
+  never retries it. Do what the runbook says, then run the stage yourself
+  with `stage-run <N>`. Where the runbook is, and how to clear the block:
+  [Where a `blocked` record lands](staged-rollout.md#where-a-blocked-record-lands).
 - **Dead** means the cloud run ended but the ledger row never moved, even
-  after the orchestrator's grace period. The orchestrator reports the session
+  after a grace period (10 minutes) for the ledger to catch up. The orchestrator reports the session
   id, its claude.ai link, what its log showed, and whether the stage branch or
   its pull request exist on GitHub. It never writes to the plan branch on the
   stage's behalf. You decide: fire the stage again, fix it by hand, or run it
@@ -119,7 +118,7 @@ tells you to run it yourself.
 | Limit | What it means for you |
 |---|---|
 | **Effort isn't booked.** `RemoteTrigger` books a stage's `model` but has no measured way to book its `effort`, so the effort is only restated in the fired prompt. In the proof run below, no fired stage actually read `CLAUDE_EFFORT`; each took the value from its own prompt. | Treat a cloud stage's effort as requested, not confirmed. |
-| **Spent routines stay listed.** Each fire leaves a used-up routine that switches itself off but can't be deleted through the API. | Clear them out at claude.ai/code/routines once a plan finishes. |
+| **Spent routines stay listed.** Each fire creates a run-once *routine* (a saved cloud-session setup) and leaves it behind, switched off but not deletable through the API. | Clear them out at claude.ai/code/routines once a plan finishes. |
 | **A cloud run can't delete remote branches** (the git proxy refuses with 403). | Merged stage branches linger on GitHub until you delete them. |
 | **No worktrees.** Nothing outside the primary clone persists between tool calls, so a sibling worktree could vanish mid-stage. | A cloud run uses one branch per stage, without a worktree per stage. |
 | **The branch name may look wrong.** The checkout's content is the plan branch, but its HEAD may show a platform-named branch. | Expected; the stage prompt tells the session so. |
@@ -130,16 +129,17 @@ tells you to run it yourself.
 25 Sep 2026): a four-stage plan ran to completion on a disposable repo.
 
 - **What worked:** two dependent `gate: auto` stages fired and settled `done`
-  without a person (2 and 4 minutes each); the `gate: human` stage was
-  refused and run by hand; the unattended `plan-close` passed its
-  verification script 43/43; and the hand-made merge into `main` kept every
-  stage as its own commit.
+  without a person (about 2 and 4 minutes); the `gate: human` stage was
+  refused and run by hand; an unattended `plan-close` ran as the last fired
+  session and the proof's checker passed all 43 checks; and the hand-made
+  merge into `main` kept every stage as its own commit.
 - **What it left behind:** four spent routines and three merged stage
   branches to clear by hand.
 - **Two gaps, both fixed since:** the fired prompt must spell out the
   plan-branch checkout (a Sonnet stage told only "per `.plan/RUNNER.md`"
   looked at the default branch, found no plan and gave up); and a finished
-  run keeps `status: active`, so the end signal is `worker_status: idle`.
+  run keeps `status: active`, so the orchestrator treats
+  `worker_status: idle` as the end signal.
 - **Not observed:** a dead run past the grace period, or any grace-period
   behaviour beyond that one failed fire.
 
@@ -167,7 +167,8 @@ Its guarantees:
 - **`gate: human` and `gate: local` stages are never fired.** A cloud session
   has strictly less access than your machine.
 - **Dependencies must read `done` or `skipped` in the ledger** before a stage
-  fires. Firing out of order is a deliberate choice by you, never a default.
+  fires. `plan-run` never fires out of order; to do that, run the stage
+  yourself with `stage-run <N>`.
 - **It refuses to run from a protected branch** (such as `main`), and **the
   merge into `main` is always done by a person.**
 - **The ledger is the only state.** Stop whenever you like and pick the plan

@@ -24,8 +24,8 @@ flowchart TD
 |---|---|---|---|
 | 1. Plan | `plan-stages <idea>` | once | Settles the design, splits the work into stages, commits and pushes `.plan/`. Runs no stage. |
 | 2. Run stages | `stage-run <N>` | once per stage, each in a new session | Does one stage, runs its acceptance check, records the output, opens its PR. |
-| | `plan-run` | once, and again after each stop | Instead of `stage-run`: runs every remaining stage in the cloud. See [Running a plan in the cloud](ON-THE-RUN.md). |
-| 3. Review | `stage-run f` | once, last | Reads every note in the ledger and turns each loose end into a stage or a decision. |
+| | `plan-run` | once, and again after each stop | Instead of `stage-run`: runs every remaining stage in the cloud. The plan needs `merge: auto`. See [Running a plan in the cloud](ON-THE-RUN.md). |
+| 3. Review | `stage-run f` (f for final: stage `SF`) | once, last | Reads every note in the ledger and turns each loose end into a stage or a decision. |
 | 4. Close | `plan-close` | once | Writes the final PR from the plan, cleans up and proposes the PR into `main`. |
 
 Commands are shown by their short names; type them as
@@ -45,7 +45,7 @@ Commands are shown by their short names; type them as
 ```
 <repo>/.plan/
   README.md          # entry point + how to run a stage
-  PLAN.md            # architecture, frozen decisions, stage index,
+  PLAN.md            # architecture, frozen decisions (below), stage index,
                      #   operating protocol  ← single source of truth
   LEDGER.md          # status table + per-stage as-built notes
   stage-N-<slug>.md  # one thin, self-contained stage each
@@ -91,8 +91,8 @@ truth. Then it:
 - **records the git and worktree model** (a branch per stage, and locally a
   worktree per stage, [below](#branches-and-worktrees)). It is fixed, not a
   choice you are asked to make;
-- **commits `.plan/` and pushes the plan branch.** **No stage runs during
-  planning.** It ends by saying so and telling you exactly what to run next:
+- **commits `.plan/` (after your OK) and pushes the plan branch.** **No
+  stage runs during planning.** It ends by saying so and telling you exactly what to run next:
   the first stage's command and its recommended model and effort.
 
 ## 2. Run a stage — `stage-run <N>`
@@ -109,9 +109,10 @@ flowchart TD
     d --> work["Works in its own worktree,<br/>runs the acceptance check,<br/>records the output"]
     work --> pr["Opens the PR into the plan branch"]
     pr --> m["Merges it: on your yes,<br/>or by itself under merge: auto"]
-    pr -->|not merged yet| wait["Row stays doing"]
+    pr -->|not merged yet| wait["PR stays open; the next run<br/>records done once it merges"]
     m --> done["Marks the stage done,<br/>removes its worktree"]
     done --> next(["Names the stages that can run now"])
+    wait --> next
 ```
 
 What the picture leaves out:
@@ -146,15 +147,17 @@ All flags are in the [Reference](reference.md#stage-flags).
 
 ### Stopping halfway
 
-Stage steps are checkboxes. If a session has to stop mid-stage (blocked,
-context getting long, or you interrupt it), it marks the stage `doing`, ticks
-the completed boxes and writes a handoff note. Running `stage-run <N>` again
-(or asking to "run stage \<N> of the plan") resumes from the unticked boxes.
+Stage steps are checkboxes. If a session has to stop mid-stage (context
+getting long, or you interrupt it), it leaves the stage `doing` on its stage
+branch, ticks the completed boxes and writes a handoff note. A blocked stage
+records `blocked` instead ([below](#where-a-blocked-record-lands)).
 
-If a session **crashed** instead, the plan branch still reads `todo` for that
-stage while its branch and worktree exist. The next `stage-run <N>` notices,
-stops and tells you what it found; tell it to resume that attempt or discard
-it. It never runs over it on its own.
+**To pick it up again**, run `stage-run <N>` (or ask to "run stage \<N> of the
+plan"). Its preflight check finds the stage branch and worktree it didn't
+create, tells you what it found, and asks: **resume** (it carries on in that
+worktree from the unticked boxes and the handoff note) or **discard** that
+attempt. A crashed session looks the same and gets the same question. It
+never runs over an earlier attempt on its own.
 
 **Statuses:** `todo → doing → done`, plus `blocked` (waiting on a person or
 an outside gate: the stage becomes a **runbook**, exact steps for you to
@@ -169,12 +172,13 @@ block*). It depends on whether the stage's branch exists yet:
 
 | The block happens | The record goes |
 |---|---|
-| **Before the stage branch exists**: the weight check, a `gate: human` or `gate: local` stop, a refused redo | Straight onto the plan branch, readable the moment it happens |
+| **Before the stage branch exists**, in a run nobody is watching (`--unattended` or a cloud stage): a weight-check mismatch, a redo request (re-running a stage that already merged), or a `gate: human`/`gate: local` refusal | Straight onto the plan branch: the ledger row reads `blocked` and the runbook is in the stage's notes. (Attended, these just stop and tell you; nothing is written.) |
 | **Mid-stage** | The full runbook goes on the stage branch, in the stage PR (never merged while blocked). A `### S<N>` section in `.plan/BLOCKED.md` on the plan branch points at that PR, so the block is visible without waiting for a merge. |
 
-Nothing clears a `.plan/BLOCKED.md` section automatically: delete it by hand
-once the stage is resolved. Until you do, `plan-run` treats the stage as
-`blocked` and never fires it.
+**Clearing a mid-stage block:** nothing removes a `.plan/BLOCKED.md` section
+automatically. Delete it by hand once the stage is resolved; until you do,
+`plan-run` treats the stage as `blocked` and never fires it, and
+`plan-close` refuses to run.
 
 ## Starting the next stage
 
@@ -271,8 +275,9 @@ alone. Then it:
 
 1. turns `PLAN.md` and the ledger into the final PR body, so the *why* and
    the as-built story survive on `main`;
-2. removes the stage worktrees that are finished (branch merged, nothing
-   unpushed), and stops on any that still holds work git cannot recover;
+2. offers to remove the stage worktrees that are finished (branch merged,
+   nothing unpushed), and stops on any that still holds work git cannot
+   recover;
 3. offers to delete `.plan/` as the last commit on the plan branch,
    recommending what the `plan-dir` flag says (`delete` by default), and
    commits only after your OK. Nothing is lost: the full plan history stays
@@ -281,9 +286,8 @@ alone. Then it:
 4. proposes the PR from `plan-<slug>` to `main`. You review and merge it.
 
 It runs unattended too: `plan-close --unattended` applies the plan flags
-instead of asking, and a [cloud run](ON-THE-RUN.md) can run it as one more
-fired session once every stage is settled. **Merging that final PR is always
-yours.**
+instead of asking. `plan-run` never fires it; you run it. **Merging that final
+PR is always yours.**
 
 ## Branches and worktrees
 
@@ -306,7 +310,7 @@ gitGraph
     checkout plan-uptime
     merge plan-uptime-s1 id: "S1"
     commit id: "S1 done"
-    commit id: "rm .plan/"
+    commit id: "rm .plan/ (if delete)"
     checkout main
     merge plan-uptime id: "final PR"
 ```
@@ -327,6 +331,18 @@ Locally, that means your clone plus one sibling folder per running stage:
   myrepo-s3/     ← worktree, branch plan-<slug>-s3   (running at the same time)
 ```
 
+**Set once per repo, before your first plan:**
+
+| Setting | Value | Why |
+|---|---|---|
+| Allowed merge types | Both squash merging and merge commits | Stage PRs are squashed; the final PR is a merge commit. |
+| **Default merge button** | **"Create a merge commit"** | No session performs the final merge, so nothing else stops a default "Squash and merge" from collapsing every stage into one commit on `main`. Easiest to hit from a phone, where the dropdown is never opened. |
+| Squash message | "Pull request title and commit details" | |
+| Merge-commit message | "Pull request title and description" | The final PR body lands in the merge commit on `main`. |
+
+`plan-close` also writes the required merge type into the final PR body, but
+that is a reminder, not a control.
+
 The rules:
 
 - **One branch and one PR per stage, no exceptions.** Each unit stays
@@ -335,24 +351,14 @@ The rules:
 - **Branch names are flat** (`plan-<slug>-s3`, not `plan/<slug>/s3`) because
   git can't nest a branch under an existing branch name.
 - **Branches are automatic; merges are not.** The agent creates and pushes
-  the plan and stage branches without asking, and opens the stage PR as part
-  of finishing a stage. It **offers** each merge and merges only on your OK,
+  the stage branches without asking (the plan branch after you OK the
+  scaffold commit), and opens the stage PR as part of finishing a stage. It **offers** each merge and merges only on your OK,
   and it never pushes to `main`. A stage can't be marked `done` until its PR
   is merged.
 - **The one exception is `merge: auto`** (see [Plan
   flags](reference.md#plan-flags)): your OK given in advance, for **stage PRs
   only**. The session squash-merges its own stage PR once checks are green.
-  The PR into `main` stays yours in every mode.
-- **Repo settings:** the GitHub repo must allow both squash merging and merge
-  commits. Recommended: squash message "Pull request title and commit
-  details"; merge-commit message "Pull request title and description" (so the
-  final PR body lands in the merge commit on `main`).
-- **Set the repo's default merge button to "Create a merge commit".** If it
-  defaults to "Squash and merge", the final merge collapses every stage into
-  one commit on `main`, and nothing stops it: no session performs that merge.
-  It is easiest to hit from a phone, where the button is tapped without
-  opening the dropdown. `plan-close` writes the required merge type into the
-  final PR body, but that is a reminder, not a control.
+  The PR into `main` stays yours whatever the plan flags.
 - **The clone never leaves the plan branch.** *The clone holds the plan;
   worktrees hold the work.* Each stage branch is checked out only in its own
   sibling worktree (`../<repo>-s<N>`), created from the plan branch tip when
@@ -361,7 +367,7 @@ The rules:
 - **Unfinished worktrees are kept.** A stage worktree with uncommitted or
   unpushed work is left alone and reported; every later stage flags it and
   `plan-close` stops on it. A worktree that is merely left over (branch
-  merged, nothing unpushed) is cleared by `plan-close`.
+  merged, nothing unpushed) is offered for removal by `plan-close`.
 - **A fresh worktree has only tracked files.** Untracked local setup a stage
   needs (`.env`, local config, caches, dependency folders) is copied in by the
   stage, which records what it copied in the ledger.

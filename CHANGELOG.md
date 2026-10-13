@@ -24,6 +24,28 @@ elsewhere. See 0.4.0 for the split.
 
 - `docs/ticket-templates.md`: a short guide to writing a team ticket template,
   selecting it with `ticket_template` and validating it, linked from the README.
+- `docs/faq.md`: short answers to common questions (is my plan saved, resume,
+  skip, add, undo, abandon, parallel stages, cloud runs, tickets, install).
+
+### Changed
+
+- **The README is a landing page now.** It says what the plugin is, who it is
+  for, what it costs, how to install it and how to try it, with one diagram
+  and a page index. The method moved into task pages under `docs/`:
+  `install.md`, `staged-rollout.md`, `reference.md`, `tickets.md` and `why.md`,
+  plus the existing `ON-THE-RUN.md` (retitled "Running a plan in the cloud").
+  Each page opens with a short summary and shares one nav line; Mermaid
+  diagrams show the plan lifecycle, a stage session, the review outcomes, the
+  branch model, parallel waves, the cloud run and the ticket flows.
+- **Docs corrected against the commands and protocol.** Skipping a stage goes
+  through its own stage PR; a stopped or crashed stage makes preflight ask
+  whether to resume or discard; `plan-run` needs `merge: auto`, skips gated
+  stages and ends by pointing at `plan-close`; `plan-close` asks before
+  deleting `.plan/`; undoing a merged stage is a redo; `.plan/BLOCKED.md`
+  sections are cleared by hand; the model-and-effort check reads both.
+- The plugin and marketplace descriptions mention the ticket skills.
+- `scripts/validate_plugin.py` checks relative links in `docs/*.md` as well as
+  in README files.
 
 ## [0.12.0] - 2026-10-13
 

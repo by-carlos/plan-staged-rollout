@@ -155,7 +155,7 @@ to a different tool or server. A denial is an answer, not an obstacle.
 | 1 | Validation error in the input or the template; nothing was sent |
 | 2 | Tracker error (a call failed or returned something unexpected), or `FAILED` after the repair |
 | 3 | Write denied (message above) |
-| 4 | Tracker not reachable or not configured (`detect`) |
+| 4 | Tracker not reachable, not configured, or an unsupported tool set (`detect`) |
 
 ## Jira specifics (S3)
 

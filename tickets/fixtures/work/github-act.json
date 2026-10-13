@@ -33,6 +33,7 @@
   ],
   "has_ai_prompt": true,
   "ai_prompt": "> Fix the export encoding in the `widgets` service: write the CSV as UTF-8.\n> Change only the export writer and its tests.\n> Verify: run the export tests and export a record named `Zoë Renée`; the file opens with the name intact.",
+  "ai_prompt_section": "AI prompt",
   "board": {
     "Status": "Backlog",
     "Priority": "P1",

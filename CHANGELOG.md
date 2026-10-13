@@ -42,6 +42,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **Both ticket adapters return the AI prompt under the same keys, and the estimate
+  ceiling applies to every tracker.** GitHub's `fetch` returned the prompt text as
+  `ai_prompt` while Jira's returned only the section title as `ai_prompt_section`,
+  and `work_core.py` bridged the two. Both now return `has_ai_prompt`, `ai_prompt`
+  and `ai_prompt_section`, built by one helper in `ticket_core.py`, and `assess` reads
+  them directly (documented in `adapter-contract.md`). The `ceiling` check moved from
+  the Jira adapter into `check_draft`, so a GitHub draft above it now fails `check`
+  too. A ticket fetched without `--template` no longer has `assess` look up a custom
+  AI prompt title.
 - **The Jira duplicate search no longer needs every title word to match.** The
   `duplicates` operation required all words, so a reworded title found nothing and
   one recorded case missed its source ticket. It now ORs the title words longer than
@@ -78,6 +87,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **`work-issue` works Jira tickets end to end.** The Jira `fetch` reads the
+  ticket's comments into `thread`, so the thread is read on Jira as on GitHub. A
+  new `transition` operation moves a ticket to the template's `[work].status`
+  names and reads the status back, so the claim and review statuses now land on
+  Jira. `comment` reads the posted comment back before it reports `VERIFIED`.
+  `--after` now works on Jira: a new `wait` operation checks the blocker once
+  per call, and the session paces the checks with `CronCreate`, every 10
+  minutes for up to 24 hours. A blocker counts as done by its status category,
+  whatever its workflow calls the status. GitHub behaviour is unchanged.
 - `docs/ticket-templates.md`: a short guide to writing a team ticket template,
   selecting it with `ticket_template` and validating it, linked from the README.
 

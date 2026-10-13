@@ -26,6 +26,7 @@
   "thread": [],
   "has_ai_prompt": false,
   "ai_prompt": null,
+  "ai_prompt_section": null,
   "board": {
     "Status": "Backlog",
     "Priority": "P1",

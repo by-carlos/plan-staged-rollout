@@ -10,8 +10,77 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **Stage-to-issue linking.** A stage file may carry an optional `Issue:` line
+  (`#123`, `owner/repo#123` or an issue URL) under its title. `/stage-run`
+  prints the linked issue when it picks the stage up, and `/plan-close` lists
+  every stage's linked issue in the closeout. Plans without the field run
+  unchanged, and nothing posts to the issue or changes its status.
+- **Opt-in write guard for tracker creates.** With `guard_tracker_creates =
+  true` in `plan-staged-rollout.toml`, both adapters refuse to `build` a create
+  unless the draft's work folder holds the resolved `template.json`, the gap
+  review's `review-filtered.json` (or a recorded `review-skipped.json`) and
+  `estimate.json`, and a new `tracker-write-guard` `PreToolUse` hook denies any
+  `createJiraIssue` call whose arguments the Jira adapter did not issue, any
+  `executeWrite` create, and `gh issue create` or a `gh api` POST to an issues
+  endpoint from the Bash tool. Off by default; edits, comments and links are
+  not guarded.
+- **`ticket_core.py prepare`** runs the mechanical steps of a create-issue
+  run in one call (resolve the template, check the draft, write the review
+  prompt), and **`review-skip`** records why no gap review ran.
+  `review-filter` now also writes `review-filtered.json`.
+
+### Changed
+
+- **The Jira adapter supports only the Atlassian MCP v2 tool set.** The v1 call
+  shapes (`issueTypeName`, `addCommentToJiraIssue`, `createIssueLink`) were never
+  run live, and Atlassian now serves v2 tools on its `/v1/mcp` endpoints as well.
+  The v1 table and its code paths are gone. `detect` returns `unsupported` (exit
+  4) for a server that offers only the v1 tools, naming the v2 endpoint to
+  reconnect to.
+
 ### Fixed
 
+- **The create-issue preview no longer promises an issue type GitHub will not apply.**
+  The preview now runs `build` first and shows the type only when the owner supports
+  it, otherwise the note that it will not be applied. The adapter test pins that note.
+
+- **Both ticket adapters return the AI prompt under the same keys, and the estimate
+  ceiling applies to every tracker.** GitHub's `fetch` returned the prompt text as
+  `ai_prompt` while Jira's returned only the section title as `ai_prompt_section`,
+  and `work_core.py` bridged the two. Both now return `has_ai_prompt`, `ai_prompt`
+  and `ai_prompt_section`, built by one helper in `ticket_core.py`, and `assess` reads
+  them directly (documented in `adapter-contract.md`). The `ceiling` check moved from
+  the Jira adapter into `check_draft`, so a GitHub draft above it now fails `check`
+  too. A ticket fetched without `--template` no longer has `assess` look up a custom
+  AI prompt title.
+- **The Jira duplicate search no longer needs every title word to match.** The
+  `duplicates` operation required all words, so a reworded title found nothing and
+  one recorded case missed its source ticket. It now ORs the title words longer than
+  three letters that are not common stop words and ranks hits by words matched. A
+  draft can record `draft_notes.source_key`, and the search then also looks for that
+  key in the Jira key and text fields. The workaround wording in the `create-issue`
+  skill is gone. Jira only; the GitHub adapter is unchanged.
+- **`gh-body-guard` judges the commands the shell will run, not words in the
+  string.** It matched `gh issue|pr` and `-F` anywhere, so `git commit -F -`
+  with a message that named a gh command was denied. A new parser,
+  `tickets/scripts/shell_cmd.py`, shared with `tracker-write-guard`, folds line
+  continuations, splits on `;`, `&&`, `||`, `|`, newlines and `$(` only outside
+  quotes, drops heredoc bodies and strips `VAR=x` and `command` prefixes, so
+  the corrupting shapes are still caught across continuations, behind
+  `GH_REPO=` and with a `|` in a quoted title.
+- **`gh-body-guard` no longer answers "allow".** It returned "allow" for
+  every Bash call, which skips the user's own permission rules for that call.
+  It now denies or stays silent, needs no `jq`, and adds less time to an
+  ordinary Bash call.
+- **create-issue can no longer be shortcut silently.** A session that judged
+  the pipeline too heavy for one ticket wrote the body by hand from a team
+  reference document, skipped the template, check, gap review and estimate,
+  and posted with a direct MCP call, without saying so. "Rules that never
+  bend" now make the pipeline mandatory once invoked, require any skipped step
+  to be named in the preview and the report, forbid hand-made tracker creates,
+  and rank a separate filing guide below the resolved template.
 - **Preflight now stops when the plan branch is ahead of its upstream.** Protocol
   step 0.2 synced with `git merge --ff-only`, which prints `Already up to date.`
   and passes when the local plan branch holds unpushed commits, so those commits
@@ -22,6 +91,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **`work-issue` works Jira tickets end to end.** The Jira `fetch` reads the
+  ticket's comments into `thread`, so the thread is read on Jira as on GitHub. A
+  new `transition` operation moves a ticket to the template's `[work].status`
+  names and reads the status back, so the claim and review statuses now land on
+  Jira. `comment` reads the posted comment back before it reports `VERIFIED`.
+  `--after` now works on Jira: a new `wait` operation checks the blocker once
+  per call, and the session paces the checks with `CronCreate`, every 10
+  minutes for up to 24 hours. A blocker counts as done by its status category,
+  whatever its workflow calls the status. GitHub behaviour is unchanged.
 - `docs/ticket-templates.md`: a short guide to writing a team ticket template,
   selecting it with `ticket_template` and validating it, linked from the README.
 - `docs/faq.md`: short answers to common questions (is my plan saved, resume,

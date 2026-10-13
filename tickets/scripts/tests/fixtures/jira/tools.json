@@ -6,6 +6,7 @@
     "mcp__plugin_atlassian_atlassian__editJiraIssue",
     "mcp__plugin_atlassian_atlassian__searchJiraIssuesUsingJql",
     "mcp__plugin_atlassian_atlassian__addOrEditJiraIssueComment",
+    "mcp__plugin_atlassian_atlassian__transitionJiraIssue",
     "mcp__plugin_atlassian_atlassian__discover",
     "mcp__plugin_atlassian_atlassian__executeRead",
     "mcp__plugin_atlassian_atlassian__executeWrite"
@@ -16,7 +17,9 @@
     "mcp__plugin_productivity_atlassian__editJiraIssue",
     "mcp__plugin_productivity_atlassian__searchJiraIssuesUsingJql",
     "mcp__plugin_productivity_atlassian__addCommentToJiraIssue",
-    "mcp__plugin_productivity_atlassian__createIssueLink"
+    "mcp__plugin_productivity_atlassian__createIssueLink",
+    "mcp__plugin_productivity_atlassian__getTransitionsForJiraIssue",
+    "mcp__plugin_productivity_atlassian__transitionJiraIssue"
   ],
   "readonly": [
     "mcp__atlassian__getJiraIssue",

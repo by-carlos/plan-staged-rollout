@@ -60,6 +60,12 @@ classify it.
 }
 ```
 
+A fetched Ticket also carries `has_ai_prompt`, `ai_prompt` (the AI prompt
+section's text, or `null`) and `ai_prompt_section` (that section's title, or
+`null`). Both adapters return these same three keys, filled by
+`ticket_core.ai_prompt_of`; an empty section is no prompt. `work_core.py` reads
+them as they are.
+
 For Jira, `target` is `{"site": "...", "project": "KEY"}`.
 
 A **draft** is a Ticket plus an optional `draft_notes` object, which is never
@@ -70,14 +76,20 @@ rendered or posted:
   "confirmations": {"<field key>": "<value name the user explicitly chose>"},
   "waivers": ["<check>: <why the user waived it>"],
   "investigated": true,
-  "provenance": {"tool": "...", "session": "..."}
+  "provenance": {"tool": "...", "session": "..."},
+  "source_key": "ABC-123"
 }
 ```
+
+`source_key` is optional: the key of the existing ticket this draft is a
+rewrite or split of. Jira only; the GitHub adapter ignores it. When set,
+`duplicates` also searches for that key in the Jira key and text fields.
 
 `confirmations` is where `build` looks for the record that a guarded value
 was confirmed. The tracker-independent checks and the body rendering live in
 `scripts/ticket_core.py` (`check`, `render`); an adapter's `build` calls them
-rather than re-implementing them.
+rather than re-implementing them. That includes the estimate's `ceiling` and
+`split_above`: a draft above either fails `check` on every tracker.
 
 A link's `direction` is from this ticket's side: `outward` means "this
 ticket blocks the target", `inward` means "the target blocks this ticket".
@@ -97,19 +109,22 @@ Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 
 | Op | Writes? | What it does |
 |---|---|---|
-| `detect` | no | Checks what this session can reach. GitHub: `gh auth status`, plus the repo's visibility (a public repo raises the publication warning). Jira: takes the list of tool names the session has, and returns the MCP generation (v1 or v2), the tool-name prefix and the call shapes to use. With no Atlassian tools present, it returns `not-configured`. |
+| `detect` | no | Checks what this session can reach. GitHub: `gh auth status`, plus the repo's visibility (a public repo raises the publication warning). Jira: takes the list of tool names the session has, and returns the tool-name prefix and the v2 tools to call. With no Atlassian tools present, it returns `not-configured`; with only the retired v1 tool set, it returns `unsupported` and names the v2 endpoint to reconnect to. |
 | `build` | no | Takes a draft Ticket and the resolved template, and returns the create payload: a call spec for relay, or the exact `gh api` input for direct. Returns every validation error at once: a missing required section, a value outside a scale, an unknown field, or a guarded value with no recorded confirmation. |
-| `duplicates` | no | Returns a search for likely duplicates (same title, same source thread, same external reference). Jira searches children first, then keywords. The skill shows the hits and asks before creating. |
+| `duplicates` | no | Returns a search for likely duplicates (same title words, same source ticket, same external reference). Jira searches children first, then the draft's `source_key` in the key and text fields, then the title's keywords: every word longer than three letters that is not a common stop word, combined with OR. Hits come back with `words_matched` and are ranked source key first, then by words matched. The skill shows the hits and asks before creating. |
 | `create` | **yes** | Posts the built payload. It needs `--confirm`, which the skill passes only after the user's yes. |
 | `set-fields` | **yes** | Sets fields that the create call cannot carry: GitHub Projects board fields, or Jira fields that are not on the create screen. |
 | `link` | **yes** | Creates links and the parent. It creates the first link, reads it back to confirm the direction, and only then creates the rest. |
-| `comment` | **yes** | Adds a comment, such as the estimate attribution comment. |
-| `fetch` | no | Reads one ticket into a Ticket, sections parsed, for `work-issue`. It also reports whether an `ai_prompt` section exists. |
+| `comment` | **yes** | Adds a comment, such as the estimate attribution comment, then finds it on the ticket again and compares its text. |
+| `fetch` | no | Reads one ticket into a Ticket, sections parsed, with its comments as `thread`, for `work-issue`. It also returns the AI prompt as `has_ai_prompt`, `ai_prompt` and `ai_prompt_section`. |
+| `transition` | **yes** | Jira only. Moves a ticket to a named status through a workflow transition that leads there, then reads the status back. GitHub's status lives on the board and goes through `set-fields`. |
+| `wait` | no | Jira only. One check of whether a blocking ticket is done, for `work-issue --after`; the session calls it again on each tick. GitHub's wait is a background `gh` loop in the skill. |
 | `readback` | no | Like `fetch`, but asks for every field the payload set, **by explicit field id**. Create and edit responses do not echo custom fields, so a write is never confirmed from its own response. |
 | `diff` | no | Compares the expected Ticket with the read-back one and returns the per-field list in the Result shape. Whitespace and markdown are normalized; any other difference is reported, not silently accepted. |
 | `repair` | **yes** | Makes one corrective write for the mismatched fields, then runs `readback` and `diff` again. Fields with `repair.after_seconds` (automation overwrite) are read only after that wait. There is **one** repair, never a loop. A mismatch that is still there afterwards is `FAILED`, and the message names each field. |
 
-Every write op ends with `readback` + `diff`, and returns `VERIFIED`
+Every write op ends with a read-back, `readback` + `diff` (Jira's
+`comment` and `transition` read back the comment or status they wrote), and returns `VERIFIED`
 (matched first time), `REPAIRED` (matched after the one repair) or `FAILED`.
 
 ## Safety rules every adapter follows
@@ -150,16 +165,18 @@ to a different tool or server. A denial is an answer, not an obstacle.
 | 1 | Validation error in the input or the template; nothing was sent |
 | 2 | Tracker error (a call failed or returned something unexpected), or `FAILED` after the repair |
 | 3 | Write denied (message above) |
-| 4 | Tracker not reachable or not configured (`detect`) |
+| 4 | Tracker not reachable, not configured, or an unsupported tool set (`detect`) |
 
 ## Jira specifics (S3)
 
-- **Generations:**
-  - v1 (`/v1/mcp`): `createJiraIssue` takes `issueTypeName`,
-    `assignee_account_id` and `additional_fields` (snake_case).
-  - v2 (`/v2/mcp`): it takes `issueType` and `assignee`, and adds
-    `discover` and `executeRead` / `executeWrite` / `executeDestructive`.
-  - `detect` decides which from the tool list, never from a guess.
+- **v2 tools only.** `createJiraIssue` takes `issueType` and `assignee`,
+  and the server adds `discover` and `executeRead` / `executeWrite` /
+  `executeDestructive`. Atlassian serves these tools on the `/v1/mcp`
+  endpoints too ("existing v1 connections automatically start to expose and
+  use v2 tools", per the [Atlassian MCP server README](https://github.com/atlassian/atlassian-mcp-server#how-it-works)),
+  so the retired v1 tool set (`issueTypeName`, `addCommentToJiraIssue`,
+  `createIssueLink`) is not supported. `detect` refuses a server that offers
+  only those tools, with exit 4 and status `unsupported` (issue #199).
 - **Prefix:** at least three tool-name prefixes exist in the wild. `detect`
   finds the one present at runtime and never hard-codes one.
 - **Body:** markdown with `contentFormat: "markdown"`, which applies only
@@ -190,6 +207,25 @@ to a different tool or server. A denial is an answer, not an obstacle.
   have not changed since it was posted) and the same read-back and diff. It never
   changes the issue type and never re-creates links. Jira only; GitHub has
   no equivalent yet.
+- **`fetch`** (comments added for issue 196) also reads the comments into
+  `thread`, oldest first, through `listJiraIssueComments`. When they
+  were cut off or could not be read, `thread_note` says so and the
+  ticket is still returned. It also returns
+  `status_category` (`new`, `indeterminate` or `done`) and `resolution`.
+- **`comment`** finds the posted comment on the ticket again and compares
+  its text before it reports `VERIFIED`.
+- **`transition`** reads the current status and the transitions open to
+  this user, and picks the one whose **target status** has the requested
+  name, case-insensitive (a transition's own name often differs). It makes
+  that transition only with `--confirm`, then reads the status back. A
+  ticket already in that status is not moved (`changed: false`). When no
+  transition leads there it exits 2, naming the statuses reachable now.
+- **`wait`** makes one status read per call and answers `WAITING`,
+  `CLEARED` (status category `done`), `ABANDONED` (done, with a resolution
+  such as Won't Do or Duplicate) or `TIMEOUT` (after `--hours`, 24 by
+  default, and at least one check). The status category is the only input.
+  A failed read is retried on the next two calls before it stops the wait.
+  No background process can call the MCP, so the session paces the calls.
 - **The template it takes is the resolved one** (`ticket_template.py resolve`
   output, or a bare resolved template). The adapter does not resolve
   layering. Its tracker-independent checks and body rendering are
@@ -209,10 +245,6 @@ to a different tool or server. A denial is an answer, not an obstacle.
   - Issue links go through `executeWrite` with `createJiraIssueLink`,
     which takes the link type **name** (`linkType`), `inwardIssue` and
     `outwardIssue`. "`inwardIssue` Blocks `outwardIssue`".
-- **v1 call shapes are not verified live.** They come from skills that pin
-  `/v1/mcp`: `issueTypeName`, `additional_fields` for priority, labels and
-  parent, `addCommentToJiraIssue`, `createIssueLink`. The S7 trial confirms
-  them, or a v1 session reports the first mismatch.
 - **Denial classification** is by the error text the model saved: a hook,
   a read-only server, a policy, or a permission/scope refusal gives exit 3
   and the message above. Any other error gives exit 2. A create with an
@@ -252,8 +284,7 @@ Implemented in `scripts/github_adapter.py`; tests in `tests/`.
 - **Links.** `blocks` links use `gh issue edit --add-blocked-by` (`inward`)
   and `--add-blocking` (`outward`); the first is read back before the rest.
   A parent uses the sub-issues endpoint. Other kinds exit 1.
-- **`fetch`** returns the Ticket plus `thread` (the comments), `has_ai_prompt`
-  and `ai_prompt`. Pass `--with-board` to include board fields.
+- **`fetch`** returns the Ticket plus `thread` (the comments). Pass `--with-board` to include board fields.
 - **`detect`** warns on a public repo and exits 4 when issues are disabled.
 
 ## Not designed out: stage-to-issue linking

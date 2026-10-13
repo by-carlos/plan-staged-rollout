@@ -42,6 +42,37 @@ ticket_template = { github = "~/.claude/templates/mine.toml", jira = "~/.claude/
 - The config file and the key are named after the plugin the skills ship in
   (plan-staged-rollout).
 
+### `guard_tracker_creates` — the opt-in write guard
+
+```toml
+guard_tracker_creates = true
+```
+
+Not a template setting, but read from the same files. When either file sets
+it to `true`, a tracker create can only happen at the end of create-issue
+(`tickets/scripts/write_guard.py` holds the rules):
+
+- the adapters' `build` refuses a create unless the draft's folder holds
+  `template.json` (from `resolve`, and the same template `build` was given),
+  `review-filtered.json` or `review-skipped.json`, and `estimate.json`;
+- the `tracker-write-guard` hook denies a `createJiraIssue` call whose
+  arguments the Jira adapter did not issue after `--confirm` (each issued
+  call passes once, within two hours; a retry after a failed call needs
+  `create --confirm` again), any `executeWrite` create, and `gh issue create`
+  or a `gh api` POST to an issues endpoint from the Bash tool, judged on the
+  commands the shell will run (`tickets/scripts/shell_cmd.py`), not on words
+  inside quotes or heredocs.
+- the hook never answers "allow": a call it lets through gets no decision
+  from it, so the user's own permission rules still apply.
+
+Edits, comments and links are not guarded. A project file cannot turn off
+what the user file turned on; the adapters read the project file from their
+working directory, so run them from the repo for a project-only setting to
+count. The pipeline gate checks that the evidence files exist, not that they
+belong to the current draft. A config file that cannot be read leaves the
+guard off, and the hook passes everything through when no Python 3.11 is on
+`PATH`.
+
 ## Layering
 
 ```toml
@@ -370,8 +401,10 @@ more shapes at run time: a `merge_command` that does not start with
 `gh pr merge` or lacks `{pr}`, and a `merge_ask_header` longer than 12
 characters (the dialog's chip limit). `branch` may use only `{type}`,
 `{number}` (a Jira key for Jira) and `{slug}`. `status` names are written
-to a GitHub board field mapped to `status` in `[routing].board_fields`;
-Jira statuses are not written (the adapter has no transition operation).
+to a GitHub board field mapped to `status` in `[routing].board_fields`. On
+Jira the ticket is moved to the status of that name through the Jira
+adapter's `transition` op, so each name must match a status in the
+project's workflow that a transition can reach from the one before.
 
 ## Validation
 

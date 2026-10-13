@@ -31,36 +31,45 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ticket_core as core  # shared checks and body rendering
+import write_guard  # opt-in pipeline gate and relay tokens
 
 EXIT_OK, EXIT_INVALID, EXIT_TRACKER, EXIT_DENIED, EXIT_UNREACHABLE = 0, 1, 2, 3, 4
 
 KEY_RE = re.compile(r"^[A-Z][A-Z0-9_]+-\d+$")
 
-# Call shapes per MCP generation. v2 is verified against the live server
-# (2026-10-08). v1 comes from reading skills that pin /v1/mcp (issue #236,
-# "Atlassian MCP facts") and has not been exercised live yet.
-GENERATIONS = {
-    "v2": {
-        "create": "createJiraIssue",
-        "edit": "editJiraIssue",
-        "get": "getJiraIssue",
-        "search": "searchJiraIssuesUsingJql",
-        "comment": "addOrEditJiraIssueComment",
-        "link": ("executeWrite", "createJiraIssueLink"),
-        "read_op": ("executeRead", "getJiraIssue"),
-    },
-    "v1": {
-        "create": "createJiraIssue",
-        "edit": "editJiraIssue",
-        "get": "getJiraIssue",
-        "search": "searchJiraIssuesUsingJql",
-        "comment": "addCommentToJiraIssue",
-        "link": "createIssueLink",
-        "read_op": None,
-    },
+# Call shapes for the Atlassian MCP v2 tool set, verified against the live
+# server (2026-10-08). It is the only tool set supported: Atlassian serves
+# v2 tools on the /v1/mcp endpoints too, so a server still exposing the
+# retired v1 tools is refused by detect() rather than driven (issue #199).
+TOOLS = {
+    "create": "createJiraIssue",
+    "edit": "editJiraIssue",
+    "get": "getJiraIssue",
+    "search": "searchJiraIssuesUsingJql",
+    "comment": "addOrEditJiraIssueComment",
+    "link": ("executeWrite", "createJiraIssueLink"),
+    "read_op": ("executeRead", "getJiraIssue"),
+    # getJiraIssue reports only a comment count; the comments are a list op.
+    "comments": ("executeRead", "listJiraIssueComments"),
+    "transitions": ("executeRead", "listJiraIssueTransitions"),
+    "transition": "transitionJiraIssue",
 }
+# Tools only the retired v1 tool set has; their presence without the v2
+# meta-tools marks a server detect() refuses.
+V1_ONLY = {"addCommentToJiraIssue", "createIssueLink", "getTransitionsForJiraIssue"}
+V2_ONLY = {"discover", "executeRead", "executeWrite"}
+V2_ENDPOINT = "https://mcp.atlassian.com/v2/mcp"
 WRITE_OPS = ("create", "edit", "comment", "link")
 SYSTEM_READ_FIELDS = ["summary", "description", "priority", "status", "assignee"]
+STATUS_READ_FIELDS = ["status", "resolution"]
+COMMENT_PAGE = 100  # the most listJiraIssueComments returns in one page
+# Jira's three fixed status categories; a workflow's status names vary, these do not.
+CATEGORY_KEYS = {"to do": "new", "in progress": "indeterminate", "done": "done"}
+# A blocker closed with one of these resolutions was dropped, not finished:
+# the wait asks before it goes on, as GitHub's NOT_PLANNED does.
+ABANDONED_RESOLUTION = re.compile(r"won'?t|duplicate|declined|rejected|cannot|can't|invalid|"
+                                  r"obsolete|incomplete|not a bug|not needed", re.IGNORECASE)
+WAIT_HOURS = 24
 
 
 class Stop(Exception):
@@ -85,38 +94,40 @@ class Relay(Exception):
 
 
 def detect(tool_names: list[str]) -> dict:
-    """Find the Atlassian MCP generation and tool-name prefix from the tool list."""
+    """Find the Atlassian MCP tool-name prefix and its v2 tools from the tool list."""
     prefixes: dict[str, set[str]] = {}
-    known = {name for gen in GENERATIONS.values() for name in _flat_names(gen)}
-    known |= {"discover", "executeRead", "executeWrite"}
+    known = {b[0] if isinstance(b, tuple) else b for b in TOOLS.values()} | V1_ONLY | V2_ONLY
     for full in tool_names:
         for bare in known:
             if full.endswith(bare) and full != bare:
                 prefix = full[: -len(bare)]
                 if prefix.startswith("mcp__") and prefix.endswith("__"):
                     prefixes.setdefault(prefix, set()).add(bare)
-    candidates = []
+    candidates, legacy = [], []
     for prefix, bares in prefixes.items():
         if "getJiraIssue" not in bares:
             continue
-        generation = "v2" if {"discover", "executeWrite"} & bares else "v1"
-        ops = GENERATIONS[generation]
+        if bares & V1_ONLY and not bares & V2_ONLY:
+            legacy.append(prefix)
+            continue
         tools, missing = {}, []
-        for op, bare in ops.items():
-            if bare is None:
-                continue
+        for op, bare in TOOLS.items():
             tool = bare[0] if isinstance(bare, tuple) else bare
             if tool in bares:
                 tools[op] = prefix + tool
             else:
                 missing.append(op)
         writes = all(op in tools for op in WRITE_OPS)
-        candidates.append({"prefix": prefix, "generation": generation,
-                           "tools": tools, "writes": writes, "missing": missing})
+        candidates.append({"prefix": prefix, "tools": tools, "writes": writes, "missing": missing})
     if not candidates:
+        if legacy:
+            return {"status": "unsupported", "candidates": legacy,
+                    "message": ("The Atlassian MCP server here exposes the retired v1 tool set, "
+                                "which is not supported. Reconnect it to "
+                                f"{V2_ENDPOINT} and start a new session.")}
         return {"status": "not-configured",
                 "message": "No Atlassian MCP server is connected in this session."}
-    candidates.sort(key=lambda c: (not c["writes"], c["generation"] != "v2", c["prefix"]))
+    candidates.sort(key=lambda c: (not c["writes"], c["prefix"]))
     best = dict(candidates[0])
     best["status"] = "ok"
     best["candidates"] = [c["prefix"] for c in candidates]
@@ -124,16 +135,6 @@ def detect(tool_names: list[str]) -> dict:
         best["message"] = ("The Atlassian MCP server here is read-only "
                            f"(missing: {', '.join(best['missing'])}).")
     return best
-
-
-def _flat_names(gen: dict) -> list[str]:
-    out = []
-    for bare in gen.values():
-        if isinstance(bare, tuple):
-            out.extend(bare[:1])
-        elif bare:
-            out.append(bare)
-    return out
 
 
 # --------------------------------------------------------------------------
@@ -187,6 +188,10 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
 
     notes = ticket.get("draft_notes") or {}
     confirmations = notes.get("confirmations") or {}
+    source_key = notes.get("source_key")
+    if source_key is not None and not KEY_RE.match(str(source_key)):
+        errors.append(f"draft_notes.source_key: {source_key!r} is not an issue key")
+        source_key = None
     fdefs = template.get("fields", {})
     values = {k: v for k, v in (ticket.get("fields") or {}).items() if v not in (None, "unset")}
 
@@ -205,9 +210,6 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
     ecfg = template.get("estimate", {})
     if estimate.get("value") is not None and ecfg.get("kind", "none") != "none":
         evalue = estimate["value"]
-        ceiling = ecfg.get("ceiling")
-        if ceiling is not None and isinstance(evalue, (int, float)) and evalue > ceiling:
-            errors.append(f"estimate.value: {evalue} is above the ceiling {ceiling}; propose a split instead")
         if ecfg.get("set_only_if") == "investigated" and not notes.get("investigated"):
             warnings.append("estimate: not set, the template sets it only after an investigation")
         else:
@@ -284,7 +286,8 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
     payload = {"tracker": "jira", "env": env, "cloudId": site, "project": project,
                "site_url": site_url(site), "expected": expected, "comment": comment,
                "assignee": ticket.get("assignee"), "additional_fields": additional,
-               "repair_wait": repair_wait, "write": "create"}
+               "repair_wait": repair_wait, "write": "create",
+               "source_key": source_key}
     return payload, errors, warnings
 
 
@@ -357,30 +360,19 @@ def result_path(run: Path, name: str) -> Path:
 
 
 def create_spec(run: Path, payload: dict) -> dict:
-    exp, gen = payload["expected"], payload["env"]["generation"]
+    exp = payload["expected"]
     args = {"cloudId": payload["cloudId"], "projectKey": payload["project"],
-            "summary": exp["title"], "description": exp["body"], "contentFormat": "markdown"}
+            "summary": exp["title"], "description": exp["body"], "contentFormat": "markdown",
+            "issueType": exp["type"]}
+    if exp["labels"]:
+        args["labels"] = exp["labels"]
+    if exp["priority"]:
+        args["priority"] = exp["priority"]
+    if exp["parent"]:
+        args["parent"] = exp["parent"]
+    if payload.get("assignee"):
+        args["assignee"] = payload["assignee"]
     extra = dict(payload["additional_fields"])
-    if gen == "v2":
-        args["issueType"] = exp["type"]
-        if exp["labels"]:
-            args["labels"] = exp["labels"]
-        if exp["priority"]:
-            args["priority"] = exp["priority"]
-        if exp["parent"]:
-            args["parent"] = exp["parent"]
-        if payload.get("assignee"):
-            args["assignee"] = payload["assignee"]
-    else:
-        args["issueTypeName"] = exp["type"]
-        if exp["labels"]:
-            extra["labels"] = exp["labels"]
-        if exp["priority"]:
-            extra["priority"] = {"name": exp["priority"]}
-        if exp["parent"]:
-            extra["parent"] = {"key": exp["parent"]}
-        if payload.get("assignee"):
-            args["assignee_account_id"] = payload["assignee"]
     if extra:
         args["additional_fields"] = extra
     return spec(run, "create", tool(payload, "create"), args)
@@ -397,14 +389,10 @@ def link_spec(run: Path, payload: dict, key: str, link: dict, name: str) -> dict
     # The link reads inwardIssue -> outwardIssue with the type's outward
     # wording ("A blocks B"). "outward" means this ticket is the subject.
     inward, outward = (key, link["target"]) if link["direction"] == "outward" else (link["target"], key)
-    if payload["env"]["generation"] == "v2":
-        return spec(run, name, tool(payload, "link"),
-                    {"name": GENERATIONS["v2"]["link"][1], "cloudId": payload["cloudId"],
-                     "inputs": {"linkType": link["name"], "inwardIssue": inward,
-                                "outwardIssue": outward}})
     return spec(run, name, tool(payload, "link"),
-                {"cloudId": payload["cloudId"], "linkType": link["name"],
-                 "inwardIssue": inward, "outwardIssue": outward})
+                {"name": TOOLS["link"][1], "cloudId": payload["cloudId"],
+                 "inputs": {"linkType": link["name"], "inwardIssue": inward,
+                            "outwardIssue": outward}})
 
 
 def comment_spec(run: Path, payload: dict, key: str, text: str) -> dict:
@@ -414,29 +402,23 @@ def comment_spec(run: Path, payload: dict, key: str, text: str) -> dict:
 
 def readback_specs(run: Path, payload: dict, key: str, suffix: str) -> list[dict]:
     """Read back every field the payload set, custom fields by explicit id."""
-    exp, gen = payload["expected"], payload["env"]["generation"]
+    exp = payload["expected"]
     ids = [f["id"] for f in exp["fields"].values()] + [g["id"] for g in exp["unset_guarded"].values()]
     get = tool(payload, "get")
     calls = [spec(run, f"readback-fields{suffix}", get,
                   {"cloudId": payload["cloudId"], "issueIdOrKey": key,
                    "fields": SYSTEM_READ_FIELDS + sorted(set(ids))})]
-    needs_links = bool(exp["parent"] or exp["links"])
-    if gen == "v2":
-        # getJiraIssue drops issuetype, labels, parent and issuelinks from an
-        # explicit field list; the evidence view carries them.
-        if needs_links:
-            calls.append(spec(run, f"readback-evidence{suffix}", get,
-                              {"cloudId": payload["cloudId"], "issueIdOrKey": key,
-                               "view": "evidence"}))
-        else:
-            calls.append(spec(run, f"readback-system{suffix}", tool(payload, "read_op"),
-                              {"name": GENERATIONS["v2"]["read_op"][1], "cloudId": payload["cloudId"],
-                               "inputs": {"issueIdOrKey": key, "view": "evidence"},
-                               "responseFields": ["key", "fields.issuetype.name", "fields.labels"]}))
+    # getJiraIssue drops issuetype, labels, parent and issuelinks from an
+    # explicit field list; the evidence view carries them.
+    if exp["parent"] or exp["links"]:
+        calls.append(spec(run, f"readback-evidence{suffix}", get,
+                          {"cloudId": payload["cloudId"], "issueIdOrKey": key,
+                           "view": "evidence"}))
     else:
-        extra = ["issuetype", "labels"] + (["parent", "issuelinks"] if needs_links else [])
-        calls.append(spec(run, f"readback-system{suffix}", get,
-                          {"cloudId": payload["cloudId"], "issueIdOrKey": key, "fields": extra}))
+        calls.append(spec(run, f"readback-system{suffix}", tool(payload, "read_op"),
+                          {"name": TOOLS["read_op"][1], "cloudId": payload["cloudId"],
+                           "inputs": {"issueIdOrKey": key, "view": "evidence"},
+                           "responseFields": ["key", "fields.issuetype.name", "fields.labels"]}))
     return calls
 
 
@@ -444,6 +426,35 @@ def search_spec(run: Path, payload: dict, name: str, jql: str) -> dict:
     return spec(run, name, tool(payload, "search"),
                 {"cloudId": payload["cloudId"], "jql": jql, "maxResults": 10,
                  "fields": ["summary", "status", "issuetype"]})
+
+
+def comments_spec(run: Path, payload: dict, key: str, name: str, newest_first: bool = False) -> dict:
+    """One page of comments through listJiraIssueComments."""
+    return spec(run, name, tool(payload, "comments"),
+                {"name": TOOLS["comments"][1], "cloudId": payload["cloudId"],
+                 "inputs": {"issueIdOrKey": key, "maxResults": COMMENT_PAGE,
+                            "orderBy": "-created" if newest_first else "created"}})
+
+
+def status_spec(run: Path, payload: dict, key: str, name: str) -> dict:
+    """Status, its category and the resolution. The explicit field list drops the
+    category, so it reads through executeRead with responseFields (verified live)."""
+    return spec(run, name, tool(payload, "read_op"),
+                {"name": TOOLS["read_op"][1], "cloudId": payload["cloudId"],
+                 "inputs": {"issueIdOrKey": key, "fields": STATUS_READ_FIELDS, "fieldsByKeys": True},
+                 "responseFields": ["key", "fields.status.name",
+                                    "fields.status.statusCategory.key", "fields.resolution.name"]})
+
+
+def transitions_spec(run: Path, payload: dict, key: str, name: str) -> dict:
+    return spec(run, name, tool(payload, "transitions"),
+                {"name": TOOLS["transitions"][1], "cloudId": payload["cloudId"],
+                 "inputs": {"issueIdOrKey": key}})
+
+
+def transition_spec(run: Path, payload: dict, key: str, transition_id: str) -> dict:
+    args = {"cloudId": payload["cloudId"], "issueIdOrKey": key, "transitionId": transition_id}
+    return spec(run, "transition", tool(payload, "transition"), args)
 
 
 # --------------------------------------------------------------------------
@@ -555,9 +566,13 @@ def normalize_issue(raw) -> dict:
     for name in ("summary", "description"):
         if name in f:
             out[name] = f[name]
-    for name in ("priority", "issuetype", "status"):
+    for name in ("priority", "issuetype", "status", "resolution"):
         if name in f:
             out[name] = (f[name] or {}).get("name") if isinstance(f[name], dict) else f[name]
+    if isinstance(f.get("status"), dict) and isinstance(f["status"].get("statusCategory"), dict):
+        cat = f["status"]["statusCategory"]
+        # The evidence view carries only the category's name (verified live).
+        out["status_category"] = cat.get("key") or CATEGORY_KEYS.get(str(cat.get("name", "")).lower())
     if "labels" in f:
         out["labels"] = list(f["labels"] or [])
     if "parent" in f:
@@ -592,6 +607,57 @@ def merge_reads(reads: list[dict]) -> dict:
             else:
                 merged[name] = value
     return merged
+
+
+def adf_text(node) -> str:
+    """Plain text of an Atlassian Document Format body, when a comment comes back as ADF."""
+    if isinstance(node, str):
+        return node
+    if isinstance(node, list):
+        return "".join(adf_text(n) for n in node)
+    if not isinstance(node, dict):
+        return ""
+    if node.get("type") == "text":
+        return node.get("text", "")
+    if node.get("type") == "hardBreak":
+        return "\n"
+    inner = adf_text(node.get("content") or [])
+    return inner + "\n\n" if node.get("type") in ("paragraph", "heading", "listItem") else inner
+
+
+def parse_comments(raw) -> tuple[list[dict], int]:
+    """(comments oldest first as {id, author, created_at, body}, total on the server).
+
+    Takes a listJiraIssueComments page, or tolerates a getJiraIssue result whose
+    `comment` field holds the page (raw REST shape).
+    """
+    data = raw.get("data", raw) if isinstance(raw, dict) else {}
+    if isinstance(data, dict) and "comments" not in data:
+        data = ((data.get("fields") or {}).get("comment")) or {}
+    comments = (data.get("comments") or []) if isinstance(data, dict) else []
+    out = []
+    for c in comments:
+        if not isinstance(c, dict):
+            continue
+        body = c.get("body")
+        out.append({"id": str(c["id"]) if c.get("id") is not None else None,
+                    "author": (c.get("author") or {}).get("displayName"),
+                    "created_at": c.get("created"),
+                    "body": (adf_text(body).strip() if not isinstance(body, str) else body)
+                    .replace("\r\n", "\n")})
+    out.sort(key=lambda c: c["created_at"] or "")
+    total = data.get("total") if isinstance(data, dict) else None
+    return out, total if isinstance(total, int) else len(out)
+
+
+def parse_transitions(raw) -> list[dict]:
+    data = raw.get("data", raw) if isinstance(raw, dict) else {}
+    out = []
+    for t in (data.get("transitions") or []) if isinstance(data, dict) else []:
+        to = t.get("to") or {}
+        out.append({"id": str(t.get("id")), "name": t.get("name"), "to": to.get("name"),
+                    "category": (to.get("statusCategory") or {}).get("key")})
+    return out
 
 
 # --------------------------------------------------------------------------
@@ -741,7 +807,9 @@ def drive(run: Path, confirm: bool) -> dict:
             need_confirm("create the issue")
             if not payload["env"].get("writes"):
                 raise Stop(EXIT_DENIED, denied_body(payload, "read-only server"))
-            raise Relay([create_spec(run, payload)])
+            call = create_spec(run, payload)
+            write_guard.issue_token(call)
+            raise Relay([call])
         try:
             data = read_result(run, "create", payload)
         except Stop as stop:
@@ -782,8 +850,7 @@ def drive(run: Path, confirm: bool) -> dict:
             if not result_path(run, check).exists():
                 raise Relay([spec(run, check, tool(payload, "get"),
                                   {"cloudId": payload["cloudId"], "issueIdOrKey": key,
-                                   **({"view": "evidence"} if payload["env"]["generation"] == "v2"
-                                      else {"fields": ["issuelinks"]})})])
+                                   "view": "evidence"})])
             seen = normalize_issue(read_result(run, check, payload, key)).get("links") or []
             if not any(a["name"] == link["name"] and a["direction"] == link["direction"]
                        and a["target"] == link["target"] for a in seen):
@@ -803,6 +870,8 @@ def drive(run: Path, confirm: bool) -> dict:
         read_result(run, "comment", payload, key)
         state["commented"] = True
         save_state(run, state)
+    if payload.get("comment_readback"):
+        return check_comment(run, payload, state, key)
 
     # 4. read back (after any automation-overwrite wait), diff, repair once
     if not any(exp.get(k) for k in ("title", "body", "type", "priority", "labels", "parent",
@@ -824,6 +893,40 @@ def drive(run: Path, confirm: bool) -> dict:
     raise Stop(EXIT_TRACKER, result_body("FAILED", payload, key, rows,
                                          f"Still wrong after one repair: {bad}." if fix else
                                          f"Wrong and not repairable by an edit: {bad}."))
+
+
+def check_comment(run: Path, payload: dict, state: dict, key: str) -> dict:
+    """Read the posted comment back from the issue and compare its body.
+
+    The add call's own response is not trusted: the comment is found again
+    on the issue, by the id the add call returned, else by its text.
+    """
+    text = payload["comment"]
+    added = unwrap(read_result(run, "comment", payload, key))
+    cid = None
+    if isinstance(added, dict):
+        found = added.get("commentId") or added.get("id")
+        cid = str(found) if found is not None else None
+    name = "comment-check"
+    if not result_path(run, name).exists():
+        raise Relay([comments_spec(run, payload, key, name, newest_first=True)])
+    comments, _ = parse_comments(read_result(run, name, payload, key))
+    mine = [c for c in comments if cid and c["id"] == cid] or \
+           [c for c in comments if norm_text(c["body"]) == norm_text(text)]
+    url = f"{payload['site_url'].rstrip('/')}/browse/{key}" if payload.get("site_url") else None
+    if not mine:
+        raise Stop(EXIT_TRACKER, {"status": "FAILED", "key": key, "url": url, "comment_id": cid,
+                                  "message": "The comment call returned, but the comment was not "
+                                             "found on the issue when read back. Check the issue "
+                                             "before posting again."})
+    if norm_text(mine[0]["body"]) != norm_text(text):
+        raise Stop(EXIT_TRACKER, {"status": "FAILED", "key": key, "url": url, "comment_id": mine[0]["id"],
+                                  "expected": text, "actual": mine[0]["body"],
+                                  "message": "The comment landed, but its text reads back differently."})
+    state["comment_checked"] = True
+    save_state(run, state)
+    return {"status": "VERIFIED", "key": key, "url": url, "comment_id": mine[0]["id"],
+            "message": "Comment added and read back from the issue."}
 
 
 def read_back_and_diff(run: Path, payload: dict, state: dict, key: str, suffix: str,
@@ -874,9 +977,41 @@ def jql_escape(text: str) -> str:
     return text.replace("\\", "\\\\").replace('"', '\\"')
 
 
-def search_terms(title: str) -> str:
-    words = [w for w in re.findall(r"[A-Za-z0-9]+", title) if len(w) >= 3]
-    return " ".join(words[:6])
+STOP_WORDS = frozenset("""
+    about above after again also another because been before being between both
+    could does doing done each else even every from have having here into just
+    like make many more most much must only other over same should since some
+    such than that their them then there these they this those through under
+    until upon very want were what when where which while will with within
+    without would your
+""".split())
+
+
+def search_words(title: str) -> list[str]:
+    """Title words longer than three letters that are not common stop words,
+    in order and without repeats, at most eight."""
+    words, seen = [], set()
+    for w in re.findall(r"[A-Za-z0-9]+", title):
+        low = w.lower()
+        if len(w) > 3 and low not in STOP_WORDS and low not in seen:
+            seen.add(low)
+            words.append(w)
+    return words[:8]
+
+
+def keyword_jql(words: list[str]) -> str:
+    """One summary clause per word, joined with OR, so a reworded title still
+    finds its ticket; duplicates() ranks the hits by how many words match."""
+    return "(" + " OR ".join(f'summary ~ "{jql_escape(w)}"' for w in words) + ")"
+
+
+def source_jql(source_key: str) -> str:
+    return f'(key = {source_key} OR text ~ "{jql_escape(source_key)}")'
+
+
+def words_matched(words: list[str], summary: str) -> int:
+    have = {w.lower() for w in re.findall(r"[A-Za-z0-9]+", summary)}
+    return sum(1 for w in words if w.lower() in have)
 
 
 def search_hits(data) -> list[dict]:
@@ -893,12 +1028,16 @@ def search_hits(data) -> list[dict]:
 def duplicates(run: Path) -> dict:
     payload, _ = load_run(run)
     exp = payload["expected"]
-    terms = jql_escape(search_terms(exp["title"]))
+    words = search_words(exp["title"])
+    source_key = payload.get("source_key")
     plan = []
-    if exp.get("parent"):
-        plan.append(("dup-children", f'parent = {exp["parent"]} AND summary ~ "{terms}"'))
-    plan.append(("dup-keyword",
-                 f'project = "{payload["project"]}" AND summary ~ "{terms}" ORDER BY created DESC'))
+    if exp.get("parent") and words:
+        plan.append(("dup-children", f'parent = {exp["parent"]} AND {keyword_jql(words)}'))
+    if source_key:
+        plan.append(("dup-source", f'project = "{payload["project"]}" AND {source_jql(source_key)}'))
+    if words:
+        plan.append(("dup-keyword",
+                     f'project = "{payload["project"]}" AND {keyword_jql(words)} ORDER BY created DESC'))
     pending = [search_spec(run, payload, n, q) for n, q in plan if not result_path(run, n).exists()]
     if pending:
         raise Relay(pending)
@@ -908,25 +1047,43 @@ def duplicates(run: Path) -> dict:
             if hit["key"] in seen:
                 continue
             seen.add(hit["key"])
-            hit["match"] = "child" if name == "dup-children" else "keyword"
+            hit["match"] = {"dup-children": "child", "dup-source": "source"}.get(name, "keyword")
+            hit["words_matched"] = words_matched(words, hit["summary"])
             hit["exact_title"] = hit["summary"].strip().lower() == exp["title"].lower()
             hits.append(hit)
+    # Source-key hits first, then the most matched words; the sort is stable,
+    # so ties keep the order the searches returned them in.
+    hits.sort(key=lambda h: (h["match"] != "source", -h["words_matched"]))
     return {"status": "OK", "hits": hits}
 
 
 def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> dict:
     payload = {"env": env, "cloudId": site, "_path": str(run)}
     name = "fetch"
+    # An env from an older detect has no comments tool; the issue is still fetched.
+    reads_comments = "comments" in env.get("tools", {})
+    pending = []
     if not result_path(run, name).exists():
-        args = {"cloudId": site, "issueIdOrKey": key}
-        if env["generation"] == "v2":
-            args["view"] = "evidence"
-        raise Relay([spec(run, name, tool(payload, "get"), args)])
+        args = {"cloudId": site, "issueIdOrKey": key, "view": "evidence"}
+        pending.append(spec(run, name, tool(payload, "get"), args))
+    if reads_comments and not result_path(run, "fetch-comments").exists():
+        pending.append(comments_spec(run, payload, key, "fetch-comments"))
+    if pending:
+        raise Relay(pending)
     raw = normalize_issue(read_result(run, name, payload, key))
+    thread, thread_note = [], None
+    if not reads_comments:
+        thread_note = "comments were not read: run detect again, this env has no comments tool"
+    else:
+        try:
+            thread, total = parse_comments(read_result(run, "fetch-comments", payload, key))
+            if total > len(thread):
+                thread_note = f"only the first {len(thread)} of {total} comments were read"
+        except Stop as stop:
+            thread_note = f"comments were not read: {stop.body.get('message', 'the call failed')}"
     bcfg = (template or {}).get("body", {})
     sections = parse_sections(raw.get("description") or "", int(bcfg.get("heading_level", 2)))
-    ai_titles = {s["title"] for s in bcfg.get("sections", []) if s.get("kind") == "ai_prompt"} or {"AI prompt"}
-    ai = next((t for t in sections if t.lower() in {a.lower() for a in ai_titles}), None)
+    ai_section, ai_prompt = core.ai_prompt_of(template or {}, sections)
     fields = {}
     for fkey, fdef in ((template or {}).get("fields") or {}).items():
         if fdef.get("id") in raw.get("custom", {}):
@@ -936,7 +1093,123 @@ def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> d
             "type": raw.get("issuetype"), "title": raw.get("summary"), "body": raw.get("description"),
             "sections": sections, "labels": raw.get("labels", []), "priority": raw.get("priority"),
             "fields": fields, "parent": raw.get("parent"), "links": raw.get("links", []),
-            "state": raw.get("status"), "has_ai_prompt": ai is not None, "ai_prompt_section": ai}
+            "state": raw.get("status"), "status_category": raw.get("status_category"),
+            "resolution": raw.get("resolution"),
+            "thread": [{k: c[k] for k in ("author", "created_at", "body")} for c in thread],
+            "thread_note": thread_note,
+            "has_ai_prompt": ai_prompt is not None, "ai_prompt": ai_prompt,
+            "ai_prompt_section": ai_section}
+
+
+# --------------------------------------------------------------------------
+# transition
+
+
+def transition(run: Path, confirm: bool) -> dict:
+    """Move an issue to the status named in the payload, then read it back.
+
+    Reads the current status and the transitions this user can take now,
+    picks the one whose target status has that name (case-insensitive; a
+    transition's own name often differs), makes it after --confirm, and
+    reads the status again. An issue already there is not moved.
+    """
+    payload, state = load_run(run)
+    key, target = payload["key"], payload["target_status"]
+    url = f"{payload['site_url'].rstrip('/')}/browse/{key}" if payload.get("site_url") else None
+
+    def answer(status, message, **extra):
+        return {"status": status, "key": key, "url": url, "target_status": target,
+                "message": message, **extra}
+
+    if not result_path(run, "transition").exists():
+        reads = [status_spec(run, payload, key, "transition-before"),
+                 transitions_spec(run, payload, key, "transition-options")]
+        pending = [c for c in reads if not Path(c["result_file"]).exists()]
+        if pending:
+            raise Relay(pending)
+        current = normalize_issue(read_result(run, "transition-before", payload)).get("status")
+        if (current or "").lower() == target.lower():
+            return answer("VERIFIED", f"{key} is already in '{current}'; nothing was changed.",
+                          changed=False, from_status=current)
+        options = parse_transitions(read_result(run, "transition-options", payload))
+        match = [o for o in options if (o["to"] or "").lower() == target.lower()]
+        if not match:
+            reachable = sorted({o["to"] for o in options if o["to"]})
+            raise Stop(EXIT_TRACKER, answer(
+                "FAILED", f"No transition from '{current}' leads to '{target}'. Statuses reachable "
+                          f"now: {', '.join(reachable) or 'none'}. Nothing was changed.",
+                from_status=current, reachable=reachable))
+        if not confirm:
+            raise Stop(EXIT_INVALID, {"status": "INVALID", "message":
+                                      f"refusing to move {key} to '{target}' without --confirm; "
+                                      "nothing was sent"})
+        state.update({"from_status": current, "transition": match[0]})
+        save_state(run, state)
+        raise Relay([transition_spec(run, payload, key, match[0]["id"])])
+    read_result(run, "transition", payload)
+    check = status_spec(run, payload, key, "transition-check")
+    if not Path(check["result_file"]).exists():
+        raise Relay([check])
+    landed = normalize_issue(read_result(run, "transition-check", payload)).get("status")
+    if (landed or "").lower() != target.lower():
+        raise Stop(EXIT_TRACKER, answer("FAILED", f"The transition was made, but {key} reads back "
+                                                  f"as '{landed}'.", from_status=state.get("from_status"),
+                                        actual=landed))
+    return answer("VERIFIED", f"{key} moved from '{state.get('from_status')}' to '{landed}'.",
+                  changed=True, from_status=state.get("from_status"), via=state.get("transition"))
+
+
+# --------------------------------------------------------------------------
+# wait (work-issue --after on a Jira blocker)
+
+
+def wait(run: Path) -> dict:
+    """One check of a blocker per call; the session calls it again on each tick.
+
+    No background process can call the MCP, so the session paces the wait
+    itself. Each call relays one status read, then answers WAITING, CLEARED
+    (status category done), ABANDONED (done with a resolution such as Won't
+    Do: ask before going on) or TIMEOUT once the hours have passed. The
+    blocker's status category is the only input; its status name, assignee
+    and comments decide nothing.
+    """
+    payload, state = load_run(run)
+    key = payload["key"]
+    if "started_at" not in state:
+        state["started_at"] = time.time()
+        save_state(run, state)
+    checks = state.get("checks", 0)
+    name = f"wait-{checks + 1}"
+    if not result_path(run, name).exists():
+        if checks and time.time() - state["started_at"] > payload["hours"] * 3600:
+            return {"status": "TIMEOUT", "key": key, "checks": checks,
+                    "message": f"{key} was still not done after {payload['hours']}h."}
+        raise Relay([status_spec(run, payload, key, name)])
+    state["checks"] = checks + 1
+    try:
+        read = normalize_issue(read_result(run, name, payload))
+    except Stop as stop:
+        if stop.code != EXIT_TRACKER or state.get("failures", 0) >= 2:
+            raise
+        state["failures"] = state.get("failures", 0) + 1
+        save_state(run, state)
+        return {"status": "WAITING", "key": key, "checks": state["checks"],
+                "message": f"This check failed and is retried on the next tick: {stop.body['message']}"}
+    state["failures"] = 0
+    save_state(run, state)
+    current, category, resolution = read.get("status"), read.get("status_category"), read.get("resolution")
+    body = {"key": key, "state": current, "status_category": category, "resolution": resolution,
+            "checks": state["checks"]}
+    if category is None:
+        raise Stop(EXIT_TRACKER, {"status": "FAILED", **body, "message":
+                                  f"The status category of {key} could not be read, so the wait "
+                                  "cannot tell when it is done."})
+    if category != "done":
+        return {"status": "WAITING", **body, "message": f"{key} is '{current}', not done yet."}
+    if resolution and ABANDONED_RESOLUTION.search(resolution):
+        return {"status": "ABANDONED", **body,
+                "message": f"{key} was closed as '{resolution}', not finished."}
+    return {"status": "CLEARED", **body, "message": f"{key} is done ('{current}')."}
 
 
 # --------------------------------------------------------------------------
@@ -962,6 +1235,8 @@ def cmd_build(args) -> tuple[int, dict]:
     template = load_template(args.template)
     env = load_json(args.env)
     payload, errors, warnings = build(ticket, template, env)
+    if write_guard.guard_enabled(Path.cwd()):
+        errors += write_guard.pipeline_gate(Path(args.ticket).resolve().parent, template)
     if errors:
         return EXIT_INVALID, {"status": "INVALID", "errors": errors, "warnings": warnings,
                               "message": f"{len(errors)} validation error(s); nothing was sent"}
@@ -1060,15 +1335,30 @@ def cmd_comment(args) -> tuple[int, dict]:
             return EXIT_INVALID, {"status": "INVALID", "message": "comment body is empty"}
         payload = {"tracker": "jira", "env": env, "cloudId": args.site, "site_url": site_url(args.site),
                    "project": args.key.split("-")[0], "key": args.key, "write": None,
-                   "comment": text, "additional_fields": {}, "repair_wait": 0,
+                   "comment": text, "comment_readback": True, "additional_fields": {}, "repair_wait": 0,
                    "expected": {"title": "", "type": None, "body": "", "labels": [], "priority": None,
                                 "parent": None, "fields": {}, "unset_guarded": {}, "links": []}}
         write_payload(run, payload)
-    payload, state = load_run(run)
-    if not state.get("commented"):
-        drive_comment_only = drive(run, args.confirm)
-        return EXIT_OK, drive_comment_only
-    return EXIT_OK, {"status": "VERIFIED", "key": args.key, "message": "Comment added."}
+    return EXIT_OK, drive(run, args.confirm)
+
+
+def cmd_transition(args) -> tuple[int, dict]:
+    run = Path(args.run)
+    if not (run / "payload.json").exists():
+        if not args.status.strip():
+            return EXIT_INVALID, {"status": "INVALID", "message": "--status is empty"}
+        write_payload(run, {"tracker": "jira", "env": load_json(args.env), "cloudId": args.site,
+                            "site_url": site_url(args.site), "key": args.key,
+                            "target_status": args.status.strip()})
+    return EXIT_OK, transition(run, args.confirm)
+
+
+def cmd_wait(args) -> tuple[int, dict]:
+    run = Path(args.run)
+    if not (run / "payload.json").exists():
+        write_payload(run, {"tracker": "jira", "env": load_json(args.env), "cloudId": args.site,
+                            "site_url": site_url(args.site), "key": args.key, "hours": args.hours})
+    return EXIT_OK, wait(run)
 
 
 def cmd_readback(args) -> tuple[int, dict]:
@@ -1117,7 +1407,7 @@ def parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     sub = p.add_subparsers(dest="op", required=True)
 
-    s = sub.add_parser("detect", help="find the MCP generation and tool prefix")
+    s = sub.add_parser("detect", help="find the Atlassian MCP tool prefix and its v2 tools")
     s.add_argument("--tools", required=True, help="JSON list of this session's tool names, or - for stdin")
     s.set_defaults(func=cmd_detect)
 
@@ -1151,6 +1441,23 @@ def parser() -> argparse.ArgumentParser:
         s.add_argument(extra, required=True)
         s.add_argument("--confirm", action="store_true")
         s.set_defaults(func=func)
+
+    s = sub.add_parser("transition", help="move an issue to a named status, then read it back")
+    s.add_argument("--run", required=True)
+    s.add_argument("--key", required=True)
+    s.add_argument("--site", required=True)
+    s.add_argument("--env", required=True)
+    s.add_argument("--status", required=True, help="the target status name, as the board shows it")
+    s.add_argument("--confirm", action="store_true")
+    s.set_defaults(func=cmd_transition)
+
+    s = sub.add_parser("wait", help="check once whether a blocker is done; call again on each tick")
+    s.add_argument("--run", required=True, help="one run directory for the whole wait")
+    s.add_argument("--key", required=True, help="the blocker")
+    s.add_argument("--site", required=True)
+    s.add_argument("--env", required=True)
+    s.add_argument("--hours", type=float, default=WAIT_HOURS, help="give up after this long")
+    s.set_defaults(func=cmd_wait)
 
     s = sub.add_parser("update", help="rewrite an existing issue from a full draft, then verify it")
     s.add_argument("--run", required=True)

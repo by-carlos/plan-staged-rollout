@@ -112,6 +112,18 @@ defaults are deliberately cheap — escalate `mode`, `exec` and `gate` only
 where a stage genuinely warrants it. `model`/`effort` are not among them:
 those are sized to finish the stage, not to be minimised (see below).
 
+**Linking a stage to its issue.** A stage file may carry one optional
+`Issue:` line directly under its title, naming the issue the stage came from:
+`#123`, `owner/repo#123` or an issue URL. It is a pointer, not a flag — it
+changes nothing about how the stage runs, which is why it lives in the stage
+file and not in the stage index. Commands read it as follows: the first line
+of the stage file that starts with `Issue:`, above the first `##` heading,
+whose value is one of those three forms. No such line, a blank value or an
+unfilled template placeholder all read as "no linked issue", silently, so a
+plan without the field behaves exactly as before. The field is read-only for
+the tooling: no command posts to the issue or changes its status because of
+it.
+
 - `mode: direct` by default (state a one-line plan, implement). Use `brainstorm`
   only where the stage has real open design choices. A full brainstorm on a
   mechanical one-liner is pure ceremony.

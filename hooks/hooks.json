@@ -24,6 +24,16 @@
             "async": false
           }
         ]
+      },
+      {
+        "matcher": "Bash|mcp__.*__createJiraIssue|mcp__.*__executeWrite",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"${CLAUDE_PLUGIN_ROOT}/hooks/run-hook.cmd\" tracker-write-guard",
+            "async": false
+          }
+        ]
       }
     ]
   }

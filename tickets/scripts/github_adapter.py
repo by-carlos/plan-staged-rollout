@@ -48,6 +48,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import ticket_core as core
+import write_guard as create_guard  # opt-in pipeline gate (write_guard below is the confirm check)
 
 EXIT_OK, EXIT_INVALID, EXIT_TRACKER, EXIT_DENIED, EXIT_UNREACHABLE = 0, 1, 2, 3, 4
 
@@ -490,6 +491,8 @@ def op_build(args) -> int:
         errors.append(f"template: is for {t['tracker']!r}, not github")
     check_errors, warnings = core.check_draft(t, d)
     errors += check_errors
+    if create_guard.guard_enabled(Path.cwd()):
+        errors += create_guard.pipeline_gate(Path(args.draft).resolve().parent, t)
     if errors:
         emit({"ok": False, "errors": errors, "warnings": warnings})
         return EXIT_INVALID

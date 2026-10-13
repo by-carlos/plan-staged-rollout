@@ -201,7 +201,7 @@ class BuildTests(AdapterCase):
         for needle in ("target.project: required", "limit is 80", "type: 'Epic'",
                        "sections.Notes: not a section", "sections.Context: required",
                        "sections.Acceptance Criteria: required", "labels: 'misc'",
-                       "at most one area label", "priority: 'Urgent'", "above the ceiling",
+                       "at most one area label", "priority: 'Urgent'",
                        "estimate.value: 13 is not in", "fields.sensitive_review: 'Yes' is a guarded value",
                        "fields.colour: not declared", "links: kind 'duplicates'"):
             self.assertIn(needle, errors)
@@ -407,6 +407,7 @@ class ReadTests(AdapterCase):
                              "--template", self.template_path)
         self.assertEqual(code, ja.EXIT_OK, body)
         self.assertTrue(body["has_ai_prompt"])
+        self.assertEqual((body["ai_prompt_section"], body["ai_prompt"]), ("AI prompt", "Repo: org/repo, base main."))
         self.assertIn("Context", body["sections"])
         self.assertEqual(body["fields"], {"story_points": 3, "sensitive_review": None, "team": "Alpha"})
         self.assertEqual([c["author"] for c in body["thread"]], ["Pat Example", "Sam Example"])

@@ -226,9 +226,6 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
     ecfg = template.get("estimate", {})
     if estimate.get("value") is not None and ecfg.get("kind", "none") != "none":
         evalue = estimate["value"]
-        ceiling = ecfg.get("ceiling")
-        if ceiling is not None and isinstance(evalue, (int, float)) and evalue > ceiling:
-            errors.append(f"estimate.value: {evalue} is above the ceiling {ceiling}; propose a split instead")
         if ecfg.get("set_only_if") == "investigated" and not notes.get("investigated"):
             warnings.append("estimate: not set, the template sets it only after an investigation")
         else:
@@ -1139,8 +1136,7 @@ def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> d
             thread_note = f"comments were not read: {stop.body.get('message', 'the call failed')}"
     bcfg = (template or {}).get("body", {})
     sections = parse_sections(raw.get("description") or "", int(bcfg.get("heading_level", 2)))
-    ai_titles = {s["title"] for s in bcfg.get("sections", []) if s.get("kind") == "ai_prompt"} or {"AI prompt"}
-    ai = next((t for t in sections if t.lower() in {a.lower() for a in ai_titles}), None)
+    ai_section, ai_prompt = core.ai_prompt_of(template or {}, sections)
     fields = {}
     for fkey, fdef in ((template or {}).get("fields") or {}).items():
         if fdef.get("id") in raw.get("custom", {}):
@@ -1154,7 +1150,8 @@ def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> d
             "resolution": raw.get("resolution"),
             "thread": [{k: c[k] for k in ("author", "created_at", "body")} for c in thread],
             "thread_note": thread_note,
-            "has_ai_prompt": ai is not None, "ai_prompt_section": ai}
+            "has_ai_prompt": ai_prompt is not None, "ai_prompt": ai_prompt,
+            "ai_prompt_section": ai_section}
 
 
 # --------------------------------------------------------------------------

@@ -164,16 +164,13 @@ def prompt_tier(prompt: str | None) -> str | None:
     return None
 
 
-def ai_prompt_of(ticket: dict, template: dict) -> tuple[str | None, str | None]:
-    """(section title, text) of the ticket's AI prompt, or (None, None)."""
-    sections = ticket.get("sections") or {}
-    tsections = (template.get("body") or {}).get("sections") or []
-    ai_titles = [s["title"] for s in tsections if s.get("kind") == "ai_prompt"] + ["AI prompt"]
-    ai_title, ai_text = find_section(sections, ai_titles)
-    if not (ai_text or "").strip() and ticket.get("ai_prompt"):
-        ai_text = ticket["ai_prompt"]
-    ai_text = (ai_text or "").strip() or None
-    return (ai_title if ai_text else None), ai_text
+def ai_prompt_of(ticket: dict) -> tuple[str | None, str | None]:
+    """(section title, text) of the ticket's AI prompt, or (None, None).
+
+    Both adapters' `fetch` return `ai_prompt` and `ai_prompt_section`.
+    """
+    text = (ticket.get("ai_prompt") or "").strip() or None
+    return (ticket.get("ai_prompt_section") if text else None), text
 
 
 def effort_hint(ticket: dict, template: dict, prompt: str | None = None) -> tuple[str | None, str | None]:
@@ -319,7 +316,7 @@ def unblocked(merged: dict, others: list[dict], template: dict) -> dict:
         elif waiting:
             result["still_blocked"].append({**title, "waiting_on": waiting})
         else:
-            _, prompt = ai_prompt_of(cand, template)
+            _, prompt = ai_prompt_of(cand)
             tier, source = effort_hint(cand, template, prompt)
             result["unblocked"].append({
                 **title, "mode": "act" if prompt else "guide", "tier": tier, "tier_source": source,
@@ -341,7 +338,7 @@ def assess(ticket: dict, template: dict, *, base: str | None = None, repo: str |
     plain_titles = [s["title"] for s in tsections if s.get("no_identifiers")] + ["In plain terms"]
     _, plain = find_section(sections, plain_titles)
 
-    ai_title, ai_text = ai_prompt_of(ticket, template)
+    ai_title, ai_text = ai_prompt_of(ticket)
     effort, effort_source = effort_hint(ticket, template, ai_text)
 
     state = str(ticket.get("state") or "")

@@ -26,9 +26,21 @@ one a step names when that step needs more than this file says.
   `python3 "${CLAUDE_PLUGIN_ROOT}/tickets/scripts/ticket_core.py"` and `tmpl` means
   `python3 "${CLAUDE_PLUGIN_ROOT}/tickets/scripts/ticket_template.py"`.
 - **Work folder:** one per run, holding `template.json`, `draft.json`,
-  `source.md`, `siblings.txt`, `review-prompt.md`, `review.json`, `answers.json`,
+  `source.md`, `siblings.txt`, `review-prompt.md`, `review.json`,
+  `review-filtered.json` (or `review-skipped.json`), `answers.json`,
   `estimate.json` and `body.md`. Use the session scratchpad when the harness provides one,
   otherwise a new temporary directory. Never the repo working tree.
+- **`core prepare --work <folder> --tracker <github|jira>`** does the
+  mechanical steps in one call: the first time it resolves the template into
+  `template.json`; once `draft.json` exists it runs `check` and, if that
+  passes, writes `review-prompt.md`. Its `next` names the step to take. The
+  single commands below do the same things one at a time.
+- **Write guard (opt-in):** when `plan-staged-rollout.toml` sets
+  `guard_tracker_creates = true`, the adapters refuse to build a create
+  without `template.json`, `review-filtered.json` or `review-skipped.json`, and
+  `estimate.json` in the draft's folder, and a hook denies any tracker
+  create the adapter did not issue. A refusal names the missing step: go
+  back and run it.
 - **Dry run:** the user says "dry run", "don't post" or "just draft", or the
   tracker's adapter is not installed (`scripts/<tracker>_adapter.py` is
   missing). A dry run does steps 1-6 in full, review included, and stops
@@ -40,7 +52,9 @@ one a step names when that step needs more than this file says.
 - **Tracker and target.** Take them from the request: a GitHub
   `owner/repo` (default: the current repo's `origin`), or a Jira site and
   project key. If either is unknown, ask once.
-- **Template.** `tmpl resolve --tracker <github|jira> --project-dir . > template.json`.
+- **Template.** `core prepare` (or `tmpl resolve --tracker <github|jira> --project-dir . > template.json`).
+  Always resolve it, even when a reference document already describes the
+  team's format: the template is what the adapter posts with.
   If its `notice` is set, show it once as a notice and carry on: a broken
   template never stops the run. If the resolved template names a different
   tracker than the user asked for, the loader has already fallen back to the
@@ -109,18 +123,22 @@ never rendered or posted.
 
 ## 4. Gap review
 
-Skip it only when a `[review].skip_when` rule matches, and say so.
+Skip it only when a `[review].skip_when` rule matches, and say so; record
+the skip with `core review-skip --work <folder> --reason "<the rule>"`.
+A short ticket, a simple ask or a clear source is never a reason to skip.
 
-1. `core review-prompt --template template.json draft.json [--duplicates dupes.json] [--source source.md] [--siblings siblings.txt] > review-prompt.md`
+1. `core prepare` (after it passes `check`), or `core review-prompt --template template.json draft.json [--duplicates dupes.json] [--source source.md] [--siblings siblings.txt] > review-prompt.md`
 2. Dispatch **one** subagent on the **Sonnet** tier (`model: "sonnet"`),
    never a Haiku-tier one, and never review the draft in this session.
    Prompt: "Read `<absolute path to review-prompt.md>` and do exactly what
    it says. Write only the JSON array to `<absolute path to review.json>`,
    then reply with one line: written, or why not." The reviewer writes the
    file itself, so its findings never pass through this session's context.
-3. `core review-filter --template template.json review.json`. If the reply
-   is unreadable, dispatch once more. If it fails again, continue without a
-   review and give a ⚠️ warning that the draft was not reviewed.
+3. `core review-filter --template template.json review.json`; it also
+   writes `review-filtered.json`. If the reply is unreadable, dispatch once
+   more. If it fails again, run `core review-skip --work <folder> --reason
+   "reviewer output unreadable twice"`, continue without a review and give a
+   ⚠️ warning that the draft was not reviewed.
 4. Apply the `nits` to the draft yourself and list them in the preview.
 5. Put the `questions` to the user in **one** message: every blocker, then
    gaps, as the filter ordered them. `gaps_dropped` holds the gaps cut by
@@ -190,7 +208,8 @@ Only after "Post it". Through the tracker's adapter
 (`${CLAUDE_PLUGIN_ROOT}/tickets/scripts/<tracker>_adapter.py`), in this order:
 `detect`, `build`, `create --confirm`, then as needed `set-fields
 --confirm`, `link --confirm` and `comment --confirm` (the estimate comment,
-only when `estimate.json` has `set` true and a `comment`).
+only when `estimate.json` has `set` true and a `comment`). `build` takes the
+work folder's `draft.json` and `template.json`, never copies elsewhere.
 
 - **Jira (relay transport):** when the adapter prints a call spec, make
   exactly that tool call with its `arguments` unchanged and save the raw
@@ -211,6 +230,17 @@ already made its one repair, so do not repair again.
 
 ## Rules that never bend
 
+- The pipeline is fixed once this skill is invoked. No step is skipped
+  because the ticket is small, the ask is clear or the steps look heavy. If
+  a step looks unnecessary, say so and ask; never skip one silently. Any
+  step that did not run is named in the preview and in the final report.
+- A tracker create goes through the adapter only. Never call
+  `createJiraIssue`, `gh issue create` or a REST endpoint by hand, and never
+  run a duplicate search of your own in place of the adapter's.
+- Another document that describes how to file tickets (a team reference, a
+  `CLAUDE.md`) supplies conventions the template should already carry. It
+  never replaces a step here. Where it conflicts with the resolved template,
+  say so in the preview; do not hand-write the body to it.
 - Nothing is posted without "Post it" at the gate. `--confirm` is passed
   only after it.
 - A guarded value is set only on the user's explicit choice of it. No
@@ -249,5 +279,7 @@ says "nothing was posted" in its first line and gives the draft's path.
 | Estimate lands on `split` | No number; a split is proposed instead. |
 | Adapter not installed | Dry run: preview and draft path, nothing posted. |
 | Write denied by hook, policy or permission | Adapter message shown verbatim; run stops; no fallback. |
+| `build` refused by the pipeline gate (write guard on) | Run the step it names, then build again. Never write the missing file by hand. |
+| A hand-made create denied by the write guard | Go back to the adapter. The user alone turns the guard off. |
 | Create outcome unknown | Duplicate search on the exact title before any retry. |
 | Read-back mismatch after the one repair | `FAILED`, warning naming each field. |

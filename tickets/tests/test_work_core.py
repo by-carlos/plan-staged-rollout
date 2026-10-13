@@ -219,8 +219,12 @@ class StatusTests(unittest.TestCase):
 
     def test_skips(self):
         self.assertIn("no status", wc.status_payload(DEFAULT_GH, "github", "example-org/widgets", "on_pr")["skip"])
-        self.assertIn("Jira adapter", wc.status_payload(ROUTED, "jira", "example-org/widgets", "on_pr")["skip"])
         self.assertIn("no board", wc.status_payload(ROUTED, "github", "example-org/scratch", "on_pr")["skip"])
+
+    def test_jira_gets_the_status_name_for_the_transition_op(self):
+        self.assertEqual(wc.status_payload(ROUTED, "jira", "example-org/widgets", "on_pr"),
+                         {"tracker": "jira", "status": "In review", "when": "on_pr"})
+        self.assertIn("no status", wc.status_payload(DEFAULT_GH, "jira", "example-org/widgets", "on_pr")["skip"])
 
     def test_unrouted_repo_with_stop_fallback_asks(self):
         p = wc.status_payload(ROUTED, "github", "example-org/unknown", "on_pr")

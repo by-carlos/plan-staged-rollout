@@ -486,13 +486,16 @@ def merge_command(template: dict, pr: str, confirmed: bool) -> str:
 
 def status_payload(template: dict, tracker: str, repo: str, when: str,
                    board: int | None = None) -> dict:
-    """A set-fields payload for one [work].status flip, or {"skip": reason}."""
+    """A set-fields payload for one [work].status flip, or {"skip": reason}.
+
+    For Jira it is the status name the Jira adapter's `transition` op takes:
+    the ticket moves in its workflow, so no board or routing is involved.
+    """
     name = (work_rules(template).get("status") or {}).get(when)
     if not name:
         return {"skip": f"the template sets no status for {when}"}
-    if tracker != "github":
-        return {"skip": "status flips are written to GitHub boards only; the Jira adapter "
-                        "has no transition operation"}
+    if tracker == "jira":
+        return {"tracker": "jira", "status": name, "when": when}
     routing = template.get("routing") or {}
     fields = [f for f, src in (routing.get("board_fields") or {}).items() if src == "status"]
     if not fields:

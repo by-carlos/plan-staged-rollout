@@ -21,6 +21,31 @@ import jira_adapter as ja
 
 V2 = "mcp__plugin_atlassian_atlassian__"
 
+# listJiraIssueComments, shaped as the live v2 server returns it (newest last
+# here on purpose: the adapter sorts oldest first).
+COMMENTS = {"data": {"startAt": 0, "maxResults": 100, "total": 2, "isLast": True,
+                     "appliedContentFormat": "markdown", "comments": [
+                         {"id": "11", "author": {"displayName": "Sam Example"},
+                          "body": "Decided: keep the retry at three.",
+                          "created": "2026-10-02T09:00:00.000+1300", "jsdPublic": True},
+                         {"id": "10", "author": {"displayName": "Pat Example"},
+                          "body": "Which job is this?", "created": "2026-10-01T09:00:00.000+1300",
+                          "jsdPublic": True}]}}
+
+# listJiraIssueTransitions, as the live v2 server returns it.
+TRANSITIONS = {"data": {"transitions": [
+    {"id": "41", "name": "Work in progress", "to": {"name": "Work in progress",
+                                                     "statusCategory": {"key": "indeterminate"}}},
+    {"id": "171", "name": "Send to review", "to": {"name": "In Review",
+                                                   "statusCategory": {"key": "indeterminate"}}},
+    {"id": "31", "name": "Closed", "to": {"name": "Dev Done", "statusCategory": {"key": "done"}}}]}}
+
+
+def status_read(name, category="new"):
+    """getJiraIssue through executeRead with responseFields, as the live v2 server returns it."""
+    return {"data": {"key": "ABC-321", "fields": {"status": {"name": name,
+                                                             "statusCategory": {"key": category}}}}}
+
 
 def fixture(name):
     return json.loads((FIX / name).read_text(encoding="utf-8"))
@@ -369,7 +394,8 @@ class ReadTests(AdapterCase):
         code, body = run_cli("fetch", "--run", self.run_dir, "--key", "ABC-321", "--site",
                              "https://jira.example.com", "--env", self.env_path,
                              "--template", self.template_path)
-        self.answer(body, {"fetch": issue})
+        self.assertEqual(self.answer(body, {"fetch": issue, "fetch-comments": COMMENTS}),
+                         ["fetch", "fetch-comments"])
         code, body = run_cli("fetch", "--run", self.run_dir, "--key", "ABC-321", "--site",
                              "https://jira.example.com", "--env", self.env_path,
                              "--template", self.template_path)
@@ -377,6 +403,52 @@ class ReadTests(AdapterCase):
         self.assertTrue(body["has_ai_prompt"])
         self.assertIn("Context", body["sections"])
         self.assertEqual(body["fields"], {"story_points": 3, "sensitive_review": None, "team": "Alpha"})
+        self.assertEqual([c["author"] for c in body["thread"]], ["Pat Example", "Sam Example"])
+        self.assertEqual(body["thread"][1], {"author": "Sam Example", "created_at": "2026-10-02T09:00:00.000+1300",
+                                             "body": "Decided: keep the retry at three."})
+        self.assertIsNone(body["thread_note"])
+
+    def fetch_comments_with(self, env, comments_result):
+        (self.run_dir / "results").mkdir(parents=True, exist_ok=True)
+        args = ("fetch", "--run", self.run_dir, "--key", "ABC-321", "--site", "jira.example.com",
+                "--env", self.write("env-c.json", env))
+        _code, body = run_cli(*args)
+        results = {"fetch": self.evidence}
+        if comments_result is not None:
+            results["fetch-comments"] = comments_result
+        self.answer(body, results)
+        return run_cli(*args)
+
+    def test_fetch_says_when_comments_were_cut_off(self):
+        page = copy.deepcopy(COMMENTS)
+        page["data"]["total"] = 140
+        _code, body = self.fetch_comments_with(self.env, page)
+        self.assertEqual(body["thread_note"], "only the first 2 of 140 comments were read")
+
+    def test_fetch_survives_a_failed_comment_read(self):
+        code, body = self.fetch_comments_with(self.env, '{"isError": true, "error": "boom"}')
+        self.assertEqual((code, body["thread"]), (ja.EXIT_OK, []))
+        self.assertIn("comments were not read", body["thread_note"])
+
+    def test_fetch_with_an_older_env_skips_comments(self):
+        env = copy.deepcopy(self.env)
+        del env["tools"]["comments"]
+        code, body = self.fetch_comments_with(env, None)
+        self.assertEqual((code, body["thread"]), (ja.EXIT_OK, []))
+        self.assertIn("run detect again", body["thread_note"])
+
+    def test_v1_comments_come_from_the_comment_field_as_adf(self):
+        env = ja.detect(self.tools["v1"])
+        raw = {"key": "ABC-321", "fields": {"comment": {"total": 1, "comments": [{
+            "id": "7", "author": {"displayName": "Pat Example"}, "created": "2026-10-01T09:00:00.000+1300",
+            "body": {"type": "doc", "content": [{"type": "paragraph", "content": [
+                {"type": "text", "text": "First line"}, {"type": "hardBreak"},
+                {"type": "text", "text": "second line"}]}]}}]}}}
+        spec = ja.comments_spec(self.run_dir, {"env": env, "cloudId": "s"}, "ABC-321", "x")
+        self.assertEqual((spec["tool"], spec["arguments"]["fields"]),
+                         (env["prefix"] + "getJiraIssue", ["comment"]))
+        comments, total = ja.parse_comments(raw)
+        self.assertEqual((comments[0]["body"], total), ("First line\nsecond line", 1))
 
     def test_duplicates_children_then_keyword(self):
         self.build_run()
@@ -390,6 +462,105 @@ class ReadTests(AdapterCase):
         _code, body = run_cli("duplicates", "--run", self.run_dir)
         self.assertEqual(body["hits"], [{"key": "ABC-9", "summary": "Add a retry to the nightly export job",
                                          "status": "Done", "match": "keyword", "exact_title": True}])
+
+
+class CommentTests(AdapterCase):
+    TEXT = "Working this in [PR 12](https://example.com/pr/12).\n\n* step one\n* step two"
+
+    def comment(self, *extra):
+        body_path = self.write("comment.md", self.TEXT)
+        return run_cli("comment", "--run", self.run_dir, "--key", "ABC-321", "--site", "jira.example.com",
+                       "--env", self.env_path, "--body", body_path, *extra)
+
+    def posted(self, comments):
+        _code, body = self.comment("--confirm")
+        self.assertEqual(body["calls"][0]["tool"], V2 + "addOrEditJiraIssueComment")
+        self.answer(body, {"comment": {"data": {"commentId": "99", "body": self.TEXT}}})
+        _code, body = self.comment("--confirm")
+        self.assertEqual(body["calls"][0]["arguments"]["inputs"]["orderBy"], "-created")
+        self.answer(body, {"comment-check": {"data": {"total": len(comments), "comments": comments}}})
+        return self.comment("--confirm")
+
+    def test_no_comment_without_confirm(self):
+        code, body = self.comment()
+        self.assertEqual(code, ja.EXIT_INVALID)
+        self.assertIn("without --confirm", body["message"])
+
+    def test_comment_is_read_back_from_the_issue(self):
+        stored = "Working this in [PR 12](https://example.com/pr/12).\n\n- step one  \n- step two\n"
+        code, body = self.posted([{"id": "99", "author": {"displayName": "Me"}, "body": stored,
+                                   "created": "2026-10-13T10:00:00.000+1300"}])
+        self.assertEqual((code, body["status"], body["comment_id"]), (ja.EXIT_OK, "VERIFIED", "99"))
+        self.assertEqual(body["url"], "https://jira.example.com/browse/ABC-321")
+        code, again = self.comment("--confirm")  # a re-run never posts twice
+        self.assertEqual((code, again["status"]), (ja.EXIT_OK, "VERIFIED"))
+
+    def test_comment_missing_on_read_back_fails(self):
+        code, body = self.posted([{"id": "5", "author": {}, "body": "older", "created": "2026-10-01"}])
+        self.assertEqual((code, body["status"]), (ja.EXIT_TRACKER, "FAILED"))
+        self.assertIn("not found", body["message"])
+
+    def test_comment_with_other_text_fails(self):
+        code, body = self.posted([{"id": "99", "author": {}, "body": "truncated", "created": "2026-10-13"}])
+        self.assertEqual((code, body["status"], body["actual"]), (ja.EXIT_TRACKER, "FAILED", "truncated"))
+
+
+class TransitionTests(AdapterCase):
+    def move(self, status="In review", *extra, env_path=None):
+        return run_cli("transition", "--run", self.run_dir, "--key", "ABC-321", "--site", "jira.example.com",
+                       "--env", env_path or self.env_path, "--status", status, *extra)
+
+    def test_moves_by_target_status_not_transition_name_and_reads_back(self):
+        _code, body = self.move()
+        self.assertEqual(self.answer(body, {"transition-before": status_read("Backlog"),
+                                            "transition-options": TRANSITIONS}),
+                         ["transition-before", "transition-options"])
+        code, body = self.move()  # no --confirm: reads only
+        self.assertEqual(code, ja.EXIT_INVALID)
+        self.assertIn("without --confirm", body["message"])
+        _code, body = self.move("In review", "--confirm")
+        call = body["calls"][0]
+        self.assertEqual((call["tool"], call["arguments"]["transitionId"]),
+                         (V2 + "transitionJiraIssue", "171"))
+        self.answer(body, {"transition": {"data": {"status": "In Review"}}})
+        _code, body = self.move("In review", "--confirm")
+        self.answer(body, {"transition-check": status_read("In Review", "indeterminate")})
+        code, body = self.move("In review", "--confirm")
+        self.assertEqual((code, body["status"], body["from_status"], body["changed"]),
+                         (ja.EXIT_OK, "VERIFIED", "Backlog", True))
+
+    def test_already_there_changes_nothing(self):
+        _code, body = self.move()
+        self.answer(body, {"transition-before": status_read("In Review"), "transition-options": TRANSITIONS})
+        code, body = self.move("In review", "--confirm")
+        self.assertEqual((code, body["status"], body["changed"]), (ja.EXIT_OK, "VERIFIED", False))
+
+    def test_unreachable_status_lists_what_is_reachable(self):
+        _code, body = self.move("In progress")
+        self.answer(body, {"transition-before": status_read("Backlog"), "transition-options": TRANSITIONS})
+        code, body = self.move("In progress", "--confirm")
+        self.assertEqual((code, body["status"]), (ja.EXIT_TRACKER, "FAILED"))
+        self.assertEqual(body["reachable"], ["Dev Done", "In Review", "Work in progress"])
+        self.assertFalse((self.run_dir / "results" / "transition.json").exists())
+
+    def test_denied_transition_is_exit_3(self):
+        _code, body = self.move()
+        self.answer(body, {"transition-before": status_read("Backlog"), "transition-options": TRANSITIONS})
+        _code, body = self.move("In review", "--confirm")
+        self.answer(body, {"transition": "The user doesn't want to proceed with this tool use."})
+        code, body = self.move("In review", "--confirm")
+        self.assertEqual((code, body["status"]), (ja.EXIT_DENIED, "DENIED"))
+
+    def test_v1_shapes(self):
+        env_path = self.write("env-v1.json", ja.detect(self.tools["v1"]))
+        _code, body = self.move(env_path=env_path)
+        prefix = "mcp__plugin_productivity_atlassian__"
+        self.assertEqual([c["tool"] for c in body["calls"]],
+                         [prefix + "getJiraIssue", prefix + "getTransitionsForJiraIssue"])
+        self.answer(body, {"transition-before": {"key": "ABC-321", "fields": {"status": {"name": "Backlog"}}},
+                           "transition-options": TRANSITIONS["data"]})
+        _code, body = self.move("In review", "--confirm", env_path=env_path)
+        self.assertEqual(body["calls"][0]["arguments"]["transition"], {"id": "171"})
 
 
 if __name__ == "__main__":

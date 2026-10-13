@@ -152,6 +152,17 @@ class BuildTests(AdapterCase):
         self.assertEqual([p["what"] for p in out["proposal_only"]], ["Size"])
         self.assertIn("not investigated", out["proposal_only"][0]["reason"])
 
+    def test_estimate_above_the_ceiling_fails_the_build(self):
+        resolved = json.loads(Path(self.routed_template()).read_text(encoding="utf-8"))
+        template = resolved["template"]
+        template["estimate"].pop("split_above", None)
+        template["estimate"]["ceiling"] = "M"
+        draft = fixture("draft-routed.json")
+        draft["estimate"]["value"] = "L"
+        code, out = self.build(draft, self.write("capped.json", resolved))
+        self.assertEqual(code, ga.EXIT_INVALID, out)
+        self.assertEqual(out["errors"], ["estimate.value: 'L' is above the ceiling ('M'); propose a split instead"])
+
     def test_owner_without_the_type_leaves_it_out(self):
         self.fake.on("orgs/example-org/issue-types", rc=1, err="HTTP 404")
         code, out = self.run_op("build", "--template", self.routed_template(),

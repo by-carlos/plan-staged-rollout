@@ -119,6 +119,34 @@ class SectionShape(unittest.TestCase):
 
 
 
+class EstimateCeiling(unittest.TestCase):
+    """The ceiling is checked here, so every tracker's draft is held to it."""
+
+    def errors(self, t: dict, value) -> list[str]:
+        draft = dict(DRAFT, tracker=t["tracker"], sections=dict(DRAFT["sections"], **{"In plain terms": "Why."}),
+                     estimate={"kind": t["estimate"]["kind"], "value": value})
+        return ticket_core.check_draft(t, draft)[0]
+
+    def template(self, tracker: str) -> dict:
+        t, _ = ticket_template.validate_template("default", tracker)
+        t["estimate"].pop("split_above", None)
+        t["estimate"]["ceiling"] = t["estimate"]["scale"][2]
+        return t
+
+    def test_a_value_above_the_ceiling_fails_for_every_tracker(self):
+        for tracker in ("github", "jira"):
+            t = self.template(tracker)
+            above = t["estimate"]["scale"][3]
+            self.assertEqual(self.errors(t, above), [
+                f"estimate.value: {above!r} is above the ceiling ({t['estimate']['ceiling']!r}); "
+                "propose a split instead"], tracker)
+
+    def test_a_value_at_the_ceiling_passes(self):
+        for tracker in ("github", "jira"):
+            t = self.template(tracker)
+            self.assertEqual(self.errors(t, t["estimate"]["ceiling"]), [], tracker)
+
+
 class AlwaysLabels(unittest.TestCase):
     """S7: the AI-drafted marker moved from a body footer to a label on every ticket."""
 

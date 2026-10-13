@@ -210,9 +210,6 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
     ecfg = template.get("estimate", {})
     if estimate.get("value") is not None and ecfg.get("kind", "none") != "none":
         evalue = estimate["value"]
-        ceiling = ecfg.get("ceiling")
-        if ceiling is not None and isinstance(evalue, (int, float)) and evalue > ceiling:
-            errors.append(f"estimate.value: {evalue} is above the ceiling {ceiling}; propose a split instead")
         if ecfg.get("set_only_if") == "investigated" and not notes.get("investigated"):
             warnings.append("estimate: not set, the template sets it only after an investigation")
         else:

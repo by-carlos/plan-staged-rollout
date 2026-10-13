@@ -176,7 +176,7 @@ class BuildTests(AdapterCase):
         for needle in ("target.project: required", "limit is 80", "type: 'Epic'",
                        "sections.Notes: not a section", "sections.Context: required",
                        "sections.Acceptance Criteria: required", "labels: 'misc'",
-                       "at most one area label", "priority: 'Urgent'", "above the ceiling",
+                       "at most one area label", "priority: 'Urgent'",
                        "estimate.value: 13 is not in", "fields.sensitive_review: 'Yes' is a guarded value",
                        "fields.colour: not declared", "links: kind 'duplicates'"):
             self.assertIn(needle, errors)

@@ -191,6 +191,9 @@ def check_draft(t: dict, d: dict) -> tuple[list[str], list[str]]:
         elif est.get("value") is not None and est_t.get("scale"):
             if _scale_index(est_t["scale"], est["value"]) is None:
                 errors.append(f"estimate.value: {est['value']!r} is not in {est_t['scale']}")
+            elif _above(est_t, est["value"], "ceiling"):
+                errors.append(f"estimate.value: {est['value']!r} is above the ceiling "
+                              f"({est_t['ceiling']!r}); propose a split instead")
             elif _above(est_t, est["value"], "split_above"):
                 errors.append(f"estimate.value: {est['value']!r} is above split_above "
                               f"({est_t['split_above']!r}); propose a split instead")

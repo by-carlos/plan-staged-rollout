@@ -255,7 +255,7 @@ Work through these steps **in order**:
      what to switch to, then you type **go**. On a phone (Remote Control) or
      in a terminal there is no chip — paste the command above into a fresh
      session instead."* The other two launch modes are covered in the
-     README, not repeated here: **Start with worktree** works but leaves an
+     staged-rollout guide (`docs/staged-rollout.md`), not repeated here: **Start with worktree** works but leaves an
      unused app worktree based on the default branch, and **Fix in this
      session** is refused (the fresh-session rule at the top of this file).
 

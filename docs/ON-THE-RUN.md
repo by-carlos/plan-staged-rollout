@@ -130,6 +130,70 @@ credential — not something a public plugin should ship). `claude --cloud` was
 also considered and rejected: it needs an interactive TTY and can't be
 scripted or called from a session.
 
+## Under the hood
+
+Everything above assumes you are at the keyboard, launching one session per
+stage with `/stage-run <N>`. `/plan-staged-rollout:plan-run` — no arguments —
+is the other path: it keeps one session at the keyboard, the
+**orchestrator**, and moves every *remaining* stage off your machine instead
+of just the next one — each runs as a cloud session on Anthropic's
+infrastructure, and every fired stage is a first-class session at
+claude.ai/code that you can open, watch, and resume. The orchestrator itself
+stays local, so the machine running it has to stay on: close the laptop and
+the stage already fired runs to its end, but nothing fires the next one.
+It opens with a plain-language notice and a yes/no
+confirmation before touching anything, precisely because it is a much bigger
+action than `/stage-run <N>` and shares part of its name. The notice also
+says what a cloud stage cannot reach and that cloud sessions may use
+additional credits — see
+[`commands/plan-run.md`](../commands/plan-run.md).
+
+The orchestrator is an ordinary interactive Claude Code session in a clone of
+your repo, running that command. There is nothing to install and no
+credential to manage: it fires stages through **`RemoteTrigger`**, a tool
+built into Claude Code that talks to the claude.ai routines API with your
+account's own authentication handled
+in-process. Per stage it creates a run-once routine as the stage's config
+container — repository, the stage prompt, and the stage's `model` from the
+index — fires it directly with the tool's `run` action (the schedule is never
+involved), gets the new session's id and link back synchronously, and then
+polls the run's condensed log to see it finish, fail, or crash before firing
+the next.
+
+The full contract — prompt shape, refusals, what is measured and what is still
+open — is in
+[`remote-driver.md`](../skills/staged-rollout/references/remote-driver.md). The
+short version of the guarantees, which carry over unchanged from the retired
+local driver:
+
+- **`gate: human` / `gate: local` stages are never fired** — a cloud container
+  has strictly less access than your machine; the orchestrator stops in front
+  of them.
+- **Dependencies must read `done`/`skipped` in the ledger** before a stage
+  fires; out-of-order firing is a deliberate operator choice, never a default.
+- **It refuses to drive from a protected branch**, and **the plan→main merge
+  stays manual and human-performed in every mode.**
+- **The ledger is the only state.** Stop driving whenever you like and pick the
+  plan up later — from this or any other session — from what is written down.
+
+Three honest limits. A fired stage runs from a checkout whose *content* is the
+plan branch but whose HEAD may read a platform-named branch — the stage prompt
+warns the session this drift is expected. Spent run-once routines cannot be
+deleted programmatically; they auto-disable but stay listed, and cleaning them
+up is a manual step at claude.ai/code/routines. And `RemoteTrigger`'s
+availability likely tracks cloud access being enabled on your Claude account —
+no claude.ai/code cloud, no remote leg.
+
+**Plugins do not load in cloud containers**, so a fired session has no
+`/plan-run` or `/stage-run` to call. It does not need one: the plan carries its own contract —
+`.plan/RUNNER.md`, scaffolded by `/plan-stages`, tells a cold session how to
+run one stage, and `.plan/PLAN.md` carries the operating protocol it defers
+to. The fired prompt is a short instruction to check out the plan branch and
+follow them, which is why the plan branch must be pushed before anything
+fires. (A plan scaffolded before
+`RUNNER.md` existed gets it backfilled from the plugin's templates — see
+[`remote-driver.md`](../skills/staged-rollout/references/remote-driver.md).)
+
 ## If you want the details
 
 - [`remote-driver.md`](../skills/staged-rollout/references/remote-driver.md) —

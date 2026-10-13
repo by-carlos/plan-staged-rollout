@@ -48,3 +48,48 @@ python3 scripts/validate_plugin.py
 - Match the existing style and structure of the code you're touching.
 - Update the relevant README and `CHANGELOG.md` when your change is user-facing.
 - Be respectful and constructive — assume good faith on all sides.
+
+## Status and layout
+
+**Shipped.** This README is the method document; the skill, the three
+commands, and the templates are implemented. They were built with the method
+itself — decomposed into a `.plan/` and executed stage by stage in this repo
+(the plan folder was removed at closeout, as the method prescribes; its full
+history is in git). See [`CHANGELOG.md`](CHANGELOG.md) for what shipped when.
+
+Layout:
+
+```
+.
+  .claude-plugin/plugin.json
+  .claude-plugin/marketplace.json  # lists this repo as its own marketplace
+  README.md                      ← you are here
+  docs/
+    ON-THE-RUN.md                # quickstart: drive a plan from your phone
+  skills/staged-rollout/
+    SKILL.md                     # method: principles, decomposition guidance,
+                                 #   flag heuristics, anti-patterns
+    references/templates/        # PLAN.md, LEDGER.md, stage-N.md, stage-f-review.md, README.md
+    references/remote-driver.md  # the RemoteTrigger contract for firing stages remotely
+  examples/
+    uptime-page/.plan/           # worked example: a filled-in scaffold, mid-flight
+    on-the-run/                  # prompt contracts for unattended cloud runs
+      poc/                     #   end-to-end proof-of-concept plan + verify_run.py
+  commands/
+    plan-stages.md               # /plan-stages <idea>  — bootstrap .plan/
+    stage-run.md                 # /stage-run <N>       — execute one stage, in this session
+    plan-run.md                  # /plan-run             — drive every remaining stage remotely
+    plan-close.md                # /plan-close          — final PR + cleanup
+  skills/create-issue/SKILL.md   # draft, review, post and verify one ticket
+  skills/work-issue/SKILL.md     # work one named ticket to a confirmed merge
+  tickets/
+    scripts/                     # template loader, core, GitHub and Jira adapters
+    references/                  # template schema, adapter contract, gap rubric
+    templates/default.toml       # the built-in ticket template
+    fixtures/  tests/            # dry-run inputs and unit tests
+  hooks/
+    hooks.json                   # SessionStart and PreToolUse registration
+    run-hook.cmd                 # polyglot cmd/bash wrapper (Windows + Unix)
+    session-start                # .plan/-aware nudge: next runnable stage
+    gh-body-guard                # denies gh body shapes that corrupt non-ASCII
+```

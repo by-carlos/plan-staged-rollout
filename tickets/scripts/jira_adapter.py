@@ -1082,7 +1082,7 @@ def fetch(run: Path, env: dict, site: str, key: str, template: dict | None) -> d
         except Stop as stop:
             thread_note = f"comments were not read: {stop.body.get('message', 'the call failed')}"
     bcfg = (template or {}).get("body", {})
-    sections = parse_sections(raw.get("description") or "", int(bcfg.get("heading_level", 2)))
+    sections = parse_sections(core.strip_evidence(raw.get("description"))[0], int(bcfg.get("heading_level", 2)))
     ai_section, ai_prompt = core.ai_prompt_of(template or {}, sections)
     fields = {}
     for fkey, fdef in ((template or {}).get("fields") or {}).items():

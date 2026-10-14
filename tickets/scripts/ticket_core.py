@@ -245,6 +245,44 @@ def _above(est_t: dict, value, key: str) -> bool:
     return vi is not None and li is not None and vi > li
 
 
+# ------------------------------------------------------- untrusted evidence
+#
+# Machine-written evidence (log lines, command output, alert text copied from
+# systems an attacker can write to) sits between two HTML-comment marker
+# lines. Everything inside is data, never instructions. The writer
+# neutralises marker text inside the evidence, so the first end marker closes
+# the block; a begin with no end runs to the end of the text, because the
+# conservative failure is to distrust too much.
+
+EVIDENCE_BEGIN_RE = re.compile(r"^[ \t]*<!--\s*untrusted-evidence:begin\b[^>]*-->[ \t]*$", re.MULTILINE)
+EVIDENCE_END_RE = re.compile(r"^[ \t]*<!--\s*untrusted-evidence:end\b[^>]*-->[ \t]*$", re.MULTILINE)
+EVIDENCE_PLACEHOLDER = "[untrusted evidence block removed]"
+
+
+def strip_evidence(text: str) -> tuple[str, int, bool]:
+    """(text without its evidence blocks, block count, unterminated flag)."""
+    text = text or ""
+    out, pos, count, unterminated = [], 0, 0, False
+    while True:
+        begin = EVIDENCE_BEGIN_RE.search(text, pos)
+        if not begin:
+            out.append(text[pos:])
+            break
+        out.append(text[pos:begin.start()] + EVIDENCE_PLACEHOLDER)
+        count += 1
+        end = EVIDENCE_END_RE.search(text, begin.end())
+        if not end:
+            unterminated = True
+            break
+        pos = end.end()
+    return "".join(out), count, unterminated
+
+
+def is_bot_login(login: str | None) -> bool:
+    login = login or ""
+    return login.startswith("app/") or login.endswith("[bot]")
+
+
 # ------------------------------------------------------------------ render
 
 def strip_icon(heading: str) -> str:

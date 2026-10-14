@@ -328,6 +328,21 @@ def unblocked(merged: dict, others: list[dict], template: dict) -> dict:
 # ops
 # --------------------------------------------------------------------------
 
+def untrusted_posts(ticket: dict) -> list[dict]:
+    """Every post in the ticket that carries an evidence block or was written by a bot."""
+    posts = [("body", ticket.get("author"), ticket.get("author_is_bot"), ticket.get("body"))]
+    posts += [(f"comment {i}", c.get("author"), c.get("author_is_bot"), c.get("body"))
+              for i, c in enumerate(ticket.get("thread") or [], 1)]
+    found = []
+    for where, author, flagged, text in posts:
+        _, blocks, unterminated = core.strip_evidence(text)
+        bot = bool(flagged) or core.is_bot_login(author)
+        if blocks or bot:
+            found.append({"where": where, "author": author, "bot": bot,
+                          "evidence_blocks": blocks, "unterminated": unterminated})
+    return found
+
+
 def assess(ticket: dict, template: dict, *, base: str | None = None, repo: str | None = None) -> dict:
     tracker = ticket.get("tracker")
     if tracker not in ("github", "jira"):
@@ -350,6 +365,7 @@ def assess(ticket: dict, template: dict, *, base: str | None = None, repo: str |
         "state": state,
         "closed": is_done(ticket),
         "plain_terms": (plain or "").strip() or None,
+        "untrusted": untrusted_posts(ticket),
         "ai_prompt_section": ai_title if ai_text else None,
         "ai_prompt": ai_text,
         "effort": effort,

@@ -68,7 +68,7 @@ elsewhere. See 0.4.0 for the split.
   sections are cleared by hand; the model-and-effort check reads both.
 - The plugin and marketplace descriptions mention the ticket skills.
 - The task pages cover the stage `Issue:` line, the opt-in
-  `tracker-write-guard`, Jira-only-v2 and `--after` on Jira.
+  `tracker-write-guard`, the v2-only Jira adapter and `--after` on Jira.
 - `scripts/validate_plugin.py` checks relative links in `docs/*.md` as well as
   in README files.
 

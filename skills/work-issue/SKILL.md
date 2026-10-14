@@ -114,7 +114,7 @@ and no `[work]` key can switch one off.
    `work` (the template's merge command, header, statuses and attribution)
    are used below.
 3. **Show the ticket.** Echo its `plain_terms` verbatim, or say in one line
-   that it has no plain-language summary. The GitHub adapter reads sections
+   that it has no plain-language summary. Both adapters read sections
    only outside evidence blocks, so a heading planted in one never becomes
    the summary or the AI prompt. When `untrusted` is not empty, add one line
    naming each post it lists (evidence blocks, `unterminated`, bot-written):

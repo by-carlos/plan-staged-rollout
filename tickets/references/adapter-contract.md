@@ -116,7 +116,7 @@ Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 | `set-fields` | **yes** | Sets fields that the create call cannot carry: GitHub Projects board fields, or Jira fields that are not on the create screen. |
 | `link` | **yes** | Creates links and the parent. It creates the first link, reads it back to confirm the direction, and only then creates the rest. |
 | `comment` | **yes** | Adds a comment, such as the estimate attribution comment, then finds it on the ticket again and compares its text. |
-| `fetch` | no | Reads one ticket into a Ticket, sections parsed, with its comments as `thread`, for `work-issue`. It also returns the AI prompt as `has_ai_prompt`, `ai_prompt` and `ai_prompt_section`. |
+| `fetch` | no | Reads one ticket into a Ticket, sections parsed, with its comments as `thread`, for `work-issue`. Sections are parsed only outside `untrusted-evidence` marker blocks; GitHub also returns `author` and `author_is_bot` on the ticket and on each comment. It also returns the AI prompt as `has_ai_prompt`, `ai_prompt` and `ai_prompt_section`. |
 | `transition` | **yes** | Jira only. Moves a ticket to a named status through a workflow transition that leads there, then reads the status back. GitHub's status lives on the board and goes through `set-fields`. |
 | `wait` | no | Jira only. One check of whether a blocking ticket is done, for `work-issue --after`; the session calls it again on each tick. GitHub's wait is a background `gh` loop in the skill. |
 | `readback` | no | Like `fetch`, but asks for every field the payload set, **by explicit field id**. Create and edit responses do not echo custom fields, so a write is never confirmed from its own response. |

@@ -7,5 +7,5 @@
 ## Checklist
 
 - [ ] Commits follow [Conventional Commits](https://www.conventionalcommits.org/)
-- [ ] `README.md` / `CHANGELOG.md` updated if the change is user-facing
+- [ ] `README.md`, `docs/` or `CHANGELOG.md` updated if the change is user-facing
 - [ ] `python3 scripts/validate_plugin.py` passes

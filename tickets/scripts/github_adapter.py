@@ -734,7 +734,7 @@ def parse_sections(body: str, level: int) -> dict[str, str]:
     return sections
 
 
-BASE_FIELDS = "number,title,body,state,labels,assignees,comments,url"
+BASE_FIELDS = "number,title,author,body,state,labels,assignees,comments,url"
 EXTRA_FIELDS = ",issueType,blockedBy,blocking,parent"
 
 
@@ -761,7 +761,9 @@ def op_fetch(args) -> int:
         raise fail(EXIT_TRACKER, f"Cannot read {args.repo}#{args.number}: {exc.stderr.strip()[:300]}")
     t = core.load_template(args.template) if args.template else {}
     level = (t.get("body") or {}).get("heading_level", 2)
-    sections = parse_sections(data.get("body"), level)
+    # Sections come only from outside evidence blocks: a heading planted in one
+    # must never become the ticket's summary or AI prompt.
+    sections = parse_sections(core.strip_evidence(data.get("body"))[0], level)
     ai_section, ai_prompt = core.ai_prompt_of(t, sections)
     links = [{"kind": "blocks", "direction": "inward", "target": str(x.get("number"))}
              for x in nodes(data.get("blockedBy"))]
@@ -770,6 +772,11 @@ def op_fetch(args) -> int:
     issue_type = data.get("issueType")
     parent = data.get("parent")
     assignees = data.get("assignees") or []
+
+    def by_bot(author) -> bool:
+        author = author or {}
+        return bool(author.get("is_bot")) or core.is_bot_login(author.get("login"))
+
     ticket = {
         "tracker": "github", "target": {"repo": args.repo}, "key": str(data["number"]),
         "url": data.get("url"),
@@ -780,7 +787,10 @@ def op_fetch(args) -> int:
         "parent": str(parent.get("number")) if isinstance(parent, dict) else None,
         "links": links, "state": str(data.get("state", "")).lower(),
         "assignee": assignees[0].get("login") if assignees else None,
-        "thread": [{"author": (c.get("author") or {}).get("login"), "created_at": c.get("createdAt"),
+        "author": (data.get("author") or {}).get("login"),
+        "author_is_bot": by_bot(data.get("author")),
+        "thread": [{"author": (c.get("author") or {}).get("login"), "author_is_bot": by_bot(c.get("author")),
+                    "created_at": c.get("createdAt"),
                     "body": (c.get("body") or "").replace("\r\n", "\n")}
                    for c in data.get("comments") or []],
         "has_ai_prompt": ai_prompt is not None, "ai_prompt": ai_prompt,

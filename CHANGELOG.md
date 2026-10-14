@@ -8,6 +8,23 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Fixed
+
+- **`create-issue` no longer leaves Size and Effort blank after a delegated
+  draft.** A drafter subagent now records what it read in
+  `draft_notes.read`, and that counts as the investigation for every
+  `set_only_if = "investigated"` gate, in both adapters and in `estimate
+  --draft`.
+- **Effort, or any template field, can now be proposed like Size.** A
+  `[fields.<key>]` entry takes `set_only_if` and `guidance`; step 5 proposes a
+  value for each such field on every run, and the preview shows whether it
+  will be set or only proposed.
+- **A blank board field is named, not hidden.** The GitHub `build` lists
+  mapped board fields with no value under `unset`, and `set-fields` names
+  every field it left blank even when the read-back is `VERIFIED`.
+
 ## [0.13.0] - 2026-10-14
 
 **Codename:** What's up Doc?

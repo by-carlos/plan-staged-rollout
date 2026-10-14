@@ -219,5 +219,45 @@ class SectionIcon(unittest.TestCase):
             self.assertEqual(list(out), ["In plain terms", "AI prompt"])
 
 
+
+class InvestigatedFields(unittest.TestCase):
+    """A field marked set_only_if is proposed by the session and set only after an
+    investigation; a delegated drafter's reading counts, through draft_notes.read."""
+
+    def template(self) -> dict:
+        t, _ = ticket_template.validate_template("default", "github")
+        t["fields"] = {"effort": {"id": "Effort", "kind": "select", "values": {"low": "low", "high": "high"},
+                                  "default": "unset", "set_only_if": "investigated",
+                                  "guidance": "the tier that finishes the AI prompt"}}
+        return t
+
+    def draft(self, **notes) -> dict:
+        return dict(DRAFT, tracker="github", target={"repo": "o/r"}, fields={"effort": "high"},
+                    draft_notes=notes)
+
+    def test_read_list_makes_the_work_investigated(self):
+        self.assertTrue(ticket_core.investigated(self.draft(read=["src/app.py"])))
+        self.assertFalse(ticket_core.investigated(self.draft(investigated=False)))
+
+    def test_estimate_counts_the_drafts_reading_and_lists_proposed_fields(self):
+        t = self.template()
+        out = ticket_core.estimate(t, {"value": t["estimate"]["scale"][1], "investigated": False},
+                                   self.draft(read=["src/app.py"]))
+        self.assertTrue(out["set"])
+        self.assertTrue(out["investigated"])
+        self.assertEqual(out["proposed_fields"]["effort"]["value"], "high")
+        self.assertEqual(out["proposed_fields"]["effort"]["guidance"], "the tier that finishes the AI prompt")
+
+    def test_read_must_be_a_list_of_names(self):
+        errors, _ = ticket_core.check_draft(self.template(), self.draft(read="src/app.py"))
+        self.assertIn("draft_notes.read: must be a list of the files, paths or systems read", errors)
+
+    def test_a_field_cannot_be_both_guarded_and_proposed(self):
+        t = self.template()
+        t["fields"]["effort"].update(confirm_values=["high"], ask_when="always")
+        errors: list[str] = []
+        ticket_template.check_semantics(t, errors, base=False)
+        self.assertTrue(any(e.startswith("fields.effort.set_only_if:") for e in errors), errors)
+
 if __name__ == "__main__":
     unittest.main()

@@ -454,7 +454,6 @@ def routing_board(routing: dict, repo: str, override: int | None) -> tuple[dict 
 def board_value(source: str, t: dict, d: dict) -> tuple[object, str]:
     """The value a board field takes from the draft, and why it is withheld
     (empty reason means settable)."""
-    notes = d.get("draft_notes") or {}
     if source == "priority":
         return d.get("priority"), ""
     if source in ("size", "estimate"):
@@ -463,11 +462,15 @@ def board_value(source: str, t: dict, d: dict) -> tuple[object, str]:
             return None, ""
         if est_t.get("kind") != "size":
             return est["value"], "this adapter sets single-select board fields only, not numbers"
-        if est_t.get("set_only_if", "investigated") == "investigated" and not notes.get("investigated"):
+        if est_t.get("set_only_if", "investigated") == "investigated" and not core.investigated(d):
             return est["value"], "the work was not investigated, so the estimate is proposed only"
         return est["value"], ""
     value = (d.get("fields") or {}).get(source)
-    return (None if value == "unset" else value), ""
+    if value in (None, "unset"):
+        return None, ""
+    if (t.get("fields") or {}).get(source, {}).get("set_only_if") == "investigated" and not core.investigated(d):
+        return value, "the work was not investigated, so this value is proposed only"
+    return value, ""
 
 
 def owner_has_type(owner: str, name: str) -> bool:
@@ -514,9 +517,11 @@ def op_build(args) -> int:
     board, why_board = routing_board(routing, repo, args.board)
     board_fields = routing.get("board_fields") or {}
     values: dict = {}
+    unset: list[dict] = []
     for field_name, source in board_fields.items():
         value, withheld = board_value(source, t, d)
         if value is None:
+            unset.append({"what": field_name, "reason": "the draft has no value for it"})
             continue
         if board is None:
             proposal.append({"what": field_name, "value": value, "reason": f"no board: {why_board}"})
@@ -536,7 +541,7 @@ def op_build(args) -> int:
         "tracker": "github", "repo": repo, "issue": issue,
         "board": ({**board, "values": values} if board else None),
         "links": d.get("links") or [], "parent": d.get("parent"),
-        "settle_seconds": settle, "proposal_only": proposal,
+        "settle_seconds": settle, "proposal_only": proposal, "unset": unset,
     }
     emit({"ok": True, **payload, "warnings": warnings})
     return EXIT_OK
@@ -618,9 +623,11 @@ def op_set_fields(args) -> int:
     payload = load_payload(args.payload)
     board = payload.get("board")
     repo = payload["repo"]
+    left = {"proposal_only": payload.get("proposal_only", []), "unset": payload.get("unset", [])}
     if not board or not board.get("values"):
         emit(result("VERIFIED", args.number, None, [], "Nothing to set on a board; "
-                    "priority and estimate stay proposals: " + json.dumps(payload.get("proposal_only", []))))
+                    "priority and estimate stay proposals: " + json.dumps(payload.get("proposal_only", [])),
+                    **left))
         return EXIT_OK
     url = f"https://github.com/{repo}/issues/{args.number}"
     try:
@@ -634,7 +641,10 @@ def op_set_fields(args) -> int:
     status = verdict(fields, False)
     message = "Board fields set and read back." if status == "VERIFIED" else (
         "; ".join(problems) or failed_message(fields))
-    return finish(result(status, args.number, url, fields, message))
+    blank = [x["what"] for x in left["unset"] + left["proposal_only"] if x["what"] != "type"]
+    if blank:
+        message += " Left blank on the board: " + ", ".join(blank) + "."
+    return finish(result(status, args.number, url, fields, message, **left))
 
 
 def issue_ref(target: str) -> str:

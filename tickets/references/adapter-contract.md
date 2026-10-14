@@ -76,10 +76,18 @@ rendered or posted:
   "confirmations": {"<field key>": "<value name the user explicitly chose>"},
   "waivers": ["<check>: <why the user waived it>"],
   "investigated": true,
+  "read": ["src/report.sql", "the reports page"],
   "provenance": {"tool": "...", "session": "..."},
   "source_key": "ABC-123"
 }
 ```
+
+The work counts as **investigated** when `investigated` is true or `read`
+lists anything (`ticket_core.investigated`). `read` is how a delegated
+drafter's reading reaches the session that posts: the drafter lists the
+files, paths or systems it actually read, and both adapters and `estimate
+--draft` honour it. A gate on `set_only_if = "investigated"` reads this and
+nothing else.
 
 `source_key` is optional: the key of the existing ticket this draft is a
 rewrite or split of. Jira only; the GitHub adapter ignores it. When set,
@@ -270,7 +278,9 @@ Implemented in `scripts/github_adapter.py`; tests in `tests/`.
   a `[fields]` key. The adapter sets single-select fields only. Where a value
   cannot be set (no board for the repo, an estimate that was not
   investigated, a number field), `build` lists it under `proposal_only` with
-  the reason, and nothing is written. With `fallback = "stop"`, a repo with
+  the reason, and nothing is written. A mapped board field the draft has no
+  value for is listed under `unset`, and `set-fields` names every field left
+  blank in its message, so a `VERIFIED` read-back never hides one. With `fallback = "stop"`, a repo with
   no routing entry makes `build` exit 1 with `needs_user: "board"`; the skill
   asks and passes `--board N`.
 - **Schema cache.** Field and option ids are cached on disk under

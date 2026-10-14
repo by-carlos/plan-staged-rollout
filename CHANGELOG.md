@@ -10,6 +10,8 @@ elsewhere. See 0.4.0 for the split.
 
 ## [0.13.0] - 2026-10-14
 
+**Codename:** What's up Doc?
+
 ### Added
 
 - **Stage-to-issue linking.** A stage file may carry an optional `Issue:` line

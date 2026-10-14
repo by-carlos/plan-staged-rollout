@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate this plugin's manifest and structure: the manifest parses and
 carries the required fields, command/skill frontmatter is present, referenced
-templates exist, and README links resolve. No external services or
+templates exist, and README and docs/ links resolve. No external services or
 dependencies."""
 
 import json
@@ -112,7 +112,8 @@ def validate_skills():
 
 
 def validate_readme_links():
-    for readme in sorted(ROOT.rglob("README.md")):
+    pages = sorted(ROOT.rglob("README.md")) + sorted((ROOT / "docs").glob("*.md"))
+    for readme in pages:
         if any(part in (".git", "_audit") for part in readme.relative_to(ROOT).parts):
             continue
         text = readme.read_text(encoding="utf-8")

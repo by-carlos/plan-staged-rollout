@@ -66,6 +66,7 @@ FIELD = {
     "kind": ("enum", "number", "text", "select", "user", "date"),
     "values": ("map", STR), "default": STR,
     "confirm_values": ("list", STR), "ask_when": STR,
+    "set_only_if": ("enum", "always", "investigated"), "guidance": STR,
     "repair": {"after_seconds": INT},
 }
 TABLES = {
@@ -334,6 +335,9 @@ def check_semantics(t: dict, errors: list[str], *, base: bool) -> None:
             errors.append(f"{p}.default: {default!r} is a guarded value (confirm_values) and can never be a default")
         if confirm and not fdef.get("ask_when"):
             errors.append(f"{p}.ask_when: required when confirm_values is set (it is the reason the skill gives when it asks)")
+        if confirm and "set_only_if" in fdef:
+            errors.append(f"{p}.set_only_if: a guarded field (confirm_values) is answered by the user, "
+                          "never proposed by the session; drop one of the two")
 
     links = t.get("links", {})
     if isinstance(links, dict):

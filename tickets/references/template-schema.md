@@ -283,6 +283,13 @@ default = "unset"                    # "unset" or a value name
 confirm_values = ["Yes"]             # never set without the user's explicit yes
 ask_when = "the work touches regulated or personal data"
 
+[fields.effort]
+id = "Effort"
+kind = "select"
+values = { low = "low", high = "high" }
+set_only_if = "investigated"         # proposed every run; set only after an investigation
+guidance = "the tier that finishes the work, not the lowest that might"
+
 [fields.team]
 id = "customfield_00002"
 kind = "select"
@@ -294,6 +301,14 @@ repair = { after_seconds = 10 }      # automation overwrites it after create: wa
 - **`confirm_values`** makes a field *guarded*: the skill never sets one of
   these values by inference. It asks, with the field's `ask_when` text as the
   reason, and records the answer. Absence of an answer means unset.
+- **`set_only_if`** makes a field *proposed*, the way `[estimate]` is: the
+  skill picks a value for it on every run (step 5), following its
+  `guidance`, and the adapter writes it only when the work was investigated
+  (`"investigated"`) or always (`"always"`). An uninvestigated value is shown
+  as proposed only, never dropped silently. A field is either guarded or
+  proposed, never both.
+- **`guidance`** is the rule the skill applies when it proposes the field's
+  value. It travels in the resolved template, unlike a TOML comment.
 - **`repair`** marks a field that tracker automation is known to change after
   create. The adapter waits `after_seconds`, reads back, and repairs once
   (see the adapter contract).
@@ -421,6 +436,7 @@ project's workflow that a transition can reach from the one before.
 
 - a `[fields]` entry with `confirm_values` but no `ask_when` (the skill
   needs the reason to ask)
+- a `[fields]` entry with both `confirm_values` and `set_only_if`
 - `estimate.scale` of the wrong kind (integers for points, labels for size)
 
 An invalid template is treated as unreachable (one notice, then the

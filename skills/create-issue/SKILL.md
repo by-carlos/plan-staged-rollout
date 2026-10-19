@@ -99,7 +99,7 @@ never rendered or posted.
 {"tracker": "jira", "target": {"site": "...", "project": "KEY"},
  "type": "Story", "title": "...", "sections": {"In plain terms": "...", "Context": "..."},
  "labels": [], "fields": {},
- "draft_notes": {"confirmations": {}, "waivers": [], "investigated": false}}
+ "draft_notes": {"confirmations": {}, "waivers": [], "investigated": false, "read": []}}
 ```
 
 - Fill the template's sections in its order, following each section's
@@ -109,6 +109,14 @@ never rendered or posted.
 - **Labels:** only ones that already exist; never create one.
 - **Guarded fields** (a `[fields]` entry with `confirm_values`): leave them
   out. Only step 4 can record an answer for one.
+- **What was read:** list in `draft_notes.read` every file, path or system
+  actually read to ground the draft. A non-empty list counts as the
+  investigation for Size and every `set_only_if` field.
+- **Delegated drafting:** when a subagent drafts, its brief tells it to fill
+  `draft_notes.read` with what it read and to propose a value for every
+  `set_only_if` field (step 5) in `fields`. Never hard-code `investigated`
+  or `read` in the brief, and never tell it to leave proposed fields out:
+  that is how a run loses Size and Effort.
 - **AI prompt:** write one whenever an AI agent can do the work or a clear
   part of it (code, infrastructure, querying systems, assembling a document
   from data). Leave it out when it cannot (a decision, an approval, a
@@ -166,7 +174,8 @@ A short ticket, a simple ask or a clear source is never a reason to skip.
 1. Work out the answers: with a matrix, the row and column the author's
    answers point to (and `bump` when its condition holds); without one, a
    value from the scale by judgement. Set `investigated` true only when this
-   session actually read the code or system involved.
+   session actually read the code or system involved; reading a delegated
+   drafter recorded in `draft_notes.read` already counts, through `--draft`.
 2. Pick a **priority** from the template's scale, using its `rubric`. Any
    urgency in the ask lands here. Best effort: go above the default only
    when the impact is obvious from the ask (a backup that fails or does not
@@ -174,15 +183,23 @@ A short ticket, a simple ask or a clear source is never a reason to skip.
    reason in the preview; otherwise keep the default and do not ask.
 3. Write `answers.json`, for example
    `{"row": "some unknowns", "column": "2-3 days", "bump": false, "investigated": false, "priority": "Medium"}`,
-   and run `core estimate --template template.json answers.json > estimate.json`.
-4. Act on `outcome`:
+   and run `core estimate --template template.json --draft draft.json answers.json > estimate.json`.
+   When its `investigated` is true, set `draft_notes.investigated` true as
+   well: the adapters gate on the draft, not on `estimate.json`.
+4. **Proposed fields:** for each entry in the output's `proposed_fields`,
+   pick a value by its `guidance` and put it in the draft's `fields`, every
+   run, investigated or not. Never leave one out because the work was not
+   investigated: the adapter withholds it then and the preview says so. A
+   blank is only right when there is genuinely nothing to judge from, and
+   the preview names it.
+5. Act on `outcome`:
    - `estimate`: put `{"kind", "value"}` in the draft's `estimate`.
    - `timebox`: the value limits an investigation. Propose the ticket as a
      spike with that time box.
    - `split`: do not propose a number. Propose a split into smaller tickets,
      each with a one-line title and the acceptance criteria it takes over.
    - `impossible`: the answers contradict each other. Ask again.
-5. `set` false means the value is a proposal only: it appears in the
+6. `set` false means the value is a proposal only: it appears in the
    preview, not on a tracker field. `reason` says why. When
    `proposal_only` is true, say the team confirms the estimate.
 
@@ -197,6 +214,8 @@ Show the preview first, in its own message:
   will not be applied. Never show the draft's type unchecked.
 - every field that will be set; guarded fields show their recorded answer
   or "unset"
+- on GitHub, every board field from `build`: set, `proposal_only` with its
+  reason, or `unset`. A field in `unset` is named, never skipped
 - the body: `core render --template template.json draft.json > body.md`,
   shown as it will land
 - the review outcome: answers given, waivers, nits applied, gaps dropped
@@ -267,7 +286,8 @@ chat phrasing, no session asides.
 **Conversation:** the preview, the questions and the final report use the
 user's own conversational conventions. The final report leads with the
 ticket's title as a link, then its key, then the per-field verification
-outcome, what was proposed but not set, and any waiver. A dry run's report
+outcome, what was proposed but not set, every board field left blank (from
+`set-fields`'s message), and any waiver. A dry run's report
 says "nothing was posted" in its first line and gives the draft's path.
 
 ## Failure cases

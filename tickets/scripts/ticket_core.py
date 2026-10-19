@@ -8,7 +8,7 @@ the skill calls it as a CLI. Every subcommand takes the output of
 
     ticket_core.py check         --template T.json DRAFT.json
     ticket_core.py render        --template T.json DRAFT.json
-    ticket_core.py estimate      --template T.json ANSWERS.json
+    ticket_core.py estimate      --template T.json [--draft DRAFT.json] ANSWERS.json
     ticket_core.py review-prompt --template T.json DRAFT.json [--duplicates D.json] [--source S.txt] [--siblings TITLES.txt]
     ticket_core.py review-filter --template T.json REVIEW.json
     ticket_core.py review-skip   --work DIR --reason TEXT
@@ -28,6 +28,7 @@ A draft is a Ticket (references/adapter-contract.md) plus an optional
       "confirmations": {"<field key>": "<value name the user chose>"},
       "waivers": ["<check>: <why the user waived it>"],
       "investigated": true,
+      "read": ["<file, path or system actually read for this ticket>"],
       "provenance": {"tool": "Claude Code", "session": "<id>"},
       "source_key": "<key of the ticket this one is written from>"
     }
@@ -53,7 +54,7 @@ TICKET_KEYS = {
     "labels", "priority", "estimate", "fields", "parent", "links", "state",
     "assignee", "draft_notes",
 }
-NOTES_KEYS = {"confirmations", "waivers", "investigated", "provenance", "source_key"}
+NOTES_KEYS = {"confirmations", "waivers", "investigated", "read", "provenance", "source_key"}
 SEVERITIES = ("blocker", "gap", "nit")
 
 DATE_RE = re.compile(
@@ -97,6 +98,14 @@ def ai_prompt_of(t: dict, sections: dict) -> tuple[str | None, str | None]:
     return None, None
 
 
+def investigated(d: dict) -> bool:
+    """Whether the work behind a draft was investigated: the session said so,
+    or the draft records what was read for it (a delegated drafter's reading
+    counts; it travels in draft_notes.read)."""
+    notes = d.get("draft_notes") or {}
+    return bool(notes.get("investigated")) or bool(notes.get("read"))
+
+
 def effective_labels(t: dict, d: dict) -> list[str]:
     """The draft's labels plus the template's `[labels].always` (for example a
     marker that an AI drafted the ticket), each once, draft order first."""
@@ -138,6 +147,9 @@ def check_draft(t: dict, d: dict) -> tuple[list[str], list[str]]:
         if key not in NOTES_KEYS:
             errors.append(f"draft_notes.{key}: unknown key")
     confirmations = notes.get("confirmations") or {}
+    read = notes.get("read")
+    if read is not None and not (isinstance(read, list) and all(isinstance(x, str) and x.strip() for x in read)):
+        errors.append("draft_notes.read: must be a list of the files, paths or systems read")
 
     if t.get("tracker") and d.get("tracker") != t["tracker"]:
         errors.append(f"tracker: draft says {d.get('tracker')!r}, template is for {t['tracker']!r}")
@@ -347,10 +359,11 @@ def _pick(labels: list[str], answer, what: str) -> int:
     raise ValueError(f"{what}: {answer!r} is not one of {labels}")
 
 
-def estimate(t: dict, answers: dict) -> dict:
+def estimate(t: dict, answers: dict, draft: dict | None = None) -> dict:
     """Turn the author's answers into a proposal. Pure lookup and
     validation; the judgement (which row, which column, which value) is the
-    model's, made from the template's questions."""
+    model's, made from the template's questions. With the draft, the work
+    counts as investigated when either the answers or the draft say so."""
     est = t.get("estimate", {})
     kind = est.get("kind", "none")
     out: dict = {"kind": kind, "value": None, "outcome": "none", "field": est.get("field"),
@@ -389,8 +402,9 @@ def estimate(t: dict, answers: dict) -> dict:
                 out["outcome"], out["value"] = "estimate", cell
 
         settable = out["outcome"] in ("estimate", "timebox") and bool(out["field"])
-        investigated = bool(answers.get("investigated"))
-        if est.get("set_only_if", "investigated") == "investigated" and not investigated:
+        was_investigated = bool(answers.get("investigated")) or bool(draft and investigated(draft))
+        out["investigated"] = was_investigated
+        if est.get("set_only_if", "investigated") == "investigated" and not was_investigated:
             settable = False
             out["reason"] += "; not investigated, so proposed only"
         if not out["field"]:
@@ -409,6 +423,11 @@ def estimate(t: dict, answers: dict) -> dict:
     else:
         out["priority"] = {"value": chosen, "reason": (pr.get("rubric") or {}).get(chosen, "")}
     out["priority"]["scale"] = pr.get("scale")
+    out["proposed_fields"] = {
+        key: {"id": fdef.get("id"), "guidance": fdef.get("guidance", ""),
+              "set_only_if": fdef["set_only_if"],
+              "value": ((draft or {}).get("fields") or {}).get(key)}
+        for key, fdef in (t.get("fields") or {}).items() if "set_only_if" in fdef}
     return out
 
 
@@ -626,6 +645,8 @@ def main(argv: list[str] | None = None) -> int:
         p = sub.add_parser(name)
         p.add_argument("--template", required=True)
         p.add_argument("input", help="JSON file, or - for stdin")
+        if name == "estimate":
+            p.add_argument("--draft", help="draft.json: its draft_notes count towards 'investigated'")
         if name == "review-prompt":
             p.add_argument("--duplicates")
             p.add_argument("--source", help="the material the ask was drafted from (text file)")
@@ -670,7 +691,8 @@ def main(argv: list[str] | None = None) -> int:
     data = load_json(args.input)
     if args.op == "estimate":
         try:
-            print(json.dumps(estimate(t, data), indent=2, ensure_ascii=False))
+            draft = load_json(args.draft) if args.draft else None
+            print(json.dumps(estimate(t, data, draft), indent=2, ensure_ascii=False))
         except ValueError as exc:
             print(json.dumps({"errors": [str(exc)]}))
             return 1

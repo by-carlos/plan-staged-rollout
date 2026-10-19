@@ -152,6 +152,35 @@ class BuildTests(AdapterCase):
         self.assertEqual([p["what"] for p in out["proposal_only"]], ["Size"])
         self.assertIn("not investigated", out["proposal_only"][0]["reason"])
 
+    def effort_gated_template(self) -> str:
+        resolved = json.loads(Path(self.routed_template()).read_text(encoding="utf-8"))
+        resolved["template"]["fields"]["effort"]["set_only_if"] = "investigated"
+        return self.write("template-gated.json", resolved)
+
+    def test_uninvestigated_gated_field_is_proposed_not_set(self):
+        draft = fixture("draft-routed.json")
+        draft["draft_notes"]["investigated"] = False
+        code, out = self.build(draft, self.effort_gated_template())
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out["board"]["values"], {"Priority": "P1"})
+        self.assertEqual([p["what"] for p in out["proposal_only"]], ["Size", "Effort"])
+
+    def test_a_delegated_drafters_reading_counts_as_investigated(self):
+        draft = fixture("draft-routed.json")
+        draft["draft_notes"]["investigated"] = False
+        draft["draft_notes"]["read"] = ["reports/monthly_sales.sql"]
+        code, out = self.build(draft, self.effort_gated_template())
+        self.assertEqual(code, 0, out)
+        self.assertEqual(out["board"]["values"], {"Priority": "P1", "Size": "S", "Effort": "low"})
+        self.assertEqual(out["proposal_only"], [])
+
+    def test_a_board_field_the_draft_leaves_blank_is_listed_as_unset(self):
+        draft = fixture("draft-routed.json")
+        draft["fields"] = {}
+        code, out = self.build(draft)
+        self.assertEqual(code, 0, out)
+        self.assertEqual([u["what"] for u in out["unset"]], ["Effort"])
+
     def test_estimate_above_the_ceiling_fails_the_build(self):
         resolved = json.loads(Path(self.routed_template()).read_text(encoding="utf-8"))
         template = resolved["template"]
@@ -289,6 +318,18 @@ class BoardTests(AdapterCase):
         self.assertEqual(len(self.fake.seen("project item-edit")), 3)
         self.assertEqual({f["name"] for f in out["fields"]}, {"board.Priority", "board.Size", "board.Effort"})
         self.assertEqual(self.fake.seen("item-list"), [])
+
+    def test_a_blank_board_field_is_named_in_the_verified_result(self):
+        self.board_routes()
+        path = self.payload()
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        del data["board"]["values"]["Effort"]
+        data["unset"] = [{"what": "Effort", "reason": "the draft has no value for it"}]
+        code, out = self.run_op("set-fields", "--payload", self.write("p-blank.json", data),
+                                "--number", 42, "--confirm")
+        self.assertEqual((code, out["status"]), (0, "VERIFIED"), out)
+        self.assertIn("Left blank on the board: Effort.", out["message"])
+        self.assertEqual([u["what"] for u in out["unset"]], ["Effort"])
 
     def test_stale_cache_is_refreshed_once(self):
         stale = fixture("project-field-list.json")

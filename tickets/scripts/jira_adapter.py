@@ -210,7 +210,7 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
     ecfg = template.get("estimate", {})
     if estimate.get("value") is not None and ecfg.get("kind", "none") != "none":
         evalue = estimate["value"]
-        if ecfg.get("set_only_if") == "investigated" and not notes.get("investigated"):
+        if ecfg.get("set_only_if") == "investigated" and not core.investigated(ticket):
             warnings.append("estimate: not set, the template sets it only after an investigation")
         else:
             efield = ecfg.get("field")
@@ -220,6 +220,11 @@ def build(ticket: dict, template: dict, env: dict) -> tuple[dict, list[str], lis
                 values[efield] = evalue
                 if ecfg.get("comment"):
                     comment = ecfg["comment"].replace("{guide}", ecfg.get("guide", ""))
+
+    for key in list(values):
+        if (fdefs.get(key) or {}).get("set_only_if") == "investigated" and not core.investigated(ticket):
+            warnings.append(f"fields.{key}: not set, the template sets it only after an investigation")
+            del values[key]
 
     for key, fdef in fdefs.items():
         default = fdef.get("default", "unset")

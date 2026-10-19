@@ -140,6 +140,8 @@ language once the plugin is installed.
 | [FAQ](docs/faq.md) | is my plan saved? How do I resume, skip, undo or abandon? |
 | [Reference](docs/reference.md) | you want every flag, status and `.plan/` file |
 | [Why staged rollouts](docs/why.md) | you want the problem it solves, when not to use it, and how it compares |
+| [Pairing with superpowers brainstorming](docs/superpowers-brainstorming.md) | you brainstorm designs with the superpowers plugin and want to know what to do with its spec |
+| [Single session or many](docs/single-vs-multi-session.md) | you are deciding between one long session and a staged rollout |
 
 ## Contributing
 

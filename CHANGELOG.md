@@ -8,6 +8,28 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **A ticket-template example.** `examples/tickets/` holds a GitHub team
+  template, the draft `create-issue` produces against it and the rendered
+  body, with commands to validate and render them. It is the third working
+  example.
+- **Two new docs pages.** "Pairing with superpowers brainstorming" says what
+  to do with the spec that skill writes and where to stop before
+  `writing-plans`; "Single session or many" compares running a build in one
+  session with running it as stages. Both are linked from the README and from
+  "How it compares" in the Why page.
+
+### Changed
+
+- **The README discloses the hooks the plugin installs.** A new "What this
+  plugin installs" section covers the session-start hook, `gh-body-guard` and
+  `tracker-write-guard`, and says the plugin collects and sends no data. The
+  plugin description, in `plugin.json` and the marketplace listing, now names
+  the session-start hook and the command guards.
+
 ## [0.14.1] - 2026-10-19
 
 ### Added

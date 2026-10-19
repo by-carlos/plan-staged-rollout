@@ -79,3 +79,52 @@ for the full mechanism.
   throwaway repository (two automatic stages, one `gate: human` stage, and a
   closeout), plus `verify_run.py`, which makes the run's pass/fail a command
   result rather than a transcript to read.
+
+## [`tickets/`](tickets/) — a custom ticket template and the draft it produces
+
+The other two examples are about plans. This one covers the ticket skills
+(`create-issue` and `work-issue`, see [Tickets](../docs/tickets.md)): a small
+team template and one filled draft written against it.
+
+| File | What it is |
+|---|---|
+| [`my-team.toml`](tickets/my-team.toml) | A GitHub team template in the format [Customizing the ticket template](../docs/ticket-templates.md) documents. It extends the built-in default and states only what differs: 60-character titles, task types without Story, three priorities, and one extra optional section, "Rollout notes". |
+| [`draft.json`](tickets/draft.json) | A draft of the kind `create-issue` produces after its floor test and drafting step, for a made-up bug in a made-up repo. Its sections match the template. |
+| [`body.md`](tickets/body.md) | The ticket body exactly as `create-issue` renders it from the draft, which is what would be posted. |
+
+### Check it yourself
+
+From the repository root, with Python 3.11 or later (use `python` for
+`python3` on Windows):
+
+```bash
+python3 tickets/scripts/ticket_template.py validate examples/tickets/my-team.toml --tracker github
+```
+
+That is the loader the skills use, and it prints `OK` with the template chain.
+To see the rest, resolve the template into a file and run the draft through
+the same checks `create-issue` runs:
+
+```bash
+python3 tickets/scripts/ticket_template.py resolve --tracker github --template examples/tickets/my-team.toml > resolved.json
+python3 tickets/scripts/ticket_core.py check --template resolved.json examples/tickets/draft.json
+python3 tickets/scripts/ticket_core.py render --template resolved.json examples/tickets/draft.json
+```
+
+`check` prints `"ok": true` with no errors or warnings, and `render` prints
+`body.md`. Nothing here touches GitHub: posting is a separate step, and only
+after you approve it.
+
+### What to notice
+
+- **A template states only the difference.** `extends = "default"` keeps
+  everything not mentioned. Arrays replace rather than merge, so adding one
+  section means restating the whole `body.sections` list.
+- **Priorities follow the tracker.** The `[per_tracker.github.priority]` table
+  swaps the scale for GitHub only; a Jira run of the same template would keep
+  the default's.
+- **The draft carries its own notes.** `draft_notes.read` records what the
+  drafter looked at, which is what lets the size and effort proposals be set
+  instead of left blank. The notes are never posted.
+- **All names are placeholders.** The repository, the bug and the label are
+  invented; nothing in this folder refers to a real project.

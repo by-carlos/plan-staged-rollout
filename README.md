@@ -77,6 +77,29 @@ then **Plugins** → **Add**. Enter `by-carlos/plan-staged-rollout`, click
 There is nothing to configure. Other routes, full requirements and updating:
 [Install and update](docs/install.md).
 
+## What this plugin installs
+
+Besides its commands and skills, the plugin registers three hooks (small
+scripts that Claude Code runs on its own at set moments). They are listed
+here so nothing runs in your session without your knowing.
+
+| Hook | Runs | What it does |
+|---|---|---|
+| **Session start** | When a session starts, or after `/clear` or a compaction | If the repo root has a `.plan/` folder holding both `LEDGER.md` and `PLAN.md`, it adds one short plain-text note to the session: which stages can run now, each with its recommended model and effort and the command to run it. The note tells Claude to *offer* the next step and wait for you, never to start it. With no such `.plan/` it prints nothing. It reads only your own plan files (and asks git for the repo root), makes no network call, and always exits quietly. |
+| **`gh-body-guard`** | Before each `Bash` command | Denies `gh issue` or `gh pr` `create`, `comment` and `edit` when the body comes from `--body-file`, `-F` or `--body "@path"`, which post a garbled or literal-path body. The denial says why and names the plugin's adapter as the alternative. Any other command is left alone. |
+| **`tracker-write-guard`** | Before each `Bash` command and each Jira create or write tool call | Does nothing unless you set `guard_tracker_creates = true` in `plan-staged-rollout.toml`. With it on, it denies a ticket create that did not come through `create-issue`. |
+
+Both guards only ever *deny* or stay silent; they never approve a command, so
+your own permission rules still apply to everything. If Python 3.11 or later
+or `bash` is missing, they step aside and the command runs as if they were not
+there. Requirements per part are in the
+[prerequisites table](docs/install.md#where-it-runs).
+
+**Data.** The plugin collects no personal data, sends nothing anywhere of its
+own, and keeps nothing outside your repository (`.plan/`) and your machine.
+The ticket skills write to GitHub through your own signed-in `gh`, and to Jira
+through the Atlassian tools you have connected yourself.
+
 ## Try it
 
 1. Open a session in a repo that has a big job to do.
@@ -117,6 +140,8 @@ language once the plugin is installed.
 | [FAQ](docs/faq.md) | is my plan saved? How do I resume, skip, undo or abandon? |
 | [Reference](docs/reference.md) | you want every flag, status and `.plan/` file |
 | [Why staged rollouts](docs/why.md) | you want the problem it solves, when not to use it, and how it compares |
+| [Pairing with superpowers brainstorming](docs/superpowers-brainstorming.md) | you brainstorm designs with the superpowers plugin and want to know what to do with its spec |
+| [Single session or many](docs/single-vs-multi-session.md) | you are deciding between one long session and a staged rollout |
 
 ## Contributing
 

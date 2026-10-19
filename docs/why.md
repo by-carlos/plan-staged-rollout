@@ -105,6 +105,11 @@ to adopt. It composes with what you already run: superpowers handles the
 within-session process (brainstorming, TDD, verification); this handles the
 cross-session structure.
 
+Two pages go deeper: [Pairing with superpowers brainstorming](superpowers-brainstorming.md)
+says what to do with the spec brainstorming writes, and
+[Single session or many](single-vs-multi-session.md) compares running a build
+in one session with running it as stages.
+
 ## Anti-patterns this exists to prevent
 
 - Restating decisions in prompts or stage files (copies drift — point at

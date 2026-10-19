@@ -29,6 +29,24 @@ elsewhere. See 0.4.0 for the split.
   `tracker-write-guard`, and says the plugin collects and sends no data. The
   plugin description, in `plugin.json` and the marketplace listing, now names
   the session-start hook and the command guards.
+## [0.14.1] - 2026-10-19
+
+### Added
+
+- **Opt-in gap-review tally for `create-issue`.** With `CLAUDE_EFFORT_LOG`
+  set, each run appends one line at the approval gate through the new
+  `effortlog.py tally`: project, ticket key (or "not posted"), whether the
+  review ran or was skipped, blockers, gaps, questions asked, nits applied,
+  gaps dropped, the gate outcome and whether the posted text changed. It
+  shares the log and switch `work-issue` and `stage-run` already use, writes
+  nothing while the variable is unset, and never stops the run when it fails.
+
+### Fixed
+
+- **`effortlog.py` no longer fails to load.** 0.14.0 shipped the script with
+  two unterminated string literals, so every `effortlog.py` call (`check` and
+  `log`, from `work-issue` and `stage-run`) died with a `SyntaxError`. A test
+  now imports the script on every CI run.
 
 ## [0.14.0] - 2026-10-19
 
@@ -1253,7 +1271,8 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
-[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.14.0...HEAD
+[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.14.1...HEAD
+[0.14.1]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.14.1
 [0.14.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.14.0
 [0.13.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.13.0
 [0.12.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.12.0

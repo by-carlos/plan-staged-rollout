@@ -1,0 +1,34 @@
+# A small custom ticket template for a GitHub team. It extends the built-in
+# default and states only what differs; see docs/ticket-templates.md.
+#
+# Point the skills at it with `ticket_template = "templates/my-team.toml"` in
+# plan-staged-rollout.toml, or try it without configuring anything:
+#   ticket_template.py validate examples/tickets/my-team.toml --tracker github
+
+schema = 1
+name = "my-team"
+description = "Example team template: shorter titles, a Rollout notes section, three priorities."
+extends = "default"
+
+[title]
+max_length = 60
+
+[types]
+allowed = ["Task", "Bug", "Spike"]
+default = "Task"
+
+[body]
+# Arrays replace the default's, so the whole section list is restated. The
+# only difference from the default is the optional "Rollout notes" section.
+sections = [
+  { title = "In plain terms", required = true, no_identifiers = true, guidance = "3-5 sentences a newcomer understands: what is wanted and why. No ticket keys, ids, paths or codenames." },
+  { title = "Context", required = true, guidance = "Why this work exists and the evidence. Summarize any linked thread; do not only link it." },
+  { title = "Rollout notes", required = false, guidance = "Anything the person shipping this needs to know: flags, ordering, who to tell." },
+  { title = "Acceptance Criteria", required = true, kind = "acceptance", guidance = "A numbered list. Each one names a result someone other than the author can observe." },
+  { title = "AI prompt", required = false, kind = "ai_prompt", guidance = "Self-contained instructions an AI agent can follow, ending with how to verify the change." },
+]
+
+[per_tracker.github.priority]
+scale = ["High", "Normal", "Low"]
+default = "Normal"
+rubric = { High = "blocks other work or many people", Normal = "normal planned work", Low = "useful, can wait" }

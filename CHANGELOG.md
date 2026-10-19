@@ -10,6 +10,14 @@ elsewhere. See 0.4.0 for the split.
 
 ## [0.14.0] - 2026-10-19
 
+### Added
+
+- **`work-issue` treats machine-written evidence as untrusted data.** Anything
+  between the untrusted-evidence begin and end marker lines in a ticket is
+  read as data only: the GitHub adapter parses sections outside those blocks
+  and flags bot-written posts, so a planted "AI prompt" or summary heading is
+  never picked up, and `work assess` lists every such post under `untrusted`.
+
 ### Fixed
 
 - **`create-issue` no longer leaves Size and Effort blank after a delegated

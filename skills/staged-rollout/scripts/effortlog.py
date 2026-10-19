@@ -6,6 +6,8 @@ Two jobs, deliberately kept in a script rather than in skill prose:
   check  Read *this* session's own transcript, total the current context, and
          say whether it has blown a generous budget for the declared scope.
   log    Append one NDJSON row describing how the run went.
+  tally  Append one NDJSON row for a create-issue run: what the gap review
+         produced and whether it changed the ticket. Same log, same switch.
 
 Why a script. A skill could in principle instruct the model to do the same
 arithmetic inline, but the session that most needs this check is the one that
@@ -37,6 +39,7 @@ Exit codes
 ----------
   check   0 under budget, 3 over budget (the trip), 2 usage/IO failure
   log     0 written or deliberately skipped, 2 usage/IO failure
+  tally   0 written or deliberately skipped, 2 usage/IO failure
 """
 
 from __future__ import annotations
@@ -210,7 +213,10 @@ def cmd_log(args: argparse.Namespace) -> int:
         "session_id": session_id(),
     }
 
-    path = Path(destination)
+    return append_row(Path(destination), row)
+
+
+def append_row(path: Path, row: dict) -> int:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         with path.open("a", encoding="utf-8", newline="\n") as handle:
@@ -220,6 +226,63 @@ def cmd_log(args: argparse.Namespace) -> int:
 
     print(f"effortlog: appended to {path}")
     return 0
+
+
+def read_json(path: Path) -> dict | None:
+    """The file's object, or None when it does not exist. A file that exists
+    but cannot be read raises, so a corrupt run record is reported, not hidden."""
+    if not path.is_file():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, dict):
+        raise ValueError(f"{path.name} is not a JSON object")
+    return data
+
+
+def project_of(draft: dict | None) -> str | None:
+    """`owner/repo` for GitHub, `site/KEY` for Jira, from the draft's target."""
+    target = (draft or {}).get("target") or {}
+    if target.get("repo"):
+        return target["repo"]
+    if target.get("project"):
+        return "/".join(part for part in (target.get("site"), target["project"]) if part)
+    return None
+
+
+def cmd_tally(args: argparse.Namespace) -> int:
+    destination = os.environ.get("CLAUDE_EFFORT_LOG")
+    if not destination:
+        print("effortlog: CLAUDE_EFFORT_LOG unset, nothing logged")
+        return 0
+
+    work = Path(args.work)
+    try:
+        draft = read_json(work / "draft.json")
+        filtered = read_json(work / "review-filtered.json")
+        skipped = read_json(work / "review-skipped.json")
+    except (OSError, ValueError) as exc:
+        return fail(f"could not read the run folder {work}: {exc}")
+
+    questions = (filtered or {}).get("questions") or []
+    nits = (filtered or {}).get("nits") or []
+    review = "ran" if filtered is not None else "skipped" if skipped is not None else "none"
+    row = {
+        "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "source": "create-issue",
+        "project": project_of(draft),
+        "ticket": args.ticket or "not posted",
+        "review": review,
+        "skip_reason": (skipped or {}).get("reason"),
+        "blockers": int((filtered or {}).get("blockers") or 0),
+        "gaps": sum(1 for q in questions if q.get("severity") == "gap"),
+        "questions_asked": len(questions),
+        "nits_applied": len(nits),
+        "gaps_dropped": len((filtered or {}).get("gaps_dropped") or []),
+        "gate": args.gate,
+        "changed_text": bool(nits) or bool(args.answers_edited),
+        "session_id": session_id(),
+    }
+    return append_row(Path(destination), row)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -242,6 +305,18 @@ def build_parser() -> argparse.ArgumentParser:
     log.add_argument("--tripped", action="store_true", help="the breaker fired during this run")
     log.add_argument("--note", help="one free-text line for a human reading this later")
     log.set_defaults(func=cmd_log)
+
+    tally = subparsers.add_parser("tally", help="append one create-issue gap-review row")
+    tally.add_argument("--work", required=True, help="the run's work folder")
+    tally.add_argument("--gate", required=True, choices=["posted", "edited-first", "not-posted", "dry-run"])
+    tally.add_argument("--ticket", help="key or number of the posted ticket; omitted means not posted")
+    tally.add_argument(
+        "--answers-edited",
+        dest="answers_edited",
+        action="store_true",
+        help="an answered question changed the draft (applied nits are counted from the review itself)",
+    )
+    tally.set_defaults(func=cmd_tally)
 
     return parser
 

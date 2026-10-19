@@ -10,6 +10,16 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **Opt-in gap-review tally for `create-issue`.** With `CLAUDE_EFFORT_LOG`
+  set, each run appends one line at the approval gate through the new
+  `effortlog.py tally`: project, ticket key (or "not posted"), whether the
+  review ran or was skipped, blockers, gaps, questions asked, nits applied,
+  gaps dropped, the gate outcome and whether the posted text changed. It
+  shares the log and switch `work-issue` and `stage-run` already use, writes
+  nothing while the variable is unset, and never stops the run when it fails.
+
 ### Fixed
 
 - **`create-issue` no longer leaves Size and Effort blank after a delegated

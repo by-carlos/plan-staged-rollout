@@ -29,6 +29,7 @@ elsewhere. See 0.4.0 for the split.
   `tracker-write-guard`, and says the plugin collects and sends no data. The
   plugin description, in `plugin.json` and the marketplace listing, now names
   the session-start hook and the command guards.
+
 ## [0.14.1] - 2026-10-19
 
 ### Added

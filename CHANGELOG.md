@@ -8,6 +8,25 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **Opt-in gap-review tally for `create-issue`.** With `CLAUDE_EFFORT_LOG`
+  set, each run appends one line at the approval gate through the new
+  `effortlog.py tally`: project, ticket key (or "not posted"), whether the
+  review ran or was skipped, blockers, gaps, questions asked, nits applied,
+  gaps dropped, the gate outcome and whether the posted text changed. It
+  shares the log and switch `work-issue` and `stage-run` already use, writes
+  nothing while the variable is unset, and never stops the run when it fails.
+
+### Fixed
+
+- **`effortlog.py` no longer fails to load.** 0.14.0 shipped the script with
+  two unterminated string literals, so every `effortlog.py` call (`check` and
+  `log`, from `work-issue` and `stage-run`) died with a `SyntaxError`. A test
+  now imports the script on every CI run.
+
 ## [0.14.0] - 2026-10-19
 
 ### Added

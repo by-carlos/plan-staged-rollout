@@ -219,10 +219,8 @@ def cmd_log(args: argparse.Namespace) -> int:
 def append_row(path: Path, row: dict) -> int:
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        with path.open("a", encoding="utf-8", newline="
-") as handle:
-            handle.write(json.dumps(row, ensure_ascii=True) + "
-")
+        with path.open("a", encoding="utf-8", newline="\n") as handle:
+            handle.write(json.dumps(row, ensure_ascii=True) + "\n")
     except OSError as exc:
         return fail(f"could not append to {path}: {exc}")
 

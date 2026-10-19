@@ -225,6 +225,26 @@ Then `AskUserQuestion`, header `Post it?`, options "Post it
 with the change; "Don't post" ends the run with the draft's path. A dry run
 ends at the preview instead.
 
+**Tally line (opt-in).** Once per run, on the first gate answer (or at the
+preview, for a dry run), record what the gap review produced and whether it
+changed the ticket:
+
+```
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" tally   --work <folder> --gate <posted|edited-first|not-posted|dry-run>   [--ticket <key or number>] [--answers-edited]
+```
+
+- `--gate` is the answer: "Post it" is `posted`, "Edit first" is
+  `edited-first`, "Don't post" is `not-posted`, a dry run is `dry-run`. An
+  edited draft that returns to the gate writes no second line.
+- `--ticket` is passed on `posted` only, after step 7 returns the key; without
+  it the line reads "not posted".
+- `--answers-edited` is passed when an answered question (step 4.5, 4.8)
+  changed the draft. Applied nits are counted from `review-filtered.json`.
+  The script reads that file, `review-skipped.json` and `draft.json` from
+  the work folder; do not re-read or re-judge the draft for it.
+- With `CLAUDE_EFFORT_LOG` unset, the script writes nothing and exits 0. A
+  failure is reported in one line and never stops or alters the run.
+
 ## 7. Post
 
 Only after "Post it". Through the tracker's adapter
@@ -308,3 +328,4 @@ says "nothing was posted" in its first line and gives the draft's path.
 | A relayed create denied as already used (retry after a failed call) | Run `create --confirm` again; the adapter issues a fresh call spec. |
 | Create outcome unknown | Duplicate search on the exact title before any retry. |
 | Read-back mismatch after the one repair | `FAILED`, warning naming each field. |
+| `effortlog.py tally` fails, or `CLAUDE_EFFORT_LOG` is unset | One line and the run carries on. Unset is the expected state; a lost row is not a failed run. |

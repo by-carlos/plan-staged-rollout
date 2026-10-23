@@ -125,6 +125,18 @@ class On(GuardCase):
             write_guard.run_hook()
         self.assertEqual(json.loads(out.getvalue())["hookSpecificOutput"]["permissionDecision"], "deny")
 
+    def test_hook_cli_reads_utf8_even_on_a_cp1252_stdin(self):
+        args = {"summary": "x", "description": "## ℹ️ In plain terms"}
+        self.assertTrue(write_guard.issue_token({"tool": V2 + "createJiraIssue", "arguments": args}))
+        event = json.dumps({"tool_name": V2 + "createJiraIssue", "tool_input": args}, ensure_ascii=False)
+        stdin = io.TextIOWrapper(io.BytesIO(event.encode("utf-8")), encoding="cp1252", errors="surrogateescape")
+        stdout = io.TextIOWrapper(io.BytesIO(), encoding="cp1252")
+        with unittest.mock.patch("sys.stdin", stdin), unittest.mock.patch("sys.stdout", stdout):
+            write_guard.main(["hook"])
+            stdout.flush()
+            printed = stdout.buffer.getvalue()
+        self.assertEqual(printed, b"", "a token issued for this exact call should pass with no decision")
+
 
 class Gate(GuardCase):
     def test_reports_each_missing_step(self):

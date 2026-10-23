@@ -207,6 +207,9 @@ def run_hook() -> int:
 
 def main(argv: list[str] | None = None) -> int:
     sys.stdout.reconfigure(encoding="utf-8")
+    # The hook event is UTF-8 JSON. Windows otherwise decodes a piped stdin as
+    # cp1252, so an emoji in a ticket body crashes the token check.
+    sys.stdin.reconfigure(encoding="utf-8")
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = ap.add_subparsers(dest="op", required=True)
     sub.add_parser("hook", help="decide one PreToolUse event read from stdin")

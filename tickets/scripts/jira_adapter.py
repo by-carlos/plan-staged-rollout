@@ -1258,9 +1258,9 @@ def cmd_set_fields(args) -> tuple[int, dict]:
         template = load_template(args.template)
         env = load_json(args.env)
         req = load_json(args.fields)
-        draft = {"target": {"site": args.site, "project": args.key.split("-")[0]},
+        draft = {"tracker": "jira", "target": {"site": args.site, "project": args.key.split("-")[0]},
                  "title": "-", "type": "-", "fields": req.get("fields", {}),
-                 "confirmations": req.get("confirmations", {})}
+                 "draft_notes": {"confirmations": req.get("confirmations", {})}}
         trimmed = {"fields": template.get("fields", {}), "links": template.get("links", {})}
         payload, errors, _ = build(draft, trimmed, env)
         if errors:

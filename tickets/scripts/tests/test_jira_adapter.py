@@ -166,6 +166,30 @@ class UpdateTests(AdapterCase):
         self.assertFalse([c for c in body["calls"] if "link" in Path(c["result_file"]).stem], body)
 
 
+class SetFieldsTests(AdapterCase):
+    def set_fields(self, request, run="sf"):
+        return run_cli("set-fields", "--run", self.dir / run, "--key", "ABC-7", "--site", "example.atlassian.net",
+                       "--env", self.env_path, "--template", self.template_path,
+                       "--fields", self.write(f"{run}.json", request), "--confirm")[1]
+
+    def edit_fields(self, body):
+        self.assertEqual(body["status"], "RELAY", body)
+        call = body["calls"][0]
+        self.assertEqual((call["tool"], call["arguments"]["issueIdOrKey"]), (V2 + "editJiraIssue", "ABC-7"))
+        return call["arguments"]["fields"]
+
+    def test_story_points_build_an_edit(self):
+        body = self.set_fields({"fields": {"story_points": 3}})
+        self.assertEqual(self.edit_fields(body)["customfield_00000"], 3)
+
+    def test_guarded_value_needs_and_takes_its_confirmation(self):
+        body = self.set_fields({"fields": {"sensitive_review": "Yes"}}, run="sf-a")
+        self.assertEqual(body["status"], "INVALID", body)
+        body = self.set_fields({"fields": {"sensitive_review": "Yes"},
+                                "confirmations": {"sensitive_review": "Yes"}}, run="sf-b")
+        self.assertEqual(self.edit_fields(body)["customfield_00001"], {"id": "90001"})
+
+
 class BuildTests(AdapterCase):
     def test_valid_draft_builds_v2_call(self):
         code, body = self.build_run()

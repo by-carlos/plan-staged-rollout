@@ -111,9 +111,11 @@ never rendered or posted.
   threshold or a definition the user did not ask for: each one becomes a
   review finding the user has to answer or delete. Finding what is missing
   is the gap review's job.
-- **Type:** the template's `[types].default`, unless the user named a type.
-  Never pick another by judgement: a type can change which fields the
-  tracker accepts, and a create with a field its screen lacks fails.
+- **Type:** the template's `[types].default`, unless the user named a type
+  (a bug report names the template's bug type), the ask rewrites an
+  existing ticket (keep its type) or step 5 proposes a spike. Never pick
+  another by judgement: a type can change which fields the tracker accepts,
+  and a create with a field its screen lacks fails.
 - **Title:** follows `[title]`; a verb first by default; no dates or
   urgency words (urgency goes to priority).
 - **Labels:** only ones that already exist; never create one.

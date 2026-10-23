@@ -88,7 +88,9 @@ Two questions, before any draft exists:
    urgent) and the **place** (system, repo or component). Ask for every
    missing one in a single message, together with any of the template's
    `estimate.matrix.questions` the ask leaves open. Never invent an answer;
-   what stays unknown stays unknown in the draft.
+   what stays unknown stays unknown in the draft. Ask nothing else here: a
+   detail the draft can mention as unknown (where an old script lives, who
+   holds a document) is written as unknown, not asked.
 
 ## 3. Draft
 
@@ -104,6 +106,14 @@ never rendered or posted.
 
 - Fill the template's sections in its order, following each section's
   `guidance`. Leave an optional section out rather than writing filler.
+- **Scope:** the draft carries what the ask and the source say, and nothing
+  the drafter thought of. Never add an acceptance criterion, a safeguard, a
+  threshold or a definition the user did not ask for: each one becomes a
+  review finding the user has to answer or delete. Finding what is missing
+  is the gap review's job.
+- **Type:** the template's `[types].default`, unless the user named a type.
+  Never pick another by judgement: a type can change which fields the
+  tracker accepts, and a create with a field its screen lacks fails.
 - **Title:** follows `[title]`; a verb first by default; no dates or
   urgency words (urgency goes to priority).
 - **Labels:** only ones that already exist; never create one.
@@ -155,6 +165,12 @@ A short ticket, a simple ask or a clear source is never a reason to skip.
    missing link name) and say how many others were not asked. The filter
    has already set every finding to its rubric severity;
    `reviewer_severity` shows where the reviewer said otherwise.
+   Before asking, drop every question that the ask, the source or this
+   session already answers (a term that is a label on the parent, a fact the
+   user stated) and fix the draft from that answer instead; say in the
+   preview how many were settled this way. Give each question you do ask a
+   proposed default, and say once that an unanswered question takes its
+   default.
 6. A **guarded-field** question goes through `AskUserQuestion`, using the
    filter's question text unchanged. Options: each of the field's values,
    plus "Not sure, leave it unset (Recommended)". Record
@@ -167,7 +183,12 @@ A short ticket, a simple ask or a clear source is never a reason to skip.
 7. Every **blocker** must be answered or explicitly waived before the
    approval gate. A waiver goes in `draft_notes.waivers` as
    `"<check>: <reason>"`, never in the ticket body.
-8. Update the draft from the answers and run `check` again.
+8. Update the draft from the answers and run `check` again. When the user
+   answers only some questions, apply the proposed defaults to the rest and
+   go on to the estimate; never put a question to the user twice. A
+   blocker's default counts as its answer for step 7, and the preview names
+   each default applied. Guarded
+   fields are the exception: no answer leaves them unset (step 4.6).
 
 ## 5. Estimate
 
@@ -253,6 +274,9 @@ Only after "Post it". Through the tracker's adapter
 --confirm`, `link --confirm` and `comment --confirm` (the estimate comment,
 only when `estimate.json` has `set` true and a `comment`). `build` takes the
 work folder's `draft.json` and `template.json`, never copies elsewhere.
+Run each op as its own Bash call, never chained with `;`, `&&` or a pipe:
+a permission check judges a chained line as a whole, and one denial
+stops the whole run.
 
 - **Jira (relay transport):** when the adapter prints a call spec, make
   exactly that tool call with its `arguments` unchanged and save the raw

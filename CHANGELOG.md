@@ -29,6 +29,24 @@ elsewhere. See 0.4.0 for the split.
   `tracker-write-guard`, and says the plugin collects and sends no data. The
   plugin description, in `plugin.json` and the marketplace listing, now names
   the session-start hook and the command guards.
+- **`create-issue` asks less.** The draft keeps the template's default issue
+  type unless the user names one, and adds no acceptance criterion or
+  safeguard the ask did not contain. Questions the ask or the session already
+  answer are settled in the draft instead of asked; every question carries a
+  proposed default, a partial reply takes the defaults for the rest, and no
+  question is asked twice. Adapter ops run as separate Bash calls, so one
+  permission denial no longer stops a chained detect, build and duplicate
+  search.
+
+### Fixed
+
+- **The tracker write guard no longer blocks creates on Windows.** It decoded
+  the hook event with the console code page, so a ticket body with an emoji
+  crashed the token check and the create was denied. It now reads stdin as
+  UTF-8.
+- **Jira `set-fields` works.** It built its edit draft without a tracker and
+  with `confirmations` outside `draft_notes`, so every call failed its own
+  validation and nothing was sent.
 
 ## [0.14.1] - 2026-10-19
 

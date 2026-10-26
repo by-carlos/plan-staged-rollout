@@ -20,9 +20,9 @@ and records them.
 
 ## Steps
 
-- [ ] Read every ledger row's notes end to end; list every loose end, gotcha,
+- [x] Read every ledger row's notes end to end; list every loose end, gotcha,
   shortcut, and known gap surfaced across all stages.
-- [ ] For each loose end, resolve it into exactly one outcome:
+- [x] For each loose end, resolve it into exactly one outcome:
   - **New stage in this plan** — add a **PLAN.md stage index row** (with its
     `depends` / `mode` / `exec` / `model` / `effort` / `gate` flags — the index is the
     authoritative home, so `/stage-run`'s weight check and next-runnable logic
@@ -32,14 +32,14 @@ and records them.
     final PR body as follow-up; it does not block closeout.
   - **Accepted, won't fix** — write a one-line reason in the ledger so the
     gap is a decision, not a surprise.
-- [ ] Confirm no loose end was dropped: every item from the first step maps
+- [x] Confirm no loose end was dropped: every item from the first step maps
   to exactly one of the three outcomes above.
-- [ ] Walk each of the eight "When this closes" items in issue #226
+- [x] Walk each of the eight "When this closes" items in issue #226
   (`gh issue view 226 --repo by-carlos/plan-staged-rollout --json body`) and
   record **met** or **not met** for each, with evidence (a file and heading, or
   a command and its output) in the ledger notes. A "not met" item is a loose
   end and goes through the three outcomes above.
-- [ ] Apply D-10: dogfood the close-time decision triage using the repo's
+- [x] Apply D-10: dogfood the close-time decision triage using the repo's
   rewritten template (`skills/staged-rollout/references/templates/stage-f-review.md`,
   as changed by S3), not the older copy in `.plan/`. Propose drop /
   `DECISIONS.md` entry / ADR for every frozen decision, and write only the

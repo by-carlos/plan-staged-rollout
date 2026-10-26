@@ -20,10 +20,10 @@ not load in the cloud.
 
 ## Steps
 
-- [ ] Edit the operating protocol / preflight in `skills/staged-rollout/references/templates/PLAN.md` only: the brief stamp check with regenerate-on-mismatch (D-2).
-- [ ] Add the same two steps to `skills/staged-rollout/references/templates/RUNNER.md`: the stamp check (D-2) and showing the `DECISIONS.md` entries whose paths overlap the stage file's `## Artifacts` (D-1).
-- [ ] Mirror both steps in `skills/staged-rollout/references/templates/README.md` and `commands/stage-run.md`, recording the target-path convention from D-6.
-- [ ] Confirm a plan with no `DECISIONS.md` behaves exactly as before.
+- [x] Edit the operating protocol / preflight in `skills/staged-rollout/references/templates/PLAN.md` only: the brief stamp check with regenerate-on-mismatch (D-2).
+- [x] Add the same two steps to `skills/staged-rollout/references/templates/RUNNER.md`: the stamp check (D-2) and showing the `DECISIONS.md` entries whose paths overlap the stage file's `## Artifacts` (D-1).
+- [x] Mirror both steps in `skills/staged-rollout/references/templates/README.md` and `commands/stage-run.md`, recording the target-path convention from D-6.
+- [x] Confirm a plan with no `DECISIONS.md` behaves exactly as before.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks
 the row `doing`, ticks the boxes it finished, and writes a handoff note in the

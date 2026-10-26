@@ -20,12 +20,12 @@ the finished shape without running a plan.
 
 ## Steps
 
-- [ ] Create a new folder under `examples/` for the example plan, following the existing examples' layout.
-- [ ] Show the Requirements section and the triage groups on its decisions in the example `PLAN.md`.
-- [ ] Add a filled `BRIEF.md` with its stamp line and Mermaid day-to-day flow.
-- [ ] Add a plan-review digest with the three outcomes applied to findings.
-- [ ] Add close-time `DECISIONS.md` outcomes: one dropped decision, one entry, one ADR.
-- [ ] List the new example in `examples/README.md`.
+- [x] Create a new folder under `examples/` for the example plan, following the existing examples' layout.
+- [x] Show the Requirements section and the triage groups on its decisions in the example `PLAN.md`.
+- [x] Add a filled `BRIEF.md` with its stamp line and Mermaid day-to-day flow.
+- [x] Add a plan-review digest with the three outcomes applied to findings.
+- [x] Add close-time `DECISIONS.md` outcomes: one dropped decision, one entry, one ADR.
+- [x] List the new example in `examples/README.md`.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks
 the row `doing`, ticks the boxes it finished, and writes a handoff note in the

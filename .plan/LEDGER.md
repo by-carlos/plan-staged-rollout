@@ -20,7 +20,7 @@ protocol, finish protocol).
 | S3 Close-time triage | done | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
 | S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
 | S5 User docs and changelog | todo | — | — | — |
-| S6 Example plan | todo | — | — | — |
+| S6 Example plan | doing | yes | 2026-10-27 | examples/feed-digest/ shows all five artifacts; validator OK |
 | SF Plan review | todo | — | — | — |
 
 ## Notes
@@ -319,7 +319,79 @@ $ grep -cF 'references/templates/BRIEF.md)' skills/staged-rollout/SKILL.md
 _(empty)_
 
 ### S6 Example plan
-_(empty)_
+
+**As built** (commits on `plan-brief-decisions-s6`): `examples/feed-digest/`,
+a toy daily RSS-to-chat job frozen at closeout (every stage `done`,
+`/plan-close` next), listed in `examples/README.md`. `.plan/PLAN.md`,
+`README.md` and `RUNNER.md` take their protocol text from the current
+templates with the slug substituted (assembled by script, not hand-copied);
+everything above *Git strategy* and the Plan review / Stage index sections are
+written for the toy. S2 is `gate: local` to show that flag in passing.
+**Added beyond the step list:** the toy's pointer line sits in `AGENTS.md`,
+not `CLAUDE.md` — a nested `CLAUDE.md` would be loaded by Claude Code as
+instructions whenever a session in this repo reads files under it. The
+plan-review digest is kept outside `.plan/` and labelled as normally-scratch.
+
+**Where each item is** (file › heading):
+
+- Requirements section — `examples/feed-digest/.plan/PLAN.md` › `## Requirements`
+- Triage groups — `examples/feed-digest/.plan/PLAN.md` › `## Frozen decisions`
+  (D-1/D-3/D-7 Decided, D-2/D-4 Needs you — answered, D-5/D-6 Default for now)
+- Filled brief with stamp and Mermaid flow — `examples/feed-digest/.plan/BRIEF.md`
+  line 1 stamp, `## Day to day` (Mermaid), `## Stage map` (Mermaid)
+- Plan-review digest with outcomes — `examples/feed-digest/plan-review-digest.md`
+  (five findings: three change, one follow-up, one accept), recorded in
+  `examples/feed-digest/.plan/PLAN.md` › `## Plan review`
+- Close-time outcomes — `examples/feed-digest/.plan/LEDGER.md` › `### SF Plan review`
+  › `#### Kept decisions` (D-1, D-6, D-7 drop; D-2, D-3, D-5 entry; D-4 ADR);
+  `examples/feed-digest/DECISIONS.md` (areas Posting, Feed state, Scheduling);
+  `examples/feed-digest/docs/adr/0001-dedupe-by-stable-entry-key.md`;
+  pointer line in `examples/feed-digest/AGENTS.md`
+
+**Gotcha for whoever edits the example:** the brief's stamp is the real
+`git hash-object` of the example `PLAN.md`. Any edit to that file means
+regenerating the stamp, or the README's "the hash matches" claim goes false.
+
+**Acceptance evidence** (2026-10-27, stage worktree):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+
+$ head -1 examples/feed-digest/.plan/BRIEF.md
+Generated from PLAN.md @ 93a8b7e4f1b9 — do not edit
+$ git hash-object examples/feed-digest/.plan/PLAN.md | cut -c1-12
+93a8b7e4f1b9
+
+$ grep -n "^## Requirements\|^## Plan review" examples/feed-digest/.plan/PLAN.md
+27:## Requirements
+137:## Plan review
+
+$ grep -n "^## \|mermaid" examples/feed-digest/.plan/BRIEF.md
+8:## Outcome
+16:## Day to day
+20:```mermaid
+28:## Constraints and out of scope
+42:## Decisions
+62:## Done when
+73:## Stage map
+77:```mermaid
+
+$ grep -c "Outcome:" examples/feed-digest/plan-review-digest.md
+5
+
+$ grep -n "^#### Kept decisions" examples/feed-digest/.plan/LEDGER.md
+115:#### Kept decisions
+$ head -1 examples/feed-digest/DECISIONS.md
+<!-- decisions-format: 1 -->
+$ ls examples/feed-digest/docs/adr
+0001-dedupe-by-stable-entry-key.md
+```
+
+**For SF:** the example duplicates template protocol text by design (it
+ships a whole `.plan/`), so a later template change leaves it stale, as it
+already does `uptime-page/`. Nothing checks it; accept or add a check.
 
 <!-- One ### S<N> block per stage. Templates for the states you'll hit:
 

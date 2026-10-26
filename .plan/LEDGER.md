@@ -19,7 +19,7 @@ protocol, finish protocol).
 | S2 Runner and preflight | done | yes | 2026-10-27 | Brief stamp + decisions steps in protocol, runner, README, stage-run |
 | S3 Close-time triage | done | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
 | S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
-| S5 User docs and changelog | doing | yes | 2026-10-27 | docs/staged-rollout.md, docs/reference.md, CHANGELOG [Unreleased] updated |
+| S5 User docs and changelog | done | yes | 2026-10-27 | Docs, reference and one CHANGELOG entry written; validate passes |
 | S6 Example plan | todo | — | — | — |
 | SF Plan review | todo | — | — | — |
 

@@ -18,7 +18,7 @@ protocol, finish protocol).
 | S1 Bootstrap flow | todo | — | — | — |
 | S2 Runner and preflight | todo | — | — | — |
 | S3 Close-time triage | todo | — | — | — |
-| S4 Method (SKILL.md) | doing | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
+| S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
 | S5 User docs and changelog | todo | — | — | — |
 | S6 Example plan | todo | — | — | — |
 | SF Plan review | todo | — | — | — |

@@ -17,7 +17,7 @@ protocol, finish protocol).
 | S0 Formats (keystone) | done | yes | 2026-10-26 | Four formats written; all acceptance checks pass |
 | S1 Bootstrap flow | todo | — | — | — |
 | S2 Runner and preflight | todo | — | — | — |
-| S3 Close-time triage | todo | — | — | — |
+| S3 Close-time triage | doing | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
 | S4 Method (SKILL.md) | todo | — | — | — |
 | S5 User docs and changelog | todo | — | — | — |
 | S6 Example plan | todo | — | — | — |
@@ -101,7 +101,67 @@ _(empty)_
 _(empty)_
 
 ### S3 Close-time triage
-_(empty)_
+
+**As built** (commits on `plan-brief-decisions-s3`):
+- `skills/staged-rollout/references/templates/stage-f-review.md` — the loose-end
+  checklist is kept verbatim under `### Loose ends`; two new step groups follow.
+  `### Decision triage`: find the target (D-6, the spec's *Where it lives*;
+  ambiguous → one more batch question attended, hard stop for this step only
+  unattended), propose drop / entry / ADR per frozen decision by the spec's keep
+  rule (the fixed git/worktree/final-review protocol entries are left out), one
+  batch ask attended vs applied-own-proposals unattended (D-1), write the
+  approved ones, record them under a heading that reads exactly
+  `#### Kept decisions` in the SF notes block — one line per decision plus an
+  approval line. `### README, pointer line and cold reader`: README (or module
+  doc) update, the pointer line from the spec, and the cold-reader subagent
+  (repo only, never `.plan/`; how to test / where is X / why Y; every miss is
+  fixed and re-asked). Goal reworded from "never implements" to "writes
+  documentation only; never product code" (D-1). Acceptance and Artifacts
+  gained matching items.
+- `commands/plan-close.md` step 3 — the PR body shape gains a **Kept
+  decisions** section, copied line for line from SF's `#### Kept decisions`;
+  an unattended list opens with "merging this PR approves these decisions";
+  a plan with no such list says no triage ran.
+
+**Contract for S5/S6/SF:** the heading `#### Kept decisions` in the SF notes
+block is the hand-off between SF and `/plan-close` — the example plan (S6)
+should show it in that exact form.
+
+**Follow-ups (not this stage's scope — for SF):**
+- **The spec does not reach a cloud SF.** The template reads
+  `decisions-format.md` from `.plan/decisions-format.md` if the plan carries a
+  copy, else from the plugin. Nothing copies it into `.plan/` at bootstrap
+  today (S1's territory), so in a cloud session — where the plugin does not
+  load — a plan in any repo other than this one cannot read it. Either
+  `/plan-stages` copies it alongside `RUNNER.md`, or this is accepted.
+- **SKILL.md's *Unattended mode* table** gains a new declared default: SF's
+  decision-triage approval (apply own proposals; the plan→main PR merge
+  approves). That table is S4's file.
+
+**Acceptance evidence** (stage worktree, 2026-10-27):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+
+$ grep -n "^## \|^### " skills/staged-rollout/references/templates/stage-f-review.md
+19:## Goal
+27:## Steps
+29:### Loose ends
+46:### Decision triage
+80:### README, pointer line and cold reader
+104:## Acceptance
+118:## Artifacts
+
+$ grep -n "Kept decisions" commands/plan-close.md
+120:     the ledger notes), a **Kept decisions** section, and any spin-off
+123:   - the rule for **Kept decisions**: copy the `#### Kept decisions` list from
+```
+
+The three-outcome checklist (new stage / spin-off / accepted, won't fix) sits
+unchanged under `### Loose ends`; the decision triage, README, pointer and
+cold-reader items are the step groups at lines 46 and 80.
 
 ### S4 Method (SKILL.md)
 _(empty)_

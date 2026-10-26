@@ -1,4 +1,4 @@
-# CLAUDE.md — feed-digest
+# AGENTS.md — feed-digest
 
 - Run `pytest` before pushing; `feed-digest run --dry-run` never posts.
 - The webhook URL is a secret: it lives only in `FEED_DIGEST_WEBHOOK`.

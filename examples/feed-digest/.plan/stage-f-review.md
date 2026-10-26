@@ -120,5 +120,5 @@ ledger. Re-running the stage resumes from the first unticked box. -->
 No new stages (every loose end closed as a spin-off or accepted). The
 decisions record: `DECISIONS.md` (new, at the repository root) and
 `docs/adr/0001-dedupe-by-stable-entry-key.md`. `README.md` updated to describe
-the job, its configuration and its tests. `CLAUDE.md` gained the pointer line.
+the job, its configuration and its tests. `AGENTS.md` gained the pointer line.
 No product code — this stage writes documentation only.

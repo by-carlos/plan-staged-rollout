@@ -57,6 +57,49 @@ The discipline the [plugin README](../README.md) describes, in practice:
   reacts to a `.plan/` at the repo **root**, so this nested copy never nudges
   your sessions.
 
+## [`feed-digest/`](feed-digest/) — the planning and closing artifacts, at closeout
+
+A second toy project — a daily job that posts new RSS entries to a team chat
+channel — frozen at the moment every stage is `done` and `/plan-close` is
+next. Where `uptime-page/` shows a plan being *run*, this one shows what
+bootstrap writes before stage 1 and what the final review leaves behind once
+`.plan/` is gone. Only the plan and the decision record are included; the
+job's code and its own README are not.
+
+| What | Where to look |
+|---|---|
+| Requirements, confirmed before any decision | [`.plan/PLAN.md`](feed-digest/.plan/PLAN.md) › Requirements |
+| Decision triage groups — **Decided**, **Needs you**, **Default for now** | [`.plan/PLAN.md`](feed-digest/.plan/PLAN.md) › Frozen decisions, D-1 to D-7 |
+| The brief: stamp line, Mermaid day-to-day flow, stage map | [`.plan/BRIEF.md`](feed-digest/.plan/BRIEF.md) |
+| The plan-review digest, each finding with its outcome | [`plan-review-digest.md`](feed-digest/plan-review-digest.md), recorded in [`.plan/PLAN.md`](feed-digest/.plan/PLAN.md) › Plan review |
+| Close-time triage: three decisions dropped, three entries, one ADR | [`.plan/LEDGER.md`](feed-digest/.plan/LEDGER.md) › SF › Kept decisions, [`DECISIONS.md`](feed-digest/DECISIONS.md), [`docs/adr/0001-dedupe-by-stable-entry-key.md`](feed-digest/docs/adr/0001-dedupe-by-stable-entry-key.md) |
+| The pointer line, in the agent instructions file | [`AGENTS.md`](feed-digest/AGENTS.md) — `AGENTS.md`, not `CLAUDE.md`, so Claude Code does not load the toy's instructions while you work in this repository |
+
+### What to notice
+
+- **Requirements come before decisions.** The ranked constraints are what the
+  decisions answer to: D-3 exists because constraint 2 makes the webhook URL
+  a secret.
+- **The brief is generated, never written.** Line 1 of `BRIEF.md` carries the
+  first 12 hex characters of `git hash-object .plan/PLAN.md`, and every
+  section names the `PLAN.md` section it came from. Run the command on this
+  example's `PLAN.md` and the hash matches.
+- **Every review finding has a location, a change and one outcome.** Three
+  changed the plan, one became follow-up #41, one was accepted with a reason.
+  Lenses turn on from triggers: Architect stayed off, and the brief says why.
+  The digest itself is scratch in a real plan; it is kept here only to show
+  what the main thread reads.
+- **Most decisions are dropped at close.** Of seven, three are dropped (the
+  code or the plan's end makes them plain), three become `DECISIONS.md`
+  entries, and one — hard to reverse, with real alternatives — becomes an ADR
+  that its entry links to. The `#### Kept decisions` heading is the exact form
+  `/plan-close` copies into the final PR body.
+- **`gate: local` in passing.** S2 needs the home server, reachable only from
+  the local network, so its stage index row says `local` and the stage map
+  marks it.
+
+All numbers (#3, #5, #41) and hosts are invented.
+
 ## [`on-the-run/`](on-the-run/) — driving a plan on the cloud
 
 The current design fires each stage as a Claude Code cloud session straight
@@ -82,7 +125,7 @@ for the full mechanism.
 
 ## [`tickets/`](tickets/) — a custom ticket template and the draft it produces
 
-The other two examples are about plans. This one covers the ticket skills
+The examples above are about plans. This one covers the ticket skills
 (`create-issue` and `work-issue`, see [Tickets](../docs/tickets.md)): a small
 team template and one filled draft written against it.
 

@@ -126,7 +126,7 @@ Approved by the maintainer on 2026-09-18.
 
 **README, pointer line and cold reader:** `README.md` now covers install,
 `feeds.toml`, the `FEED_DIGEST_WEBHOOK` variable, `pytest`, and points at
-`RUNBOOK.md`. `CLAUDE.md` gained the pointer line.
+`RUNBOOK.md`. `AGENTS.md` gained the pointer line.
 
 Cold-reader subagent (repository only, `.plan/` off limits):
 

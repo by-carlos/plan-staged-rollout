@@ -14,7 +14,7 @@ protocol, finish protocol).
 
 | Stage | Status | Verified | Date | Result |
 |---|---|---|---|---|
-| S0 Formats (keystone) | doing | yes | 2026-10-26 | Four formats written; all acceptance checks pass |
+| S0 Formats (keystone) | done | yes | 2026-10-26 | Four formats written; all acceptance checks pass |
 | S1 Bootstrap flow | todo | — | — | — |
 | S2 Runner and preflight | todo | — | — | — |
 | S3 Close-time triage | todo | — | — | — |

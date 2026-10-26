@@ -300,7 +300,7 @@ here (out of scope): D-1's runner showing overlapping `DECISIONS.md` entries
 is not described in SKILL.md — S2 owns the runner; SF may judge whether the
 method needs a line on it.
 
-**Acceptance evidence** (2026-10-27, re-run in the stage worktree on the merged result after re-syncing with the plan branch at 04250da, which landed S5; LEDGER table conflict resolved keeping both rows; output unchanged):
+**Acceptance evidence** (2026-10-27, stage worktree):
 
 ```
 $ python3 scripts/validate_plugin.py
@@ -322,7 +322,7 @@ $ grep -cF 'references/templates/BRIEF.md)' skills/staged-rollout/SKILL.md
 - `docs/reference.md` — `BRIEF.md` row and updated `PLAN.md` row in *Plan files*; new section *Brief, review and decisions formats* (links the three reference files, runner behaviour, effort-log row).
 - `CHANGELOG.md` — one `### Added` entry under a new `## [Unreleased]` heading (none existed), referencing #226. No version heading, no `plugin.json` change.
 
-**Acceptance evidence** (2026-10-27, re-run in the stage worktree on the merged result after re-syncing with the plan branch at 04250da, which landed S5; LEDGER table conflict resolved keeping both rows; output unchanged):
+**Acceptance evidence** (2026-10-27, stage worktree):
 
 ```
 $ python3 scripts/validate_plugin.py

@@ -16,7 +16,7 @@ protocol, finish protocol).
 |---|---|---|---|---|
 | S0 Formats (keystone) | done | yes | 2026-10-26 | Four formats written; all acceptance checks pass |
 | S1 Bootstrap flow | todo | — | — | — |
-| S2 Runner and preflight | todo | — | — | — |
+| S2 Runner and preflight | doing | — | 2026-10-27 | In progress |
 | S3 Close-time triage | todo | — | — | — |
 | S4 Method (SKILL.md) | todo | — | — | — |
 | S5 User docs and changelog | todo | — | — | — |

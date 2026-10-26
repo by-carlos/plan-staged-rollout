@@ -64,7 +64,7 @@ ask before the scaffold commit.
 `TEMPLATE_FILES` does not list `BRIEF.md`, so a missing brief template would
 not fail validation. Candidate for S1 or SF.
 
-**Acceptance evidence** (run in the stage worktree, 2026-10-26):
+**Acceptance evidence** (re-run in the stage worktree on the merged result after re-syncing with the plan branch at d811c9d, which added D-11; output unchanged, 2026-10-26):
 
 ```
 $ python3 scripts/validate_plugin.py

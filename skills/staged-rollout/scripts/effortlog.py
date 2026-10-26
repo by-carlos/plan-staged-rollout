@@ -145,6 +145,28 @@ def read_transcript(transcript: Path) -> tuple[int | None, str | None]:
     return total, latest_model
 
 
+def measure_subagents() -> int | None:
+    """Summed context of this session's subagents, or None when it had none.
+
+    Claude Code writes each subagent's transcript under `<sid>/subagents/`
+    beside the session's own `<sid>.jsonl`. Each one contributes its last
+    turn's figure -- the same unit `read_transcript` reports -- so a bootstrap
+    row can carry its review lenses' share without the model adding it up.
+    """
+    sid = session_id()
+    if not sid:
+        return None
+    transcript = find_transcript(sid)
+    if transcript is None:
+        return None
+    totals = []
+    for path in sorted((transcript.parent / sid / "subagents").glob("*.jsonl")):
+        total, _ = read_transcript(path)
+        if total is not None:
+            totals.append(total)
+    return sum(totals) if totals else None
+
+
 def measure() -> tuple[int, str | None]:
     sid = session_id()
     if not sid:
@@ -206,6 +228,7 @@ def cmd_log(args: argparse.Namespace) -> int:
         "actual_effort": os.environ.get("CLAUDE_EFFORT"),
         "size": args.size,
         "context_tokens": total,
+        "subagent_tokens": measure_subagents(),
         "tripped": bool(args.tripped),
         "attended": is_attended(),
         "outcome": args.outcome,
@@ -295,13 +318,16 @@ def build_parser() -> argparse.ArgumentParser:
     check.set_defaults(func=cmd_check)
 
     log = subparsers.add_parser("log", help="append one run record")
-    log.add_argument("--source", required=True, choices=["work-issue", "stage-run"])
+    log.add_argument("--source", required=True, choices=["work-issue", "stage-run", "plan-stages"])
     log.add_argument("--repo", help="owner/repo")
-    log.add_argument("--target", help="issue number, or <plan-slug>/S<n>")
+    log.add_argument("--target", help="issue number, <plan-slug>/S<n>, or <plan-slug> for a bootstrap")
     log.add_argument("--estimated-tier", dest="estimated_tier", help="the Effort the run was launched on")
     log.add_argument("--model", help="override; by default read from the transcript")
     log.add_argument("--size", help="declared scope, when there is one")
-    log.add_argument("--outcome", help="merged | pr-open | abandoned | stage-done | stage-blocked")
+    log.add_argument(
+        "--outcome",
+        help="merged | pr-open | abandoned | stage-done | stage-blocked | plan-scaffolded",
+    )
     log.add_argument("--tripped", action="store_true", help="the breaker fired during this run")
     log.add_argument("--note", help="one free-text line for a human reading this later")
     log.set_defaults(func=cmd_log)

@@ -130,7 +130,7 @@ published brief artifact (D-2 makes the file canonical, so the artifact can
 go stale until next published). An adopted decisions document without
 `Paths:` lines is only named, not matched.
 
-**Acceptance evidence** (2026-10-27, in the stage worktree):
+**Acceptance evidence** (2026-10-27, re-run in the stage worktree on the merged result after re-syncing with the plan branch at 6fe9b67, which landed S4; output unchanged):
 
 ```
 $ python3 scripts/validate_plugin.py

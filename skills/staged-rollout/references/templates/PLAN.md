@@ -14,14 +14,42 @@ never copied* — a decision that exists in one place cannot diverge.
 takes. Keep it current; amend it when a stage changes the design.>
 ```
 
+## Requirements
+
+Captured first, before any decision, and played back to the user in plain
+language for confirmation. The brief's Outcome, Day to day, Constraints and
+Done sections are generated from here.
+
+- **Outcome:** <what the user needs, in their own words.>
+- **Day to day:** <how they will use it — where they are, which device, what
+  happens while they are away.>
+- **Constraints, ranked:** (1) <the one that wins a conflict>; (2) <…>.
+- **Out of scope:** <what this plan will not do, with any issue it belongs to.>
+- **Done, as checks:** <checks a script or a person can run.>
+
 ## Frozen decisions
 
 Change these in THIS file only — never restate them in stage files or the
 ledger. If a stage changes a decision, amend it here as the last step of that
-stage (Operating protocol, finish step 3).
+stage (Operating protocol, finish step 3). Each decision carries its triage
+group: **Decided** (reversible and low impact — settled with its reason, not
+asked), **Needs you** (taste, irreversible, cost, security or anything
+external — asked in the one bootstrap batch, and the answer recorded) or
+**Default for now** (a working default, flagged to revisit). A **Needs you**
+decision still waiting for its answer names the stages that wait on it;
+only those stages are blocked.
 
-- <Decision 1 — e.g. naming, key library/tool choice, a hard constraint.>
-- <Decision 2.>
+`.plan/BRIEF.md` is the one-page brief generated from this file (stamp line
+first, never edited by hand). Whoever edits this file regenerates it in the
+same commit; feedback on the brief is applied here, never to the brief.
+
+- **D-1 — <decision>** *(Decided)*. <The decision, then its reason.>
+- **D-2 — <decision>** *(Needs you — answered)*. <The answer, then what was
+  rejected and why.>
+- **D-3 — <decision>** *(Needs you — pending; blocks S2)*. <The question and
+  the recommended answer.>
+- **D-4 — <decision>** *(Default for now — revisit at <stage or condition>)*.
+  <The default and what would change it.>
 - **Git strategy:** branch-per-stage (fixed — the only supported model).
   `.plan/` is **tracked** on the plan branch and the plan branch has an
   **upstream** — both are load-bearing, not housekeeping (preflight step 0.0).
@@ -59,6 +87,17 @@ stage (Operating protocol, finish step 3).
 - **Final review stage:** the last stage (`SF`) is a standing plan review. It
   catalogs loose ends — each becomes a new in-plan stage, a spin-off
   candidate, or an explicit "accepted, won't fix" — and NEVER implements.
+
+## Plan review
+
+Run by bootstrap before the scaffold is committed — lenses, digest and
+outcomes are defined in the `staged-rollout` skill's
+`references/plan-review.md`.
+
+- **Date:** <YYYY-MM-DD> · **Lenses:** Simplicity (always); <Lens> — <trigger
+  that fired>.
+- <Where> — <finding, one line> → **changed** <what> | **follow-up** <issue> |
+  **accepted** — <reason>.
 
 ## Stage index & dependencies
 

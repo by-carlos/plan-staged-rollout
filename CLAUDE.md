@@ -18,6 +18,10 @@ installable standalone with
 - `.github/workflows/` — CI and the release pipeline; its
   [`CLAUDE.md`](.github/workflows/CLAUDE.md) holds the release mechanics.
 
+## Decisions
+
+- **Decisions in force live in [`DECISIONS.md`](DECISIONS.md).** Read the area covering a path before changing it, and add or edit an entry in the same pull request when a change settles something future work must respect.
+
 ## Validate and commit
 
 - Run `python3 scripts/validate_plugin.py` before pushing; CI runs the same

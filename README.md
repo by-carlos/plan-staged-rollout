@@ -34,7 +34,7 @@ flowchart LR
     idea([Your idea]) --> plan["<b>1. Plan</b><br/>split into stages"]
     plan --> run["<b>2. Run a stage</b><br/>new session each time"]
     run -->|"more stages left"| run
-    run --> review["<b>3. Review</b><br/>catch loose ends"]
+    run --> review["<b>3. Review</b><br/>catch loose ends,<br/>keep the decisions"]
     review --> close["<b>4. Close</b><br/>one PR into main"]
     close --> merge([You merge it])
 ```
@@ -103,16 +103,20 @@ through the Atlassian tools you have connected yourself.
 ## Try it
 
 1. Open a session in a repo that has a big job to do.
-2. Run `/plan-staged-rollout:plan-stages <your idea>`. It asks about the
-   design, splits the work into stages and commits `.plan/`. **It does not
-   run any stage.**
+2. Run `/plan-staged-rollout:plan-stages <your idea>`. It plays your
+   requirements back for you to confirm, asks its open design questions in
+   one batch, splits the work into stages, writes a one-page brief
+   (`.plan/BRIEF.md`) and reviews the plan before committing `.plan/`.
+   **It does not run any stage.**
 3. Open a **new** session. It lists the stages that can run now; say yes to
    one. (If it says nothing, run `/plan-staged-rollout:stage-run 0`.) When
    the stage finishes, it opens a PR into the plan branch and offers to merge
    it: say yes.
 4. Repeat step 3 until every stage is done, including the final review
-   stage. Then run `/plan-staged-rollout:plan-close`; it proposes the final
-   PR into `main`, and you merge it.
+   stage, which asks you once which of the plan's decisions to keep and
+   writes them to `DECISIONS.md` so they outlive `.plan/`. Then run
+   `/plan-staged-rollout:plan-close`; it proposes the final PR into `main`,
+   and you merge it.
 
 ## Commands and skills
 

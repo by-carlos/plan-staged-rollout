@@ -17,7 +17,7 @@ protocol, finish protocol).
 | S0 Formats (keystone) | done | yes | 2026-10-26 | Four formats written; all acceptance checks pass |
 | S1 Bootstrap flow | todo | — | — | — |
 | S2 Runner and preflight | todo | — | — | — |
-| S3 Close-time triage | doing | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
+| S3 Close-time triage | done | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
 | S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
 | S5 User docs and changelog | todo | — | — | — |
 | S6 Example plan | todo | — | — | — |

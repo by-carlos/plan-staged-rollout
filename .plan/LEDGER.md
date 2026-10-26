@@ -126,7 +126,7 @@ the old numbers (grep found none outside `.plan/` and `CHANGELOG.md`).
 `scripts/validate_plugin.py` `TEMPLATE_FILES` still does not list `BRIEF.md`,
 and `plan-stages.md` now copies it with `templates/*.md`. Candidate for SF.
 
-**Acceptance evidence** (in the stage worktree, 2026-10-27):
+**Acceptance evidence** (re-run in the stage worktree on the merged result after re-syncing with the plan branch at c300660, which landed S4; output unchanged, 2026-10-27):
 
 ```
 $ python3 scripts/validate_plugin.py

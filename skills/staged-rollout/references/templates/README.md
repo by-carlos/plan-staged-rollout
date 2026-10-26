@@ -19,6 +19,21 @@ the same thing with ergonomics (it also runs the model/effort weight check
 for you). The `.plan/` folder works standalone either way; the plugin is
 convenience, not a dependency.
 
+Every way of running a stage takes the same two steps before the work:
+
+- **Brief stamp.** If `BRIEF.md` exists and its stamp no longer matches
+  `PLAN.md`'s hash, the session regenerates the brief from `PLAN.md` and
+  commits it on the plan branch — so the brief you read is never older than
+  the plan.
+- **Decisions in force.** The session shows the entries of the repository's
+  decisions document whose `Paths:` overlap the stage file's `## Artifacts`,
+  and treats them like frozen decisions. The document is the one `PLAN.md`'s
+  Frozen decisions record as adopted (an existing current-decisions
+  document, or `DECISIONS.md`), else `DECISIONS.md` at the repository root.
+
+Without a `BRIEF.md` or a decisions document, the matching step does nothing
+and the stage runs as it always has.
+
 Run stages in any order allowed by their `depends`. The **runnable set** is
 every `todo` row in `LEDGER.md` whose dependencies are all `done` or
 `skipped` — often more than one. Stages in that set do not depend on each
@@ -41,6 +56,9 @@ one) once filled. -->
   decisions; changed only when a decision changes.
 - `LEDGER.md` — status table + per-stage as-built notes. The tracker that
   changes as you execute; the resume point and cross-session memory.
+- `BRIEF.md` — the one-page brief, generated from `PLAN.md` (stamp on line
+  1, never edited by hand). Feedback on it goes into `PLAN.md`, and the brief
+  is regenerated.
 - `stage-<N>-<slug>.md` — one small, self-contained stage each.
 - `RUNNER.md` — the stage-runner contract: how a session with no plugin and
   no prior context (a fired cloud session included) runs one stage from the

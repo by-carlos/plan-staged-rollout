@@ -8,6 +8,23 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **Requirements, a brief and a plan review before stage 1, and kept
+  decisions after `.plan/` is gone.** `plan-stages` now captures and plays back
+  your requirements before deciding how, sorts decisions into Decided, Needs
+  you and Default for now and asks the open ones once, generates a one-page
+  `.plan/BRIEF.md` from `PLAN.md` (also published as an artifact where that
+  tool exists), and runs a plan review with up to four lenses before the
+  scaffold is committed. The review stage proposes drop, a `DECISIONS.md`
+  entry or an ADR for every frozen decision, updates the README and runs a
+  cold-reader check; `plan-close` lists the kept decisions in the final PR.
+  Stages check the brief's stamp and show the decisions in force for the paths
+  they touch. Work that fits one issue is unchanged. `DECISIONS.md` follows a
+  new portable format (#226).
+
 ## [0.14.2] - 2026-10-23
 
 ### Added

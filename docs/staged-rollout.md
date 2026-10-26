@@ -47,6 +47,7 @@ Commands are shown by their short names; type them as
   README.md          # entry point + how to run a stage
   PLAN.md            # architecture, frozen decisions (below), stage index,
                      #   operating protocol  ← single source of truth
+  BRIEF.md           # one-page brief, generated from PLAN.md
   LEDGER.md          # status table + per-stage as-built notes
   stage-N-<slug>.md  # one thin, self-contained stage each
 ```
@@ -68,17 +69,40 @@ handoff note, and a tour of what to notice.
 
 ## 1. Plan — `plan-stages <project idea>`
 
-Runs once. If the design isn't settled, it starts with a design pass (using
-`superpowers:brainstorming` when installed, or a built-in lightweight
-question flow otherwise). The outcome lands directly as frozen decisions in
-`PLAN.md`, not as a separate spec that would become a second source of
-truth. Then it:
+Runs once. It first checks the session's weight, then captures what you need
+before it decides how to build it. The outcome lands directly in `PLAN.md`,
+not in a separate spec that would become a second source of truth.
+
+**Small work skips most of this.** A plan is for work of roughly four or more
+sessions. Work that fits one issue is small: its acceptance criteria are the
+spec, and it gets no brief and no plan review. `plan-stages` says so and
+offers to stop; [`work-issue`](tickets.md) or a single session fits better.
+How deep a plan goes after that depends on what it touches, not on how many
+stages it has.
+
+In order, it:
 
 - **checks the session's weight first** (weight = model plus effort level).
   Planning is the session that matters most, so it requires at least an
   Opus-class model (read from the session) and recommends medium or higher
   effort (read from `CLAUDE_EFFORT`). It offers to stop so you can relaunch
   with the right settings;
+- **captures requirements and plays them back.** It draws out the outcome you
+  want, your day to day (which device, what happens while you are away), the
+  constraints ranked, what is out of scope, and the done checks. It reads them
+  back in plain language and waits for your confirmation or correction before
+  any decision is made. They become `PLAN.md`'s `## Requirements` section. It
+  also looks for a decision record the repo already keeps (an ADR folder or a
+  current-decisions document), so the plan adopts it instead of starting a
+  second list;
+- **triages the decisions and asks once.** Each decision the build needs is
+  **Decided** (reversible and low impact, settled with its reason),
+  **Needs you** (taste, cost, security, anything irreversible or external) or
+  **Default for now** (a working default with when to revisit). Every
+  **Needs you** decision, with the options weighed and a recommendation, goes
+  to you in one batch, along with the list of plan-review lenses. You can
+  promote any other item to a question in the same reply. An unanswered one
+  stays pending and blocks only the stages that need it;
 - **splits the work** into the smallest sensible stages with explicit
   `depends`, putting the keystone (the piece everything needs) first as S0;
 - **adds the review stage**, `SF`, as the last stage (see
@@ -91,9 +115,56 @@ truth. Then it:
 - **records the git and worktree model** (a branch per stage, and locally a
   worktree per stage, [below](#branches-and-worktrees)). It is fixed, not a
   choice you are asked to make;
+- **generates the brief** (see [The brief](#the-brief));
+- **reviews the plan before anything is committed** (see
+  [Plan review](#plan-review));
 - **commits `.plan/` (after your OK) and pushes the plan branch.** **No
   stage runs during planning.** It ends by saying so and telling you exactly what to run next:
-  the first stage's command and its recommended model and effort.
+  the first stage's command and its recommended model and effort. In the
+  desktop app it also offers one card per stage that can start now; the
+  printed command stays for every other surface.
+
+### The brief
+
+`.plan/BRIEF.md` is a one-page summary of the plan for you to check it
+against: the outcome, a diagram of your day to day, the constraints and what
+is out of scope, a table of the decisions with their triage group, the done
+checks and a map of the stages. It is **generated from `PLAN.md`**, never a
+second copy. Each section names the `PLAN.md` section it came from, and line 1
+is a stamp, `Generated from PLAN.md @ <hash> — do not edit`.
+
+- **The file is the brief.** Where the Artifact tool exists, the same content
+  is also published as an artifact for easier reading; in the cloud, a
+  terminal or on a phone the file alone is the brief.
+- **Give feedback in chat, or as comments on the artifact.** The session edits
+  `PLAN.md` and regenerates the brief. A hand edit to `BRIEF.md` is
+  overwritten at the next regeneration, by design.
+- **A stage notices a stale brief.** Its preflight compares the stamp with the
+  current `PLAN.md` and regenerates the file on a mismatch. This is a backstop
+  for a `PLAN.md` edit made by hand; it rebuilds the file, not a published
+  artifact.
+
+### Plan review
+
+Before the scaffold is committed, subagents read it and look for problems,
+one subagent per lens:
+
+| Lens | On when |
+|---|---|
+| **Simplicity** | Always |
+| **Architect** | The plan touches two or more components, or changes an interface |
+| **Security / red team** | It touches authentication, input handling, secrets, the network or dependencies |
+| **Operator** | The *product* runs unattended or pages someone (not just the plan's own stages) |
+
+The brief lists each lens with the reason it is on, and you can add or drop
+lenses when you answer the batch. At most four run. The session reads one
+merged digest of at most about 40 lines, never the lens files, and a finding
+with no plan location and no proposed change is dropped. Every finding ends
+as one of three things: **change the plan**, **file a follow-up**, or
+**accept with a reason**. Findings that would change a **Needs you** decision
+come to you in one ask, together with the brief. The record lands in
+`PLAN.md` under `## Plan review`, and nothing is committed until the review is
+done, so it happens before stage 1 by construction.
 
 ## 2. Run a stage — `stage-run <N>`
 
@@ -127,6 +198,16 @@ What the picture leaves out:
 - **A linked issue is printed first.** If the stage file has an `Issue:`
   line, the session names that issue before anything else. It never posts
   to it or changes its status.
+- **The brief stamp is checked.** If `.plan/BRIEF.md` exists and its stamp no
+  longer matches `PLAN.md`, the session regenerates it and commits that on the
+  plan branch before going on. No brief, or a matching stamp: nothing happens.
+- **Decisions in force are shown.** If the repo keeps a decisions document
+  (`DECISIONS.md`, or the one the plan adopted), the session lists the entries
+  whose paths overlap the files its stage will touch, and treats them as
+  settled. This is how a decision kept from an earlier plan reaches a stage
+  that would otherwise not know it exists, including in a cloud session that
+  has only the repo and `RUNNER.md`. No such file: the stage runs as it
+  always has.
 - **It reads only what's needed:** `PLAN.md`, its stage file, the ledger
   table and the notes of the stages it depends on. It never scans the repo.
 - **`mode`:** `direct` means a one-line plan, then implement. `brainstorm`
@@ -244,8 +325,8 @@ locally**:
 Planning always adds `SF: plan review` (run it with `stage-run f`, or ask to
 "run the review stage"). It is the one stage allowed to read the *entire*
 ledger: every note, gotcha, shortcut and known gap from every stage. **It
-lists; it never implements.** Each loose end becomes exactly one of three
-things:
+lists; it never implements product code.** Its first job is the loose ends:
+each becomes exactly one of three things:
 
 ```mermaid
 flowchart LR
@@ -268,6 +349,39 @@ flowchart LR
 Its acceptance check: every loose end in the notes is either a new ledger row
 or explicitly closed.
 
+### Which decisions outlive the plan
+
+`.plan/` is usually deleted at close, and the frozen decisions go with it. The
+review stage decides which of them should survive. It gives each frozen
+decision one outcome:
+
+- **Drop**: it only mattered while the plan ran, or the code already makes it
+  plain. Git keeps the history.
+- **An entry in `DECISIONS.md`**: the default for anything kept, one short
+  entry (the rule, why, when to revisit, source) under an area heading that
+  lists the paths it covers.
+- **An ADR**: only for a big decision that is hard to reverse, had real
+  alternatives and has nowhere else to keep its reasoning.
+
+A decision is kept if someone could undo it without knowing it was decided, if
+it took real alternatives to settle, or if the code does not make it obvious.
+If the repo already has an ADR folder or a current-decisions document, the
+review stage writes into that, in its format, and never starts a second list.
+`DECISIONS.md` is created, to the
+[portable format](../skills/staged-rollout/references/decisions-format.md),
+only when the repo has none.
+
+Attended, you approve the whole list in one batch. Unattended, the stage
+applies its own proposals and `plan-close` lists them in the final PR, so
+merging that PR is the approval. The stage records the list under
+`#### Kept decisions` in its ledger notes.
+
+It then updates the README (or the module's own doc), adds one line to
+`CLAUDE.md` so agents read `DECISIONS.md` before changing a covered path, and
+runs a **cold-reader check**: a subagent that sees only the repo, never
+`.plan/`, tries to answer how to test it, where something lives and why it
+was built that way. Every miss is fixed and asked again.
+
 ## 4. Close — `plan-close`
 
 It refuses to run until every ledger row is `done` or `skipped` (including
@@ -277,7 +391,9 @@ file automatically, so `plan-close` checks it instead of trusting the ledger
 alone. Then it:
 
 1. turns `PLAN.md` and the ledger into the final PR body, so the *why* and
-   the as-built story survive on `main`;
+   the as-built story survive on `main`. The body includes a **Kept
+   decisions** section copied from the review stage's list; if that list was
+   applied unattended, the section says that merging the PR approves it;
 2. offers to remove the stage worktrees that are finished (branch merged,
    nothing unpushed), and stops on any that still holds work git cannot
    recover. It also lists the issues the stages link to, if any, without

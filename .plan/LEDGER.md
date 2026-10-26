@@ -15,7 +15,7 @@ protocol, finish protocol).
 | Stage | Status | Verified | Date | Result |
 |---|---|---|---|---|
 | S0 Formats (keystone) | done | yes | 2026-10-26 | Four formats written; all acceptance checks pass |
-| S1 Bootstrap flow | todo | — | — | — |
+| S1 Bootstrap flow | doing | yes | 2026-10-27 | plan-stages reordered; effortlog gains plan-stages + subagent_tokens; checks pass |
 | S2 Runner and preflight | todo | — | — | — |
 | S3 Close-time triage | todo | — | — | — |
 | S4 Method (SKILL.md) | todo | — | — | — |
@@ -95,7 +95,70 @@ $ grep lens rows in plan-review.md
 ```
 
 ### S1 Bootstrap flow
-_(empty)_
+
+**As built** (commits on `plan-brief-decisions-s1`):
+- `commands/plan-stages.md` — eleven steps. The old free-form design pass
+  (`superpowers:brainstorming`, one question at a time) is gone: step 3's one
+  batch ask replaces it, with a second ask only when an answer opens a new
+  **Needs you** question. Size check (D-7) opens step 2; ADR / decisions-doc
+  detection (D-6) is a step-2 item fed into step 3's triage. Scaffold
+  subagent leaves `BRIEF.md` and `PLAN.md` › Plan review alone; the parent
+  generates the brief (step 7), re-checks lens triggers against
+  `## Artifacts`, runs lenses + a Sonnet digest-merge subagent (step 8), then
+  commits (step 9). The review ask and the brief-feedback invitation are one
+  ask. End announcement hands off wave 0 via `stage-run.md` step 7
+  *Desktop-app chips* (D-11), reading "what the finished stage left behind" as
+  "what the bootstrap left behind". Also fixed the weight gate's garbled "as
+  a effort actually set" sentence.
+- `skills/staged-rollout/scripts/effortlog.py` — `--source` gains
+  `plan-stages`; `--outcome` help gains `plan-scaffolded`. **Added beyond the
+  step list:** every `log` row now carries `subagent_tokens` — the sum of each
+  `<sid>/subagents/*.jsonl` transcript's last-turn context (same unit as
+  `context_tokens`), `null` when the session had none. That is how D-5's
+  "including review subagents' tokens" is met without the model adding them
+  up. Verified against an older session with subagents: 145347.
+
+**For S2 / S4 / S5:** `plan-stages.md` step numbers changed (scaffold is now
+6, brief 7, review 8, commit 9, end announcement 11); no other file referenced
+the old numbers (grep found none outside `.plan/` and `CHANGELOG.md`).
+
+**Follow-up (not this stage's scope, carried from S0):**
+`scripts/validate_plugin.py` `TEMPLATE_FILES` still does not list `BRIEF.md`,
+and `plan-stages.md` now copies it with `templates/*.md`. Candidate for SF.
+
+**Acceptance evidence** (in the stage worktree, 2026-10-27):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+
+$ python skills/staged-rollout/scripts/effortlog.py log --help | grep source
+usage: effortlog.py log [-h] --source {work-issue,stage-run,plan-stages}
+  --source {work-issue,stage-run,plan-stages}
+
+$ grep -n "top-level sessions" commands/plan-stages.md
+grep exit 1   (no matches)
+
+$ grep -n "stage-run.md\` step 7" commands/plan-stages.md
+397:    app, one card per stage by following `commands/stage-run.md` step 7,
+
+$ grep -nE "^[0-9]+\. \*\*" commands/plan-stages.md   (step headings)
+39:1. **Weight gate (first, before anything else).**
+52:2. **Requirements and playback — before any decision.**
+87:3. **Decision triage — one batch ask.**
+116:4. **Decompose.**
+167:5. **Git model (fixed, not a question).**
+220:6. **Scaffold — dispatch a subagent, don't commit yet.**
+294:7. **Brief.**
+317:8. **Plan review — before the commit.**
+340:9. **Commit.**
+352:10. **Run record.**
+371:11. **End announcement.**
+```
+
+Requirements (2) and triage (3) precede decomposition (4) and every frozen
+decision; the review (8) precedes the commit (9).
 
 ### S2 Runner and preflight
 _(empty)_

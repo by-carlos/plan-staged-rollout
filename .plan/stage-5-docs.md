@@ -20,9 +20,9 @@ that writes `CHANGELOG.md` (D-9).
 
 ## Steps
 
-- [ ] Update `docs/staged-rollout.md` with the requirements step, triage, brief, plan review and close-time triage, as built in S1–S4.
-- [ ] Update `docs/reference.md` for the new commands, files and formats.
-- [ ] Add one feature entry under `## [Unreleased]` in `CHANGELOG.md`, referencing #226 (D-9). No version heading, no `plugin.json` bump.
+- [x] Update `docs/staged-rollout.md` with the requirements step, triage, brief, plan review and close-time triage, as built in S1–S4.
+- [x] Update `docs/reference.md` for the new commands, files and formats.
+- [x] Add one feature entry under `## [Unreleased]` in `CHANGELOG.md`, referencing #226 (D-9). No version heading, no `plugin.json` bump.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks
 the row `doing`, ticks the boxes it finished, and writes a handoff note in the

@@ -19,7 +19,7 @@ protocol, finish protocol).
 | S2 Runner and preflight | done | yes | 2026-10-27 | Brief stamp + decisions steps in protocol, runner, README, stage-run |
 | S3 Close-time triage | done | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
 | S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
-| S5 User docs and changelog | todo | — | — | — |
+| S5 User docs and changelog | done | yes | 2026-10-27 | Docs, reference and one CHANGELOG entry written; validate passes |
 | S6 Example plan | doing | yes | 2026-10-27 | examples/feed-digest/ shows all five artifacts; validator OK |
 | SF Plan review | todo | — | — | — |
 
@@ -300,7 +300,7 @@ here (out of scope): D-1's runner showing overlapping `DECISIONS.md` entries
 is not described in SKILL.md — S2 owns the runner; SF may judge whether the
 method needs a line on it.
 
-**Acceptance evidence** (2026-10-27, stage worktree):
+**Acceptance evidence** (2026-10-27, re-run in the stage worktree on the merged result after re-syncing with the plan branch at 04250da, which landed S5; LEDGER table conflict resolved keeping both rows; output unchanged):
 
 ```
 $ python3 scripts/validate_plugin.py
@@ -316,7 +316,25 @@ $ grep -cF 'references/templates/BRIEF.md)' skills/staged-rollout/SKILL.md
 ```
 
 ### S5 User docs and changelog
-_(empty)_
+
+**As built** (commits on `plan-brief-decisions-s5`):
+- `docs/staged-rollout.md` — section 1 rewritten for the new order (size check, requirements + playback, triage + one batch ask, decompose, brief, plan review, commit, session cards), with new subsections *The brief* and *Plan review*; section 2 gains the brief-stamp and decisions-in-force bullets; section 3 gains *Which decisions outlive the plan* (drop / entry / ADR, attended vs unattended approval, README, pointer line, cold reader); section 4 mentions the Kept decisions section. `.plan/` tree lists `BRIEF.md`.
+- `docs/reference.md` — `BRIEF.md` row and updated `PLAN.md` row in *Plan files*; new section *Brief, review and decisions formats* (links the three reference files, runner behaviour, effort-log row).
+- `CHANGELOG.md` — one `### Added` entry under a new `## [Unreleased]` heading (none existed), referencing #226. No version heading, no `plugin.json` change.
+
+**Acceptance evidence** (2026-10-27, re-run in the stage worktree on the merged result after re-syncing with the plan branch at 04250da, which landed S5; LEDGER table conflict resolved keeping both rows; output unchanged):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+```
+
+Changelog entry:
+
+> - **Requirements, a brief and a plan review before stage 1, and kept decisions after `.plan/` is gone.** `plan-stages` now captures and plays back your requirements before deciding how, sorts decisions into Decided, Needs you and Default for now and asks the open ones once, generates a one-page `.plan/BRIEF.md` from `PLAN.md` (also published as an artifact where that tool exists), and runs a plan review with up to four lenses before the scaffold is committed. The review stage proposes drop, a `DECISIONS.md` entry or an ADR for every frozen decision, updates the README and runs a cold-reader check; `plan-close` lists the kept decisions in the final PR. Stages check the brief's stamp and show the decisions in force for the paths they touch. Work that fits one issue is unchanged. `DECISIONS.md` follows a new portable format (#226).
+
+**Not done (out of scope, for SF):** the docs do not cover the S3 follow-up that the decisions spec does not reach a cloud SF in other repos.
 
 ### S6 Example plan
 
@@ -352,7 +370,7 @@ plan-review digest is kept outside `.plan/` and labelled as normally-scratch.
 `git hash-object` of the example `PLAN.md`. Any edit to that file means
 regenerating the stamp, or the README's "the hash matches" claim goes false.
 
-**Acceptance evidence** (2026-10-27, stage worktree):
+**Acceptance evidence** (2026-10-27, re-run in the stage worktree on the merged result after re-syncing with the plan branch at 04250da, which landed S5; LEDGER table conflict resolved keeping both rows; output unchanged):
 
 ```
 $ python3 scripts/validate_plugin.py

@@ -18,7 +18,7 @@ protocol, finish protocol).
 | S1 Bootstrap flow | todo | — | — | — |
 | S2 Runner and preflight | todo | — | — | — |
 | S3 Close-time triage | doing | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
-| S4 Method (SKILL.md) | todo | — | — | — |
+| S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
 | S5 User docs and changelog | todo | — | — | — |
 | S6 Example plan | todo | — | — | — |
 | SF Plan review | todo | — | — | — |
@@ -134,11 +134,12 @@ should show it in that exact form.
   today (S1's territory), so in a cloud session — where the plugin does not
   load — a plan in any repo other than this one cannot read it. Either
   `/plan-stages` copies it alongside `RUNNER.md`, or this is accepted.
-- **SKILL.md's *Unattended mode* table** gains a new declared default: SF's
-  decision-triage approval (apply own proposals; the plan→main PR merge
-  approves). That table is S4's file.
+- **SKILL.md's *Unattended mode* table** has no row for SF's decision-triage
+  approval (apply own proposals; the plan→main PR merge approves). S4 states it
+  in prose under the final review stage section, but the table that
+  classifies every unattended decision point does not list it.
 
-**Acceptance evidence** (stage worktree, 2026-10-27):
+**Acceptance evidence** (re-run in the stage worktree on the merged result after re-syncing with the plan branch at 6fe9b67, which added S4; output unchanged, 2026-10-27):
 
 ```
 $ python3 scripts/validate_plugin.py
@@ -164,7 +165,36 @@ unchanged under `### Loose ends`; the decision triage, README, pointer and
 cold-reader items are the step groups at lines 46 and 80.
 
 ### S4 Method (SKILL.md)
-_(empty)_
+
+**As built** (`skills/staged-rollout/SKILL.md`):
+- New section *Requirements and decisions, before decomposing* (before
+  *Decomposing the work*): requirements step + playback + existing-ADR
+  detection (D-6), decision triage into the three groups with one batch ask,
+  the brief, the plan review, and a **Depth by size** paragraph (D-7).
+- *The final review stage* gains "It also owns what outlives `.plan/`": close
+  triage drop / entry / ADR, attended vs unattended approval, README +
+  `CLAUDE.md` pointer, cold-reader check, still `gate: auto` (D-1).
+- Intro's template list now names `BRIEF.md` (plain name, not a link).
+
+**For S5:** user docs can point at the new SKILL.md section by name. Not done
+here (out of scope): D-1's runner showing overlapping `DECISIONS.md` entries
+is not described in SKILL.md — S2 owns the runner; SF may judge whether the
+method needs a line on it.
+
+**Acceptance evidence** (2026-10-27, stage worktree):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+
+$ grep -cF 'references/decisions-format.md)' skills/staged-rollout/SKILL.md
+1
+$ grep -cF 'references/plan-review.md)' skills/staged-rollout/SKILL.md
+1
+$ grep -cF 'references/templates/BRIEF.md)' skills/staged-rollout/SKILL.md
+1
+```
 
 ### S5 User docs and changelog
 _(empty)_

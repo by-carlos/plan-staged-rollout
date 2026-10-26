@@ -5,37 +5,42 @@ argument-hint: <project idea>
 
 # /plan-stages — bootstrap a `.plan/` scaffold
 
-Turn a project idea into a committed `.plan/` folder: design → decompose →
-scaffold → commit. **No stage is executed here.** This command is a thin
-wrapper around the `staged-rollout` skill; the skill and its
-`references/templates/` are the single source of truth for the method and file
+Turn a project idea into a committed `.plan/` folder: requirements → triage →
+decompose → scaffold → brief → review → commit. **No stage is executed here.**
+This command is a thin wrapper around the `staged-rollout` skill; the skill and
+its `references/` are the single source of truth for the method and file
 formats. Do not restate the protocol here or in the scaffold — reference it.
 
 Project idea: **$ARGUMENTS**
 
 **Bootstrap has no `--unattended` mode, and that is deliberate.** Every other
 command in this plugin honours one (see the `staged-rollout` skill, *Unattended
-mode*); this one does not, because decomposition and frozen decisions are
-design questions with no defensible defaults to declare in advance, and a badly
-decomposed plan costs far more than the session it saved. Where a plan must be
-bootstrapped headless anyway, a fully-specified brief that says to make every
-decision and ask nothing works as an ordinary prompt — it needs no contract
-behind it, and the weight gate below still applies.
+mode*); this one does not, because requirements, decomposition and frozen
+decisions are design questions with no defensible defaults to declare in
+advance, and a badly decomposed plan costs far more than the session it saved.
+Where a plan must be bootstrapped headless anyway, a fully-specified brief that
+says to make every decision and ask nothing works as an ordinary prompt — it
+needs no contract behind it, and the weight gate below still applies.
 
 First, load the method: invoke the **`staged-rollout`** skill (via the Skill
 tool) and follow its decomposition guidance, flag heuristics, and git model.
 The templates to copy live at
 `${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/references/templates/`
 (`PLAN.md`, `LEDGER.md`, `stage-N.md`, `stage-f-review.md`, `README.md`,
-`RUNNER.md`).
+`RUNNER.md`, `BRIEF.md`). Two more references govern steps below:
+`references/plan-review.md` (the lenses, digest and outcomes) and
+`references/decisions-format.md` (*Where it lives* — which existing decision
+record a plan adopts).
 
-Then work through these steps **in order**:
+Then work through these steps **in order**. The user is asked things at three
+points only — the playback (step 2), the one batch (step 3), and the review
+ask with the brief (step 8) — plus the commit OK (step 9).
 
 1. **Weight gate (first, before anything else).** Bootstrap is the
    highest-leverage session of a plan. Verify from your own system prompt that
    the session model is **Opus-class or better**, checked mechanically against
    the skill's **Model weight tiers** rubric — not the model's own guess about
-   itself. State the effort recommendation (**medium or higher**) as a
+   itself. State the effort recommendation (**medium or higher**) next to the
    effort actually set, read from `CLAUDE_EFFORT`; if that variable is absent,
    say it could not be read rather than assuming it matched. If
    the model is lighter than Opus-class, warn and **offer to abort** so the
@@ -44,16 +49,71 @@ Then work through these steps **in order**:
    in the rubric, don't guess — state the exact model ID/name and ask the
    user which tier applies.
 
-2. **Design pass (only if the design isn't already settled).** If `$ARGUMENTS`
-   already carries settled decisions, skip straight to decomposition. Otherwise
-   run a design pass: use **`superpowers:brainstorming`** when it is installed;
-   else fall back to a built-in lightweight flow — **one question at a time,
-   multiple-choice preferred**, converging on the decisions worth freezing.
-   Outcomes land **directly as Frozen decisions in the scaffolded `PLAN.md`** —
-   never as a separate spec document (a second source of truth is exactly what
-   this method exists to prevent).
+2. **Requirements and playback — before any decision.** Capture what the user
+   needs before deciding how to build it.
 
-3. **Decompose.** Apply the skill's guidance: smallest sensible stages, explicit
+   **Size first.** A plan is for work of roughly four or more sessions — the
+   line the skill's *When NOT to use it* already draws. Work that fits one
+   issue is small: its acceptance criteria are the spec, it gets no brief and
+   no plan review, and it belongs in `work-issue` or a single session. Say so
+   and offer to stop rather than scaffolding it. There is no other size
+   metric: within a plan, depth scales by what the plan touches (step 7's lens
+   triggers), never by stage count.
+
+   Then draw out the five requirement bullets of the `PLAN.md` template's
+   `## Requirements` section from `$ARGUMENTS`, any issue it names, and what
+   the repo shows: **Outcome** (in the user's words), **Day to day** (where
+   they are, which device, what happens while they are away), **Constraints,
+   ranked** (the first wins a conflict), **Out of scope**, and **Done, as
+   checks** a script or a person can run. Read only what you need to fill
+   them — this is not a design pass.
+
+   **Existing decision record.** Check whether the repo already keeps one, as
+   `decisions-format.md` › *Where it lives* defines: an ADR folder
+   (`docs/adr/`, `doc/adr/`, `adr/`, or `docs/decisions/` holding numbered
+   files) or an existing current-decisions document. Record what you find as a
+   triage item for step 3 — **Decided** when there is exactly one clear
+   target (or none, in which case the plan's lasting decisions will go to a
+   new `DECISIONS.md` at close), **Needs you** when there are several
+   candidates or it is unclear whether a document is a decisions list. Never
+   plan a parallel list beside an existing one.
+
+   **Play it back** to the user in plain language — a short paragraph per
+   bullet, no protocol vocabulary — and wait for them to confirm or correct
+   it. Corrections are folded in and the changed bullets played back again;
+   nothing in step 3 starts until the requirements are confirmed. They become
+   the scaffolded `PLAN.md`'s `## Requirements` section, unchanged.
+
+3. **Decision triage — one batch ask.** List every decision the build needs
+   before stage work can start, and sort each into the triage groups the
+   `PLAN.md` template defines under *Frozen decisions*:
+   - **Decided** — reversible and low impact: settle it yourself, with its
+     reason. Not asked. Decisions `$ARGUMENTS` already settles land here too.
+   - **Needs you** — taste, irreversible, cost, security, or anything
+     external: put to the user. Each comes with the options you weighed and a
+     recommended answer.
+   - **Default for now** — a working default, flagged with when to revisit.
+
+   Then evaluate the plan-review lens triggers (`plan-review.md` › *The four
+   lenses*) against the confirmed requirements, and add the resulting lens
+   list to the batch: Simplicity always, each other lens with the trigger that
+   turned it on. The user may add or drop lenses in their answer.
+
+   **Ask once.** Every **Needs you** decision and the lens list go to the user
+   in **one** batch — not one question at a time, and not a design pass that
+   trickles questions out. Show the **Decided** and **Default for now** items
+   alongside, one line each, so the user can promote any of them to a question
+   in the same reply. A second ask is allowed only when an answer itself opens
+   a new **Needs you** question; say so when it happens. A **Needs you**
+   decision the user leaves unanswered stays *pending* and names the stages
+   that wait on it (template wording `(Needs you — pending; blocks S<N>)`) —
+   only those stages are blocked, and step 6 still scaffolds.
+
+   Outcomes land **directly as Frozen decisions in the scaffolded `PLAN.md`**,
+   each tagged with its group — never as a separate spec document (a second
+   source of truth is exactly what this method exists to prevent).
+
+4. **Decompose.** Apply the skill's guidance: smallest sensible stages, explicit
    `depends`, the keystone as **S0**, deliberately cheap process flags
    (`direct`, `inline` — escalate only where a stage genuinely warrants it),
    and a `model`/`effort` sized to finish the stage rather than minimised.
@@ -100,7 +160,11 @@ Then work through these steps **in order**:
    sit wherever the dependency graph puts them. When the human-grouping rule
    and the graph disagree, the graph wins and you say so.
 
-4. **Git model (fixed, not a question).** Record the frozen git protocol in
+   **A pending decision is a `depends` fact too.** Every stage a pending
+   **Needs you** decision names must be one that genuinely consumes it — the
+   same naming rule as for edges above.
+
+5. **Git model (fixed, not a question).** Record the frozen git protocol in
    `PLAN.md`: **branch-per-stage** — `main` → `plan-<slug>` (the plan branch)
    → one `plan-<slug>-s<N>` branch and PR per stage, no exceptions, final PR
    to `main` at closeout. It is the only supported model — do not ask the
@@ -136,7 +200,7 @@ Then work through these steps **in order**:
    **The `plan-dir` flag — written, not asked.** The same line also carries
    `plan-dir: delete` \| `keep`, the plan's declared answer to closeout's
    "delete `.plan/` or keep it?" question. Write **`plan-dir: delete`** unless
-   `$ARGUMENTS` or the design pass says the plan doubles as the project's
+   `$ARGUMENTS` or the requirements say the plan doubles as the project's
    documentation, in which case write `keep`. Don't ask: `delete` is what
    `/plan-close` already recommends, an interactive closeout still puts the
    choice to the user with this value as its recommendation, and one more
@@ -153,10 +217,11 @@ Then work through these steps **in order**:
    **no** worktree here — bootstrap leaves the clone on the plan branch and
    nothing else.
 
-5. **Scaffold — dispatch a subagent, then commit.** By this point the design,
-   the stage index, the git model, and the worktree model are all frozen;
-   nothing left in this step is a decision, so don't keep the templates
-   resident to do it.
+6. **Scaffold — dispatch a subagent, don't commit yet.** By this point the
+   requirements, the decisions, the stage index, the git model, and the
+   worktree model are all settled; nothing left in this step is a decision,
+   so don't keep the templates resident to do it. The scaffold stays
+   **uncommitted** until the review in step 8 has been applied.
 
    First, **check that `.plan/` is not ignored — yourself, before dispatching
    anything**: `git check-ignore -v .plan/PLAN.md`. If a rule matches, **stop
@@ -174,10 +239,13 @@ Then work through these steps **in order**:
    template produces a scaffold that looks right, commits clean, and fails
    only much later when the review stage runs and its checklist is missing)
    carrying:
-   - the frozen decisions from step 2;
-   - the completed stage index from step 3, including the standing `SF: plan
+   - the confirmed requirements from step 2, for `PLAN.md`'s
+     `## Requirements`;
+   - the frozen decisions from step 3, each with its triage group (and, for a
+     pending **Needs you**, the stages it blocks);
+   - the completed stage index from step 4, including the standing `SF: plan
      review` row and every stage's `gate`;
-   - the frozen git model and worktree model from step 4, and the complete
+   - the frozen git model and worktree model from step 5, and the complete
      plan flags line it decided (both `merge` and `plan-dir`);
    - the plugin version from `.claude-plugin/plugin.json`, for `RUNNER.md`'s
      scaffold marker.
@@ -194,11 +262,15 @@ Then work through these steps **in order**:
    only the copies are touched.
 
    Instruct it to fill every placeholder in `<repo>/.plan/`, using the
-   copies there as its templates: `stage-N.md` **once per stage**, each
+   copies there as its templates — **except `BRIEF.md` and `PLAN.md` ›
+   Plan review, which it leaves untouched** (steps 7 and 8 own them):
+   `stage-N.md` **once per stage**, each
    written as `stage-<N>-<slug>.md`, then the `.plan/stage-N.md` copy
    removed; and `stage-f-review.md` **once**, filled in place under the same
    name (no slug — it's the standing final stage; state this explicitly
-   rather than trusting it to infer from the template name).
+   rather than trusting it to infer from the template name). Every stage
+   file's `## Artifacts` lists the paths the stage writes — step 7 reads them
+   for lens triggers, and the close-time decision triage reads them for paths.
    `RUNNER.md` is kept **whole with its placeholders filled and its header
    comment's `<version>` set** — it is the stage-runner contract the plan
    carries so any session, cloud included, can run a stage from the one-line
@@ -217,45 +289,117 @@ Then work through these steps **in order**:
    `model`/`effort` values, which stay authoritative and are still checked
    individually by `/stage-run`'s weight gate. Skip the hint if there's no
    strict majority (e.g. an even split). The subagent returns a **manifest of
-   files written** — nothing else.
+   files written** — nothing else. **The subagent runs no git command.**
 
-   **The subagent runs no git command.** Every write stays here in the
-   parent: **propose creating the plan branch `plan-<slug>` off `main`** and
-   put the scaffold there — `.plan/` lives on the plan branch and is
-   **tracked** there. **Propose the scaffold commit** (conventional message,
-   e.g. `chore(plan): scaffold .plan/ for <slug>`) and wait for the user's
-   OK — do not create the branch or commit unilaterally. Once committed,
-   **push the plan branch with an upstream** (`git push -u origin
-   plan-<slug>`) — no approval needed for a feature branch. A local-only plan
-   branch makes every later preflight's fetch and fast-forward a silent
-   no-op. Then confirm the scaffold is really tracked: `git ls-files .plan/`
-   must list the files the manifest said were written.
+7. **Brief.** Generate `.plan/BRIEF.md` from the filled `PLAN.md`, following
+   the generation rules in the `BRIEF.md` copy's header comment (and dropping
+   that comment): line 1 is the stamp
+   `Generated from PLAN.md @ <hash> — do not edit`, `<hash>` being the first
+   12 hex characters of `git hash-object .plan/PLAN.md`; every section names
+   the `PLAN.md` section it came from; nothing appears in the brief that
+   `PLAN.md` does not hold. The brief is always this file, tracked with the
+   rest of the scaffold. **Where the Artifact tool exists**, also publish the
+   same content as an artifact — the file is the brief, the artifact only
+   renders it; with no Artifact tool (cloud, terminal, phone) the file alone
+   is the brief, and nothing else changes.
 
-6. **End announcement.** State explicitly that **bootstrap is finished and no
-   stage was executed.** Tell the user their next action, in a **fresh
-   session**, is **"run stage 0 of the plan"** — or the explicit command
-   **`/plan-staged-rollout:stage-run 0`** — and state **S0's recommended model
-   and effort** from the stage index. If step 5 found a modal-model majority,
-   repeat that recommendation here too (e.g. *"consider `/model opus` as your
-   session default — it covers 6 of 8 stages"*).
+   **Re-check the lens triggers** against every stage file's `## Artifacts`
+   now that they exist. A lens that only turns on here is added — not asked
+   about — and shown with its trigger in the brief's lens line. At most four
+   lenses run.
 
-   Then print the **wave structure and critical path**, derived from the
-   `Depends` column — never stored as a column of its own, since waves are a
-   view of the graph and a stored copy is what drifts. Wave 0 is every stage
-   with no `depends`; wave *k* is every stage whose deepest prerequisite sits
-   in wave *k−1*. Show it compactly:
+   **Regenerate the brief after every later `PLAN.md` edit** — review
+   outcomes in step 8, the user's feedback on the brief, anything else — and
+   republish the artifact to the same URL. Feedback, in chat or as artifact
+   comments, is applied to `PLAN.md` only, never to `BRIEF.md`: a hand edit
+   to the brief is overwritten at the next regeneration, by design.
 
-   ```
-   wave 0: S0
-   wave 1: S1, S2, S3     ← independent; one session each, concurrently
-   wave 2: S4
-   wave 3: SF
-   critical path: S0 → S1 → S4 → SF (4 stages)
-   ```
+8. **Plan review — before the commit.** Run the lenses on the uncommitted
+   scaffold exactly as `plan-review.md` › *Running a lens* defines: one
+   subagent per lens, in parallel, each on its table model (Sonnet for
+   Simplicity and Operator; this session's own model for Architect and
+   Security), each writing its findings to its own scratchpad file. Then one
+   Sonnet subagent merges them into the digest that `plan-review.md` ›
+   *The digest* defines (finding rule applied, duplicates folded, at most
+   ~40 lines) and writes it to the scratchpad. **This session reads the
+   digest only, never the lens files.**
 
-   State the two facts that follow: the wave count is the fewest rounds this
-   plan can take, and the critical path is the floor on elapsed time that no
-   amount of parallelism removes. Name which waves fan out so the operator
-   knows where concurrency is available — but do **not** offer to launch those
-   sessions, because a session cannot start independent top-level sessions.
-   Then stop.
+   Give every digest finding one of the three outcomes (`plan-review.md` ›
+   *Three outcomes*). Apply the ones the frozen decisions already settle
+   without asking — edit `PLAN.md` or the stage file the finding points at.
+   Findings that would change a **Needs you** decision, or that turn on
+   taste, cost or something external, go to the user in **one** ask, each
+   with a recommended outcome — together with the brief (the artifact link,
+   or the `.plan/BRIEF.md` path where there is none) and an invitation to
+   give feedback on it. Apply the answers and the feedback to `PLAN.md`,
+   write the record into `PLAN.md` › Plan review (date, lenses with their
+   triggers, one line per digest finding with its outcome), and regenerate
+   the brief (step 7). A finding that reaches the digest is never silently
+   dropped.
+
+9. **Commit.** Every git write stays here in the parent: **propose creating
+   the plan branch `plan-<slug>` off `main`** and put the scaffold there —
+   `.plan/` lives on the plan branch and is **tracked** there, `BRIEF.md`
+   included. **Propose the scaffold commit** (conventional message, e.g.
+   `chore(plan): scaffold .plan/ for <slug>`) and wait for the user's OK — do
+   not create the branch or commit unilaterally. Once committed, **push the
+   plan branch with an upstream** (`git push -u origin plan-<slug>`) — no
+   approval needed for a feature branch. A local-only plan branch makes every
+   later preflight's fetch and fast-forward a silent no-op. Then confirm the
+   scaffold is really tracked: `git ls-files .plan/` must list the files the
+   manifest said were written, plus `BRIEF.md`.
+
+10. **Run record.** Append one effort-log row for the bootstrap, so the
+    planning overhead can be read off the log after a real plan:
+
+    ```
+    python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" log \
+      --source plan-stages --repo <owner/repo> --target <plan-slug> \
+      --estimated-tier <this session's model/effort> \
+      --outcome <plan-scaffolded|abandoned> \
+      --note "<one line: stages, lenses run, findings changed/followed-up/accepted>"
+    ```
+
+    The script totals this session's subagents itself — the scaffold
+    subagent, every lens and the digest merge — into the row's
+    `subagent_tokens`, so do not add them up by hand. Run it on an abandoned
+    bootstrap too: a plan stopped at the size check or the playback is part
+    of what planning costs. Writing is **opt-in** — with `CLAUDE_EFFORT_LOG`
+    unset the script writes nothing and exits 0. A failure here is reported in
+    one line and never blocks the bootstrap.
+
+11. **End announcement.** State explicitly that **bootstrap is finished and no
+    stage was executed**, and where the brief is (the artifact link, and
+    `.plan/BRIEF.md` on the plan branch). Then print the **wave structure and
+    critical path**, derived from the `Depends` column — never stored as a
+    column of its own, since waves are a view of the graph and a stored copy
+    is what drifts. Wave 0 is every stage with no `depends`; wave *k* is every
+    stage whose deepest prerequisite sits in wave *k−1*. Show it compactly:
+
+    ```
+    wave 0: S0
+    wave 1: S1, S2, S3     ← independent; one session each, concurrently
+    wave 2: S4
+    wave 3: SF
+    critical path: S0 → S1 → S4 → SF (4 stages)
+    ```
+
+    State the two facts that follow: the wave count is the fewest rounds this
+    plan can take, and the critical path is the floor on elapsed time that no
+    amount of parallelism removes. Name which waves fan out so the operator
+    knows where concurrency is available.
+
+    Then hand off **wave 0** — the stages that can run now — exactly as
+    `/stage-run`'s end announcement hands off a runnable set: for each one,
+    the fresh-session prompt **"run stage \<N> of the plan"** or the explicit
+    command **`/plan-staged-rollout:stage-run <N>`**, with its recommended
+    `model`, `effort` and `gate` from the stage index; and, in the desktop
+    app, one card per stage by following `commands/stage-run.md` step 7,
+    *Desktop-app chips*, as written — `spawn_task` or `start_session`,
+    whichever this session has, under the same conditions and with the same
+    fields. Read that bullet's "what the finished stage left behind" as "what
+    the bootstrap left behind". The printed command stays the handoff on every
+    surface that shows no card. If step 6 found a modal-model majority, repeat
+    that recommendation here too (e.g. *"consider `/model opus` as your
+    session default — it covers 6 of 8 stages"*). Repeat the plan flags line.
+    Then stop.

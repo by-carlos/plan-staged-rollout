@@ -20,9 +20,9 @@ deletion.
 
 ## Steps
 
-- [ ] Rewrite `skills/staged-rollout/references/templates/stage-f-review.md`: keep its three-outcome checklist and add the decision triage per D-1 (attended batch ask vs unattended listing in the PR body), D-6 (existing ADR folder or decisions doc as target) and the spec's keep rule.
-- [ ] Add the README update item, the `CLAUDE.md` pointer line item, and the cold-reader check: a fresh subagent with only the repo and no `.plan/` answers "how do I test this, where is X, why Y"; every miss is a README or `DECISIONS.md` gap.
-- [ ] Edit `commands/plan-close.md`: the PR body template gains a kept-decisions section, filled from the final review stage's list.
+- [x] Rewrite `skills/staged-rollout/references/templates/stage-f-review.md`: keep its three-outcome checklist and add the decision triage per D-1 (attended batch ask vs unattended listing in the PR body), D-6 (existing ADR folder or decisions doc as target) and the spec's keep rule.
+- [x] Add the README update item, the `CLAUDE.md` pointer line item, and the cold-reader check: a fresh subagent with only the repo and no `.plan/` answers "how do I test this, where is X, why Y"; every miss is a README or `DECISIONS.md` gap.
+- [x] Edit `commands/plan-close.md`: the PR body template gains a kept-decisions section, filled from the final review stage's list.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks
 the row `doing`, ticks the boxes it finished, and writes a handoff note in the

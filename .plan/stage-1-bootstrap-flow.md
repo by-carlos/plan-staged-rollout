@@ -21,10 +21,10 @@ the maintainer uses; the other stages hang off what it produces.
 
 ## Steps
 
-- [ ] Rewrite `commands/plan-stages.md` step order per D-1, D-2, D-4, D-6 and D-7: requirements step and playback, decision triage with one batch ask, decomposition, scaffold, brief generation, lens review, then the commit.
-- [ ] Add the effortlog row per D-5: `/plan-stages` logs a row, including review subagents' tokens.
-- [ ] Add `plan-stages` to the `--source` choices in `skills/staged-rollout/scripts/effortlog.py`.
-- [ ] Rewrite the end announcement per D-11: offer a card per wave-0 stage, reusing `commands/stage-run.md`'s desktop-app chip step rather than restating it.
+- [x] Rewrite `commands/plan-stages.md` step order per D-1, D-2, D-4, D-6 and D-7: requirements step and playback, decision triage with one batch ask, decomposition, scaffold, brief generation, lens review, then the commit.
+- [x] Add the effortlog row per D-5: `/plan-stages` logs a row, including review subagents' tokens.
+- [x] Add `plan-stages` to the `--source` choices in `skills/staged-rollout/scripts/effortlog.py`.
+- [x] Rewrite the end announcement per D-11: offer a card per wave-0 stage, reusing `commands/stage-run.md`'s desktop-app chip step rather than restating it.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks
 the row `doing`, ticks the boxes it finished, and writes a handoff note in the

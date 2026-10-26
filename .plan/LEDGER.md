@@ -19,7 +19,7 @@ protocol, finish protocol).
 | S2 Runner and preflight | done | yes | 2026-10-27 | Brief stamp + decisions steps in protocol, runner, README, stage-run |
 | S3 Close-time triage | done | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
 | S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
-| S5 User docs and changelog | todo | — | — | — |
+| S5 User docs and changelog | doing | yes | 2026-10-27 | docs/staged-rollout.md, docs/reference.md, CHANGELOG [Unreleased] updated |
 | S6 Example plan | todo | — | — | — |
 | SF Plan review | todo | — | — | — |
 
@@ -316,7 +316,25 @@ $ grep -cF 'references/templates/BRIEF.md)' skills/staged-rollout/SKILL.md
 ```
 
 ### S5 User docs and changelog
-_(empty)_
+
+**As built** (commits on `plan-brief-decisions-s5`):
+- `docs/staged-rollout.md` — section 1 rewritten for the new order (size check, requirements + playback, triage + one batch ask, decompose, brief, plan review, commit, session cards), with new subsections *The brief* and *Plan review*; section 2 gains the brief-stamp and decisions-in-force bullets; section 3 gains *Which decisions outlive the plan* (drop / entry / ADR, attended vs unattended approval, README, pointer line, cold reader); section 4 mentions the Kept decisions section. `.plan/` tree lists `BRIEF.md`.
+- `docs/reference.md` — `BRIEF.md` row and updated `PLAN.md` row in *Plan files*; new section *Brief, review and decisions formats* (links the three reference files, runner behaviour, effort-log row).
+- `CHANGELOG.md` — one `### Added` entry under a new `## [Unreleased]` heading (none existed), referencing #226. No version heading, no `plugin.json` change.
+
+**Acceptance evidence** (2026-10-27, stage worktree):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+```
+
+Changelog entry:
+
+> - **Requirements, a brief and a plan review before stage 1, and kept decisions after `.plan/` is gone.** `plan-stages` now captures and plays back your requirements before deciding how, sorts decisions into Decided, Needs you and Default for now and asks the open ones once, generates a one-page `.plan/BRIEF.md` from `PLAN.md` (also published as an artifact where that tool exists), and runs a plan review with up to four lenses before the scaffold is committed. The review stage proposes drop, a `DECISIONS.md` entry or an ADR for every frozen decision, updates the README and runs a cold-reader check; `plan-close` lists the kept decisions in the final PR. Stages check the brief's stamp and show the decisions in force for the paths they touch. Work that fits one issue is unchanged. `DECISIONS.md` follows a new portable format (#226).
+
+**Not done (out of scope, for SF):** the docs do not cover the S3 follow-up that the decisions spec does not reach a cloud SF in other repos.
 
 ### S6 Example plan
 _(empty)_

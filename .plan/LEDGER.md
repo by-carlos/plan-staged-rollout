@@ -20,7 +20,7 @@ protocol, finish protocol).
 | S3 Close-time triage | done | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
 | S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
 | S5 User docs and changelog | done | yes | 2026-10-27 | Docs, reference and one CHANGELOG entry written; validate passes |
-| S6 Example plan | doing | yes | 2026-10-27 | examples/feed-digest/ shows all five artifacts; validator OK |
+| S6 Example plan | done | yes | 2026-10-27 | examples/feed-digest/ shows all five artifacts; validator OK |
 | SF Plan review | todo | — | — | — |
 
 ## Notes

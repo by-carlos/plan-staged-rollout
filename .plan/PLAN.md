@@ -149,6 +149,14 @@ default, revisited later).
   copy in `.plan/`), so this plan's decisions go through drop / `DECISIONS.md` /
   ADR, and this repo may gain its first `DECISIONS.md` and `CLAUDE.md` pointer
   line.
+- **D-11 — Bootstrap offers session cards** *(Decided — added after bootstrap,
+  from the maintainer's feedback on it)*. `/plan-stages`' end announcement
+  stops forbidding launch offers ("a session cannot start independent
+  top-level sessions" is untrue in the desktop app) and offers one card per
+  wave-0 stage by reusing `/stage-run`'s desktop-app chip step
+  (`spawn_task` or `start_session`, whichever exists), with the printed
+  command kept as the handoff on every other surface. Reason: `/stage-run`
+  already does this for the next runnable set; bootstrap was the one gap.
 - **Git strategy:** branch-per-stage (fixed — the only supported model).
   `.plan/` is **tracked** on the plan branch and the plan branch has an
   **upstream** — both are load-bearing, not housekeeping (preflight step 0.0).

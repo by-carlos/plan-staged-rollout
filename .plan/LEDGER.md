@@ -436,4 +436,93 @@ already does `uptime-page/`. Nothing checks it; accept or add a check.
 -->
 
 ### SF Plan review
-_(empty)_
+
+**Loose ends** (every item from the S0–S6 notes, each mapped to exactly one outcome):
+
+| # | Loose end (source) | Outcome |
+|---|---|---|
+| L1 | `validate_plugin.py` `TEMPLATE_FILES` lists neither `BRIEF.md` nor `RUNNER.md` (S0, S1) | **New stage S7** |
+| L2 | The decisions spec never reaches a cloud SF in another repo: `/plan-stages` copies `templates/*.md` only, not `references/decisions-format.md` — against ranked constraint 3 (S3, S5) | **New stage S7** |
+| L3 | SKILL.md *Unattended mode* table has no row for SF's decision-triage approval (S3) | **New stage S7** |
+| L4 | SKILL.md does not describe the runner's "decisions in force" step (S4) | **New stage S7** |
+| L5 | The preflight backstop regenerates `BRIEF.md` but not a published artifact (S2) | **Accepted, won't fix** — D-2 makes the file the brief; the artifact is only a render |
+| L6 | An adopted decisions doc without `Paths:` lines is named, not matched (S2) | **Accepted, won't fix** — D-6 adopts the existing format; imposing `Paths:` is the migration it rejected |
+| L7 | Example plans copy template protocol text and go stale unchecked (S6; `uptime-page/` already is) | **Spin-off** — a validator check for example drift |
+| L8 | `feed-digest`'s brief stamp must be regenerated on any edit to its `PLAN.md` (S6) | **Spin-off** — fold into L7's check (stamp vs `git hash-object`) |
+| L9 | D-5: the bootstrap overhead share is to be read off the effort log after the next real plan | **Spin-off** — measure after the next real plan |
+| L10 | Preflight sees an unrelated `feat/205-log-gap-review-tally-each` branch | **Accepted, won't fix** — not a `plan-*` branch, outside this plan |
+
+Count check: 10 captured = 4 new stage + 3 spin-off + 3 accepted. S7 is a
+stage index row, the ledger row above and `.plan/stage-7-close-gaps.md`.
+
+**Spin-offs for the plan→main PR body:** L7 + L8 (validator check that example
+plans match the templates and their brief stamps), L9 (read the `plan-stages`
+overhead share off the effort log after the next real plan).
+
+**Issue #226 "When this closes" walk:**
+
+1. Requirements and triage before any frozen decision, one batch — **met**:
+   `commands/plan-stages.md` steps 2 (l.52), 3 (l.87, *Ask once* l.102) precede 4 *Decompose* (l.116).
+2. Brief generated from `PLAN.md`, refreshed on change — **met**: `plan-stages.md` step 7
+   (*Regenerate the brief after every later `PLAN.md` edit*, l.311); `templates/PLAN.md`
+   preflight step 0.6 *Check the brief is current* (l.325) as the backstop.
+3. Plans above the threshold get a review before stage 1, findings land in the plan — **met**:
+   `plan-stages.md` step 8 *Plan review — before the commit* (l.317) precedes 9 *Commit* (l.340);
+   the record goes in `PLAN.md` › Plan review.
+4. Every frozen decision dropped / entry / ADR, approved in one batch — **met**: this stage,
+   `#### Kept decisions` below, approved in one ask.
+5. `CLAUDE.md` has the pointer line; each stage shown its entries — **met**: `CLAUDE.md` › *Decisions*
+   (l.23); *Decisions in force* in `templates/PLAN.md` (l.351), `templates/RUNNER.md` (l.67),
+   `commands/stage-run.md` (l.93).
+6. Final stage updates the README; cold-reader check runs — **met**: `README.md` › *How a plan runs*
+   and *Try it* steps 2 and 4; cold-reader record below.
+7. A small fix runs none of this — **met**: `plan-stages.md` step 2 *Size first* sends one-issue
+   work to `work-issue` with no brief or review; `git diff --stat origin/main...HEAD -- skills/work-issue` is empty.
+8. User docs and changelog — **met**: `docs/staged-rollout.md` › *The brief* (l.127), *Plan review*
+   (l.147), *Which decisions outlive the plan* (l.352); `CHANGELOG.md` `## [Unreleased]` (l.11).
+
+#### Kept decisions
+
+Target: `DECISIONS.md` at the repo root (no ADR folder or decisions document existed).
+
+- D-1 — entry — `DECISIONS.md` › Planning flow
+- D-2 — entry — `DECISIONS.md` › Planning flow
+- D-3 — drop — the brief's "do not edit" stamp and `plan-stages.md` step 7 already say feedback edits `PLAN.md` only
+- D-4 — entry — `DECISIONS.md` › Planning flow
+- D-5 — entry — `DECISIONS.md` › Planning flow
+- D-6 — drop — `decisions-format.md` › *Where it lives* is its record
+- D-7 — entry — `DECISIONS.md` › Planning flow
+- D-8 — entry — `DECISIONS.md` › Decisions format (the portability rule; the file locations are plain from the tree)
+- D-9 — drop — only mattered while the plan ran
+- D-10 — drop — only mattered for this plan's own SF
+- D-11 — entry — `DECISIONS.md` › Planning flow
+
+Approved by Carlos Eng on 2026-10-27, in one batch.
+
+Git strategy, worktree strategy and final review stage are method, not project: left out.
+D-10 dogfood: the triage ran from `skills/staged-rollout/references/templates/stage-f-review.md`
+(S3's rewrite), not `.plan/stage-f-review.md`; `CLAUDE.md` gained the pointer line.
+
+**Cold-reader check** (fresh Sonnet subagent, repo only, told never to open `.plan/`; one pass, no misses, nothing fixed):
+
+| Question | First answer (sources it cited) |
+|---|---|
+| How do I test a change? | `python3 scripts/validate_plugin.py`, same as CI (`CONTRIBUTING.md` › Validation, `CLAUDE.md`) |
+| Where is the plan review defined? | `references/plan-review.md` › The four lenses; run in `plan-stages.md` step 8 |
+| Where is the `DECISIONS.md` format, first line? | `references/decisions-format.md`; `<!-- decisions-format: 1 -->` |
+| Why the review runs in `/plan-stages` (D-1)? | no extra session or human gate; review before stage 1 by construction (`DECISIONS.md` › Planning flow, `plan-review.md`) |
+| Why only Simplicity always (D-4)? | all four would double the cost (`DECISIONS.md` › Planning flow) |
+| Why `decisions-format.md` stays plugin-neutral (D-8)? | Daikenja carries an identical copy (`DECISIONS.md` › Decisions format) |
+| Where is the brief template, how is staleness found? | `templates/BRIEF.md`; stamp vs `git hash-object`, preflight regenerates (`stage-run.md`, `docs/staged-rollout.md`) |
+
+**Acceptance evidence** (2026-10-27, stage worktree):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+$ head -1 DECISIONS.md
+<!-- decisions-format: 1 -->
+$ grep -n "DECISIONS.md" CLAUDE.md
+23:- **Decisions in force live in [`DECISIONS.md`](DECISIONS.md).** ...
+```

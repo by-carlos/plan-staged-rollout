@@ -18,7 +18,7 @@ protocol, finish protocol).
 | S1 Bootstrap flow | doing | yes | 2026-10-27 | plan-stages reordered; effortlog gains plan-stages + subagent_tokens; checks pass |
 | S2 Runner and preflight | todo | — | — | — |
 | S3 Close-time triage | todo | — | — | — |
-| S4 Method (SKILL.md) | todo | — | — | — |
+| S4 Method (SKILL.md) | doing | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
 | S5 User docs and changelog | todo | — | — | — |
 | S6 Example plan | todo | — | — | — |
 | SF Plan review | todo | — | — | — |
@@ -167,7 +167,36 @@ _(empty)_
 _(empty)_
 
 ### S4 Method (SKILL.md)
-_(empty)_
+
+**As built** (`skills/staged-rollout/SKILL.md`):
+- New section *Requirements and decisions, before decomposing* (before
+  *Decomposing the work*): requirements step + playback + existing-ADR
+  detection (D-6), decision triage into the three groups with one batch ask,
+  the brief, the plan review, and a **Depth by size** paragraph (D-7).
+- *The final review stage* gains "It also owns what outlives `.plan/`": close
+  triage drop / entry / ADR, attended vs unattended approval, README +
+  `CLAUDE.md` pointer, cold-reader check, still `gate: auto` (D-1).
+- Intro's template list now names `BRIEF.md` (plain name, not a link).
+
+**For S5:** user docs can point at the new SKILL.md section by name. Not done
+here (out of scope): D-1's runner showing overlapping `DECISIONS.md` entries
+is not described in SKILL.md — S2 owns the runner; SF may judge whether the
+method needs a line on it.
+
+**Acceptance evidence** (2026-10-27, stage worktree):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+
+$ grep -cF 'references/decisions-format.md)' skills/staged-rollout/SKILL.md
+1
+$ grep -cF 'references/plan-review.md)' skills/staged-rollout/SKILL.md
+1
+$ grep -cF 'references/templates/BRIEF.md)' skills/staged-rollout/SKILL.md
+1
+```
 
 ### S5 User docs and changelog
 _(empty)_

@@ -19,10 +19,10 @@ new references, so the method and the formats stay one source each.
 
 ## Steps
 
-- [ ] Describe the requirements step and decision triage in *Decomposing the work*, or a new section if that fits better.
-- [ ] State depth by size per D-7.
-- [ ] State the final review stage's new job per D-1.
-- [ ] Point at `decisions-format.md`, `plan-review.md` and `templates/BRIEF.md` — one link each.
+- [x] Describe the requirements step and decision triage in *Decomposing the work*, or a new section if that fits better.
+- [x] State depth by size per D-7.
+- [x] State the final review stage's new job per D-1.
+- [x] Point at `decisions-format.md`, `plan-review.md` and `templates/BRIEF.md` — one link each.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks
 the row `doing`, ticks the boxes it finished, and writes a handoff note in the

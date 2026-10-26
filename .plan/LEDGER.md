@@ -16,7 +16,7 @@ protocol, finish protocol).
 |---|---|---|---|---|
 | S0 Formats (keystone) | done | yes | 2026-10-26 | Four formats written; all acceptance checks pass |
 | S1 Bootstrap flow | done | yes | 2026-10-27 | plan-stages reordered; effortlog gains plan-stages + subagent_tokens; checks pass |
-| S2 Runner and preflight | todo | — | — | — |
+| S2 Runner and preflight | doing | yes | 2026-10-27 | Brief stamp + decisions steps in protocol, runner, README, stage-run |
 | S3 Close-time triage | done | yes | 2026-10-27 | SF template gains decision triage; plan-close PR body gains Kept decisions |
 | S4 Method (SKILL.md) | done | yes | 2026-10-27 | SKILL.md describes the new steps; each reference linked once |
 | S5 User docs and changelog | todo | — | — | — |
@@ -161,7 +161,63 @@ Requirements (2) and triage (3) precede decomposition (4) and every frozen
 decision; the review (8) precedes the commit (9).
 
 ### S2 Runner and preflight
-_(empty)_
+
+**As built** (commits on `plan-brief-decisions-s2`):
+- `templates/PLAN.md` — new preflight **step 0.6 "Check the brief is
+  current"** (stamp vs first 12 hex of `git hash-object .plan/PLAN.md`;
+  mismatch → rebuild each section from the `PLAN.md` section its italic
+  source line names, commit `chore(plan): regenerate brief` directly on the
+  plan branch with the `done` write's race handling). "Report, don't repair"
+  is now 0.7 (nothing referenced it by number). Read scope (step 1) gains a
+  **Decisions in force** paragraph (D-1, D-6). **Added beyond the step
+  list:** finish step 3 now says a stage that amends Frozen decisions
+  regenerates the brief in the same commit — without it, mismatches would be
+  the norm, not the backstop.
+- `templates/RUNNER.md` §3 and `commands/stage-run.md` step 2 carry the same
+  two bullets word for word, framed as "run whether or not `PLAN.md` spells
+  them out", so plans scaffolded earlier get them too. RUNNER §9's
+  file-creation list now allows a regenerated `BRIEF.md`. No RUNNER section
+  was renumbered (examples cite §7).
+- `templates/README.md` — the two steps in plain words, plus a `BRIEF.md`
+  entry under Files. **D-6 target-path convention** (recorded in README and
+  `stage-run.md`): the decisions document is the one a **Decided** frozen
+  decision records as adopted, else `DECISIONS.md` at the repo root.
+
+**S1 alignment (checked at re-sync):** `commands/plan-stages.md` records the
+existing decision record as a **Decided** triage item (none → a new root
+`DECISIONS.md` at close) — the same convention the runner reads.
+
+**Gaps for SF:** the preflight backstop regenerates only the file, not a
+published brief artifact (D-2 makes the file canonical, so the artifact can
+go stale until next published). An adopted decisions document without
+`Paths:` lines is only named, not matched.
+
+**Acceptance evidence** (2026-10-27, re-run in the stage worktree on the merged result after re-syncing with the plan branch at 6fe9b67 (S4) and again at b2de2ab (S1, S3; LEDGER table conflict resolved keeping all rows); output unchanged):
+
+```
+$ python3 scripts/validate_plugin.py
+validate-plugin: OK
+exit 0
+
+# RUNNER.md §3 bullets vs stage-run.md step 2 bullets, whitespace-normalized
+$ diff runner.txt stagerun.txt
+IDENTICAL (whitespace-normalized)   # 242 words, no differences
+
+# A plan with no DECISIONS.md / BRIEF.md behaves as before: both steps are
+# gated on the file existing, and each copy states the no-file outcome.
+# This plan itself has neither, so this very run exercised that path.
+$ test -e DECISIONS.md; test -e .plan/BRIEF.md
+DECISIONS.md absent
+.plan/BRIEF.md absent
+$ grep -n "means this step does nothing|nothing to show and nothing else changes|nothing to do.|runs as it always has"
+templates/PLAN.md:340:      existed — means this step does nothing.
+templates/PLAN.md:367:   section, means nothing to show and nothing else changes.
+templates/RUNNER.md:66:  handling. No `BRIEF.md`, or a matching stamp: nothing to do.
+templates/RUNNER.md:79:  show, and the stage runs as it always has.
+templates/README.md:35:and the stage runs as it always has.
+commands/stage-run.md:92:     handling. No `BRIEF.md`, or a matching stamp: nothing to do.
+commands/stage-run.md:105:     show, and the stage runs as it always has.
+```
 
 ### S3 Close-time triage
 

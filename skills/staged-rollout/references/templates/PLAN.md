@@ -322,14 +322,49 @@ structural fact and four rules about timing.
       back into the same gate. Relaunching by hand is itself the operator's
       answer, so this does not stop the session; deleting the section is theirs
       to do, not yours (*Recording a block*, below).
-   6. **Report, don't repair:** on anything preflight can't fast-forward or
+   6. **Check the brief is current:** if `.plan/BRIEF.md` exists, compare
+      its line-1 stamp (`Generated from PLAN.md @ <hash> — do not edit`)
+      with the first 12 hex characters of `git hash-object .plan/PLAN.md`,
+      both read in the clone on the freshly synced plan branch. A match needs
+      nothing. A mismatch means the brief is stale — two sibling stages that
+      each amended `PLAN.md` and regenerated leave a merged file matching
+      neither — so regenerate it before anything reads it: rebuild each
+      section from the `PLAN.md` section its italic *From `PLAN.md` › …* line
+      names, keeping the headings and their order, write the new stamp, and
+      carry nothing over that `PLAN.md` no longer holds. Commit it directly
+      on the plan branch (`chore(plan): regenerate brief`) and push, with the
+      `done` write's race handling (finish step 5): edit after the
+      fast-forward, replay on a rejected push, never force-push. The file is
+      the brief; an artifact render of it, if one was published, is not
+      republished here. No `.plan/BRIEF.md` — a plan scaffolded before briefs
+      existed — means this step does nothing.
+   7. **Report, don't repair:** on anything preflight can't fast-forward or
       reconcile, stop with an accurate report of the state and what would fix
       it — no auto-stash, no reset, no branch deletion, no `git worktree
       remove --force`, and no automatic `git worktree prune`.
 1. **Read only:** this file + the target stage file + the `LEDGER.md` status
    table + the notes blocks of the stages this one `depends` on + any docs the
-   stage file names. Do NOT scan the rest of the repo. (Exception: the final
+   stage file names + the **decisions in force** covering this stage's files
+   (below). Do NOT scan the rest of the repo. (Exception: the final
    review stage reads the *entire* ledger.)
+
+   **Decisions in force.** The repository's decisions document is the one
+   the Frozen decisions above record as adopted (bootstrap records it as a
+   **Decided** item — an existing current-decisions document, or
+   `DECISIONS.md`); with none recorded, it is `DECISIONS.md` at the
+   repository root. If it exists, match each path in the stage file's
+   `## Artifacts` section against each area's `Paths:` line — an area covers
+   an artifact when either path lies under the other (a trailing `/` is a
+   subtree, `*` and `**` are globs, `.` is the whole repository) — and read
+   too every `DECISIONS.md` in an artifact's parent folders and any file an
+   area's `Moved:` line names. Show the covering areas' entries, verbatim
+   under their area headings, before implementing. They bind the stage as
+   frozen decisions do: work that would contradict one is settled only by a
+   frozen decision here that says so — otherwise it is a question for the
+   user, and unattended it is a block (*Recording a block*). An adopted
+   document with no `Paths:` lines cannot be matched: name it in one line so
+   the stage reads what applies. No decisions document, or no `## Artifacts`
+   section, means nothing to show and nothing else changes.
 2. **Weight check:** compare the session's model against the stage's `model`
    flag (your system prompt states your model), checked mechanically against
    the `staged-rollout` skill's **Model weight tiers** rubric — not a guess
@@ -426,7 +461,8 @@ structural fact and four rules about timing.
       step 5 at all — *Recording a block* below says where its row and runbook
       are committed, and it still opens its PR at step 4.
    3. If a decision changed or was added, amend **Frozen decisions in this
-      file** — nowhere else.
+      file** — nowhere else — and, when `.plan/BRIEF.md` exists, regenerate
+      it in the same commit (as preflight step 0.6 does).
    4. Commit on the stage branch throughout the stage at logical units
       (conventional messages) — not one commit at the end. Everything in this
       step — commits, push, the PR, any sibling re-sync merge — happens

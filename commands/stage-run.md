@@ -75,6 +75,43 @@ Work through these steps **in order**:
    are green — stage PRs only; the plan→main PR is never this command's to
    merge in any mode.
 
+   **Brief and decisions (ergonomic add).** Two steps run whether or not
+   this plan's `PLAN.md` spells them out — a plan scaffolded before them does
+   not; one that does places them at preflight step 0.6 and in the read
+   scope — once each, and `.plan/RUNNER.md` §3 carries the same two for runs
+   without the plugin:
+
+   - **Brief stamp** — after the preflight sync, in the clone on the plan
+     branch: if `.plan/BRIEF.md` exists, compare its line-1 stamp
+     (`Generated from PLAN.md @ <hash> — do not edit`) with the first 12 hex
+     characters of `git hash-object .plan/PLAN.md`. On a mismatch, regenerate
+     the brief — each section rebuilt from the `PLAN.md` section its italic
+     *From `PLAN.md` › …* line names, headings and order kept, new stamp
+     written — and commit it directly on the plan branch
+     (`chore(plan): regenerate brief`), pushed with the `done` write's race
+     handling. No `BRIEF.md`, or a matching stamp: nothing to do.
+   - **Decisions in force** — with the read scope, before implementing: the
+     decisions document is the one `PLAN.md`'s Frozen decisions record as
+     adopted, else `DECISIONS.md` at the repository root. If it exists, show
+     — verbatim, under their area headings — the entries of every area whose
+     `Paths:` line overlaps a path in the stage file's `## Artifacts` section
+     (either path under the other; a trailing `/` is a subtree, `*` and `**`
+     are globs, `.` is the whole repository), plus the same from any
+     `DECISIONS.md` in an artifact's parent folders or named by a `Moved:`
+     line; an adopted document with no `Paths:` lines is named in one line
+     instead. Work that would contradict an entry needs a frozen decision
+     saying so; otherwise it is a question for the user, and unattended a
+     block. No decisions document, or no `## Artifacts` section: nothing to
+     show, and the stage runs as it always has.
+
+   **Where the decisions document is** follows one convention everywhere:
+   bootstrap's requirements step records the adopted path as a **Decided**
+   frozen decision — an existing current-decisions document, or
+   `DECISIONS.md` — and a plan with no such record reads `DECISIONS.md` at
+   the repository root. ADRs are never read here; a `DECISIONS.md` entry
+   links the ADR it rests on. The format, `Paths:` lines included, is the
+   `staged-rollout` skill's `references/decisions-format.md`.
+
 3. **Weight check (ergonomic add).** Before doing any stage work, compare the
    session against the stage's `model` and `effort` flags in `.plan/PLAN.md`'s
    stage index. Verify the **model** from your own system prompt, checked

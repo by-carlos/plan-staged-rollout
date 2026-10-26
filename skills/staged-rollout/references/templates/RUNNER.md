@@ -52,6 +52,32 @@ finish protocol, and "Recording a block". Follow it as written. This file
 does not restate it and does not override it, except where a rule below says
 so explicitly.
 
+Two steps run whether or not `.plan/PLAN.md` spells them out — a plan
+scaffolded before them does not — once each, where the protocol places them:
+
+- **Brief stamp** — after the preflight sync, in the clone on the plan
+  branch: if `.plan/BRIEF.md` exists, compare its line-1 stamp
+  (`Generated from PLAN.md @ <hash> — do not edit`) with the first 12 hex
+  characters of `git hash-object .plan/PLAN.md`. On a mismatch, regenerate
+  the brief — each section rebuilt from the `PLAN.md` section its italic
+  *From `PLAN.md` › …* line names, headings and order kept, new stamp
+  written — and commit it directly on the plan branch
+  (`chore(plan): regenerate brief`), pushed with the `done` write's race
+  handling. No `BRIEF.md`, or a matching stamp: nothing to do.
+- **Decisions in force** — with the read scope, before implementing: the
+  decisions document is the one `PLAN.md`'s Frozen decisions record as
+  adopted, else `DECISIONS.md` at the repository root. If it exists, show —
+  verbatim, under their area headings — the entries of every area whose
+  `Paths:` line overlaps a path in the stage file's `## Artifacts` section
+  (either path under the other; a trailing `/` is a subtree, `*` and `**`
+  are globs, `.` is the whole repository), plus the same from any
+  `DECISIONS.md` in an artifact's parent folders or named by a `Moved:`
+  line; an adopted document with no `Paths:` lines is named in one line
+  instead. Work that would contradict an entry needs a frozen decision
+  saying so; otherwise it is a question for the user, and unattended a
+  block. No decisions document, or no `## Artifacts` section: nothing to
+  show, and the stage runs as it always has.
+
 The `plan-staged-rollout` plugin may not be installed where you are running —
 cloud containers never have it — so do not rely on any `/plan-run`,
 `/stage-run`, or other plugin command or skill. `.plan/PLAN.md` is complete on
@@ -141,5 +167,5 @@ You know about one stage and nothing else.
 - Do not send a notification of any kind — no email, no message, no comment
   written to be read as one.
 - Do not create files, flags or state beyond what the protocol already
-  writes: the ledger row, the stage's notes block, `.plan/BLOCKED.md`, and
-  the stage's own artifacts.
+  writes: the ledger row, the stage's notes block, `.plan/BLOCKED.md`, a
+  regenerated `.plan/BRIEF.md` (§3), and the stage's own artifacts.

@@ -144,7 +144,7 @@ default, revisited later).
 - **D-9 — Changelog ownership** *(Decided)*. Only S5 writes `CHANGELOG.md` (one
   feature entry under `## [Unreleased]`), so wave-1 stages never collide there.
 - **D-10 — This plan's own SF dogfoods the new close flow** *(Default for now —
-  revisit at SF)*. SF follows the `stage-f-review.md` template as rewritten by
+  revisited at SF and applied as written)*. SF follows the `stage-f-review.md` template as rewritten by
   S3 (in the repo's `skills/staged-rollout/references/templates/`, not the old
   copy in `.plan/`), so this plan's decisions go through drop / `DECISIONS.md` /
   ADR, and this repo may gain its first `DECISIONS.md` and `CLAUDE.md` pointer
@@ -207,6 +207,7 @@ default, revisited later).
 | S5 User docs and changelog | `stage-5-docs.md` | S1, S2, S3, S4 | direct | inline | sonnet | medium | auto |
 | S6 Example plan | `stage-6-example.md` | S0, S1, S2, S3 | direct | inline | opus | medium | auto |
 | SF Plan review | `stage-f-review.md` | S5, S6 | direct | inline | opus | high | auto |
+| S7 Close the gaps | `stage-7-close-gaps.md` | SF | direct | inline | sonnet | medium | auto |
 
 Plan flags: `merge: auto` · `plan-dir: delete`
 

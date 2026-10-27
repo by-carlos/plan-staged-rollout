@@ -17,7 +17,8 @@ If `$ARGUMENTS` carries the token **`--unattended`**, this session has nobody
 to answer it — it was launched by an unattended runner, or the user is
 walking away. The token selects **declared default over ask**, never "proceed
 anyway". Strip it before resolving the stage, and honour it in steps 3, 5 and 6
-below: a `gate: human` or `gate: local` stage is never started, and every question the protocol
+below: a `gate: human`, `gate: local` or `gate: live` stage is never started (nor is a stage
+whose `gate` is any other value than `auto`), and every question the protocol
 would put to a person either has a declared default on `PLAN.md`'s plan flags
 line (`merge`) or becomes `blocked` + runbook (the `staged-rollout` skill,
 *Unattended mode*, classifies each one; `PLAN.md`'s *Recording a block* says
@@ -143,10 +144,13 @@ Work through these steps **in order**:
 
    **Gate check (same step, unattended only).** Read the stage's `gate`
    column from the same index row (an absent column reads as `auto`). Under
-   `--unattended`, a `gate: human` or `gate: local` stage is not started: say
+   `--unattended`, a stage whose `gate` is anything but `auto` is not
+   started — `human`, `local`, `live`, and any unknown value alike: say
    plainly why — `human` needs a person present, `local` needs a resource
    only the local machine has (local hardware, a LAN-only host, a secret not
-   committed anywhere reachable, or a locally-installed toolchain) — name the
+   committed anywhere reachable, or a locally-installed toolchain), `live`
+   deploys or changes a running system and a driver never fires it, an unknown
+   value is not one this command can vouch for — name the
    stage, and stop — a runner reading the previous stage's end announcement
    should already have stopped in front of it, so this is the backstop, not
    the mechanism. For a `gate: auto` stage run
@@ -156,7 +160,22 @@ Work through these steps **in order**:
    `blocked` with the mismatch as the runbook, and commit it per `PLAN.md`'s *Recording a block* — this step
    runs before the stage branch exists, so that is a direct commit on the plan
    branch, pushed — then stop. Without `--unattended`, `gate` is
-   announced and nothing more — the person at the keyboard *is* the gate.
+   announced and nothing more — the person at the keyboard *is* the gate —
+   except that a value other than `auto`, `human`, `local` or `live` is refused
+   and named in either mode: stop, say which value the index carries, and leave
+   the row `todo`.
+
+   **Live check (same step, attended or not).** Never two `live` stages at
+   once. When this stage is `gate: live`, look in the preflight report
+   (`PLAN.md` protocol step 0.5) for a live sibling — another stage's `todo` row
+   with a stage branch that has commits, or a worktree for another
+   `todo`/`doing` stage. If any such sibling's `gate` is `live` too, refuse to
+   start: name that stage and its branch or worktree, say that a second `live`
+   stage waits until the first one's PR is merged (or its worktree is gone),
+   and stop. Nothing is written and the row stays `todo`; a refusal is not a
+   `blocked`. A sibling whose `gate` is not `live` does not count — the rule
+   limits changes to a running system, not parallel work. The session-start hook
+   only notes this; the refusal is here.
 
 4. **Dependency gate (ergonomic surfacing of the protocol's rule).** Apply
    `PLAN.md`'s dependency gate for every stage this one `depends` on. If a
@@ -224,9 +243,11 @@ Work through these steps **in order**:
      **`/plan-staged-rollout:stage-run <N>`** — and state its recommended
      **model and effort** and its **`gate`** from the stage index. A
      `gate: human` stage in the set needs a person at the keyboard, and a
-     `gate: local` stage needs to run on a machine that has what it needs —
+     `gate: local` stage needs to run on a machine that has what it needs, and
+     a `gate: live` stage changes a running system and is never run alongside
+     another `live` stage —
      say so, because an unattended runner reading this announcement stops in
-     front of either rather than launching it.
+     front of each rather than launching it.
    - **Whether they can overlap.** If the runnable set holds more than one
      stage, say plainly that those stages are independent and can be launched
      **concurrently, one stage per fresh session** — that launch is the

@@ -77,8 +77,8 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    next time* lines once, before the playback, and check each against the
    requirements being drawn: a lesson the new plan is about to repeat ("the
    acceptance criteria didn't match how you use it") is raised now, in one
-   line, where it can still change something. No such PR, or no section:
-   say nothing.
+   line, where it can still change something. No such PR, no section, or
+   no `gh` to look with: say nothing.
 
    **A vague idea is a discovery plan.** When the idea is too vague to write
    its **Done, as checks** — nobody can yet say what finished looks like —

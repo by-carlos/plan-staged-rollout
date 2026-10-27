@@ -112,8 +112,8 @@ Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `
   only notes it.** — `live` changes a running system, and the refusal reuses
   preflight's live-sibling signature rather than a new lock. Revisit: if a
   plan needs two `live` stages on unrelated systems. Source: #227
-- **An unattended session, and any run under `RUNNER.md`, never adds a stage:
-  the work is noted for the final review instead.** — the scope referee's
+- **An unattended session never adds a stage, whichever command or runner
+  fired it: the work is noted for the final review instead.** — the scope referee's
   "different plan" verdict needs a person to choose. Revisit: if the referee
   gains a declared default. Source: #229
 - **Stage actuals come from the session's own transcript, and usage is

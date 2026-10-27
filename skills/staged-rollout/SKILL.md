@@ -654,7 +654,8 @@ no stake in the work so far. Its verdicts: **grows** (add it, silently),
 a milestone and start a new one). The user always decides; a session running
 unattended never adds a stage at all. The template `PLAN.md`'s *Adding a
 stage* defines the inputs, the record line in the ledger and each verdict's
-handling, and the session-start hook points every session at it.
+handling, and the session-start hook points every session of a plan that
+carries that section at it.
 
 The cheapest drift is the one prevented at bootstrap: an idea too vague to
 state its Done checks is scaffolded as a **discovery plan** whose Outcome is

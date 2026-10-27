@@ -99,9 +99,11 @@ stage's `estimate`, its measured `elapsed_minutes` and its `tokens`.
 python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" calibrate
 ```
 
-- It takes every `stage-run` row with both an estimate and a measured span,
-  divides the actual hours by the estimate's midpoint, and reports the
-  **median** ratio as `factor`.
+- It groups the `stage-run` rows that carry both an estimate and a measured
+  span by stage, sums each stage's sessions (a resumed stage logs one row per
+  session), keeps only stages that reached `stage-done`, divides each one's
+  actual hours by its estimate's midpoint, and reports the **median** ratio
+  as `factor`.
 - With fewer than three such rows, or no log, `factor` is null: use the
   anchors as written.
 - Otherwise judge the range from the anchors as before, then multiply both

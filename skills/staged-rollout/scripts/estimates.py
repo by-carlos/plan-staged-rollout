@@ -262,7 +262,9 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
         print(json.dumps({"rows": 0, "factor": None,
                           "line": "No effort log to calibrate from; use the reference ranges as written."}))
         return 0
-    ratios = []
+    # A resumed stage logs one row per session, each a slice of one estimate:
+    # sum a stage's sessions first, and count only stages that finished.
+    stages: dict = {}
     for raw in Path(path).read_text(encoding="utf-8").splitlines():
         try:
             row = json.loads(raw)
@@ -276,7 +278,12 @@ def cmd_calibrate(args: argparse.Namespace) -> int:
             continue
         if not est or sum(est) == 0:
             continue
-        ratios.append((row["elapsed_minutes"] / 60) / (sum(est) / 2))
+        entry = stages.setdefault(row.get("target") or id(row), {"est": est, "minutes": 0, "done": False})
+        entry["minutes"] += row["elapsed_minutes"]
+        entry["done"] = entry["done"] or row.get("outcome") == "stage-done"
+    ratios = [
+        (e["minutes"] / 60) / (sum(e["est"]) / 2) for e in stages.values() if e["done"]
+    ]
     if len(ratios) < MIN_ROWS:
         print(json.dumps({"rows": len(ratios), "factor": None,
                           "line": f"{len(ratios)} measured stage(s), fewer than {MIN_ROWS}; use the reference ranges as written."}))

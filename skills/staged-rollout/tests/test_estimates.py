@@ -174,13 +174,38 @@ class Calibrate(unittest.TestCase):
         self.assertIsNone(json.loads(out)["factor"])
 
     def test_median_ratio(self):
-        rows = [{"source": "stage-run", "estimate": "1-3h", "elapsed_minutes": m} for m in (60, 120, 240)]
-        rows.append({"source": "work-issue", "estimate": "1-3h", "elapsed_minutes": 999})
-        rows.append({"source": "stage-run", "estimate": None, "elapsed_minutes": 999})
+        rows = [
+            {"source": "stage-run", "target": f"p/S{i}", "estimate": "1-3h",
+             "elapsed_minutes": m, "outcome": "stage-done"}
+            for i, m in enumerate((60, 120, 240))
+        ]
+        rows.append({"source": "work-issue", "target": "9", "estimate": "1-3h",
+                     "elapsed_minutes": 999, "outcome": "merged"})
+        rows.append({"source": "stage-run", "target": "p/S8", "estimate": None,
+                     "elapsed_minutes": 999, "outcome": "stage-done"})
+        # Unfinished: never counted, however long it ran.
+        rows.append({"source": "stage-run", "target": "p/S9", "estimate": "1-3h",
+                     "elapsed_minutes": 999, "outcome": "stage-doing"})
         _, out = run(est, "calibrate", "--log", self.write_log(rows))
         data = json.loads(out)
         self.assertEqual(data["rows"], 3)
         self.assertEqual(data["factor"], 1.0)
+
+    def test_resumed_stage_summed(self):
+        # Two sessions of one stage (60 + 60 min) against one 1-3h estimate.
+        rows = [
+            {"source": "stage-run", "target": "p/S0", "estimate": "1-3h",
+             "elapsed_minutes": 60, "outcome": "stage-doing"},
+            {"source": "stage-run", "target": "p/S0", "estimate": "1-3h",
+             "elapsed_minutes": 60, "outcome": "stage-done"},
+        ] + [
+            {"source": "stage-run", "target": f"p/S{i}", "estimate": "1-3h",
+             "elapsed_minutes": 120, "outcome": "stage-done"}
+            for i in (1, 2)
+        ]
+        _, out = run(est, "calibrate", "--log", self.write_log(rows))
+        data = json.loads(out)
+        self.assertEqual((data["rows"], data["factor"]), (3, 1.0))
 
     def test_no_log(self):
         with mock.patch.dict(os.environ, {"CLAUDE_EFFORT_LOG": ""}):

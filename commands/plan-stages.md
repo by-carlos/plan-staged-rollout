@@ -58,7 +58,8 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    no plan review, and it belongs in `work-issue` or a single session. Say so
    and offer to stop rather than scaffolding it. There is no other size
    metric: within a plan, depth scales by what the plan touches (step 7's lens
-   triggers), never by stage count.
+   triggers), never by stage count. (The programme check in step 3 counts
+   independent outcomes, not stages, and is not a size metric.)
 
    Then draw out the five requirement bullets of the `PLAN.md` template's
    `## Requirements` section from `$ARGUMENTS`, any issue it names, and what
@@ -94,6 +95,19 @@ ask with the brief (step 8) — plus the commit OK (step 9).
      recommended answer.
    - **Default for now** — a working default, flagged with when to revisit.
 
+   **Programme check.** Count the outcomes in the confirmed requirements that
+   could each merge into `main` on their own — a count of outcomes, never of
+   stages, which are not known until step 4. Two or more: put a **Needs you**
+   decision in the batch proposing a **programme** — one plan per outcome, in
+   running order, each closing into `main` through its own final PR — with
+   the outcomes listed and a recommended answer. Accepted: this bootstrap
+   scaffolds the **first** plan only, its `## Requirements` narrowed to that
+   outcome, and step 6 writes the programme index
+   (`references/programme-format.md`). Declined, or fewer than two outcomes:
+   one plan, nothing else changes. When `PROGRAMME.md` already exists on
+   `main` and its first line names this plan, the programme is already
+   accepted: scaffold that plan, propose nothing, and ask nothing.
+
    Then evaluate the plan-review lens triggers (`plan-review.md` › *The four
    lenses*) against the confirmed requirements, and add the resulting lens
    list to the batch: Simplicity always, each other lens with the trigger that
@@ -122,6 +136,23 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    `stage-f-review.md` — not a copy of `stage-N.md` — since it already bakes
    in the three-outcome checklist and acceptance check.
 
+   **A wait measured in days is not a stage.** A soak period, a quarter-end,
+   a vendor's reply — anything the plan would sit idle on for days — is
+   refused as a stage: a stage that waits holds a session, a branch and a
+   worktree open for nothing. Leave it out of the stage index and record it
+   as a **dated follow-up** under `PLAN.md` › Requirements › Out of scope: the
+   date, the exact check, the pass condition (with why that threshold, per the
+   `stage-N.md` acceptance wording) and what to do if it fails. SF lists it and
+   files it after the user's yes. A wait of hours stays inside the stage that
+   needs it.
+
+   **Number stages in running order.** Stage IDs are plain numbers plus `SF`.
+   Number the stages in the order they will run: stages that can run side by
+   side get consecutive numbers, and no stage has a lower number than anything
+   it `depends` on. **Reject a suffixed ID** (`S12b`) — renumber instead of
+   suffixing. Existing suffixed IDs in a plan already in flight are still
+   read, but never created here.
+
    **Do not serialise `depends` out of habit.** `depends` means "cannot safely
    start until", not "I wrote this stage after that one". Writing the chain
    `S0 → S1 → S2 → S3` where the real graph is `S0 → {S1, S2, S3}` is the most
@@ -146,16 +177,20 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    Decide it here, from the decomposition, never by asking the user row by
    row:
    `human` for every `mode: brainstorm` stage and for any stage whose
-   acceptance needs a person's eyes or hands; `local` for a stage you already
+   acceptance needs a person's eyes or hands; `live` for a stage that deploys
+   or changes a running system (a driver never fires it, and two `live`
+   stages never run at once — where two would land in the same wave, add the
+   edge between them); `local` for a stage you already
    know needs a resource only the local machine has — local hardware, a
    LAN-only host, a secret not committed anywhere reachable, or a
    locally-installed toolchain; `auto` for everything else — it is the
    default, and neither `human` nor `local` changes anything until a plan is
    actually run unattended. Then apply the skill's **group by gate** rule to
    the graph: `human` stages go at the **front** (where frozen decisions get
-   settled or amended) and the review stage at the **end**, with the
-   mechanical `auto` stages in between — never a `human` stage wedged between
-   two `auto` ones unless a dependency edge genuinely forces it. `local`
+   settled or amended), `live` stages at the front or the **end**, and the
+   review stage last, with the mechanical `auto` stages in between — never a
+   `human` or `live` stage wedged between two `auto` ones unless a dependency
+   edge genuinely forces it. `local`
    stages carry no design question, so they need no such front-loading — they
    sit wherever the dependency graph puts them. When the human-grouping rule
    and the graph disagree, the graph wins and you say so.
@@ -294,6 +329,16 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    strict majority (e.g. an even split). The subagent returns a **manifest of
    files written** — nothing else. **The subagent runs no git command.**
 
+   **Programme index — only when a programme was accepted in step 3.** After
+   the subagent returns, write `PROGRAMME.md` at the **repository root**
+   yourself, not into `.plan/` and not through the subagent: follow
+   `references/programme-format.md`, one numbered line per plan in running
+   order, each with the outcome in plain words and the plan branch
+   `plan-<slug>` as its pointer, the first line being this plan. Leave it
+   uncommitted with the rest of the scaffold. Skip this when the programme
+   already exists on `main` (this plan is a later one, and its line is
+   already there) or when no programme was accepted.
+
 7. **Brief.** Generate `.plan/BRIEF.md` from the filled `PLAN.md`, following
    the generation rules in the `BRIEF.md` copy's header comment (and dropping
    that comment): line 1 is the stamp
@@ -345,7 +390,8 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    `.plan/` lives on the plan branch and is **tracked** there, `BRIEF.md`
    included. **Propose the scaffold commit** (conventional message, e.g.
    `chore(plan): scaffold .plan/ for <slug>`) and wait for the user's OK — do
-   not create the branch or commit unilaterally. Once committed, **push the
+   not create the branch or commit unilaterally. `PROGRAMME.md`, when step 6
+   wrote it, goes in the same commit. Once committed, **push the
    plan branch with an upstream** (`git push -u origin plan-<slug>`) — no
    approval needed for a feature branch. A local-only plan branch makes every
    later preflight's fetch and fast-forward a silent no-op. Then confirm the
@@ -405,4 +451,6 @@ ask with the brief (step 8) — plus the commit OK (step 9).
     surface that shows no card. If step 6 found a modal-model majority, repeat
     that recommendation here too (e.g. *"consider `/model opus` as your
     session default — it covers 6 of 8 stages"*). Repeat the plan flags line.
-    Then stop.
+    When a programme was accepted, also say that this scaffolds the first plan
+    only and name the remaining plans from `PROGRAMME.md`; each is bootstrapped
+    from `main` after the one before it has closed. Then stop.

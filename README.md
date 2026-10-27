@@ -46,6 +46,11 @@ flowchart LR
   `main` is not touched until the final PR, and you merge that one yourself.
 - **Everything is committed** in a `.plan/` folder in your repo. Close the
   laptop whenever you like: the next session reads where things stand.
+- **Work with several milestones becomes a programme**: one plan per
+  milestone, each closing into `main` on its own, listed in order in
+  `PROGRAMME.md` at the repo root.
+- **A stage that changes a running system is marked `gate: live`.** No
+  unattended run fires it, and only one runs at a time.
 
 What the progress file looks like halfway through (from the
 [example plan](examples/uptime-page/.plan/LEDGER.md); `Verified` says whether

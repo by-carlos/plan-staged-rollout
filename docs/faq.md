@@ -93,9 +93,15 @@ stage picks that up. See [Statuses](reference.md#statuses).
 ### How do I add a stage?
 
 A stage is three things: a row in the stage index in `PLAN.md` (with its
-flags), a row in the ledger, and a `stage-N-<slug>.md` file. The review stage
-adds follow-up stages this way for you. To add one yourself, copy an existing
-stage's three pieces and edit them.
+flags), a row in the ledger, and a `stage-N-<slug>.md` file. Copy an existing
+stage's three pieces under any unused number, put the new index row where it
+will run, then run the plugin's
+`skills/staged-rollout/scripts/renumber_stages.py --slug <slug>` from the
+repo. It renumbers only the stages that have not started, so numbers follow
+running order and `SF` stays last; a started stage keeps its number.
+Regenerate `.plan/BRIEF.md` in the same commit. The review stage adds a stage
+only to fix a failing check it found, with your yes, at most 3 per plan;
+other work it finds becomes an issue or a later plan.
 
 ### How do I change a stage's model or effort?
 
@@ -170,6 +176,16 @@ reaches `main`. Nothing is lost: its full history stays in git, and the final
 PR body carries the plan's decisions and as-built story. To keep the folder
 (for a plan that doubles as documentation), set `plan-dir: keep` on the plan
 flags line in `PLAN.md`. See [Close](staged-rollout.md#4-close--plan-close).
+
+### Is GitHub's "Automatically delete head branches" setting safe?
+
+Yes. With it on (`delete_branch_on_merge`), GitHub deletes a PR's branch when
+the PR merges. A plan branch is the head of exactly one PR, the final one into
+`main`, so it is deleted only once the plan is finished; stage branches are
+deleted after their merge anyway. A job with several milestones does not merge
+into `main` part-way through one plan: each milestone is its own plan in a
+programme, closing through its own final PR. That is why no guard against the
+setting exists.
 
 ### Does updating the plugin disturb a plan in progress?
 

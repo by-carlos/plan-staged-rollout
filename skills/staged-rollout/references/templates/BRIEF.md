@@ -84,5 +84,6 @@ flowchart LR
   S2 --> SF
 ```
 
-<!-- One node per stage, one edge per `depends` entry. Mark a `gate: human`
-or `gate: local` stage in its label, e.g. `S3[S3 <name> · human]`. -->
+<!-- One node per stage, one edge per `depends` entry. Mark a `gate: human`,
+`gate: local` or `gate: live` stage in its label, e.g. `S3[S3 <name> · human]`
+or `S4[S4 <name> · live]`. -->

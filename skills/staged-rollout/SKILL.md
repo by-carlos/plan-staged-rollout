@@ -119,14 +119,16 @@ the review lenses' triggers — never by how many stages it has.
   that nothing downstream uses spends a session and changes nothing. The
   standing review stage is the one exception, because its three outcomes are
   themselves actions.
-- **Group by gate.** Alongside "group by effort": put the `gate: human`
-  stages — the ones where frozen decisions get settled or amended, or whose
-  acceptance needs a person — at the **front** of the dependency graph, and
-  the review stage at the **end**; keep the middle mechanical, `gate: auto`
-  and (when the plan opts in) `merge: auto`. Never interleave a human gate
-  between two auto stages unless a dependency edge genuinely forces it: an
-  unattended runner stops at every `human` stage, so a human gate in the
-  middle of an auto run cuts the run in two for no reason. Decisions that only
+- **Group by gate.** Alongside "group by effort": put the stages that need
+  a person — `gate: human` (frozen decisions get settled or amended, or
+  acceptance needs a person) and `gate: live` (the stage changes a running
+  system) — at the **front** or the **end** of the dependency graph, as far as
+  the dependencies allow, with the review stage last; keep the middle
+  mechanical, `gate: auto` and (when the plan opts in) `merge: auto`. Never
+  interleave a human or live gate between two auto stages unless a dependency
+  edge genuinely forces it: an unattended runner stops at every `human` and
+  `live` stage, so one in the middle of an auto run cuts the run in two for no
+  reason. Decisions that only
   surface mid-build still go through `blocked` (see *Statuses and human-gated
   stages*) — the rule shapes the graph, it doesn't forbid surprises.
 - **Standing final review stage.** Always append `SF: plan review` as the last
@@ -182,21 +184,28 @@ it.
 - `gate: auto` by default. `gate` says whether a stage may be **launched
   unattended** — by an orchestrator session that fires stages back-to-back
   with nobody watching them run (see `references/remote-driver.md`); this flag
-  is the contract it reads. A `gate: human` or `gate: local` stage is
-  never launched unattended: the orchestrator stops in front of it and
-  reports rather than firing, and a session
+  is the contract it reads. A `gate: human`, `gate: local` or `gate: live`
+  stage is never launched unattended: the orchestrator stops in front of it
+  and reports rather than firing, and a session
   that finds itself running one unattended (see *Statuses and human-gated
-  stages*) reports and stops rather than starting it. Mark `human` where a
+  stages*) reports and stops rather than starting it. A runner fires a stage
+  only when its `gate` is `auto` or absent; any other value, unknown ones
+  included, is refused and named. Mark `human` where a
   person must be present for the stage to get anywhere: every
   `mode: brainstorm` stage (a design pass is a conversation), and any stage
   whose acceptance needs a human's eyes or hands (a visual check, a GUI-only
   action, a credential). Mark `local` where the stage needs a resource only
   the local machine has, known at authoring time — local hardware, a
   LAN-only host, a secret not committed anywhere reachable, or a
-  locally-installed toolchain. The two gates are independent: the driver
-  refuses either exactly the same way, but for a different reason — `human`
-  because nobody is watching, `local` because the driver could be running
-  anywhere but the machine the stage needs. A stage that only discovers this
+  locally-installed toolchain. Mark `live` where the stage deploys or changes
+  a running system — a service, a host, a database, anything outside the
+  repository that people or other systems depend on; every stage that is not
+  `live` is a build stage that touches only its `## Artifacts` files. The
+  three gates are independent: the driver refuses any of them exactly the same
+  way, but for a different reason — `human` because nobody is watching,
+  `local` because the driver could be running anywhere but the machine the
+  stage needs, `live` because a person chooses when a running system changes.
+  A stage that only discovers this
   mid-run, with nothing declared up front, uses the `needs-local` blocked
   reason instead (*Statuses and human-gated stages*, below). **Why `auto` is
   the default and not `human`:** the flag changes nothing until something
@@ -253,14 +262,18 @@ or failing the gate.
 ## Parallel stages
 
 `depends` is a real dependency graph, so more than one stage is often runnable
-at once. Three rules keep that an advantage rather than a source of confusion:
+at once. Three rules keep that an advantage rather than a source of confusion
+(and one limit: no two `gate: live` stages ever run at once, however the
+graph looks — `/stage-run` preflight refuses the second at start):
 
 - **Derive, never store.** The runnable set, the waves, and the critical path
   are *views* of the `depends` column, computed on demand — by bootstrap's
   post-decomposition summary and by every stage's end announcement. Do **not**
   add a `wave` or `parallel-group` column to the stage index: that would be a
   second copy of the graph, and principle 1 exists precisely because copies
-  drift.
+  drift. Stage IDs are plain numbers in running order, so stages that can run
+  side by side carry consecutive numbers; a suffixed ID is read but never
+  created.
 - **Report the set; don't launch it.** The deliverable is telling the operator
   what *can* overlap — every `todo` stage whose `depends` are all `done` or
   `skipped`, each
@@ -341,7 +354,8 @@ out as method, not just vocabulary:
   say "re-run this stage locally" instead of a generic failure (`PLAN.md`,
   *Recording a block*, "The discovered case").
 - **Unattended, a stage question that has no declared default becomes
-  `blocked`.** Mark the stage `blocked` with a runbook stating the question
+  `blocked`.** A `gate: human`, `gate: local` or `gate: live` stage found
+  running unattended is the plainest case: it is not started. Mark the stage `blocked` with a runbook stating the question
   and what would unblock it, commit that where *Recording a block* says, and
   stop. This is the existing
   state and the existing mechanism, not new machinery; the only rule
@@ -400,6 +414,8 @@ two kinds:
 |---|---|---|
 | A `gate: human` stage | announced — the person at the keyboard *is* the gate | **hard stop**, never started |
 | A `gate: local` stage | announced — running it here means this session already has what it needs | **hard stop**, never started |
+| A `gate: live` stage | announced — the person at the keyboard chooses when the running system changes | **hard stop**, never started |
+| A `gate` value that is not `auto`, `human`, `local` or `live` | refused and named | **hard stop**, never started |
 | Weight check: lighter model than recommended, or a readable effort that differs from the flag | **hard stop** — relaunch named, nothing written | **hard stop** — `blocked` + runbook |
 | Weight check: an unrecognised tier | asked which tier applies | **hard stop** — `blocked` + runbook |
 | A mid-stage question the frozen decisions don't settle | asked | **hard stop** — `blocked` + runbook |
@@ -421,7 +437,8 @@ plan branch pointing at it is one the next pass never reads.
 
 **What no mode loosens.** The plan→main PR is opened by closeout and merged
 by a person, always. A `gate: human` stage is never launched unattended, and
-neither is a `gate: local` one — same refusal, different reason. A
+neither is a `gate: local` or a `gate: live` one — same refusal, different
+reason. A
 worktree holding real uncommitted or unpushed work is never removed, and never
 with `--force`. A merge the platform refuses is never forced or retried.
 

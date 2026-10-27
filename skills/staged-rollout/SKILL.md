@@ -183,9 +183,12 @@ file and not in the stage index. Commands read it as follows: the first line
 of the stage file that starts with `Issue:`, above the first `##` heading,
 whose value is one of those three forms. No such line, a blank value or an
 unfilled template placeholder all read as "no linked issue", silently, so a
-plan without the field behaves exactly as before. The field is read-only for
-the tooling: no command posts to the issue or changes its status because of
-it.
+plan without the field behaves exactly as before. No command posts to the
+issue or changes its status because of it. Its one effect is at closeout:
+`/plan-close` writes a `Closes <ref>` line for each linked issue into the
+final PR body, so the issue closes when a person merges that PR (`Refs`
+instead when the plan only partly delivers it; `/plan-close` step 3 has the
+rule).
 
 - `mode: direct` by default (state a one-line plan, implement). Use `brainstorm`
   only where the stage has real open design choices. A full brainstorm on a

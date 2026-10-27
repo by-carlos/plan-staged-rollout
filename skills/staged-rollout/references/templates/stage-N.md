@@ -5,8 +5,9 @@ Issue: <#N, owner/repo#N or an issue URL — or delete this line>
 <!-- This stage's flags (depends / mode / exec / model / effort / gate) live ONLY in
 the PLAN.md stage index — the single authoritative home. Do not restate them
 here; a copy is what drifts. The `Issue:` line above is not a flag — it only
-records which issue this stage came from, and `/stage-run` and `/plan-close`
-print it. It is optional; a stage without it runs unchanged. -->
+records which issue this stage came from. `/stage-run` prints it, and
+`/plan-close` writes `Closes <ref>` (or `Refs`) for it into the final PR body. It is
+optional; a stage without it runs unchanged. -->
 
 > First read `.plan/PLAN.md` (Frozen decisions + Operating protocol) and
 > `.plan/LEDGER.md`. Follow the protocol, including the finish protocol.

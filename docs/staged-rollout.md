@@ -15,7 +15,7 @@ flowchart TD
     run -->|"needs a person"| blocked["blocked:<br/>a runbook of exact steps for you"]
     blocked -->|"you do the steps,<br/>then run it again"| run
     next -->|"only the review<br/>stage is left"| review["<b>3. Review</b> — the last stage<br/>reads the whole ledger"]
-    review -->|"follow-up work"| next
+    review -->|"a fix it found<br/>(at most 3 per plan)"| next
     review --> close["<b>4. Close</b> — plan-close<br/>final PR to main"]
     close --> you([You merge it])
 ```
@@ -103,8 +103,21 @@ In order, it:
   to you in one batch, along with the list of plan-review lenses. You can
   promote any other item to a question in the same reply. An unanswered one
   stays pending and blocks only the stages that need it;
+- **proposes a programme when the work has several milestones.** When the
+  requirements hold two or more outcomes that could each merge into `main` on
+  their own, it asks whether to make one plan per outcome. Say yes and it
+  scaffolds the first plan only and writes `PROGRAMME.md` at the repo root:
+  the plans in running order, one line each, pointing at its plan branch.
+  Each `plan-close` removes its own line and offers to plan the next one;
 - **splits the work** into the smallest sensible stages with explicit
-  `depends`, putting the keystone (the piece everything needs) first as S0;
+  `depends`, putting the keystone (the piece everything needs) first as S0.
+  Stages are numbered in the order they run, with plain numbers (`S3`, never
+  `S12b`). A stage is too big when a run of it would need more than 4 of your
+  messages or more than an hour of active time; aim for about 0.4 hours. A
+  wait measured in days (a soak period, a vendor's reply) is never a stage:
+  it is recorded as a dated follow-up, and the review stage files it as an
+  issue. A stage that deploys or changes a running system is marked
+  `gate: live`: no driver fires it, and only one runs at a time;
 - **adds the review stage**, `SF`, as the last stage (see
   [Review](#3-review--the-last-stage));
 - **prints the waves and the critical path** worked out from `depends`. A

@@ -28,9 +28,9 @@ stage writes documentation only; it never writes product code.
 
 ### Loose ends
 
-- [ ] Read every ledger row's notes end to end; list every loose end, gotcha,
+- [x] Read every ledger row's notes end to end; list every loose end, gotcha,
   shortcut, and known gap surfaced across all stages.
-- [ ] For each loose end, resolve it into exactly one outcome:
+- [x] For each loose end, resolve it into exactly one outcome:
   - **Issue** — work that belongs in its own ticket, including a **dated
     follow-up** for a wait measured in days (D-7: the date goes in the issue
     body). Attended: file it through `create-issue` after the user's yes.
@@ -51,23 +51,23 @@ stage writes documentation only; it never writes product code.
     then this stage re-runs from the top as a redo, and writes its
     documentation only on a clean pass. Unattended, it records a block
     (*Recording a block*) instead.
-- [ ] Confirm no loose end was dropped: every item from the first step maps
+- [x] Confirm no loose end was dropped: every item from the first step maps
   to exactly one of the outcomes above.
 
 ### Issue #227 closing walk (this plan's extra)
 
-- [ ] Walk all ten "When this closes" items of #227, as written in PLAN.md ›
+- [x] Walk all ten "When this closes" items of #227, as written in PLAN.md ›
   Requirements › Done (not the issue), one by one. Record each as **met** with its evidence (the quoted line, the
   command and its output, or the stage's ledger note) in this stage's ledger
   notes. An item that is not met is a loose end like any other.
-- [ ] Criterion 4 (the `delete_branch_on_merge` warning) is met by D-2's
+- [x] Criterion 4 (the `delete_branch_on_merge` warning) is met by D-2's
   documented rationale, not by a guard: confirm the docs state why the setting
   is harmless under the one-plan-per-milestone model, and record that as its
   evidence.
 
 ### Decision triage
 
-- [ ] **Find the target.** Adopt what the repository already has, per the
+- [x] **Find the target.** Adopt what the repository already has, per the
   spec's *Where it lives*: an existing ADR folder takes the ADRs, an existing
   current-decisions document takes the entries, and `DECISIONS.md` at the
   repository root is created only when neither exists. If `PLAN.md`'s
@@ -75,7 +75,7 @@ stage writes documentation only; it never writes product code.
   the choice is ambiguous, it joins the batch below as one more question —
   unattended, it is a hard stop for this step only: record it as a loose end
   and write no decisions.
-- [ ] **Propose an outcome for every frozen decision** in `PLAN.md`, applying
+- [x] **Propose an outcome for every frozen decision** in `PLAN.md`, applying
   the spec's keep rule (kept when someone could plausibly undo it unknowingly,
   when it took a spike, review or real alternatives to settle, or when the code
   does not make it obvious): **drop**, **an entry** in the target, or **an
@@ -84,15 +84,15 @@ stage writes documentation only; it never writes product code.
   method, not the project: leave them out. Write each proposal as one line:
   decision id, outcome, target path, and for an entry or ADR the rule as it
   will read.
-- [ ] **Get the list approved — in one batch.** Attended: put the whole list to
+- [x] **Get the list approved — in one batch.** Attended: put the whole list to
   the user in a single ask, recommended outcomes first, and apply their
   answer. Unattended: apply your own proposals; the list goes into the
   plan→main PR body at closeout, and merging that PR is the approval.
-- [ ] **Write the approved outcomes**, to the spec's shapes: entries under the
+- [x] **Write the approved outcomes**, to the spec's shapes: entries under the
   area whose `Paths:` cover them (adding an area when none does), ADRs in the
   target folder's own format and numbering. Edit or delete an existing entry
   a decision replaces — never mark it superseded.
-- [ ] **Record the list in this stage's ledger notes** under a heading that
+- [x] **Record the list in this stage's ledger notes** under a heading that
   reads exactly `#### Kept decisions`, one line per frozen decision:
   `<id> — <drop | entry | ADR> — <target path, or the reason it was dropped>`,
   then one line saying how it was approved (`approved by <who> on <date>`, or
@@ -101,16 +101,16 @@ stage writes documentation only; it never writes product code.
 
 ### README, pointer line and cold reader
 
-- [ ] **Update the README** — the repository's, or the module's own doc when
+- [x] **Update the README** — the repository's, or the module's own doc when
   the plan changed one module — so it describes what the plan built: how to
   use it, how to test it, where its parts live. Only what a reader needs once
   `.plan/` is gone; no stage history.
-- [ ] **Add the pointer line** to the repository's agent instructions file
+- [x] **Add the pointer line** to the repository's agent instructions file
   (`CLAUDE.md`, `AGENTS.md` or the equivalent), worded as in the spec's *The
   pointer line* and naming the adopted document when that is the target. Skip
   it when the file already carries one, or when the triage kept nothing and
   no decisions document exists.
-- [ ] **Run the cold-reader check.** Dispatch a fresh subagent with only the
+- [x] **Run the cold-reader check.** Dispatch a fresh subagent with only the
   repository, told never to open `.plan/`, and ask it at least: *how do I
   test this*, *where is \<a part the plan built\>*, and *why \<a decision the
   triage kept\>*. Name real parts and decisions from this plan. Every

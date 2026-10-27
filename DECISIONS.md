@@ -7,7 +7,7 @@ future work must respect.
 
 ## Planning flow
 
-Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollout/SKILL.md`, `skills/staged-rollout/references/plan-review.md`, `skills/staged-rollout/references/templates/`
+Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollout/SKILL.md`, `skills/staged-rollout/references/plan-review.md`, `skills/staged-rollout/references/programme-format.md`, `skills/staged-rollout/references/templates/`, `skills/staged-rollout/scripts/renumber_stages.py`
 
 - **The plan review runs inside `/plan-stages`, on the uncommitted scaffold,
   never as a standing stage before S1; the close-time decision triage runs in
@@ -37,6 +37,61 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   on every other surface.** — the desktop app can start top-level sessions,
   so forbidding the offer was wrong. Revisit: if the chip tools change.
   Source: #226
+- **`/plan-stages` proposes a programme when the requirements hold two or more
+  outcomes that can each merge into `main` alone — a count of outcomes, never
+  of stages.** — stages are known only after decomposing, and a stage count
+  would be the second size metric the line above rules out. Revisit: never.
+  Source: #227
+- **A milestone reaches `main` only by closing its own plan: there is no
+  milestone merge inside a plan, and no guard against GitHub's
+  `delete_branch_on_merge`.** — a plan branch is only ever the head of its
+  final PR, so deleting it on that merge removes nothing still needed.
+  Revisit: if a plan ever merges into `main` more than once. Source: #227
+- **The final review stage (SF) never adds a stage, except a `Fix:` stage that
+  repairs a named requirement, failing Done check or regression — made with
+  the user present, at most 3 per plan (a fourth is a hard stop), after which
+  SF re-runs from the top; SF writes its documentation only on a clean
+  pass.** — found work leaves the plan as an issue or a later plan, as in
+  Scrum, PRINCE2 and AWS AI-DLC (whose loop-back is capped at 3); a strict
+  no-exception rule would let a plan close on a failing Done check.
+  Revisit: if a real plan hits the cap. Source: #227
+- **A programme's `PROGRAMME.md` on `main` lists its plans as ordered pointers
+  with no state column; each `/plan-close` removes its own line, and the last
+  removes the file.** — a state column would copy what each plan's ledger and
+  PR already hold. Revisit: never. Source: #227
+- **A wait measured in days is never a stage: it becomes a dated follow-up
+  issue stating the date, the check, the pass condition and the action on
+  failure, and nothing is scheduled.** — a wait row would put a non-stage in
+  the stage table, and scheduling is outside the plugin's tools.
+  Revisit: if the plugin gains a reminder tool. Source: #227
+- **Stage IDs are plain numbers plus `SF`, in running order; a suffixed ID
+  (`S12b`) is never created but is still read.** — a started stage keeps its
+  ID, so plans in flight keep running. Revisit: once no plan in flight carries
+  a suffixed ID. Source: #227
+- **`renumber_stages.py` renumbers only unstarted stages (status `todo`, no
+  stage branch, no `BLOCKED.md` section) and uses the standard library
+  only.** — a started stage's number is baked into its branch, worktree and
+  PR. Revisit: never. Source: #227
+- **A stage is too big when a run of it needs more than 4 interventions or
+  more than 1 hour of active time; split it rather than add in-stage
+  checkpoints.** — over 46 past stage sessions, time tracked interventions and
+  context never did (no compaction up to 376K tokens). Revisit: when a
+  designed sample can separate stage types, or count only unprompted
+  interventions. Source: #227
+
+## Running stages
+
+Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`
+
+- **A runner fires a stage only when its `gate` is `auto` or absent; `human`,
+  `local`, `live` and any unknown value are refused and named.** — an
+  allow-list fails safe when a new gate value appears. Revisit: never.
+  Source: #227
+- **Never two `live` stages at once: `/stage-run` refuses at start when
+  another `live` stage has a branch or worktree open; the session-start hook
+  only notes it.** — `live` changes a running system, and the refusal reuses
+  preflight's live-sibling signature rather than a new lock. Revisit: if a
+  plan needs two `live` stages on unrelated systems. Source: #227
 
 ## Decisions format
 

@@ -16,7 +16,7 @@ protocol, finish protocol).
 |---|---|---|---|---|
 | S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
 | S1 Measure stage size | done | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR #242 merged |
-| S2 Runners respect `live` | todo | — | — | — |
+| S2 Runners respect `live` | doing | yes | 2026-10-27 | every runner fires only `auto`/absent and refuses `live`/unknown; hook run on fixture; validator passes |
 | S3 Renumbering script | todo | — | — | — |
 | S4 Bootstrap: programmes, waits, ordering | todo | — | — | — |
 | S5 Final review that stays last | todo | — | — | — |
@@ -105,7 +105,46 @@ Decision change: D-15 amended in `.plan/PLAN.md`; `.plan/BRIEF.md` regenerated i
 threshold (more than 4 interventions or 1 hour of active time) into SKILL.md › *Decomposing the work*.
 
 ### S2 Runners respect `live`
-_(empty)_
+
+Acceptance output (2026-10-27, worktree `../plan-staged-rollout-s2`, branch `plan-stage-shape-s2`).
+
+Hook run from a scratch copy of `skills/staged-rollout/tests/fixtures/live-plan/.plan/` (`git init` there; S1 build,
+S2 and S3 `live`, S4 gate `canary`; S0 done, S5 waits on S1) — the context it printed:
+
+```
+**Active staged rollout in this repo** (`.plan/` present). **4 stages are runnable right now** — their `depends` are all satisfied and none of them depends on another, so they can be run **concurrently, one per fresh session**:
+
+- **S1 — Build the API** — `/plan-staged-rollout:plan-run 1` (model `sonnet`, effort `high`)
+- **S2 — Deploy to staging** — `/plan-staged-rollout:stage-run 2` (model `sonnet`, effort `high`) — `gate: live`: it changes a running system, so no driver fires it
+- **S3 — Migrate the production data** — `/plan-staged-rollout:stage-run 3` (model `sonnet`, effort `high`) — `gate: live`: it changes a running system, so no driver fires it
+- **S4 — Warm the cache** — `/plan-staged-rollout:stage-run 4` (model `sonnet`, effort `medium`) — REFUSED: `gate: canary` is not a gate value (auto, human, local or live), so no driver or unattended run starts it; the stage index needs fixing first
+
+Surface all of them to the user and wait for their go-ahead — do NOT auto-run any. [...]
+
+**Only one `live` stage may run at a time.** S2, S3 are all `gate: live` and runnable: start one, and finish it (its PR merged) before the next — `/stage-run` refuses to start a second `live` stage while another one's branch or worktree is open. This note is all the hook does; the refusal is `/stage-run`'s.
+```
+
+Grep over `commands/`, `hooks/`, `skills/staged-rollout/` (tests excluded) for a line naming `human`/`local` together,
+then dropping every line that also names `live`:
+
+```
+grep -rniE "(human|local)[`* ]*(or|and|/|,)[`* ]*(gate: ?)?`?(human|local)" commands hooks skills/staged-rollout -I | grep -v "/tests/" | grep -viE "live"
+skills/staged-rollout/references/templates/RUNNER.md:96:reads as `auto`). Unattended, if it is anything but `auto` — `human`, `local`,
+```
+
+The one line is a wrapped sentence: line 97 carries `live` and the unknown-value refusal.
+
+`python3 scripts/validate_plugin.py` → `validate-plugin: OK`. Existing suffixed IDs still parse (an `S12b` row in the
+scratch copy kept the same runnable set).
+
+As built:
+- `commands/stage-run.md`: lead note and the unattended gate check refuse anything but `auto`; a new **Live check** (step 3) refuses a second `live` stage when preflight 0.5's live-sibling signature finds another `live` stage's `todo` branch or worktree; attended runs refuse an unknown value too; the end announcement names `live`.
+- `hooks/session-start`: parses `gate` (`normalize_gate`); a non-`auto` stage is offered `/stage-run`, not `/plan-run`, with its gate noted; an unknown value shows as REFUSED and named; two or more runnable `live` stages add the one-at-a-time note.
+- `commands/plan-run.md`: lead note, step 3 (refreshes a stale `.plan/RUNNER.md` by comparing it with the template, not only back-filling), step 5 (fire only `auto`/absent), steps 7 and 8. `remote-driver.md` refusal bullet rewritten to the same rule; the separate "never two `live`" item was not added.
+- `templates/RUNNER.md` §4 refuses `live` and unknown values. `templates/PLAN.md` weight-check step and finish step 6 announcement — left to S2 by S0's notes though not in this stage's Artifacts list — now name `live` and the unknown value.
+- Fixture: `skills/staged-rollout/tests/fixtures/live-plan/.plan/` (index, ledger, seven stage files).
+
+Left alone (outside this stage): this plan's own `.plan/PLAN.md` operating protocol still reads "human or local" (a copy of the template made before S2; a plan in flight keeps its copy), and `commands/plan-stages.md` line ~153 ("neither `human` nor `local` changes anything") belongs to S4. S5 reads `plan-run.md` step 5 and `remote-driver.md` as written here.
 
 ### S3 Renumbering script
 _(empty)_

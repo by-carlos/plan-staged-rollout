@@ -19,7 +19,7 @@ protocol, finish protocol).
 | S2 Runners respect `live` | done | yes | 2026-10-27 | every runner fires only `auto`/absent and refuses `live`/unknown; hook run on fixture; validator passes; PR #244 merged |
 | S3 Renumbering script | done | yes | 2026-10-27 | renumber_stages.py renumbers only unstarted stages; 37-test suite passes; PR #245 merged |
 | S4 Bootstrap: programmes, waits, ordering | done | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes; PR #243 merged |
-| S5 Final review that stays last | todo | — | — | — |
+| S5 Final review that stays last | doing | yes | 2026-10-27 | SF template, SKILL.md section, PLAN template line and both drivers now give D-4/D-7 outcomes, capped fix, docs on clean pass only, unattended stop; validator passes |
 | S6 Docs, lens checks and changelog | todo | — | — | — |
 | SF Plan review | todo | — | — | — |
 
@@ -236,7 +236,55 @@ wait refusal; SF-last rule), S6 (docs, README/`docs/` mention of `PROGRAMME.md`,
 the `/plan-stages` step 2 playback were not touched.
 
 ### S5 Final review that stays last
-_(empty)_
+
+Acceptance (2026-10-27, worktree `../plan-staged-rollout-s5`, branch `plan-stage-shape-s5`):
+
+- `python3 scripts/validate_plugin.py` → `validate-plugin: OK`
+- `grep -rn "New stage in this plan" skills commands hooks docs README.md scripts` → no output, exit 1 (no remaining outcome).
+
+Edited text, as written:
+
+- `references/templates/stage-f-review.md` — outcomes (replacing "New stage in this plan" and "Spin-off candidate"): "**Issue** — work
+  that belongs in its own ticket, including a **dated follow-up** for a wait measured in days. A dated follow-up's body states the
+  **date**, the **exact check** to make, the **pass condition** (with the basis for its threshold) and the **action on failure**;
+  nothing is scheduled. Attended: file it through `create-issue` after the user's yes. Unattended: file nothing; record it under a
+  `closeout will list` heading in this stage's ledger notes, and `/plan-close` copies it into the final PR body." · "**Later plan** —
+  work for a later plan of the programme (the programme index, `PROGRAMME.md` at the repository root, names it). Unattended: record
+  it under the same `closeout will list` heading." · "**Accepted, won't fix**" (unchanged). A new step reads `PLAN.md` ›
+  Requirements › Out of scope for the dated follow-ups `/plan-stages` recorded there (S4's note).
+- Same file, the fix exception: "**Exception — a fix.** Never a feature. A fix names the requirement, failing Done check or regression
+  it repairs, and is made only with the user present and saying yes, each with its own verification. Fix stages are titled `Fix: …`;
+  keep a `#### Fixes` list in this stage's ledger notes — one line per fix — because it is the durable count. **At most 3 per plan: a
+  fourth fix is a hard stop in every mode.**" *How a fix runs*: "This stage's own PR lands what it found … the `Fix:` stage's index
+  row placed **before SF** (… run the plugin's `skills/staged-rollout/scripts/renumber_stages.py --slug <slug>` …), SF's `depends`
+  extended to it, and SF's row set back to `todo`. The fix runs as an ordinary stage; this stage then re-runs **from the top** as a
+  redo." *Documentation waits*: "A pass that adds a fix writes none of the Decision triage and README steps below — they run only on
+  a clean pass." *Unattended*: "this stage stops and asks: it records a block through the plan's *Recording a block* path instead of
+  adding the fix." The Decision triage and README sections each open with a clean-pass-only line; Goal, Acceptance and Artifacts
+  rewritten to match.
+- `SKILL.md` › *The final review stage* (that section only): the same four outcomes and the fix paragraph; "All three are written
+  **only on a clean pass**: a run that adds a fix writes none of them, and the redo does." and "`SF` stays `gate: auto` by default,
+  though an unattended run stops and asks when it finds a fix."
+- `references/templates/PLAN.md`, Final review stage frozen-decision line: "…each becomes an issue, a later plan (the programme), or an
+  explicit "accepted, won't fix" — and NEVER implements and never adds a stage, except a **fix** … at most 3 per plan (a fourth is a
+  hard stop in every mode). Unattended, `SF` stops and asks instead of adding a fix."
+- `skills/staged-rollout/references/remote-driver.md`, *What the orchestrator refuses*: "**An unattended `SF` that finds a fix stops
+  and asks.** … a fired `SF` records a block instead of adding one. The orchestrator reports that block as a fix awaiting the user,
+  quotes its `.plan/BLOCKED.md` section, and does not re-fire `SF`, add the `Fix:` stage or choose the fix itself; the user runs
+  `/stage-run SF` attended to approve it."
+- `commands/plan-run.md` step 6: "A blocked `SF` whose section describes a fix is the unattended final review stopping to ask … say
+  so, and leave the fix to the user — run `/stage-run SF` attended, never add a `Fix:` stage or re-fire `SF` from here."
+
+As built: this plan's own `.plan/stage-f-review.md` was not touched (fixed at bootstrap, per the stage file). No frozen decision
+changed; D-4 and D-7 are implemented as written. S2's driver text was read first and only appended to.
+
+Left for S6 (outside this stage's Artifacts, found by grep):
+- `SKILL.md` line ~120 (*Decomposing the work*: "its three outcomes are…") and line ~442 (*Unattended mode* table row for SF's
+  kept-decisions list: still true on a clean pass, may want "and a fix stops and asks").
+- `commands/plan-close.md` ~120 still says "any spin-off" in the final PR body; it should list the `closeout will list` items
+  (issues, later plans, dated follow-ups) that an unattended SF records.
+- `docs/staged-rollout.md` ~334–342 still draws "A spin-off" as an SF outcome and the stage-spawning outcome.
+- `commands/plan-stages.md` / `plan-review.md` "three outcomes" are the plan-review outcomes, a different thing; leave.
 
 ### S6 Docs, lens checks and changelog
 _(empty)_

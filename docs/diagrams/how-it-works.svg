@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" width="1200" height="820" role="img" aria-label="How plan-staged-rollout works: four phases, what you say, what the plugin does, and what lands in the repo, with the rework loop.">
+<title>How plan-staged-rollout works</title>
+<desc>Four phases left to right: Brainstorm, Plan, Build, Close. Three lanes show what you say, what the plugin does, and what lands in the repo. A rework loop sends in-scope findings back to Build, large ones to a new plan, and small ones to create-issue then work-issue. A bracket strip across the top maps the phases to the classic software lifecycle — planning, analysis and design over the first two, implementation and deployment over Build, acceptance and review over Close, testing from Plan onward — and a bracket down the right marks the rework loop and the issue chain as maintenance.</desc>
+
+<rect x="0" y="0" width="1200" height="820" fill="#F8EFE4"/>
+<rect x="1" y="1" width="1198" height="818" fill="none" stroke="#E2D2BE" stroke-width="2"/>
+
+<defs>
+  <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#8A7664"/>
+  </marker>
+  <marker id="arT" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#C9563C"/>
+  </marker>
+
+  <!-- quiet monoline glyphs, 18x18 -->
+  <g id="g-bulb" fill="none" stroke="#B59A80" stroke-width="1.5" stroke-linecap="round">
+    <path d="M9 1.6a5.4 5.4 0 0 0-3.2 9.7V13h6.4v-1.7A5.4 5.4 0 0 0 9 1.6z"/>
+    <path d="M6.6 15h4.8M7.5 17h3"/>
+  </g>
+  <g id="g-list" fill="none" stroke="#B59A80" stroke-width="1.5" stroke-linecap="round">
+    <rect x="2.2" y="2.2" width="13.6" height="13.6" rx="2.4"/>
+    <path d="M5.4 6.6h7.2M5.4 9.6h7.2M5.4 12.6h4.2"/>
+  </g>
+  <g id="g-layers" fill="none" stroke="#B59A80" stroke-width="1.5" stroke-linejoin="round">
+    <path d="M9 1.8 16.2 6 9 10.2 1.8 6z"/>
+    <path d="M1.8 9.6 9 13.8l7.2-4.2M1.8 13.2 9 17.4l7.2-4.2"/>
+  </g>
+  <g id="g-check" fill="none" stroke="#B59A80" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="9" cy="9" r="7.2"/>
+    <path d="M5.6 9.2 8 11.6l4.4-4.8"/>
+  </g>
+  <g id="g-doc" fill="none" stroke="#B59A80" stroke-width="1.4" stroke-linejoin="round">
+    <path d="M4 1.8h6l4 4v10.4H4z"/>
+    <path d="M10 1.8v4h4"/>
+  </g>
+  <g id="g-pr" fill="none" stroke="#B59A80" stroke-width="1.4" stroke-linecap="round">
+    <circle cx="4.6" cy="4.2" r="2.2"/><circle cx="4.6" cy="14" r="2.2"/><circle cx="13.4" cy="14" r="2.2"/>
+    <path d="M4.6 6.4v5.4M13.4 11.8V8.2a2.4 2.4 0 0 0-2.4-2.4H7.2"/>
+  </g>
+  <g id="g-issue" fill="none" stroke="#C9A05E" stroke-width="1.5">
+    <circle cx="9" cy="9" r="7"/><circle cx="9" cy="9" r="1.9" fill="#C9A05E" stroke="none"/>
+  </g>
+</defs>
+
+<g font-family="ui-sans-serif, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif">
+
+<!-- ================= SDLC bracket strip ================= -->
+<g fill="#8A7664" font-size="12" letter-spacing="1.2" text-anchor="end">
+  <text x="112" y="34">SOFTWARE</text>
+  <text x="112" y="49">LIFECYCLE</text>
+</g>
+<g font-size="15.5" fill="#6F5B49" text-anchor="middle">
+  <text x="375" y="36">Planning · Analysis · Design</text>
+  <text x="753" y="36">Implementation · Deployment</text>
+  <text x="1005" y="36">Acceptance · Review</text>
+  <text x="753" y="72" font-size="14" font-style="italic">Testing — acceptance checks written here, run in each stage, run again at the final review</text>
+</g>
+<g stroke="#C0AB95" stroke-width="1.6" fill="none">
+  <path d="M132 56v-8M132 48h486M618 48v8"/>
+  <path d="M636 56v-8M636 48h234M870 48v8"/>
+  <path d="M888 56v-8M888 48h234M1122 48v8"/>
+</g>
+<g stroke="#C0AB95" stroke-width="1.6" fill="none" stroke-dasharray="6 5">
+  <path d="M384 90v-8M384 82h738M1122 82v8"/>
+</g>
+
+<line x1="20" y1="100" x2="1130" y2="100" stroke="#CBB8A4" stroke-width="1.6"/>
+
+<!-- ================= column headers ================= -->
+<use href="#g-bulb"   x="240" y="110"/>
+<use href="#g-list"   x="492" y="110"/>
+<use href="#g-layers" x="744" y="110"/>
+<use href="#g-check"  x="996" y="110"/>
+<g fill="#3B2A1E" font-size="22" font-weight="600" text-anchor="middle">
+  <text x="249" y="150">1 · Brainstorm</text>
+  <text x="501" y="150">2 · Plan</text>
+  <text x="753" y="150">3 · Build</text>
+  <text x="1005" y="150">4 · Close</text>
+</g>
+<line x1="132" y1="168" x2="1122" y2="168" stroke="#CBB8A4" stroke-width="2"/>
+<g fill="#8A7664">
+  <path d="M369 162l12 6-12 6z"/><path d="M621 162l12 6-12 6z"/><path d="M873 162l12 6-12 6z"/>
+</g>
+<g stroke="#CBB8A4" stroke-width="1.2" stroke-dasharray="5 7">
+  <line x1="375" y1="178" x2="375" y2="478"/>
+  <line x1="627" y1="178" x2="627" y2="478"/>
+  <line x1="879" y1="178" x2="879" y2="478"/>
+</g>
+
+<!-- ================= gutter lane labels ================= -->
+<g fill="#8A7664" font-size="12" letter-spacing="1.2" text-anchor="end">
+  <text x="112" y="200">YOU</text><text x="112" y="215">SAY</text>
+  <text x="112" y="298">PLUGIN</text><text x="112" y="313">DOES</text>
+  <text x="112" y="420">WHAT</text><text x="112" y="435">LANDS</text>
+</g>
+
+<!-- ================= LANE 1 — you say ================= -->
+<g fill="#FFFFFF" stroke="#C9563C" stroke-width="1.5">
+  <rect x="132" y="182" width="234" height="52" rx="10"/>
+  <rect x="384" y="182" width="234" height="52" rx="10"/>
+  <rect x="636" y="182" width="234" height="52" rx="10"/>
+  <rect x="888" y="182" width="234" height="52" rx="10"/>
+</g>
+<g fill="#C9563C" text-anchor="middle">
+  <text x="249" y="202" font-size="15">“I need…”</text>
+  <text x="249" y="222" font-size="15">“I have this issue…”</text>
+  <text x="501" y="214" font-size="17">“What? How?”</text>
+  <text x="753" y="214" font-size="17">“Run the next stage.”</text>
+  <text x="1005" y="214" font-size="17">“Is this in scope?”</text>
+</g>
+
+<!-- ================= LANE 2 — PSR does ================= -->
+<g>
+  <rect x="132" y="254" width="234" height="104" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/><rect x="132" y="254" width="6" height="104" rx="3" fill="#F0A33A"/>
+  <rect x="384" y="254" width="234" height="104" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/><rect x="384" y="254" width="6" height="104" rx="3" fill="#F0A33A"/>
+  <rect x="636" y="254" width="234" height="104" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/><rect x="636" y="254" width="6" height="104" rx="3" fill="#F0A33A"/>
+  <rect x="888" y="254" width="234" height="104" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/><rect x="888" y="254" width="6" height="104" rx="3" fill="#F0A33A"/>
+</g>
+<!-- c1 -->
+<text x="154" y="280" font-size="17" fill="#3B2A1E">Brainstorm the idea</text>
+<rect x="154" y="292" width="198" height="26" rx="8" fill="#FFF8EE" stroke="#D8B88A" stroke-width="1.3" stroke-dasharray="5 4"/>
+<text x="164" y="310" font-size="12.5" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">superpowers:brainstorming</text>
+<text x="154" y="340" font-size="13.5" fill="#8A7664" font-style="italic">complementary, not required</text>
+<!-- c2 -->
+<text x="406" y="284" font-size="17" fill="#3B2A1E">Split it into stages</text>
+<text x="406" y="314" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-stages &lt;idea&gt;</text>
+<text x="406" y="340" font-size="13" fill="#8A7664" font-style="italic">requirements, decisions, stages</text>
+<!-- c3 -->
+<text x="658" y="280" font-size="17" fill="#3B2A1E">One fresh session</text>
+<text x="658" y="300" font-size="17" fill="#3B2A1E">per stage</text>
+<text x="658" y="326" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/stage-run &lt;N&gt;</text>
+<text x="658" y="348" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-run</text>
+<text x="752" y="348" font-size="13" fill="#8A7664" font-style="italic">drives them all</text>
+<!-- c4 -->
+<text x="910" y="280" font-size="17" fill="#3B2A1E">Final review stage —</text>
+<text x="910" y="300" font-size="17" fill="#3B2A1E">reads the whole ledger</text>
+<text x="910" y="334" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-close</text>
+
+<!-- ================= LANE 3 — what lands ================= -->
+<g>
+  <rect x="132" y="378" width="234" height="100" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/><rect x="132" y="378" width="6" height="100" rx="3" fill="#4FB98C"/>
+  <rect x="384" y="378" width="234" height="100" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/><rect x="384" y="378" width="6" height="100" rx="3" fill="#4FB98C"/>
+  <rect x="636" y="378" width="234" height="100" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/><rect x="636" y="378" width="6" height="100" rx="3" fill="#4FB98C"/>
+  <rect x="888" y="378" width="234" height="100" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/><rect x="888" y="378" width="6" height="100" rx="3" fill="#4FB98C"/>
+</g>
+<!-- c1 -->
+<text x="154" y="420" font-size="15.5" fill="#3B2A1E">Idea + solution design</text>
+<text x="154" y="444" font-size="13" fill="#8A7664" font-style="italic">what the solution actually is</text>
+<!-- c2 -->
+<use href="#g-doc" x="406" y="392"/>
+<g font-size="14" fill="#2F7D5E" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+  <text x="430" y="406">.plan/BRIEF.md</text>
+  <text x="430" y="428">.plan/PLAN.md</text>
+  <text x="430" y="450">.plan/LEDGER.md</text>
+  <text x="430" y="472">.plan/stage-N-*.md</text>
+</g>
+<!-- c3 -->
+<text x="658" y="406" font-size="15.5" fill="#3B2A1E">code · docs</text>
+<text x="658" y="428" font-size="15.5" fill="#3B2A1E">tests · diagrams</text>
+<use href="#g-doc" x="658" y="438"/>
+<text x="682" y="452" font-size="14" fill="#2F7D5E" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">DECISIONS.md</text>
+<use href="#g-pr" x="658" y="458"/>
+<text x="682" y="472" font-size="13.5" fill="#2F7D5E">one PR per stage</text>
+<!-- c4 -->
+<use href="#g-pr" x="910" y="394"/>
+<text x="934" y="408" font-size="15.5" fill="#3B2A1E">Final PR into <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#2F7D5E">main</tspan></text>
+<text x="934" y="428" font-size="13" fill="#C9563C" font-style="italic">you merge it, always</text>
+<use href="#g-doc" x="910" y="440"/>
+<text x="934" y="454" font-size="14" fill="#2F7D5E" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">lessons.md</text>
+<text x="934" y="472" font-size="13" fill="#8A7664" font-style="italic">the blunt retro</text>
+
+<!-- ================= rework loop ================= -->
+<path d="M1005 478V508" stroke="#C9563C" stroke-width="2" fill="none" marker-end="url(#arT)"/>
+<text x="988" y="500" font-size="13" fill="#C9563C" text-anchor="end" font-style="italic">gaps · ideas · drift · outcomes</text>
+
+<polygon points="909,544 1005,512 1101,544 1005,576" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.6"/>
+<text x="1005" y="549" font-size="16" fill="#3B2A1E" text-anchor="middle">In scope?</text>
+
+<path d="M909 544H753V492" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+<text x="831" y="534" font-size="13" fill="#8A7664" text-anchor="middle">yes — a new stage</text>
+
+<path d="M1005 576v26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+<text x="1019" y="596" font-size="13" fill="#8A7664">no</text>
+
+<polygon points="909,634 1005,602 1101,634 1005,666" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.6"/>
+<text x="1005" y="639" font-size="16" fill="#3B2A1E" text-anchor="middle">How big?</text>
+
+<path d="M909 634H34V168h90" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+<text x="470" y="624" font-size="13" fill="#8A7664" text-anchor="middle">large — a plan of its own</text>
+
+<path d="M1005 666v24" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+<text x="1019" y="684" font-size="13" fill="#8A7664">small</text>
+
+<rect x="897" y="694" width="216" height="42" rx="10" fill="#FFFFFF" stroke="#F0A33A" stroke-width="1.6"/>
+<use href="#g-issue" x="918" y="706"/>
+<text x="1016" y="721" font-size="15" fill="#A2691F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/create-issue</text>
+<path d="M1005 736v22" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#ar)"/>
+<rect x="897" y="762" width="216" height="42" rx="10" fill="#FFFFFF" stroke="#F0A33A" stroke-width="1.6"/>
+<use href="#g-issue" x="918" y="774"/>
+<text x="1016" y="789" font-size="15" fill="#A2691F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/work-issue</text>
+
+<!-- maintenance: the lifecycle phase the rework loop and the issue chain are -->
+<g stroke="#C0AB95" stroke-width="1.6" fill="none">
+  <path d="M1134 486h8M1142 486v314M1134 800h8"/>
+</g>
+<text transform="rotate(-90 1166 643)" x="1166" y="643" text-anchor="middle" font-size="15.5" fill="#6F5B49">Maintenance</text>
+
+<!-- ================= legend ================= -->
+<g font-size="13.5" fill="#6F5B49">
+  <rect x="136" y="700" width="14" height="14" rx="4" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.6"/>
+  <text x="158" y="712">what you say</text>
+  <rect x="136" y="726" width="14" height="14" rx="4" fill="#F0A33A"/>
+  <text x="158" y="738">what the plugin does</text>
+  <rect x="136" y="752" width="14" height="14" rx="4" fill="#4FB98C"/>
+  <text x="158" y="764">what lands in the repo</text>
+  <rect x="136" y="778" width="14" height="14" rx="4" fill="#FFF8EE" stroke="#D8B88A" stroke-width="1.4" stroke-dasharray="4 3"/>
+  <text x="158" y="790">another plugin</text>
+</g>
+
+</g>
+</svg>

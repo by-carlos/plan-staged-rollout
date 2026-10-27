@@ -74,6 +74,32 @@ stop and resume whenever you have time.
 | **Control** | Sessions stop at stage boundaries. You choose pace and order; PR-per-stage gives you an acceptance gate on every unit. Human-gated work becomes an explicit `blocked` + runbook, never faked progress. |
 | **Versioning / undo** | Undo a stage by discarding its branch before its PR merges, or by redoing it on a fresh branch after. `main` gets one commit per stage. Details: [How do I undo a stage?](faq.md#how-do-i-undo-a-stage) |
 
+## What stops it becoming a different project
+
+The failure this is built against is not a plan that grows. It is a plan that
+becomes a **different plan, one reasonable step at a time** — a proof of
+concept that quietly turns into the production build, a direction change
+carried on under the old Outcome. Nobody decides to do it, so nobody notices
+it happening.
+
+[![Where drift gets caught: five moments, from before there is a plan to the final review, each with the check that fires and what can come of it.](diagrams/drift-guards.svg)](diagrams/drift-guards.svg)
+
+Two things are worth drawing out of that picture:
+
+- **The checks ask what kind of change it is, never how much has changed.**
+  There is no threshold and no count. A plan that doubles in size while
+  staying the same project is fine; a small step that makes it a different
+  project is not.
+- **The scope referee has no stake in the work.** It is a fresh session that
+  sees the plan's Outcome, its Out of scope, the new stage and the stages
+  added before it — and nothing of the session asking for the stage,
+  including how much effort has already gone in. That is the whole reason it
+  can say *different plan* when the session that wants the stage cannot.
+
+The earliest check is the cheapest one: an idea too vague to state its Done
+checks never becomes a build plan at all. It becomes a **discovery plan**
+whose Outcome is a decision, and the build is the plan after it.
+
 ## When *not* to use this
 
 - **Work that fits in one to three sessions.** The scaffold has a floor cost;

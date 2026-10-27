@@ -6,6 +6,12 @@
 close. Every stage ends with a merged PR into the plan branch and proof in
 the ledger; `plan-close` proposes the one PR into `main`, and you merge it.
 
+[![How a plan runs: four phases — brainstorm, plan, build, close — showing what you say, what the plugin does, and what lands in your repo at each one, with the rework loop that turns a finding into a new stage, a new plan, or a ticket.](diagrams/how-it-works.svg)](diagrams/how-it-works.svg)
+
+The same four steps again below, with the two things the picture leaves out:
+what happens when a stage needs a person (it becomes a runbook for you), and
+the cap of three review fixes per plan.
+
 ```mermaid
 flowchart TD
     idea([Project idea]) --> plan["<b>1. Plan</b> — plan-stages<br/>design questions, split into stages,<br/>commit and push .plan/"]

@@ -22,7 +22,7 @@ protocol, finish protocol).
 | S5 User docs and changelog | done | yes | 2026-10-27 | Docs, reference and one CHANGELOG entry written; validate passes |
 | S6 Example plan | done | yes | 2026-10-27 | examples/feed-digest/ shows all five artifacts; validator OK |
 | SF Plan review | done | yes | 2026-10-27 | 10 loose ends sorted; 7 decisions kept in DECISIONS.md; S7 spawned |
-| S7 Close the gaps | doing | yes | 2026-10-27 | L1–L4 closed; validator lists BRIEF/RUNNER; checks pass |
+| S7 Close the gaps | done | yes | 2026-10-27 | L1–L4 closed; validator lists BRIEF/RUNNER; checks pass |
 
 ## Notes
 

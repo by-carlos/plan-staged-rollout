@@ -22,7 +22,7 @@ protocol, finish protocol).
 | S5 User docs and changelog | done | yes | 2026-10-27 | Docs, reference and one CHANGELOG entry written; validate passes |
 | S6 Example plan | done | yes | 2026-10-27 | examples/feed-digest/ shows all five artifacts; validator OK |
 | SF Plan review | done | yes | 2026-10-27 | 10 loose ends sorted; 7 decisions kept in DECISIONS.md; S7 spawned |
-| S7 Close the gaps | todo | — | — | — |
+| S7 Close the gaps | doing | yes | 2026-10-27 | L1–L4 closed; validator lists BRIEF/RUNNER; checks pass |
 
 ## Notes
 
@@ -526,3 +526,12 @@ $ head -1 DECISIONS.md
 $ grep -n "DECISIONS.md" CLAUDE.md
 23:- **Decisions in force live in [`DECISIONS.md`](DECISIONS.md).** ...
 ```
+
+### S7 Close the gaps
+
+**As built:** `BRIEF.md`/`RUNNER.md` added to `TEMPLATE_FILES`; `plan-stages` step 6 copies `decisions-format.md` into `.plan/` (listed in templates README and `docs/reference.md`); SKILL.md gains the kept-decisions Unattended row and a "Decisions in force" paragraph after the preflight paragraph.
+
+**Acceptance:**
+- `validate_plugin.py` → `validate-plugin: OK`; with `BRIEF.md` moved away → `missing referenced template 'BRIEF.md'` (plus the resulting broken link in docs/reference.md); restored.
+- `grep decisions-format.md commands/plan-stages.md` → line 257 (step 6 copy).
+- `grep kept-decisions SKILL.md` → line 410; `grep -i "decisions in force"` → line 584.

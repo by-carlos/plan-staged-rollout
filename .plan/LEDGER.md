@@ -114,6 +114,7 @@ Acceptance output (2026-10-27, worktree `../plan-staged-rollout-s3`, branch `pla
 - `python -m unittest discover -s skills/staged-rollout/tests` → `Ran 37 tests` / `OK (skipped=2)` (the two skips are the
   real-symlink tests on Windows without symlink rights; a mocked-`is_symlink` test covers the same refusal everywhere).
 - `python scripts/validate_plugin.py` → `validate-plugin: OK`
+- Both re-run after merging `plan-stage-shape` (S4, PR #243) into the stage branch: 37 tests OK (skipped=2); validator OK.
 - Fixture run (scratch copy, `git init`ed; a new `S6 Fix: login` row inserted before S2; S0 done, S1 doing with a
   `BLOCKED.md` section): `renumber_stages.py --slug demo` printed `S6 -> S2`, `S2 -> S3`, `S3 -> S4`, `S4 -> S5`, exit 0.
   Index afterwards: S0, S1, S2 Fix: login, S3 Parser, S4 Writer, S5 Docs (`depends` S3, S4), SF (`depends` S5, S2) — SF last;

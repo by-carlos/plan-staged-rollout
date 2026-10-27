@@ -511,7 +511,7 @@ plan is the whole answer.
 | GitHub AI prompt names a different repo | Same question; the issue's own repo is not assumed. |
 | AI prompt names no way to verify | Say it in the plan; agree how to verify before the push gate. |
 | Ticket is closed | `Closed` question before anything else. |
-| Ticket's tier differs from this session | `Continue?` question; only a yes carries on. |
+| Ticket's tier differs from this session | Stop on `weight-check`'s line; nothing is claimed or written. A **go** re-checks from section 1. |
 | Working directory is not a clone of the target repo | Ask for the clone's path. Never clone or add a worktree unasked. |
 | Dirty working tree | Stop and list it. Never stash. |
 | Open pull request already exists | `Resume?` question. Never a second branch on top. |

@@ -104,6 +104,14 @@ elsewhere. See 0.4.0 for the split.
   gets `Refs` instead, and so does every issue while a programme still lists
   another plan. Before, the body only named the issue, and it stayed open
   after the merge.
+- **The body guard's suggested command now runs as written.** When the
+  `gh-body-guard` hook denies a `--body-file` or `--body @path` call, it names
+  the GitHub adapter by its real path. Before, it said
+  `${CLAUDE_PLUGIN_ROOT}/tickets/scripts/github_adapter.py`, and that variable
+  is empty in the Bash tool, so the suggestion could not be run.
+- **`work-issue`'s failure table matches its tier check.** A ticket whose tier
+  differs from the session stops on the `weight-check` line; the table no
+  longer promises a `Continue?` question the skill does not ask.
 
 ## [0.14.2] - 2026-10-23
 

@@ -17,7 +17,7 @@ protocol, finish protocol).
 | S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
 | S1 Measure stage size | done | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR #242 merged |
 | S2 Runners respect `live` | todo | — | — | — |
-| S3 Renumbering script | todo | — | — | — |
+| S3 Renumbering script | doing | no | 2026-10-27 | in progress on plan-stage-shape-s3 |
 | S4 Bootstrap: programmes, waits, ordering | todo | — | — | — |
 | S5 Final review that stays last | todo | — | — | — |
 | S6 Docs, lens checks and changelog | todo | — | — | — |

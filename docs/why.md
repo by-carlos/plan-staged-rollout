@@ -91,10 +91,10 @@ Two things are worth drawing out of that picture:
   staying the same project is fine; a small step that makes it a different
   project is not.
 - **The scope referee has no stake in the work.** It is a fresh session that
-  sees the plan's Outcome, its Out of scope and the new stage — and nothing
-  of the session asking for the stage, including how much effort has already
-  gone in. That is the whole reason it can say *different plan* when the
-  session that wants the stage cannot.
+  sees the plan's Outcome, its Out of scope, the new stage and the stages
+  added before it — and nothing of the session asking for the stage,
+  including how much effort has already gone in. That is the whole reason it
+  can say *different plan* when the session that wants the stage cannot.
 
 The earliest check is the cheapest one: an idea too vague to state its Done
 checks never becomes a build plan at all. It becomes a **discovery plan**

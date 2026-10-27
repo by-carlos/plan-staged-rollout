@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 575" width="1150" height="575" role="img" aria-label="Where a plan is checked against the project it was supposed to be: five moments, from before there is a plan to the final review, each with the check that fires and what can come of it.">
 <title>Where drift gets caught</title>
-<desc>Five moments where a plan is checked against the project it was supposed to be. Before there is a plan, a too-vague idea becomes a discovery plan. While the plan is written, requirements are captured before decisions and played back. Before stage one runs, lens subagents review the uncommitted scaffold. Whenever a stage is added, a fresh-context scope referee judges it against the plan's outcome. At the end, the final review stage catalogs loose ends and never implements.</desc>
+<desc>Five moments where a plan is checked against the project it was supposed to be. Before there is a plan, a too-vague idea becomes a discovery plan. While the plan is written, requirements are captured before decisions and played back. Before stage one runs, lens subagents review the uncommitted scaffold. Whenever a stage is added, a fresh-context scope referee judges it against the plan's outcome. At the end, the final review stage catalogs loose ends, never implements, and adds a stage only for a fix it found, at most three per plan.</desc>
 
 <rect x="0" y="0" width="1150" height="575" fill="#F8EFE4"/>
 <rect x="1" y="1" width="1148" height="573" fill="none" stroke="#E2D2BE" stroke-width="2"/>
@@ -67,8 +67,8 @@
 <rect x="330" y="339" width="460" height="74" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
 <rect x="330" y="339" width="6" height="74" rx="3" fill="#F0A33A"/>
 <text x="352" y="366" font-size="16" fill="#3B2A1E">The scope referee</text>
-<text x="352" y="388" font-size="13.5" fill="#8A7664">A fresh session with no stake in the work so far. It sees</text>
-<text x="352" y="405" font-size="13.5" fill="#8A7664">the Outcome, the Out of scope and the new stage. Nothing else.</text>
+<text x="352" y="388" font-size="13.5" fill="#8A7664">A fresh session with no stake in the work so far. It sees the</text>
+<text x="352" y="405" font-size="13.5" fill="#8A7664">Outcome, the Out of scope, the new stage and the earlier additions.</text>
 <path d="M790 376h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
 <rect x="820" y="346" width="290" height="60" rx="10" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.5"/>
 <text x="965" y="368" font-size="13.5" fill="#3B2A1E" text-anchor="middle">grows · losing shape ·</text>
@@ -81,8 +81,8 @@
 <rect x="330" y="431" width="460" height="74" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
 <rect x="330" y="431" width="6" height="74" rx="3" fill="#F0A33A"/>
 <text x="352" y="458" font-size="16" fill="#3B2A1E">The final review stage</text>
-<text x="352" y="480" font-size="13.5" fill="#8A7664">It catalogs every loose end in the ledger. It never</text>
-<text x="352" y="497" font-size="13.5" fill="#8A7664">implements, and it never adds a stage.</text>
+<text x="352" y="480" font-size="13.5" fill="#8A7664">It catalogs every loose end in the ledger. It never implements,</text>
+<text x="352" y="497" font-size="13.5" fill="#8A7664">and it adds a stage only for a fix it found — at most three per plan.</text>
 <path d="M790 468h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
 <rect x="820" y="444" width="290" height="48" rx="10" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.5"/>
 <text x="965" y="466" font-size="13.5" fill="#3B2A1E" text-anchor="middle">an issue · a later plan ·</text>

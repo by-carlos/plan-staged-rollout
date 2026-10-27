@@ -103,6 +103,15 @@ Regenerate `.plan/BRIEF.md` in the same commit. The review stage adds a stage
 only to fix a failing check it found, with your yes, at most 3 per plan;
 other work it finds becomes an issue or a later plan.
 
+Before the row is written, the **scope referee** — a fresh subagent that sees
+only the plan's Outcome, its Out of scope, the new stage and the earlier
+additions — says whether the stage **grows** the plan (it goes in silently),
+whether the additions are **losing shape** (it goes in, with a one-line
+suggestion to re-plan), or whether this is a **different plan** (it stops and
+offers: carry on, re-plan, or close this plan as a milestone and start a new
+one). You decide. A session running unattended never adds a stage; it notes
+the work for the review stage instead.
+
 ### How do I change a stage's model or effort?
 
 Edit that stage's row in the stage index in `PLAN.md`, on the plan branch.

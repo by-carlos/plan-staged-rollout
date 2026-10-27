@@ -78,6 +78,19 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   context never did (no compaction up to 376K tokens). Revisit: when a
   designed sample can separate stage types, or count only unprompted
   interventions. Source: #227
+- **Drift is judged by kind, not amount: a fresh-context scope referee checks
+  each stage added after the scaffold against the plan's Outcome and Out of
+  scope, and only its "different plan" verdict stops the session; nothing but
+  adding a stage triggers it, and there is no threshold.** — a fixed
+  threshold is arbitrary and noisy, and the session that drifted is the worst
+  judge of its own drift. Revisit: if real plans show the referee too quiet or
+  too noisy. Source: #229
+- **Lessons at close are three to six blunt, evidence-backed lines in two
+  groups, kept only in the final PR body and read back by the next
+  `/plan-stages` in the same repository; there is no retro file, and work done
+  as a single ticket gets none.** — a retro kept as a record changes nothing;
+  the next plan's playback is where a lesson can still act. Revisit: if
+  lessons need to reach plans in other repositories. Source: #229
 
 ## Running stages
 
@@ -92,6 +105,10 @@ Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `
   only notes it.** — `live` changes a running system, and the refusal reuses
   preflight's live-sibling signature rather than a new lock. Revisit: if a
   plan needs two `live` stages on unrelated systems. Source: #227
+- **An unattended session, and any run under `RUNNER.md`, never adds a stage:
+  the work is noted for the final review instead.** — the scope referee's
+  "different plan" verdict needs a person to choose. Revisit: if the referee
+  gains a declared default. Source: #229
 
 ## Decisions format
 

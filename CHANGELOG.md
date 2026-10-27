@@ -38,6 +38,15 @@ elsewhere. See 0.4.0 for the split.
   would wait on the plan branch until the final merge; the Simplicity lens and
   the `stage-N.md` acceptance section ask a pass threshold to say why that
   number and whether the check can detect the difference (#227).
+- **A scope referee when a stage is added, and lessons at close.** Adding a
+  stage mid-plan first goes to a fresh subagent that checks it against the
+  plan's Outcome: it goes in silently, goes in with a one-line suggestion to
+  re-plan, or — when the plan is becoming a different plan — stops and offers
+  to carry on, re-plan, or close this plan and start a new one. Nothing else
+  triggers it, and unattended sessions never add a stage. `plan-close` prints
+  three to six blunt, evidence-backed lessons for you and for the plugin and
+  copies them into the final PR; the next `plan-stages` reads them back. A
+  vague idea is scaffolded as a discovery plan (#229).
 - **A measured stage size.** The stage-size guidance in the skill rests on 46
   past stage sessions: a stage is too big when a run needs more than 4
   interventions or more than 1 hour of active time (#227).

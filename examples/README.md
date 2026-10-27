@@ -73,6 +73,7 @@ job's code and its own README are not.
 | The brief: stamp line, Mermaid day-to-day flow, stage map | [`.plan/BRIEF.md`](feed-digest/.plan/BRIEF.md) |
 | The plan-review digest, each finding with its outcome | [`plan-review-digest.md`](feed-digest/plan-review-digest.md), recorded in [`.plan/PLAN.md`](feed-digest/.plan/PLAN.md) › Plan review |
 | Close-time triage: three decisions dropped, three entries, one ADR | [`.plan/LEDGER.md`](feed-digest/.plan/LEDGER.md) › SF › Kept decisions, [`DECISIONS.md`](feed-digest/DECISIONS.md), [`docs/adr/0001-dedupe-by-stable-entry-key.md`](feed-digest/docs/adr/0001-dedupe-by-stable-entry-key.md) |
+| The lessons `/plan-close` prints and copies into the final PR | [`lessons.md`](feed-digest/lessons.md) |
 | The pointer line, in the agent instructions file | [`AGENTS.md`](feed-digest/AGENTS.md) — `AGENTS.md`, not `CLAUDE.md`, so Claude Code does not load the toy's instructions while you work in this repository |
 
 ### What to notice
@@ -94,6 +95,11 @@ job's code and its own README are not.
   entries, and one — hard to reverse, with real alternatives — becomes an ADR
   that its entry links to. The `#### Kept decisions` heading is the exact form
   `/plan-close` copies into the final PR body.
+- **Lessons are actions with evidence, never praise.** Each line in
+  `lessons.md` names what the plan files show — a review finding, a hand-made
+  file, a cold-reader miss — and what to do differently. It was produced by
+  running `/plan-close`'s lessons step on this example; with no scaffold copy
+  of `PLAN.md` here, no line claims a before-and-after change.
 - **`gate: local` in passing.** S2 needs the home server, reachable only from
   the local network, so its stage index row says `local` and the stage map
   marks it.

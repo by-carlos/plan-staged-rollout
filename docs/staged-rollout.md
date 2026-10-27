@@ -77,6 +77,8 @@ not in a separate spec that would become a second source of truth.
 sessions. Work that fits one issue is small: its acceptance criteria are the
 spec, and it gets no brief and no plan review. `plan-stages` says so and
 offers to stop; [`work-issue`](tickets.md) or a single session fits better.
+An idea too vague to say what finished looks like becomes a **discovery
+plan** whose outcome is a decision; the build is the next plan.
 How deep a plan goes after that depends on what it touches, not on how many
 stages it has.
 
@@ -230,7 +232,11 @@ What the picture leaves out:
   means this session coordinates and hands the implementation to a subagent,
   so the churn stays out of its context.
 - **It stays in scope.** Work spotted for another stage is noted in the
-  ledger and left alone; it may become a new stage.
+  ledger and left alone; it may become a new stage. Adding one goes through
+  the **scope referee**: a fresh subagent that checks the new stage against
+  the plan's Outcome and stops only when the plan is turning into a different
+  plan, such as a review that starts implementing or a proof of concept that
+  becomes the build. See [How do I add a stage?](faq.md#how-do-i-add-a-stage).
 - **At the end** it updates the ledger row and notes on its stage branch,
   changes a frozen decision in `PLAN.md` (and nowhere else) if one changed,
   and opens the stage PR. It **offers** the merge and merges only on your
@@ -424,7 +430,13 @@ alone. Then it:
    commits only after your OK. Nothing is lost: the full plan history stays
    in git. Keep the folder (`plan-dir: keep`) for a project where the plan
    doubles as documentation;
-4. proposes the PR from `plan-<slug>` to `main`. You review and merge it.
+4. proposes the PR from `plan-<slug>` to `main`. You review and merge it;
+5. prints **lessons**: three to six blunt one-liners, *For you, next time*
+   and *For the plugin*, each backed by what the plan files show — stages
+   added or skipped, blocks, fixes. They are also in the PR body, and the
+   next `plan-stages` in the repository reads them back while it captures
+   the new plan's requirements. Each plugin lesson is offered as an issue,
+   filed only on your yes.
 
 It runs unattended too: `plan-close --unattended` applies the plan flags
 instead of asking. `plan-run` never fires it; you run it. **Merging that final

@@ -16,7 +16,7 @@ protocol, finish protocol).
 |---|---|---|---|---|
 | S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
 | S1 Measure stage size | done | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR #242 merged |
-| S2 Runners respect `live` | doing | yes | 2026-10-27 | every runner fires only `auto`/absent and refuses `live`/unknown; hook run on fixture; validator passes |
+| S2 Runners respect `live` | done | yes | 2026-10-27 | every runner fires only `auto`/absent and refuses `live`/unknown; hook run on fixture; validator passes; PR #244 merged |
 | S3 Renumbering script | done | yes | 2026-10-27 | renumber_stages.py renumbers only unstarted stages; 37-test suite passes; PR #245 merged |
 | S4 Bootstrap: programmes, waits, ordering | done | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes; PR #243 merged |
 | S5 Final review that stays last | todo | — | — | — |

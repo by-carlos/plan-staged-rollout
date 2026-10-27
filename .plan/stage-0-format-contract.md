@@ -21,23 +21,23 @@ nothing else in the plan can start without them.
 
 ## Steps
 
-- [ ] In the PLAN.md template, add `live` to the flag values: its meaning, that
+- [x] In the PLAN.md template, add `live` to the flag values: its meaning, that
   a driver never fires it, that runners fire a stage only when its gate is
   `auto` or absent (any other value, unknown ones included, is refused and
   named), and that two `live` stages never run at once (a start-time refusal in
   `/stage-run` preflight, per D-3).
-- [ ] In the PLAN.md template, state the stage-ID rule: plain numbers plus
+- [x] In the PLAN.md template, state the stage-ID rule: plain numbers plus
   `SF`; suffixed IDs are read but never created; numbering follows running
   order.
-- [ ] In SKILL.md › *Flag heuristics*, extend the `gate` bullet with `live`.
-- [ ] In SKILL.md › *Parallel stages*, state that no two `live` stages run at
+- [x] In SKILL.md › *Flag heuristics*, extend the `gate` bullet with `live`.
+- [x] In SKILL.md › *Parallel stages*, state that no two `live` stages run at
   once, and add one sentence on the ID rule.
-- [ ] Add `live` to the other `gate` consumers: in SKILL.md › *Unattended mode*,
+- [x] Add `live` to the other `gate` consumers: in SKILL.md › *Unattended mode*,
   the hard-stop table rows and the "never launched" sentence; in SKILL.md ›
   *Statuses and human-gated stages*; and in
   `skills/staged-rollout/references/templates/BRIEF.md`, the stage-map gate
   label.
-- [ ] Run the acceptance checks and paste the output into the ledger notes.
+- [x] Run the acceptance checks and paste the output into the ledger notes.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks
 the row `doing`, ticks the boxes it finished, and writes a handoff note in the

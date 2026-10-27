@@ -18,7 +18,7 @@ protocol, finish protocol).
 | S1 Measure stage size | done | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR #242 merged |
 | S2 Runners respect `live` | todo | — | — | — |
 | S3 Renumbering script | todo | — | — | — |
-| S4 Bootstrap: programmes, waits, ordering | doing | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes |
+| S4 Bootstrap: programmes, waits, ordering | done | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes; PR #243 merged |
 | S5 Final review that stays last | todo | — | — | — |
 | S6 Docs, lens checks and changelog | todo | — | — | — |
 | SF Plan review | todo | — | — | — |

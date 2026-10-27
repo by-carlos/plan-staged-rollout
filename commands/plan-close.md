@@ -117,9 +117,18 @@ Work through these steps **in order**:
    - the paths to `.plan/PLAN.md` and `.plan/LEDGER.md`;
    - the required body shape — what was built and why (from `PLAN.md`'s
      opening + frozen decisions), the stage-by-stage as-built summary (from
-     the ledger notes), and any spin-off candidates and accepted-won't-fix
-     items the `SF` review stage recorded, called out explicitly as follow-up
-     work;
+     the ledger notes), a **Kept decisions** section, and any spin-off
+     candidates and accepted-won't-fix items the `SF` review stage recorded,
+     called out explicitly as follow-up work;
+   - the rule for **Kept decisions**: copy the `#### Kept decisions` list from
+     the `SF` notes block — every frozen decision with its outcome (drop,
+     entry or ADR) and target path — line for line, never summarized, since
+     it is the record of what survives `.plan/`. Keep its approval line. When
+     that line says the list was applied unattended, open the section with
+     one sentence saying so: *merging this PR approves these decisions; edit
+     or revert any entry on this branch first if one is wrong.* When the `SF`
+     notes carry no such list (a plan scaffolded before the decision triage
+     existed), write the section as one line saying no decision triage ran;
    - the instruction not to just paste the raw files, but to summarize them
      into a readable PR description.
 

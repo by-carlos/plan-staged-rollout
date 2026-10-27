@@ -12,7 +12,7 @@ don't share it; the plan can't drift because every decision lives in exactly one
 place; progress is a glanceable ledger, not a transcript.
 
 The file formats are in `references/templates/` (`PLAN.md`, `LEDGER.md`,
-`stage-N.md`, `stage-f-review.md`, `README.md`, `RUNNER.md`) — copy those
+`stage-N.md`, `stage-f-review.md`, `README.md`, `RUNNER.md`, `BRIEF.md`) — copy those
 verbatim for structure, then fill every `<placeholder>` when scaffolding.
 `RUNNER.md` is the stage-runner contract scaffolded into each plan so any
 session — cloud included, where this plugin does not load — can run a stage
@@ -60,6 +60,41 @@ context a long session would carry).
 4. **Verify before done.** A stage is done when its acceptance check *ran* and
    the real output is pasted into the ledger — not when the model claims success.
    Evidence, not assertion.
+
+## Requirements and decisions, before decomposing
+
+Bootstrap settles *what* before *how*, and the plan is checked before any
+stage runs. All of it happens inside `/plan-stages`, before the scaffold
+commit — there is no extra stage.
+
+- **Requirements step.** Capture the requirements first, before any decision:
+  outcome, day to day, constraints ranked, out of scope, and done as checks
+  (`PLAN.md` › Requirements). Play them back to the user in plain language and
+  get a confirmation before going on. The same step looks for an existing ADR
+  folder or current-decisions document and records the path as a decision, so
+  a plan adopts what the repo already has instead of starting a parallel list.
+- **Decision triage.** Every decision the plan needs goes into one of three
+  groups: **Decided** (reversible and low impact — settled with its reason),
+  **Needs you** (taste, irreversible, cost, security or anything external) or
+  **Default for now** (a working default, flagged to revisit). Only **Needs
+  you** reaches the user, in **one batch**, each question with a recommended
+  answer. A **Needs you** decision still pending blocks only the stages that
+  name it, not the plan.
+- **The brief.** After decomposition, generate `.plan/BRIEF.md` from
+  `PLAN.md` — a one-page view to check the plan against, never a second
+  source. Feedback on it is applied to `PLAN.md` and the brief regenerated.
+  Shape and stamp: [`templates/BRIEF.md`](references/templates/BRIEF.md).
+- **Plan review.** Lens subagents read the uncommitted scaffold; their
+  findings are applied, and only then is the scaffold committed, so the plan
+  is reviewed before stage 1 by construction. Lenses, triggers and outcomes:
+  [`plan-review.md`](references/plan-review.md).
+
+**Depth by size.** No new size metric: the line is the one *When NOT to use
+it* already draws. Work that warrants a plan (about four or more sessions) is
+big and gets all of the above. Work handled as a single issue is small — its
+acceptance criteria are the spec, with no brief and no plan review; tiny work
+has no ticket at all. Within a plan, depth scales by what the plan touches —
+the review lenses' triggers — never by how many stages it has.
 
 ## Decomposing the work
 
@@ -372,6 +407,7 @@ two kinds:
 | A stage PR's merge | offered | `merge` flag — `auto` merges it, `manual` is a **hard stop** |
 | Checking out the plan branch to reach `.plan/` | offered | default: check it out when exactly one plan branch matches; two or more is a **hard stop** |
 | A stage worktree still present at closeout | offered for removal when its branch is merged and nothing is unpushed | removed on that same condition; anything else is a **hard stop** |
+| The final review stage's kept-decisions list | asked in one batch | the stage applies its own proposals, and merging the plan→main PR approves them; an ambiguous decisions target is a **hard stop** for that step only |
 | Deleting `.plan/` at closeout | asked | `plan-dir` flag |
 | Merging the plan→main PR | the PR is proposed; you merge it | the PR is opened; you merge it — **no session merges it in any mode**, no flag, no override |
 
@@ -545,6 +581,11 @@ stage's in-flight branch — reported, not fatal, see *Parallel stages*);
 everything else is drift, and the preflight **reports and stops** — it never
 auto-stashes, resets, or deletes branches.
 
+**Decisions in force.** At the start of each stage the session is shown the
+decisions-document entries whose `Paths:` overlap the stage file's
+`## Artifacts`, and `BRIEF.md`'s stamp is checked against `PLAN.md`; the
+template `PLAN.md`'s protocol defines both.
+
 ## The final review stage
 
 `SF` is the one stage exempt from the read-scope rule: it reads the *entire*
@@ -565,6 +606,25 @@ of three outcomes:
 
 Its acceptance check: every loose end in the notes is either a new stage (a
 stage index row, a ledger row, and a stage file) or explicitly closed.
+
+**It also owns what outlives `.plan/`.** Closeout deletes the plan, so `SF`
+decides what survives it:
+
+- **Decision triage at close.** For every frozen decision, propose one
+  outcome — drop it, a `DECISIONS.md` entry, or an ADR — and write the
+  approved ones, into the repo's existing decisions document or ADR folder
+  when it has one. The keep rule, entry shape and ADR shape are in
+  [`decisions-format.md`](references/decisions-format.md). Attended, the
+  whole list is approved in one batch. Unattended, `SF` applies its own
+  proposals and `/plan-close` lists them in the plan→main PR body, so merging
+  that PR is the approval.
+- **Docs and pointer.** Update the README (or the changed module's own doc)
+  and add the repo's `CLAUDE.md` pointer line to the decisions file.
+- **Cold-reader check.** Read the updated docs as someone who never saw the
+  plan, and fix what they could not follow.
+
+These are documentation writes, not product code, so "catalogs, never
+implements" still holds. `SF` stays `gate: auto` by default.
 
 ## Closeout
 

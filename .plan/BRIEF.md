@@ -1,4 +1,4 @@
-Generated from PLAN.md @ e018bff905ea — do not edit
+Generated from PLAN.md @ 3aab7c03e32b — do not edit
 # Milestones, live stages, plain numbers and a final review that stays last — plan brief
 
 > One page to check this plan against what you expect. Feedback goes in chat
@@ -59,7 +59,7 @@ changes of #226 (landed in #240); any release or version bump.
 | D-12 | A guard or alert that would wait on the plan branch is recommended as its own first plan or ticket | Decided | Protective changes should not wait |
 | D-13 | A pass threshold states why that number and whether the check can detect the difference | Decided | One line in two places |
 | D-14 | Stages run on Sonnet, the final review on Opus; where effort is arguable, take the higher | Decided | Standing cheaper-model rule |
-| D-15 | S1 picks what makes a stage too big from its own figures | Default for now | Revisit when S1 closes |
+| D-15 | A stage is too big when a run needs more than 4 interventions or 1 hour of active time (46 measured stage sessions); prefer smaller stages over checkpoints | Decided | Measured in S1 |
 
 **Plan review lenses (2026-10-27):** Simplicity — always; Architect — several components (templates, four commands, the
 session-start hook, the remote driver) and a file-format change (stage index `gate`, stage-ID grammar); Operator — the

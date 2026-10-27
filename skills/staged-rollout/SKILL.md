@@ -452,7 +452,7 @@ two kinds:
 | Weight check: an unrecognised tier | asked which tier applies | **hard stop** — `blocked` + runbook |
 | A mid-stage question the frozen decisions don't settle | asked | **hard stop** — `blocked` + runbook |
 | Redo of a `done` stage | confirmed first | **hard stop** — `blocked` + runbook |
-| A stage PR's merge | offered | `merge` flag — `auto` merges it, `manual` is a **hard stop** |
+| A stage PR's merge | `merge` flag — `auto` merges it, `manual` offers it | `merge` flag — `auto` merges it, `manual` is a **hard stop** |
 | Checking out the plan branch to reach `.plan/` | offered | default: check it out when exactly one plan branch matches; two or more is a **hard stop** |
 | A stage worktree still present at closeout | offered for removal when its branch is merged and nothing is unpushed | removed on that same condition; anything else is a **hard stop** |
 | The final review stage's kept-decisions list | asked in one batch | the stage applies its own proposals, and merging the plan→main PR approves them; an ambiguous decisions target is a **hard stop** for that step only |

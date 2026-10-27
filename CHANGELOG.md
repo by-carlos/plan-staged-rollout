@@ -72,6 +72,10 @@ elsewhere. See 0.4.0 for the split.
   update run only on a clean pass, and `plan-close` lists what an unattended
   review recorded in the final PR (#227).
 
+- **The interactive column of the decision table now matches the `merge` flag.**
+  An attended `stage-run` under `merge: auto` squash-merges its stage PR; under
+  `manual` it offers the merge. The table said "offered" for both (#209).
+
 ### Fixed
 
 - **Merging a plan closes its issue.** `plan-close` now writes a `Closes`

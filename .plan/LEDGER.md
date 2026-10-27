@@ -20,7 +20,7 @@ protocol, finish protocol).
 | S3 Renumbering script | done | yes | 2026-10-27 | renumber_stages.py renumbers only unstarted stages; 37-test suite passes; PR #245 merged |
 | S4 Bootstrap: programmes, waits, ordering | done | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes; PR #243 merged |
 | S5 Final review that stays last | done | yes | 2026-10-27 | SF template, SKILL.md section, PLAN template line and both drivers now give D-4/D-7 outcomes, capped fix, docs on clean pass only, unattended stop; validator passes; PR #246 merged |
-| S6 Docs, lens checks and changelog | todo | — | — | — |
+| S6 Docs, lens checks and changelog | doing | yes | 2026-10-27 | two lens checks, template line, stage-size guidance, docs, examples and changelog written; validator passes |
 | SF Plan review | todo | — | — | — |
 
 ## Notes
@@ -287,7 +287,36 @@ Left for S6 (outside this stage's Artifacts, found by grep):
 - `commands/plan-stages.md` / `plan-review.md` "three outcomes" are the plan-review outcomes, a different thing; leave.
 
 ### S6 Docs, lens checks and changelog
-_(empty)_
+
+Acceptance (2026-10-27, worktree `../plan-staged-rollout-s6`, branch `plan-stage-shape-s6`):
+
+- `python3 scripts/validate_plugin.py` → `validate-plugin: OK`
+- `grep -rn "New stage in this plan\|S12b"` (repo, excluding `.git` and `.plan`): no "New stage in this plan" left. Every `S12b` hit is a
+  rejection or legacy-reading note: `CHANGELOG.md:34` (the new entry), `commands/plan-stages.md:152` (reject a suffixed ID),
+  `hooks/session-start:108` (the parser still reads one), `templates/PLAN.md:171` (never created), `templates/RUNNER.md:20` (legacy
+  read), `SKILL.md:147` (rejected at scaffold). Older CHANGELOG entries are history.
+- Changelog entry present under `## [Unreleased]` (Added: programme and `live` gate, plain numbers, two review checks, stage size;
+  Changed: final review stays last); no dated heading, no version bump.
+
+Lines as written:
+
+- Operator lens "Reads for" (`plan-review.md`): "…whether any stage writes that down; a protective change (a guard or an alert) that
+  would wait on the plan branch until the final merge, which should be its own first plan or a `work-issue` ticket instead."
+- Simplicity lens "Reads for": "…work no requirement asks for; a pass threshold with no basis (it must say why that number and
+  whether the check can detect the difference)."
+- `stage-N.md` Acceptance: "- <A pass threshold (a count, a percentage, a time limit) says why that number and whether the check
+  can detect the difference.>"
+- `SKILL.md` › *Decomposing the work*: new bullet "Size a stage by time, not context" with D-15's threshold (more than 4
+  interventions or more than 1 hour of active time; aim for about 0.4 hours; smaller stages, not checkpoints); the S5 follow-up
+  "its three outcomes" → "its outcomes".
+
+As built: `docs/staged-rollout.md` § 3 Review rewritten to the issue / later plan / accepted outcomes, the capped fix and clean-pass
+rule, and the gate refusal row now names `live`; `docs/reference.md` gets a `gate: live` row; `docs/faq.md` lists `live` among the
+never-fired gates; `commands/plan-close.md` final-PR body lists the `closeout will list` items; both example `stage-f-review.md`
+files use the new outcomes. README does not list the stage flags, so it is untouched. No example plan uses a suffixed ID.
+
+Left alone: `templates/RUNNER.md` and `hooks/session-start` still *read* a suffixed ID on purpose (plans in flight keep running).
+`docs/staged-rollout.md` has no section on stage numbering to extend; the ID rule lives in SKILL.md and the PLAN template.
 
 <!-- One ### S<N> block per stage. Templates for the states you'll hit:
 

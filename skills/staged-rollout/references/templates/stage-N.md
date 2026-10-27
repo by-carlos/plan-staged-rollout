@@ -37,6 +37,7 @@ the ledger notes — "done" means the check ran, not that the model said so.>
 
 - <Check 1 — e.g. `<command>` shows <expected result>.>
 - <Check 2.>
+- <A pass threshold (a count, a percentage, a time limit) says why that number and whether the check can detect the difference.>
 
 ## Artifacts
 

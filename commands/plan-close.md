@@ -117,9 +117,10 @@ Work through these steps **in order**:
    - the paths to `.plan/PLAN.md` and `.plan/LEDGER.md`;
    - the required body shape — what was built and why (from `PLAN.md`'s
      opening + frozen decisions), the stage-by-stage as-built summary (from
-     the ledger notes), a **Kept decisions** section, and any spin-off
-     candidates and accepted-won't-fix items the `SF` review stage recorded,
-     called out explicitly as follow-up work;
+     the ledger notes), a **Kept decisions** section, and the items an
+     unattended `SF` listed under its `closeout will list` heading (issues, later plans,
+     dated follow-ups) and the accepted-won't-fix items it recorded, called out
+     explicitly as follow-up work;
    - the rule for **Kept decisions**: copy the `#### Kept decisions` list from
      the `SF` notes block — every frozen decision with its outcome (drop,
      entry or ADR) and target path — line for line, never summarized, since

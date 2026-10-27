@@ -141,8 +141,8 @@ what can run side by side. See
 Yes: `plan-run` fires every remaining stage as a cloud session, one after
 another, from one local session that has to stay open. It needs
 `merge: auto` on the plan flags line; under the default `merge: manual` each
-cloud stage stops with its PR open. Stages marked `gate: human` or
-`gate: local` are never fired. See [Running a plan in the
+cloud stage stops with its PR open. Stages marked `gate: human`, `gate: local` or
+`gate: live` are never fired. See [Running a plan in the
 cloud](ON-THE-RUN.md).
 
 ### Can stage PRs merge themselves?

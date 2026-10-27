@@ -100,6 +100,16 @@ the review lenses' triggers — never by how many stages it has.
 
 - **Smallest sensible stage.** If a unit has two genuinely different mechanisms,
   or a design-heavy part plus mechanical parts, split it.
+- **Size a stage by time, not context.** Measured over 46 past stage sessions
+  (no compaction in any of them), the more a stage ran, the more the person had
+  to step in; how full the context got made no difference. A stage is **too big
+  when a run of it needs more than 4 interventions (messages from you after the
+  one that launched it) or more than 1 hour of active time** (gaps over 10
+  minutes dropped); about one stage session in five did either. Aim for a stage
+  that fits in about 0.4 hours, and split it into smaller stages rather than
+  adding checkpoints inside one. The ticked-checkbox resume stays for a stage
+  that cannot be split. The count includes approvals the protocol asks for, so
+  it slightly overstates size.
 - **Group by effort, not just by feature.** Several near-identical mechanical
   units can be one stage; a single design-heavy unit deserves its own.
 - **Keystone as S0.** Identify the piece with no prerequisites that everything
@@ -117,7 +127,7 @@ the review lenses' triggers — never by how many stages it has.
   it in `depends` and names what it consumes from it. No consumer: fold the
   investigation into the stage that would act on it, or drop it. A finding
   that nothing downstream uses spends a session and changes nothing. The
-  standing review stage is the one exception, because its three outcomes are
+  standing review stage is the one exception, because its outcomes are
   themselves actions.
 - **Group by gate.** Alongside "group by effort": put the stages that need
   a person — `gate: human` (frozen decisions get settled or amended, or

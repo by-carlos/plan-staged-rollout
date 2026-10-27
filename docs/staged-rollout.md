@@ -256,7 +256,7 @@ block*). It depends on whether the stage's branch exists yet:
 
 | The block happens | The record goes |
 |---|---|
-| **Before the stage branch exists**, in a run nobody is watching (`--unattended` or a cloud stage): a weight-check mismatch, a redo request (re-running a stage that already merged), or a `gate: human`/`gate: local` refusal | Straight onto the plan branch: the ledger row reads `blocked` and the runbook is in the stage's notes. (Attended, these just stop and tell you; nothing is written.) |
+| **Before the stage branch exists**, in a run nobody is watching (`--unattended` or a cloud stage): a weight-check mismatch, a redo request (re-running a stage that already merged), or a `gate: human`/`gate: local`/`gate: live` refusal | Straight onto the plan branch: the ledger row reads `blocked` and the runbook is in the stage's notes. (Attended, these just stop and tell you; nothing is written.) |
 | **Mid-stage** | The full runbook goes on the stage branch, in the stage PR (never merged while blocked). A `### S<N>` section in `.plan/BLOCKED.md` on the plan branch points at that PR, so the block is visible without waiting for a merge. |
 
 **Clearing a mid-stage block:** nothing removes a `.plan/BLOCKED.md` section
@@ -323,31 +323,39 @@ locally**:
 ## 3. Review — the last stage
 
 Planning always adds `SF: plan review` (run it with `stage-run f`, or ask to
-"run the review stage"). It is the one stage allowed to read the *entire*
-ledger: every note, gotcha, shortcut and known gap from every stage. **It
-lists; it never implements product code.** Its first job is the loose ends:
-each becomes exactly one of three things:
+"run the review stage"). It is always the **last** stage: nothing is ever
+numbered after it, and it adds no stages of its own beyond a capped fix (below). It is the one stage
+allowed to read the *entire* ledger: every note, gotcha, shortcut and known gap
+from every stage. **It lists; it never implements product code.** Its first
+job is the loose ends: each becomes exactly one of three things:
 
 ```mermaid
 flowchart LR
-    finding([A loose end<br/>in the ledger]) --> stage["<b>A new stage in this plan</b><br/>runs later like any other"]
-    finding --> spin["<b>A spin-off</b><br/>listed in the final PR<br/>as follow-up work"]
+    finding([A loose end<br/>in the ledger]) --> issue["<b>An issue</b><br/>filed as its own ticket,<br/>a dated follow-up for a long wait"]
+    finding --> later["<b>A later plan</b><br/>named in the programme"]
     finding --> wontfix["<b>Accepted, won't fix</b><br/>with a one-line reason"]
 ```
 
-- **A new stage in this plan**, for follow-up work that belongs to this
-  project (a shortcut to reconcile, a config to bring under management). It
-  gets a stage index row in `PLAN.md` (with its flags), a ledger row and a
-  stage file, and runs later as a normal `stage-run <N>`.
-- **A spin-off**, for work that has outgrown this plan (a genuinely new
-  project). It is recorded in the ledger and listed in the final PR body as
-  follow-up work, and does not block closing. Start it later with its own
-  `plan-stages`.
+- **An issue**, for work that belongs in its own ticket. A wait measured in
+  days is a **dated follow-up**: the issue states the date, the exact check,
+  the pass condition (with the reason for its threshold) and what to do if it
+  fails. Nothing is scheduled. With you present, SF files it after your yes;
+  unattended, it files nothing and lists it for closeout, which copies the list
+  into the final PR body.
+- **A later plan**, for work that belongs to a later plan of the programme.
+  Start it later with its own `plan-stages`.
 - **Accepted, won't fix**, with a one-line reason, so the gap is a decision
   instead of a surprise.
 
-Its acceptance check: every loose end in the notes is either a new ledger row
-or explicitly closed.
+**One exception: a fix.** Never a feature. When SF finds a requirement, a Done
+check or a regression that fails, it can add a `Fix: …` stage before itself,
+but only with you present and saying yes. At most three per plan; a fourth
+stops the plan in every mode. An unattended SF that finds a fix stops and asks
+instead of adding one. The review then runs again from the top, and only a
+clean pass writes the decision triage and the README update.
+
+Its acceptance check: every loose end in the notes is either an issue, a later
+plan, a fix or explicitly closed.
 
 ### Which decisions outlive the plan
 

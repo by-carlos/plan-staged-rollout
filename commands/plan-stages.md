@@ -69,6 +69,26 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    checks** a script or a person can run. Read only what you need to fill
    them — this is not a design pass.
 
+   **Lessons from the last plan.** Look up this repository's most recently
+   merged plan PR — `gh pr list --state merged --base <default branch>
+   --limit 50 --json number,headRefName,body`, the first whose
+   `headRefName` starts with `plan-` — and read its `## Lessons` section
+   (the `staged-rollout` skill's *Lessons at close*). Show its *For you,
+   next time* lines once, before the playback, and check each against the
+   requirements being drawn: a lesson the new plan is about to repeat ("the
+   acceptance criteria didn't match how you use it") is raised now, in one
+   line, where it can still change something. No such PR, or no section:
+   say nothing.
+
+   **A vague idea is a discovery plan.** When the idea is too vague to write
+   its **Done, as checks** — nobody can yet say what finished looks like —
+   do not invent checks to fill the bullet. Say so, and propose in step 3's
+   batch (a **Needs you** decision) a **discovery plan**: its Outcome is a
+   decision on what to build, its last implementation stage produces that
+   decision with its evidence, and the build becomes the next plan of a
+   programme. A discovery plan that starts building is exactly what the
+   scope referee (`PLAN.md`, *Adding a stage*) stops.
+
    **Existing decision record.** Check whether the repo already keeps one, as
    `decisions-format.md` › *Where it lives* defines: an ADR folder
    (`docs/adr/`, `doc/adr/`, `adr/`, or `docs/decisions/` holding numbered

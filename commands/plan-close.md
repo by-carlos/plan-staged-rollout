@@ -114,7 +114,12 @@ Work through these steps **in order**:
    its plain-language section — a cheaper tier tends to paste, and the failure
    is only visible to someone who reads the source material it was built from,
    which is exactly the reader who no longer exists after closeout) carrying:
-   - the paths to `.plan/PLAN.md` and `.plan/LEDGER.md`;
+   - the paths to `.plan/PLAN.md` and `.plan/LEDGER.md`, and to a scratch
+     copy of the **scaffold's** `PLAN.md` — the version in the plan branch's
+     first commit that added it
+     (`git log --diff-filter=A --format=%H plan-<slug> -- .plan/PLAN.md`,
+     the last hash printed, then `git show <hash>:.plan/PLAN.md`), written by
+     the parent so the subagent runs no git;
    - the required body shape — what was built and why (from `PLAN.md`'s
      opening + frozen decisions), the stage-by-stage as-built summary (from
      the ledger notes), a **Kept decisions** section, and the items an
@@ -130,6 +135,12 @@ Work through these steps **in order**:
      or revert any entry on this branch first if one is wrong.* When the `SF`
      notes carry no such list (a plan scaffolded before the decision triage
      existed), write the section as one line saying no decision triage ran;
+   - a **`## Lessons`** section, built by the `staged-rollout` skill's
+     *Lessons at close* — its fixed layout, its evidence (the scaffold's
+     `PLAN.md` against the final one, the `Added by` lines and their referee
+     verdicts, skipped and blocked stages, unverified rows, `SF`'s fixes),
+     three to six lines in all, and its tone rule: blunt, no praise, every
+     line an action backed by evidence;
    - the instruction not to just paste the raw files, but to summarize them
      into a readable PR description.
 
@@ -196,7 +207,18 @@ Work through these steps **in order**:
    session, or always under `--unattended`) with its URL, which worktrees
    were removed, which `.plan/` decision was applied, the linked issues from
    step 2 (when any), and that there is
-   nothing left to run **except the merge, which is the user's**. When a
+   nothing left to run **except the merge, which is the user's**.
+
+   **Lessons.** Print the `## Lessons` section from step 3's body in the chat,
+   exactly as it stands in the PR body, after the announcement and set apart
+   from it — it is the part of closeout meant to change what the user does
+   next. Then, attended, offer each *For the plugin* line as an issue in the
+   plugin's own repository (the `repository` in its `plugin.json`), drafted
+   through `create-issue` and scrubbed of every project detail — names,
+   hosts, paths, private issue numbers — and file one only after the user's
+   yes. Unattended, print the section and file nothing.
+
+   When a
    programme file remains after step 4, **offer to plan the next plan**: name
    its first line and give the command
    `/plan-staged-rollout:plan-stages <that outcome>`, to be run from `main`

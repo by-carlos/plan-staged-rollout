@@ -56,7 +56,8 @@ and it never adds a stage — the one exception is a capped, user-approved
     — one line per fix — because it is the durable count. **At most 3 per
     plan: a fourth fix is a hard stop in every mode.**
     - *How a fix runs.* This stage's own PR lands what it found, so the
-      catalogue of loose ends is kept: the `Fix:` stage's index row placed
+      catalogue of loose ends is kept: the `Fix:` stage passes the scope
+      referee (`PLAN.md`, *Adding a stage*), then its index row is placed
       **before SF** (a new stage has an index row, a ledger row and a stage
       file under an unused plain ID; run the plugin's
       `skills/staged-rollout/scripts/renumber_stages.py --slug <slug>`, so the

@@ -150,12 +150,16 @@ parse_ledger() {
 
 # Parse the "## Stage index" table of PLAN.md
 # (| Stage | File | Depends | mode | exec | model | effort | gate |).
+# Also sets has_referee when the section carries the "### Adding a stage"
+# subsection (the scope referee); a plan scaffolded before it has none.
+has_referee=0
 parse_index() {
     local in_section=0 line id
     while IFS= read -r line || [ -n "$line" ]; do
         case "$line" in
             '## Stage index'*) in_section=1; continue ;;
             '## '*) if [ "$in_section" -eq 1 ]; then break; fi ;;
+            '### Adding a stage'*) [ "$in_section" -eq 1 ] && has_referee=1; continue ;;
         esac
         [ "$in_section" -eq 1 ] || continue
         split_row "$line" || continue
@@ -348,6 +352,15 @@ Surface all of them to the user and wait for their go-ahead — do NOT auto-run 
         context="$context
 
 **Only one \`live\` stage may run at a time.** $live_list are all \`gate: live\` and runnable: start one, and finish it (its PR merged) before the next — \`/stage-run\` refuses to start a second \`live\` stage while another one's branch or worktree is open. This note is all the hook does; the refusal is \`/stage-run\`'s."
+    fi
+
+    # Drift is checked when a stage is added, and an ad-hoc session asked to
+    # add one by hand reads no protocol unless pointed at it. Plans scaffolded
+    # before the scope referee have no such section: say nothing for them.
+    if [ "$has_referee" -eq 1 ] && [ -n "${context:-}" ]; then
+        context="$context
+
+Adding a stage to this plan — including when the user asks for one by hand in this session — passes the scope referee first: \`.plan/PLAN.md\` › *Adding a stage*. Nothing else triggers it."
     fi
 
     # A stage that blocked mid-stage left its `blocked` row on its own unmerged

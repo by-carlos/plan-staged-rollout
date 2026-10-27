@@ -54,6 +54,9 @@ _(empty)_
               work nothing else covers, say so here too, so SF sees it.
   follow-up — a shortcut or scope-creep item spotted here that became (or
               should become) its own stage; name it so the review stage sees it.
+  added     — a stage added after the scaffold opens its notes block with its
+              `Added by` line and the scope referee's verdict (PLAN.md,
+              "Adding a stage").
 -->
 
 ### SF Plan review

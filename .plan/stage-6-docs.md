@@ -25,24 +25,24 @@ declaring a version, per the repository's `CLAUDE.md` › Releasing.
 
 ## Steps
 
-- [ ] In `plan-review.md`, add to the Operator lens "Reads for" a protective
+- [x] In `plan-review.md`, add to the Operator lens "Reads for" a protective
   change waiting on the plan branch, recommended as its own first plan or a
   `work-issue` ticket.
-- [ ] In `plan-review.md`, add to the Simplicity lens "Reads for" a pass
+- [x] In `plan-review.md`, add to the Simplicity lens "Reads for" a pass
   threshold without a basis.
-- [ ] In the `stage-N.md` template, add one line to the acceptance section: a
+- [x] In the `stage-N.md` template, add one line to the acceptance section: a
   threshold says why that number and whether the check can detect the
   difference.
-- [ ] Find the `docs/*.md` pages that describe gates, stage numbering, the
+- [x] Find the `docs/*.md` pages that describe gates, stage numbering, the
   final review or closing (by grep) and update them; update the README if it
   lists the stage flags.
-- [ ] `SKILL.md` › *Decomposing the work*: write the stage-size guidance from
+- [x] `SKILL.md` › *Decomposing the work*: write the stage-size guidance from
   D-15 only.
-- [ ] Update (or note) example plans under `examples/` that use a suffixed ID
+- [x] Update (or note) example plans under `examples/` that use a suffixed ID
   or the old SF outcomes.
-- [ ] Add the `CHANGELOG.md` entry under `## [Unreleased]`; no dated heading,
+- [x] Add the `CHANGELOG.md` entry under `## [Unreleased]`; no dated heading,
   no version bump, per `CLAUDE.md` › Releasing.
-- [ ] Run the acceptance checks and paste the output into the ledger notes.
+- [x] Run the acceptance checks and paste the output into the ledger notes.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks
 the row `doing`, ticks the boxes it finished, and writes a handoff note in the

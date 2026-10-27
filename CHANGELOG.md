@@ -24,6 +24,32 @@ elsewhere. See 0.4.0 for the split.
   Stages check the brief's stamp and show the decisions in force for the paths
   they touch. Work that fits one issue is unchanged. `DECISIONS.md` follows a
   new portable format (#226).
+- **Plans for work with several milestones, and a `live` gate.** `plan-stages`
+  proposes a programme of plans when the requirements hold two or more
+  outcomes that can each merge into `main` alone, and refuses to accept a wait
+  measured in days as a stage: it becomes a dated follow-up. A stage that
+  changes a running system is marked `gate: live`; no driver fires it, only one
+  runs at a time, and an unknown gate value is refused and named (#227).
+- **Plain stage numbers that follow running order.** New plans number stages in
+  the order they run, and a suffixed ID such as `S12b` is no longer created.
+  `scripts/renumber_stages.py` renumbers only the stages that have not started,
+  and keeps `SF` last (#227).
+- **Two plan-review checks.** The Operator lens flags a guard or alert that
+  would wait on the plan branch until the final merge; the Simplicity lens and
+  the `stage-N.md` acceptance section ask a pass threshold to say why that
+  number and whether the check can detect the difference (#227).
+- **A measured stage size.** The stage-size guidance in the skill rests on 46
+  past stage sessions: a stage is too big when a run needs more than 4
+  interventions or more than 1 hour of active time (#227).
+
+### Changed
+
+- **The final review stays last.** `SF` offers three outcomes — an issue (a
+  dated follow-up for a long wait), a later plan, or accepted, won't fix — and
+  never adds a stage, except a capped, user-approved `Fix:` stage (at most 3 per
+  plan). Unattended, it stops and asks instead. The decision triage and README
+  update run only on a clean pass, and `plan-close` lists what an unattended
+  review recorded in the final PR (#227).
 
 ## [0.14.2] - 2026-10-23
 

@@ -118,7 +118,11 @@ from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
 the runnable-set logic (below) reads `depends` from it, an unattended runner
 reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
 isn't in this table is invisible to all of them — so adding a new stage
-(including one the final review spawns) means adding its row here first.
+(including one the final review spawns) means adding its row here first, in
+running order, then running the `staged-rollout` skill's
+`scripts/renumber_stages.py --slug <slug>`, which renumbers only the unstarted
+stages (index, file names, ledger, `depends`, `BLOCKED.md`, `S<N>` references);
+regenerate `.plan/BRIEF.md` in the same commit.
 
 The two plan flags are this plan's **declared defaults**: the answers a
 session applies when there is nobody to ask (`--unattended`). An interactive

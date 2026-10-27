@@ -17,8 +17,8 @@ protocol, finish protocol).
 | S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
 | S1 Measure stage size | done | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR #242 merged |
 | S2 Runners respect `live` | doing | yes | 2026-10-27 | every runner fires only `auto`/absent and refuses `live`/unknown; hook run on fixture; validator passes |
-| S3 Renumbering script | todo | — | — | — |
-| S4 Bootstrap: programmes, waits, ordering | todo | — | — | — |
+| S3 Renumbering script | done | yes | 2026-10-27 | renumber_stages.py renumbers only unstarted stages; 37-test suite passes; PR #245 merged |
+| S4 Bootstrap: programmes, waits, ordering | done | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes; PR #243 merged |
 | S5 Final review that stays last | todo | — | — | — |
 | S6 Docs, lens checks and changelog | todo | — | — | — |
 | SF Plan review | todo | — | — | — |
@@ -144,13 +144,96 @@ As built:
 - `templates/RUNNER.md` §4 refuses `live` and unknown values. `templates/PLAN.md` weight-check step and finish step 6 announcement — left to S2 by S0's notes though not in this stage's Artifacts list — now name `live` and the unknown value.
 - Fixture: `skills/staged-rollout/tests/fixtures/live-plan/.plan/` (index, ledger, seven stage files).
 
+Re-synced after S3 (#245) and S4 (#243) merged: plan branch merged into the stage branch (only `LEDGER.md` conflicted; both sibling rows kept), then re-run on the merged result — `validate-plugin: OK`, the same fixture hook output (two `live` stages, `canary` REFUSED, one-at-a-time note), and the same single wrapped-line grep hit; 37 tests in `skills/staged-rollout/tests` pass.
+
 Left alone (outside this stage): this plan's own `.plan/PLAN.md` operating protocol still reads "human or local" (a copy of the template made before S2; a plan in flight keeps its copy), and `commands/plan-stages.md` line ~153 ("neither `human` nor `local` changes anything") belongs to S4. S5 reads `plan-run.md` step 5 and `remote-driver.md` as written here.
 
 ### S3 Renumbering script
-_(empty)_
+
+Acceptance output (2026-10-27, worktree `../plan-staged-rollout-s3`, branch `plan-stage-shape-s3`):
+
+- `python -m unittest discover -s skills/staged-rollout/tests` → `Ran 37 tests` / `OK (skipped=2)` (the two skips are the
+  real-symlink tests on Windows without symlink rights; a mocked-`is_symlink` test covers the same refusal everywhere).
+- `python scripts/validate_plugin.py` → `validate-plugin: OK`
+- Both re-run after merging `plan-stage-shape` (S4, PR #243) into the stage branch: 37 tests OK (skipped=2); validator OK.
+- Fixture run (scratch copy, `git init`ed; a new `S6 Fix: login` row inserted before S2; S0 done, S1 doing with a
+  `BLOCKED.md` section): `renumber_stages.py --slug demo` printed `S6 -> S2`, `S2 -> S3`, `S3 -> S4`, `S4 -> S5`, exit 0.
+  Index afterwards: S0, S1, S2 Fix: login, S3 Parser, S4 Writer, S5 Docs (`depends` S3, S4), SF (`depends` S5, S2) — SF last;
+  stage files renamed to match; `BLOCKED.md` prose `S3` became `S4`; S0 and S1 kept their numbers and files.
+
+As built: `skills/staged-rollout/scripts/renumber_stages.py --slug <slug> [--plan-dir .plan]`, standard library only. The
+caller edits the index (row order is running order; a new stage has a row, a ledger row and a stage file under any unused
+plain ID); the script walks the index and gives each unstarted stage the next free plain number above the previous row, then
+rewrites file names and every `S<N>` token in `PLAN.md`, `LEDGER.md`, `BLOCKED.md` and the stage files from one mapping, so
+swaps cannot collide. Started = non-`todo` status, a `plan-<slug>-s<N>[-redo-K]` ref (local or remote), or a `BLOCKED.md`
+section. Everything is validated before the first write (grammar, `depends` order, SF last, paths inside `.plan/`, no
+symlinks, UTF-8); a refusal exits 2.
+
+Gotchas for S5 (the fix-insertion path):
+- Pass `--slug`; the script reads `git for-each-ref` from the repo above `.plan/`, so it must run where that repo is.
+- It does not touch `BRIEF.md` (regenerate in the same commit) and does not reorder ledger rows or notes blocks.
+- An **unstarted** stage with a suffixed ID is refused (it cannot tell a new one from an old one); a started one is kept.
+- A bare `S<N>` in prose that means something else is rewritten too; read the diff.
+- The new fix row needs an ID not already in the index (next free number) — a duplicate is refused.
+
+Template: `references/templates/PLAN.md` "adding a new stage" sentence now names the script. No frozen decision changed.
 
 ### S4 Bootstrap: programmes, waits, ordering
-_(empty)_
+
+Acceptance (2026-10-27, worktree `../plan-staged-rollout-s4`, branch `plan-stage-shape-s4`):
+`python3 scripts/validate_plugin.py` → `validate-plugin: OK`.
+
+Edited text, as written:
+
+- `/plan-stages` step 3, **Programme check** (D-1): "Count the outcomes in the confirmed requirements that could each merge
+  into `main` on their own — a count of outcomes, never of stages, which are not known until step 4. Two or more: put a
+  **Needs you** decision in the batch proposing a **programme** — one plan per outcome, in running order, each closing into
+  `main` through its own final PR … Accepted: this bootstrap scaffolds the **first** plan only, its `## Requirements`
+  narrowed to that outcome, and step 6 writes the programme index. Declined, or fewer than two outcomes: one plan, nothing
+  else changes. When `PROGRAMME.md` already exists on `main` and its first line names this plan, the programme is already
+  accepted: scaffold that plan, propose nothing, and ask nothing."
+- `/plan-stages` step 4, wait refusal (D-7): "**A wait measured in days is not a stage.** … is refused as a stage … Leave it
+  out of the stage index and record it as a **dated follow-up** under `PLAN.md` › Requirements › Out of scope: the date, the
+  exact check, the pass condition (with why that threshold …) and what to do if it fails. SF lists it and files it after the
+  user's yes. A wait of hours stays inside the stage that needs it."
+- `/plan-stages` step 4, numbering (D-9, D-10): "**Number stages in running order.** Stage IDs are plain numbers plus `SF`.
+  Number the stages in the order they will run: stages that can run side by side get consecutive numbers, and no stage has a
+  lower number than anything it `depends` on. **Reject a suffixed ID** (`S12b`) — renumber instead of suffixing. Existing
+  suffixed IDs in a plan already in flight are still read, but never created here."
+- `/plan-stages` step 4, group by gate (D-11): `live` added to the gate list ("a driver never fires it, and two `live`
+  stages never run at once — where two would land in the same wave, add the edge") and to the grouping rule ("`human` stages
+  go at the **front** …, `live` stages at the front or the **end**, and the review stage last … never a `human` or `live`
+  stage wedged between two `auto` ones unless a dependency edge genuinely forces it").
+- `/plan-stages` step 6, `PROGRAMME.md` creation (D-6): "**Programme index — only when a programme was accepted in step 3.**
+  After the subagent returns, write `PROGRAMME.md` at the **repository root** yourself, not into `.plan/` and not through the
+  subagent: follow `references/programme-format.md`, one numbered line per plan in running order, each with the outcome in
+  plain words and the plan branch `plan-<slug>` as its pointer, the first line being this plan. Leave it uncommitted with the
+  rest of the scaffold." Step 9 puts it in the scaffold commit; step 11 names the remaining plans.
+- `/plan-close` step 4, **Programme index** (D-6): removes this plan's line (the one pointing at `plan-<slug>`) in its own
+  commit on the plan branch, the file itself when it was the last line; no file → nothing; no matching line → reported and
+  left. Step 6 offers to plan the next plan: names the first remaining line and gives
+  `/plan-staged-rollout:plan-stages <that outcome>`, to run from `main` after the merge; unattended it only prints the line.
+- `SKILL.md` › *Decomposing the work*: three bullets (running-order numbering with plain IDs; a wait in days is not a stage;
+  several independent outcomes make a programme) before *Standing final review stage*. *Group by gate* already covered `live`
+  from S0. › *Closeout*: one paragraph on the programme line removal and the offer to plan the next plan.
+- New `skills/staged-rollout/references/programme-format.md`: when a programme exists, where it lives (root, created by the
+  first plan's scaffold commit, reaches `main` with that plan's final PR), the line shape (outcome + `plan-<slug>` pointer,
+  no state column), and the lifecycle table.
+
+Validator check: `scripts/validate_plugin.py` `TEMPLATE_FILES` only checks `references/templates/`; the new file is outside it
+and nothing else in the validator lists reference files, so **no validator change was needed**.
+
+Decisions made inside the stage (none amend `PLAN.md`):
+- The wait-follow-up lands in `PLAN.md` › Requirements › Out of scope, because the stage index must not hold it (D-7) and
+  Out of scope is where the requirements already name what the plan leaves aside. S5 should have SF read that bullet for
+  dated follow-ups.
+- `PROGRAMME.md` rides the first plan's scaffold commit and reaches `main` with its final PR; the first plan's closeout
+  then removes its own line, so `main` carries the remaining lines. Later plans branch from `main` after that merge.
+- The programme proposal is a **Needs you** item in the one bootstrap batch (D-1 answered the trigger, not each programme).
+
+Left for later stages: S5 (SF outcomes, "later plan" and the dated-follow-up handling that consumes `PROGRAMME.md` and the
+wait refusal; SF-last rule), S6 (docs, README/`docs/` mention of `PROGRAMME.md`, changelog entry). `templates/PLAN.md` and
+the `/plan-stages` step 2 playback were not touched.
 
 ### S5 Final review that stays last
 _(empty)_

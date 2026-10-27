@@ -131,6 +131,22 @@ the review lenses' triggers — never by how many stages it has.
   reason. Decisions that only
   surface mid-build still go through `blocked` (see *Statuses and human-gated
   stages*) — the rule shapes the graph, it doesn't forbid surprises.
+- **Number in running order, with plain IDs.** Stages are `S0`, `S1`, … plus
+  `SF`, numbered in the order they run: stages that can run side by side get
+  consecutive numbers, and no stage is numbered below anything it `depends`
+  on. A suffixed ID (`S12b`) is rejected at scaffold time and when a stage is
+  inserted — renumber instead; an existing one is still read.
+- **A wait measured in days is not a stage.** A soak period or a vendor's
+  reply would hold a session, a branch and a worktree open for nothing. Leave
+  it out of the index and record it as a dated follow-up (the date, the exact
+  check, the pass condition and what to do if it fails); the review stage lists
+  it and files it after the user's yes. A wait of hours stays in its stage.
+- **Several independent outcomes make a programme, not one long plan.** When
+  the requirements hold two or more outcomes that can each merge into `main`
+  on their own, bootstrap proposes a **programme**: one plan per outcome, each
+  closing into `main` through its own final PR, tied together by a root
+  `PROGRAMME.md` ([format](references/programme-format.md)). The trigger is a
+  count of outcomes, never of stages.
 - **Standing final review stage.** Always append `SF: plan review` as the last
   stage (see below), scaffolded from `stage-f-review.md`. Bootstrap adds it;
   it's not optional.
@@ -654,6 +670,11 @@ final PR body so the *why* and the as-built story survive on `main`; deletes
 history remains in git; keeping `.plan/` is the `plan-dir: keep` option, for a
 plan that doubles as documentation); and proposes the PR from `plan-<slug>` to
 `main` for the human to review and merge.
+
+When the plan belongs to a programme, closeout also removes the plan's own line
+from `PROGRAMME.md` (the last plan removes the file), so the final PR carries
+it and the next plan is always the first line left; it then offers to plan that
+next plan, to be bootstrapped from `main` after the merge.
 
 **Stage worktrees are part of closeout's gate, under one rule in both modes.**
 A surviving worktree whose branch matches `plan-<slug>-s*` means some stage

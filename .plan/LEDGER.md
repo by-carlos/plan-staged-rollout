@@ -14,7 +14,7 @@ protocol, finish protocol).
 
 | Stage | Status | Verified | Date | Result |
 |---|---|---|---|---|
-| S0 Format contract: `gate: live` and plain stage IDs | doing | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
+| S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
 | S1 Measure stage size | todo | — | — | — |
 | S2 Runners respect `live` | todo | — | — | — |
 | S3 Renumbering script | todo | — | — | — |

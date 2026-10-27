@@ -90,16 +90,19 @@ and take the hard stop wherever the protocol says there is no default.
 Nothing waits for an answer, nothing is retried, and nothing is faked past a
 gate.
 
-## 4. Refuse a `gate: human` or `gate: local` stage, and record the refusal
+## 4. Refuse any stage whose `gate` is not `auto`, and record the refusal
 
 Read your stage's `gate` in `.plan/PLAN.md`'s stage index (an absent column
-reads as `auto`). Unattended, if it is `human` or `local`, do not start the
-stage. A `local` stage is refused in **every cloud session**, attended or
+reads as `auto`). Unattended, if it is anything but `auto` — `human`, `local`,
+`live`, or a value this file does not know — do not start the stage. A `local`
+stage is refused in **every cloud session**, attended or
 not — `CLAUDE_CODE_REMOTE` is `true` there, and a cloud container is never
 the local machine, whoever is watching it. Set that stage's row to
 `blocked` in `.plan/LEDGER.md`, write in its notes block that it was fired
-unattended or in the cloud and needs a person present (`human`) or a
-resource only the local machine has (`local`), and commit that directly
+unattended or in the cloud and needs a person present (`human`), a
+resource only the local machine has (`local`), a person to change a running
+system (`live`: no driver fires it), or that its `gate` value is unknown
+(name it as written), and commit that directly
 on the plan branch and push — the protocol's "Recording a block",
 before-the-stage-branch-exists case. Then stop. Reporting the refusal is not
 enough: nothing outside an unattended run can read what it says.

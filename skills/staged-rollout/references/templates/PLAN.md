@@ -84,9 +84,13 @@ same commit; feedback on the brief is applied here, never to the brief.
   Teardown is part of finishing: a clean, fully-pushed worktree is removed
   with its merged branch, and anything else is left alone and reported
   (finish step 5).
-- **Final review stage:** the last stage (`SF`) is a standing plan review. It
-  catalogs loose ends — each becomes a new in-plan stage, a spin-off
-  candidate, or an explicit "accepted, won't fix" — and NEVER implements.
+- **Final review stage:** the last stage (`SF`) is a standing plan review and
+  stays last. It catalogs loose ends — each becomes an issue, a later plan (the
+  programme), or an explicit "accepted, won't fix" — and NEVER implements and
+  never adds a stage, except a **fix**: one that names the requirement, failing
+  Done check or regression it repairs (never a feature), with the user present
+  and saying yes, at most 3 per plan (a fourth is a hard stop in every mode).
+  Unattended, `SF` stops and asks instead of adding a fix.
 
 ## Plan review
 
@@ -118,7 +122,11 @@ from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
 the runnable-set logic (below) reads `depends` from it, an unattended runner
 reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
 isn't in this table is invisible to all of them — so adding a new stage
-(including one the final review spawns) means adding its row here first.
+(including one the final review spawns) means adding its row here first, in
+running order, then running the `staged-rollout` skill's
+`scripts/renumber_stages.py --slug <slug>`, which renumbers only the unstarted
+stages (index, file names, ledger, `depends`, `BLOCKED.md`, `S<N>` references);
+regenerate `.plan/BRIEF.md` in the same commit.
 
 The two plan flags are this plan's **declared defaults**: the answers a
 session applies when there is nobody to ask (`--unattended`). An interactive
@@ -128,14 +136,22 @@ which questions have a default and which are hard stops in every mode.
 
 Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
 `subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
-`gate` = `auto` \| `human` \| `local` (may the stage be launched with nobody
-watching? `human` means never — a person's judgment or presence is part of
-the stage itself; `local` means never *by a driver that could be running
+`gate` = `auto` \| `human` \| `local` \| `live` (may the stage be launched with
+nobody watching? `human` means never — a person's judgment or presence is part
+of the stage itself; `local` means never *by a driver that could be running
 anywhere but the local machine* — the stage needs a resource only that
 machine has: local hardware, a LAN-only host, a secret not committed anywhere
-reachable, or a locally-installed toolchain. Same refusal, different reason —
-an unattended runner stops in front of either exactly the same way); `merge` =
-`manual` \| `auto` (does the session merge its own stage PR into the plan
+reachable, or a locally-installed toolchain; `live` means never by a driver
+either — the stage deploys or changes a running system, so a person chooses
+when it fires. Same refusal, different reason — an unattended runner stops in
+front of any of the three exactly the same way. Runners fire a stage only when
+its `gate` is `auto` or absent; any other value, unknown ones included, is
+refused and named. Every stage that is not `live` is a build stage, and the
+files it may touch are its `## Artifacts` list. Two `live` stages never run at
+once: `/stage-run` preflight refuses to start a `live` stage while another
+`live` stage's row is `todo` with a stage branch that has commits (preflight
+step 0.5's live-sibling signature), and the session-start hook only notes it);
+`merge` = `manual` \| `auto` (does the session merge its own stage PR into the plan
 branch once checks are green, or offer it for your OK?); `plan-dir` =
 `delete` \| `keep` (at closeout, is `.plan/` removed as the last commit on the
 plan branch, or left in place because the plan doubles as documentation?).
@@ -145,8 +161,16 @@ Defaults stay cheap where cheap is safe, and preserve the fully-manual flow — 
 missing entry on it means those defaults. Escalate only where a stage has
 genuine open design questions (`brainstorm`, which also makes it
 `gate: human`), needs a resource only the local machine has (`gate: local`),
-or has heavy iteration churn (`subagent`). `merge` governs stage PRs only —
+deploys or changes a running system (`gate: live`), or has heavy iteration
+churn (`subagent`). `merge` governs stage PRs only —
 the plan→main PR at closeout is manual in every mode.
+
+**Stage IDs** are plain numbers (`S0`, `S1`, `S2`, …) plus `SF` for the final
+review. Numbering follows running order: stages that can run side by side get
+consecutive numbers, and a stage never has a lower number than anything it
+`depends` on. A suffixed ID (`S12b`) is never created — not at scaffold time
+and not when a stage is inserted — but an existing one is still read, because
+a started stage keeps its ID and plans already in flight keep running.
 
 ### Runnable set & waves (derived, never stored)
 
@@ -173,7 +197,8 @@ their own column. A stored copy is what drifts; the graph is the truth.
 - **Concurrency is an operator action.** Nothing here launches sessions:
   running a wave in parallel means opening one session per stage yourself —
   or leaving it to an unattended runner outside any session, which launches
-  only `gate: auto` stages and stops in front of a `gate: human` one. What
+  only `gate: auto` stages (or stages with no `gate` column) and stops in
+  front of any other value — `human`, `local` or `live`. What
   the protocol owes you is that doing so is safe — see *Concurrent stages*
   below.
 
@@ -386,8 +411,9 @@ structural fact and four rules about timing.
    guess — state the exact model ID/name and ask the user which tier applies.
    **Unattended?** If this session was launched with nobody to answer it (an
    unattended runner, or `/stage-run`'s `--unattended` argument), check the
-   stage's `gate` first: a `gate: human` or `gate: local` stage is never
-   started unattended — report that and stop here. For a `gate: auto` stage, every offer or
+   stage's `gate` first: a stage whose `gate` is anything but `auto` — `human`,
+   `local`, `live`, or a value not in that list — is never
+   started unattended; report that and stop here. For a `gate: auto` stage, every offer or
    question in this step and the ones below either has a **declared default**
    on the plan flags line or is a **hard stop** — there is no third option
    and nothing waits for an answer (see the `staged-rollout` skill,
@@ -556,9 +582,10 @@ structural fact and four rules about timing.
       each one, give
       the exact prompt/command to run it, its recommended `model`/`effort`
       and its `gate` from the stage index — a `gate: human` stage needs a
-      person at the keyboard and a `gate: local` stage needs a machine that
-      has what it needs, so an unattended runner reading this stops in front
-      of either. If the set holds more than one stage, say so
+      person at the keyboard, a `gate: local` stage needs a machine that
+      has what it needs, and a `gate: live` stage changes a running system (no
+      two at once), so an unattended runner reading this stops in front
+      of each. If the set holds more than one stage, say so
       plainly: they are independent and can be launched **concurrently, one
       per fresh session**. If it is empty, say which it is — every stage
       `done`/`skipped` (ready for closeout) or stalled on `blocked` rows and

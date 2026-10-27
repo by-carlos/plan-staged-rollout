@@ -100,6 +100,16 @@ the review lenses' triggers — never by how many stages it has.
 
 - **Smallest sensible stage.** If a unit has two genuinely different mechanisms,
   or a design-heavy part plus mechanical parts, split it.
+- **Size a stage by time, not context.** Measured over 46 past stage sessions
+  (no compaction in any of them), the more a stage ran, the more the person had
+  to step in; how full the context got made no difference. A stage is **too big
+  when a run of it needs more than 4 interventions (messages from you after the
+  one that launched it) or more than 1 hour of active time** (gaps over 10
+  minutes dropped); about one stage session in five did either. Aim for a stage
+  that fits in about 0.4 hours, and split it into smaller stages rather than
+  adding checkpoints inside one. The ticked-checkbox resume stays for a stage
+  that cannot be split. The count includes approvals the protocol asks for, so
+  it slightly overstates size.
 - **Group by effort, not just by feature.** Several near-identical mechanical
   units can be one stage; a single design-heavy unit deserves its own.
 - **Keystone as S0.** Identify the piece with no prerequisites that everything
@@ -117,18 +127,36 @@ the review lenses' triggers — never by how many stages it has.
   it in `depends` and names what it consumes from it. No consumer: fold the
   investigation into the stage that would act on it, or drop it. A finding
   that nothing downstream uses spends a session and changes nothing. The
-  standing review stage is the one exception, because its three outcomes are
+  standing review stage is the one exception, because its outcomes are
   themselves actions.
-- **Group by gate.** Alongside "group by effort": put the `gate: human`
-  stages — the ones where frozen decisions get settled or amended, or whose
-  acceptance needs a person — at the **front** of the dependency graph, and
-  the review stage at the **end**; keep the middle mechanical, `gate: auto`
-  and (when the plan opts in) `merge: auto`. Never interleave a human gate
-  between two auto stages unless a dependency edge genuinely forces it: an
-  unattended runner stops at every `human` stage, so a human gate in the
-  middle of an auto run cuts the run in two for no reason. Decisions that only
+- **Group by gate.** Alongside "group by effort": put the stages that need
+  a person — `gate: human` (frozen decisions get settled or amended, or
+  acceptance needs a person) and `gate: live` (the stage changes a running
+  system) — at the **front** or the **end** of the dependency graph, as far as
+  the dependencies allow, with the review stage last; keep the middle
+  mechanical, `gate: auto` and (when the plan opts in) `merge: auto`. Never
+  interleave a human or live gate between two auto stages unless a dependency
+  edge genuinely forces it: an unattended runner stops at every `human` and
+  `live` stage, so one in the middle of an auto run cuts the run in two for no
+  reason. Decisions that only
   surface mid-build still go through `blocked` (see *Statuses and human-gated
   stages*) — the rule shapes the graph, it doesn't forbid surprises.
+- **Number in running order, with plain IDs.** Stages are `S0`, `S1`, … plus
+  `SF`, numbered in the order they run: stages that can run side by side get
+  consecutive numbers, and no stage is numbered below anything it `depends`
+  on. A suffixed ID (`S12b`) is rejected at scaffold time and when a stage is
+  inserted — renumber instead; an existing one is still read.
+- **A wait measured in days is not a stage.** A soak period or a vendor's
+  reply would hold a session, a branch and a worktree open for nothing. Leave
+  it out of the index and record it as a dated follow-up (the date, the exact
+  check, the pass condition and what to do if it fails); the review stage lists
+  it and files it after the user's yes. A wait of hours stays in its stage.
+- **Several independent outcomes make a programme, not one long plan.** When
+  the requirements hold two or more outcomes that can each merge into `main`
+  on their own, bootstrap proposes a **programme**: one plan per outcome, each
+  closing into `main` through its own final PR, tied together by a root
+  `PROGRAMME.md` ([format](references/programme-format.md)). The trigger is a
+  count of outcomes, never of stages.
 - **Standing final review stage.** Always append `SF: plan review` as the last
   stage (see below), scaffolded from `stage-f-review.md`. Bootstrap adds it;
   it's not optional.
@@ -182,21 +210,28 @@ it.
 - `gate: auto` by default. `gate` says whether a stage may be **launched
   unattended** — by an orchestrator session that fires stages back-to-back
   with nobody watching them run (see `references/remote-driver.md`); this flag
-  is the contract it reads. A `gate: human` or `gate: local` stage is
-  never launched unattended: the orchestrator stops in front of it and
-  reports rather than firing, and a session
+  is the contract it reads. A `gate: human`, `gate: local` or `gate: live`
+  stage is never launched unattended: the orchestrator stops in front of it
+  and reports rather than firing, and a session
   that finds itself running one unattended (see *Statuses and human-gated
-  stages*) reports and stops rather than starting it. Mark `human` where a
+  stages*) reports and stops rather than starting it. A runner fires a stage
+  only when its `gate` is `auto` or absent; any other value, unknown ones
+  included, is refused and named. Mark `human` where a
   person must be present for the stage to get anywhere: every
   `mode: brainstorm` stage (a design pass is a conversation), and any stage
   whose acceptance needs a human's eyes or hands (a visual check, a GUI-only
   action, a credential). Mark `local` where the stage needs a resource only
   the local machine has, known at authoring time — local hardware, a
   LAN-only host, a secret not committed anywhere reachable, or a
-  locally-installed toolchain. The two gates are independent: the driver
-  refuses either exactly the same way, but for a different reason — `human`
-  because nobody is watching, `local` because the driver could be running
-  anywhere but the machine the stage needs. A stage that only discovers this
+  locally-installed toolchain. Mark `live` where the stage deploys or changes
+  a running system — a service, a host, a database, anything outside the
+  repository that people or other systems depend on; every stage that is not
+  `live` is a build stage that touches only its `## Artifacts` files. The
+  three gates are independent: the driver refuses any of them exactly the same
+  way, but for a different reason — `human` because nobody is watching,
+  `local` because the driver could be running anywhere but the machine the
+  stage needs, `live` because a person chooses when a running system changes.
+  A stage that only discovers this
   mid-run, with nothing declared up front, uses the `needs-local` blocked
   reason instead (*Statuses and human-gated stages*, below). **Why `auto` is
   the default and not `human`:** the flag changes nothing until something
@@ -253,14 +288,18 @@ or failing the gate.
 ## Parallel stages
 
 `depends` is a real dependency graph, so more than one stage is often runnable
-at once. Three rules keep that an advantage rather than a source of confusion:
+at once. Three rules keep that an advantage rather than a source of confusion
+(and one limit: no two `gate: live` stages ever run at once, however the
+graph looks — `/stage-run` preflight refuses the second at start):
 
 - **Derive, never store.** The runnable set, the waves, and the critical path
   are *views* of the `depends` column, computed on demand — by bootstrap's
   post-decomposition summary and by every stage's end announcement. Do **not**
   add a `wave` or `parallel-group` column to the stage index: that would be a
   second copy of the graph, and principle 1 exists precisely because copies
-  drift.
+  drift. Stage IDs are plain numbers in running order, so stages that can run
+  side by side carry consecutive numbers; a suffixed ID is read but never
+  created.
 - **Report the set; don't launch it.** The deliverable is telling the operator
   what *can* overlap — every `todo` stage whose `depends` are all `done` or
   `skipped`, each
@@ -341,7 +380,8 @@ out as method, not just vocabulary:
   say "re-run this stage locally" instead of a generic failure (`PLAN.md`,
   *Recording a block*, "The discovered case").
 - **Unattended, a stage question that has no declared default becomes
-  `blocked`.** Mark the stage `blocked` with a runbook stating the question
+  `blocked`.** A `gate: human`, `gate: local` or `gate: live` stage found
+  running unattended is the plainest case: it is not started. Mark the stage `blocked` with a runbook stating the question
   and what would unblock it, commit that where *Recording a block* says, and
   stop. This is the existing
   state and the existing mechanism, not new machinery; the only rule
@@ -400,6 +440,8 @@ two kinds:
 |---|---|---|
 | A `gate: human` stage | announced — the person at the keyboard *is* the gate | **hard stop**, never started |
 | A `gate: local` stage | announced — running it here means this session already has what it needs | **hard stop**, never started |
+| A `gate: live` stage | announced — the person at the keyboard chooses when the running system changes | **hard stop**, never started |
+| A `gate` value that is not `auto`, `human`, `local` or `live` | refused and named | **hard stop**, never started |
 | Weight check: lighter model than recommended, or a readable effort that differs from the flag | **hard stop** — relaunch named, nothing written | **hard stop** — `blocked` + runbook |
 | Weight check: an unrecognised tier | asked which tier applies | **hard stop** — `blocked` + runbook |
 | A mid-stage question the frozen decisions don't settle | asked | **hard stop** — `blocked` + runbook |
@@ -421,7 +463,8 @@ plan branch pointing at it is one the next pass never reads.
 
 **What no mode loosens.** The plan→main PR is opened by closeout and merged
 by a person, always. A `gate: human` stage is never launched unattended, and
-neither is a `gate: local` one — same refusal, different reason. A
+neither is a `gate: local` or a `gate: live` one — same refusal, different
+reason. A
 worktree holding real uncommitted or unpushed work is never removed, and never
 with `--force`. A merge the platform refuses is never forced or retried.
 
@@ -589,23 +632,37 @@ template `PLAN.md`'s protocol defines both.
 ## The final review stage
 
 `SF` is the one stage exempt from the read-scope rule: it reads the *entire*
-ledger — every note, gotcha, shortcut, and known gap — and sweeps for stragglers.
-Crucially, **it catalogs; it never implements.** Each finding becomes exactly one
-of three outcomes:
+ledger — every note, gotcha, shortcut, and known gap — and `PLAN.md` ›
+Requirements › Out of scope, and sweeps for stragglers. Crucially, **it
+catalogs; it never implements, and it never adds a stage** — bar one capped
+exception below. Each finding becomes exactly one outcome:
 
-- **A new stage in this plan** — follow-up work belonging to this project. It
-  gets a **PLAN.md stage index row** (with its flags — required, since the weight
-  check and next-runnable logic only see stages listed in the index), a ledger
-  row, and a stage file, and runs later as a normal stage in its own fresh
-  session and branch.
-- **A spin-off candidate** — work that has outgrown this plan (a genuinely new
-  project). Recorded in the ledger and surfaced in the final PR body as follow-up;
-  it does *not* block closeout. Start it later with its own bootstrap.
+- **An issue** — work that belongs in its own ticket. A wait measured in days
+  (never a stage) is a **dated follow-up**, also an issue: its body states the
+  date, the exact check, the pass condition (with the basis for its threshold)
+  and the action on failure. Nothing is scheduled. Attended, `SF` files it
+  through `create-issue` after the user's yes. Unattended it files nothing: it
+  records the item under a `closeout will list` heading in its ledger notes, and
+  `/plan-close` copies it into the final PR body.
+- **A later plan** — work for a later plan of the programme (the programme index
+  `PROGRAMME.md` names it). Unattended, recorded under the same `closeout will
+  list` heading.
 - **An explicit "accepted, won't fix"** — with a one-line reason, so the gap is a
   decision instead of a surprise.
+- **Exception — a fix.** Never a feature: a fix names the requirement, failing
+  Done check or regression it repairs, and needs the user present and saying
+  yes, with its own verification. Fix stages are titled `Fix: …`, and `SF`'s
+  ledger notes keep a `#### Fixes` list, the durable count. At most 3 per plan;
+  a fourth fix is a hard stop in every mode. How it runs: `SF`'s PR lands what it
+  found — the `Fix:` stage's index row placed before `SF` (via
+  `scripts/renumber_stages.py`, so `SF` stays last), `SF`'s `depends` extended to
+  it, and `SF`'s row set back to `todo` — so the catalogue of loose ends is
+  kept. The fix runs as an ordinary stage, then `SF` re-runs from the top as a
+  redo. Unattended, `SF` stops and asks: it records a block through *Recording a
+  block* instead of adding the fix.
 
-Its acceptance check: every loose end in the notes is either a new stage (a
-stage index row, a ledger row, and a stage file) or explicitly closed.
+Its acceptance check: every loose end in the notes has exactly one of these
+outcomes.
 
 **It also owns what outlives `.plan/`.** Closeout deletes the plan, so `SF`
 decides what survives it:
@@ -623,8 +680,10 @@ decides what survives it:
 - **Cold-reader check.** Read the updated docs as someone who never saw the
   plan, and fix what they could not follow.
 
-These are documentation writes, not product code, so "catalogs, never
-implements" still holds. `SF` stays `gate: auto` by default.
+All three are written **only on a clean pass**: a run that adds a fix writes none
+of them, and the redo does. These are documentation writes, not product code, so
+"catalogs, never implements" still holds. `SF` stays `gate: auto` by default,
+though an unattended run stops and asks when it finds a fix.
 
 ## Closeout
 
@@ -637,6 +696,11 @@ final PR body so the *why* and the as-built story survive on `main`; deletes
 history remains in git; keeping `.plan/` is the `plan-dir: keep` option, for a
 plan that doubles as documentation); and proposes the PR from `plan-<slug>` to
 `main` for the human to review and merge.
+
+When the plan belongs to a programme, closeout also removes the plan's own line
+from `PROGRAMME.md` (the last plan removes the file), so the final PR carries
+it and the next plan is always the first line left; it then offers to plan that
+next plan, to be bootstrapped from `main` after the merge.
 
 **Stage worktrees are part of closeout's gate, under one rule in both modes.**
 A surviving worktree whose branch matches `plan-<slug>-s*` means some stage

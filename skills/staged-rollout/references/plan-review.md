@@ -17,10 +17,10 @@ scales by what the plan touches (the triggers below), never by stage count.
 
 | Lens | On when | Reads for | Model |
 |---|---|---|---|
-| **Simplicity** | Always, for every plan. | Stages, steps or decisions that could be cut, merged or deferred; a heavier mechanism where a lighter one meets the requirements; work no requirement asks for. | Sonnet |
+| **Simplicity** | Always, for every plan. | Stages, steps or decisions that could be cut, merged or deferred; a heavier mechanism where a lighter one meets the requirements; work no requirement asks for; a pass threshold with no basis (it must say why that number and whether the check can detect the difference). | Sonnet |
 | **Architect** | The plan touches **two or more components**, or **changes an interface** (an API, a file format, a CLI, a schema, a contract another component reads). | Wrong boundaries, missing or circular `depends` edges, two stages writing the same file in one wave, a decision that contradicts the requirements, an interface change with no stage updating its consumers. | the bootstrap session's model |
 | **Security / red team** | The plan touches **authentication, input handling, secrets, network access, or dependencies**. | Trust boundaries crossed without a check, secrets reaching a committed file or a log, unvalidated input, new dependencies taken on unexamined, an abuse path no stage closes. | the bootstrap session's model |
-| **Operator** | The **product** runs unattended or pages someone — a scheduled job, a service, an alert. Not the plan's own stages running unattended. | How it fails, who notices and how, how it is restarted or rolled back, what it logs, what a person must do at 3 a.m. and whether any stage writes that down. | Sonnet |
+| **Operator** | The **product** runs unattended or pages someone — a scheduled job, a service, an alert. Not the plan's own stages running unattended. | How it fails, who notices and how, how it is restarted or rolled back, what it logs, what a person must do at 3 a.m. and whether any stage writes that down; a protective change (a guard or an alert) that would wait on the plan branch until the final merge, which should be its own first plan or a `work-issue` ticket instead. | Sonnet |
 
 **Evaluating the triggers.** Bootstrap reads the confirmed requirements and
 every stage file's `## Artifacts` section, and turns a lens on when any

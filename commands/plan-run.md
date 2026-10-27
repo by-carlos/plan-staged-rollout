@@ -21,7 +21,10 @@ Before doing anything else, show this notice and stop for a yes/no answer:
 >   fresh sandbox holding only a clone of the repository: no local files
 >   outside it, no LAN hosts, no local services, no locally installed tools,
 >   and no secrets that aren't committed or configured in the cloud
->   environment. Stages marked `gate: local` are skipped for that reason.
+>   environment. Stages marked `gate: local` are skipped for that reason, and
+>   so are `gate: human` and `gate: live` stages (a person present, or a running
+>   system to change) and any stage whose `gate` is not `auto`: only `auto` and
+>   absent are fired.
 > - **Cloud sessions may use additional credits.** Each fired stage is a
 >   separate Claude Code session on Anthropic's infrastructure, drawing on
 >   your plan's usage and possibly on usage credits beyond it. See
@@ -59,14 +62,20 @@ Work through these steps **in order**, after the notice above is confirmed:
    this command drives from the plan branch, never from one it would push
    stage or merge work into by accident.
 
-3. **Confirm the plan branch is pushed, and back-fill `RUNNER.md` if it's
-   missing.** A cloud-fired stage reads `.plan/RUNNER.md` cold, with no plugin
+3. **Confirm the plan branch is pushed, and back-fill or refresh `RUNNER.md`.**
+   A cloud-fired stage reads `.plan/RUNNER.md` cold, with no plugin
    loaded — nothing here helps it. If the plan branch has unpushed commits,
    push them first. If `.plan/RUNNER.md` is absent (a plan scaffolded before it
    existed), generate it from the plugin's
    `skills/staged-rollout/references/templates/RUNNER.md`, fill its
    placeholders and version marker, commit it on the plan branch, and push —
-   before firing anything.
+   before firing anything. If it is present, compare it with that template
+   (placeholders and version marker filled in): where anything but the version
+   marker differs, the copy predates a change to the template, such as the
+   `live` and unknown-gate refusals, so regenerate it by the refresh rule in
+   its own header — never edit the two out of step — commit it
+   (`chore(plan): refresh RUNNER.md`) and push, before firing anything. A copy
+   that matches is left alone.
 
 4. **Compute the runnable set.** Read `.plan/PLAN.md`'s stage index and
    `.plan/LEDGER.md`, and derive every `todo` stage whose `depends` are all
@@ -78,12 +87,15 @@ Work through these steps **in order**, after the notice above is confirmed:
 
 5. **Fire the runnable set, one stage at a time.** For each stage in the
    runnable set, in index order:
-   - **`gate: human` or `gate: local`** — never fire it. Report the stage and
-     why (a person needs to be present, or the stage needs a resource only the
-     local machine has), and move on to the next stage in the set without
-     firing this one. Naming it here is the point: a person reading this
+   - **Any `gate` other than `auto` (an absent column reads as `auto`)** —
+     never fire it: `human`, `local`, `live` and any unknown value alike. Report
+     the stage and why (a person needs to be present; the stage needs a resource
+     only the local machine has; the stage changes a running system, which a
+     driver never fires; or the value is not one this command knows), name the
+     value as written, and move on to the next stage in the set without firing
+     this one. Naming it here is the point: a person reading this
      session picks it up with `/stage-run <N>` themselves.
-   - **`gate: auto`** — fire it per `remote-driver.md`'s *Firing one stage*:
+   - **`gate: auto`, or no `gate`** — fire it per `remote-driver.md`'s *Firing one stage*:
      read the stage's `model` and `effort` from the index and print one line
      before firing — `S<N> <slug> — model: <model>, effort: <effort>` — so
      the values booked are visible in this session; build the stage prompt
@@ -110,7 +122,10 @@ Work through these steps **in order**, after the notice above is confirmed:
    loop to the next stage in the set. A row that settles `blocked` is reported
    — name the stage, quote its `.plan/BLOCKED.md` section, and continue with
    the rest of the runnable set; a blocked stage does not stop stages that
-   don't depend on it. A run that stays dead past the grace period is reported
+   don't depend on it. A blocked `SF` whose section describes a fix is the
+   unattended final review stopping to ask (`remote-driver.md`, *What the
+   orchestrator refuses*): say so, and leave the fix to the user — run
+   `/stage-run SF` attended, never add a `Fix:` stage or re-fire `SF` from here. A run that stays dead past the grace period is reported
    exactly as `remote-driver.md` prescribes — session id, link, what
    `get_run_log` showed, and what was actually left behind — and this command
    stops entirely: it never writes to the repository or guesses at the
@@ -118,7 +133,7 @@ Work through these steps **in order**, after the notice above is confirmed:
 
 7. **Loop.** Once every stage fired this round has settled, check whether
    this round fired anything: if every stage in the runnable set was
-   `gate: human`/`gate: local` and none was fired, stop here and go straight
+   gated (`human`, `local`, `live` or an unknown value) and none was fired, stop here and go straight
    to step 8 — recomputing the runnable set would produce the identical set
    forever, since a gated stage that is never fired never leaves `todo`.
    Otherwise recompute the runnable set (step 4) — a stage that just went
@@ -128,8 +143,9 @@ Work through these steps **in order**, after the notice above is confirmed:
 
 8. **End announcement.** When the loop ends, state explicitly:
    - Every stage this run fired and its outcome (`done`, `blocked`, or a dead
-     run), and every `gate: human`/`gate: local` stage it found and skipped
-     over, each with the `/stage-run <N>` a person needs to run.
+     run), and every stage it found and skipped over for a `gate` other than
+     `auto` (`human`, `local`, `live` or an unknown value, named as written),
+     each with the `/stage-run <N>` a person needs to run.
    - If every stage is now `done` or `skipped`, say so and point at closeout —
      **"close out the plan"** or **`/plan-staged-rollout:plan-close`**.
    - Otherwise, exactly what is left runnable, blocked, or gated, so a rerun of

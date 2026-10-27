@@ -57,6 +57,7 @@ don't skimp on the hard parts:
 | `gate: auto` | | The stage may be launched with nobody watching |
 | `gate: human` | | Never started unattended: a person's judgment or presence is part of the stage. `stage-run --unattended` refuses it, and `plan-run` skips it and carries on with the other stages. |
 | `gate: local` | | Never run unattended or in a cloud session: the stage needs a resource only the local machine has. `stage-run --unattended`, any cloud session, and `plan-run` (which skips it) all refuse it. Run it yourself in a local session. |
+| `gate: live` | | Never fired by any driver: the stage changes a running system (a deploy, a migration, a configuration change), where a person should decide when. Only one `live` stage runs at a time; `stage-run` refuses a second while another is open. Any other value is refused and named, not guessed at. |
 
 ## Plan flags
 

@@ -21,13 +21,10 @@ and records them.
 - [ ] Read every ledger row's notes end to end; list every loose end, gotcha,
   shortcut, and known gap surfaced across all stages.
 - [ ] For each loose end, resolve it into exactly one outcome:
-  - **New stage in this plan** — add a **PLAN.md stage index row** (with its
-    `depends` / `mode` / `exec` / `model` / `effort` / `gate` flags — the index is the
-    authoritative home, so `/stage-run`'s weight check and next-runnable logic
-    can see the stage), a ledger row, and a stage file; it runs later as a
-    normal stage in its own fresh session and branch.
-  - **Spin-off candidate** — record it in the ledger and note it for the
-    final PR body as follow-up; it does not block closeout.
+  - **Issue** — work that belongs in its own ticket; a wait measured in days
+    is a dated follow-up (date, exact check, pass condition and its basis,
+    action on failure). Nothing is scheduled.
+  - **Later plan** — work for a later plan of the programme.
   - **Accepted, won't fix** — write a one-line reason in the ledger so the
     gap is a decision, not a surprise.
 - [ ] Confirm no loose end was dropped: every item from the first step maps

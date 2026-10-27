@@ -1,0 +1,755 @@
+# Milestones, live stages, plain numbers and a final review that stays last — plan & protocol
+
+This plan (issue by-carlos/plan-staged-rollout#227; plan branch
+`plan-stage-shape`, stage branches `plan-stage-shape-s<N>`) teaches the
+`plan-staged-rollout` plugin's planning method four things: a programme of
+plans for work with several independent milestones, a `gate: live` value for
+stages that change running systems, plain stage numbers that follow running
+order, and a final review that stays last. It also measures how big a stage
+should be. This file is the **single source of truth** for durable decisions: the
+architecture, the frozen decisions, the stage index, and the operating
+protocol every stage session follows. Decisions live here and are *referenced,
+never copied* — a decision that exists in one place cannot diverge.
+
+## Architecture (what we're building)
+
+The plugin's planning method (skill, templates, four commands, the
+session-start hook, the remote driver) learns four things: a programme of plans
+for work with several independent milestones, a `gate: live` value for stages
+that change running systems, plain stage numbers that follow running order
+(with a renumbering script), and a final review that never adds stages except a
+capped, user-approved fix. Day-long waits leave the plan as dated follow-ups. A
+local stage measures past stage sessions to decide how big a stage should be.
+
+## Requirements
+
+Captured first, before any decision, and played back to the user in plain
+language for confirmation. The brief's Outcome, Day to day, Constraints and
+Done sections are generated from here.
+
+- **Outcome:** long plans stay manageable: they can merge into `main` in parts, keep no multi-day waits inside, say per stage
+  whether it touches only the repository or a live system (so repository-only stages run unattended and in parallel), use plain
+  numbers in running order, and always end on a review that is really last; plus a measured decision on how big a stage should be.
+- **Day to day:** the maintainer drives plans from the desktop app, or a driver fires stages in the cloud while they are away.
+  Stages that need them come at the start and the end; the middle runs without them. Merging part of a plan no longer gets the
+  plan branch deleted.
+- **Constraints, ranked:** (1) no existing safety rule loosens — no merge without a yes, never push to `main`, never touch
+  `release` or the plugin version; (2) plans already in flight keep running; (3) one source of truth — no new field duplicating
+  an existing record; (4) planning overhead stays small.
+- **Out of scope:** how stages are started locally (#222, #223, #185); estimates (#228); plan health (#229); the planning
+  changes of #226 (landed in #240); any release or version bump.
+- **Done, as checks:** `python3 scripts/validate_plugin.py` passes; the session-start hook lists the right runnable stages on a
+  fixture plan with build and live stages (the fixture is copied to a scratch directory and `git init`ed there, and the hook
+  runs from it, because the hook resolves the plan root with `git rev-parse --show-toplevel`); a fixture plan with a stage
+  added mid-plan renumbers only unstarted stages and keeps SF last; each "When this closes" item of #227 is walked and
+  met (SF does this walk, reading the ten items below, never the issue):
+  1. `/plan-stages` proposes a split into a programme above the threshold (open design call 1).
+  2. A wait measured in days is not accepted as a stage; it becomes a dated follow-up.
+  3. Every stage declares build or live, and only build stages run in parallel or unattended.
+  4. Preflight warns about `delete_branch_on_merge` when milestone merges are in use, and names the fix.
+  5. Stage IDs are plain numbers. A stage ID with a suffix is rejected.
+  6. Stage numbers match running order at scaffold time and after any change to stages that haven't started.
+  7. No stage is ever placed after the final review, and the final review adds no stages.
+  8. Stages that need the user are grouped at the start and the end, as far as the dependencies allow.
+  9. A decision on stage size is recorded, together with the measured figures it rests on, based on past sessions.
+  10. The docs are updated, and the changelog has an entry under `## [Unreleased]`.
+
+## Frozen decisions
+
+Change these in THIS file only — never restate them in stage files or the
+ledger. If a stage changes a decision, amend it here as the last step of that
+stage (Operating protocol, finish step 3). Each decision carries its triage
+group: **Decided** (reversible and low impact — settled with its reason, not
+asked), **Needs you** (taste, irreversible, cost, security or anything
+external — asked in the one bootstrap batch, and the answer recorded) or
+**Default for now** (a working default, flagged to revisit). A **Needs you**
+decision still waiting for its answer names the stages that wait on it;
+only those stages are blocked.
+
+`.plan/BRIEF.md` is the one-page brief generated from this file (stamp line
+first, never edited by hand). Whoever edits this file regenerates it in the
+same commit; feedback on the brief is applied here, never to the brief.
+
+- **D-1 — Programme trigger** *(Needs you — answered)*. `/plan-stages` proposes a programme when the requirements contain two
+  or more outcomes that can each merge into `main` on their own (a milestone count, not a stage count). Rejected: a stage-count
+  threshold (contradicts DECISIONS.md › Planning flow "no other size metric", and the count is known only after decomposing);
+  both combined (same conflict, softer).
+- **D-2 — Milestones merge only by closing a plan** *(Needs you — answered)*. Each milestone is its own plan in the programme
+  and closes into `main` through the existing final PR. Rejected: a milestone merge inside one plan (a second plan→main merge
+  type, and it needs a branch-deletion guard). Consequence: the `delete_branch_on_merge` guard (#227 design call 4) is not
+  built; the docs state why the setting is harmless under this model (a plan branch is only ever the head of its final PR).
+- **D-3 — `gate: live`** *(Needs you — answered)*. New gate value for a stage that deploys or changes a running system. A
+  driver never fires it (like `human`). Runners fire a stage only when its gate is `auto` or absent; any other value, unknown
+  ones included, is refused and named. "Never two `live` at once" is a start-time refusal in `/stage-run` preflight that reuses
+  preflight 0.5's live-sibling signature (another stage's `todo` row with a stage branch that has commits); the session-start
+  hook only notes it. Every non-`live` stage is a build stage; the files it may touch are its existing `## Artifacts` list, and
+  overlap stays expressed through `depends`. Rejected: a rule only (no concurrency limit, reason lost); a `kind` column (duplicates `gate`); `mode` values (wrong question).
+- **D-4 — Final review never adds stages, except a fix** *(Needs you — answered)*. SF's outcomes are: issue, later plan (the
+  programme), or accepted. Exception: a **fix** that names the requirement, failing Done check, or regression it repairs —
+  never a feature — with the user present and saying yes, at most 3 per plan, each with its own verification. A fix is inserted
+  as a numbered stage before SF; SF then re-runs from the top. SF writes its documentation (decisions record, README, pointer
+  line) only on a clean pass. Unattended, SF stops and asks. Rejected: split review + close stages (a second standing stage);
+  strict no-exception (a plan could close with a known failing Done check). Fix stages are titled `Fix: …`; SF's ledger notes
+  keep a `#### Fixes` list (the durable count); a fourth fix is a hard stop in every mode. How a fix runs (plan review,
+  answered): SF's PR lands what SF found — the `Fix:` stage row placed before SF, SF's `depends` extended to it, and SF set
+  back to `todo` — so the catalogue is kept; the fix runs, then SF re-runs from the top as a redo. Unattended, SF records a
+  block through the existing *Recording a block* path instead. Rejected: abandoning SF's branch unmerged (its catalogue of
+  loose ends would be lost). Basis: research of Scrum, PRINCE2, AWS AI-DLC,
+  OpenSpec, Spec Kit — review reports, found work leaves the cycle; AI-DLC's loop-back is capped at 3, human-gated outside
+  autonomous mode, reopens existing units only, and needs a fresh review.
+- **D-5 — Stage-size data** *(Needs you — answered)*. A `gate: human` stage measures past stage sessions on this machine by
+  script (duration, user interventions, compactions), and shows its diff for the user's OK before the first push. `human`
+  rather than `local` (plan review, answered): `human` already keeps it off any unattended driver, and the point is the
+  user's eyes on figures taken from private transcripts before they reach this public repo under `merge: auto`. Figures from the private retrospective (by-carlos/linux#638) are the
+  maintainer's later call; only figures, never private detail, enter this public repo.
+- **D-6 — Programme index** *(Needs you — answered)*. A tracked `PROGRAMME.md` on `main` lists the programme's plans in order,
+  each with a pointer to its plan branch or PR and no state column; the first plan creates it, each `/plan-close` removes its
+  own line, and the last close removes the file, so the next plan is always the first line. A state column was rejected at
+  plan review: it would copy what each plan's ledger and PR already hold. Rejected: a GitHub
+  tracking issue (a public write per update; no Jira equivalent).
+- **D-7 — Day-long waits** *(Needs you — answered)*. `/plan-stages` refuses a wait measured in days as a stage; SF lists it as
+  a dated follow-up, filed through `create-issue` after the user's yes; its body states the date, the exact check, the pass condition
+  (per D-13) and what to do if it fails. Nothing is scheduled (a reminder offer was rejected at plan review as outside the
+  plugin's tools). An unattended SF files
+  nothing: it records issues, later-plan items and dated follow-ups under a "closeout will list" heading in its ledger notes,
+  and `/plan-close` copies them into the final PR body. Rejected: a non-blocking `wait-until` row (a non-stage in the stage
+  table).
+- **D-8 — Decision record** *(Decided)*. The plan's lasting decisions go to the existing root `DECISIONS.md` — the one clear
+  target.
+- **D-9 — Stage IDs** *(Decided)*. Plain numbers plus `SF`. New suffixed IDs are rejected at scaffold time and when a stage is
+  inserted; the hook, `stage-run` and `RUNNER.md` keep *reading* existing suffixed IDs, because a started stage keeps its ID and
+  in-flight plans keep running (constraint 2).
+- **D-10 — Renumbering** *(Decided)*. A Python script (standard library only, like `effortlog.py`) with a fixture test
+  renumbers only unstarted stages (ledger status `todo`, no `plan-<slug>-s<N>` branch, no `BLOCKED.md` section) and rewrites
+  the stage index, stage file names, ledger rows, `depends`, `BLOCKED.md` sections and `S<N>` references together. A started or finished stage keeps its number. Stages are numbered in running order;
+  stages that can run side by side get consecutive numbers.
+- **D-11 — Need-the-user stages at start and end** *(Decided)*. SKILL.md's existing "group by gate" rule, extended to `live`.
+- **D-12 — Protective changes** *(Decided)*. The Operator lens flags a guard or alert that would wait on the plan branch and
+  recommends it as its own first plan or a `work-issue` ticket.
+- **D-13 — Pass thresholds need a basis** *(Decided)*. One line in the `stage-N.md` acceptance section and in the Simplicity
+  lens: a threshold says why that number and whether the check can detect the difference.
+- **D-14 — Stage models** *(Decided)*. Implementation stages run on Sonnet (the maintainer's standing rule: stage runs default
+  to the cheaper model; stronger models for review turns); SF runs on Opus. Where effort is arguable, take the higher.
+- **D-15 — What makes a stage too big** *(Default for now — revisit when S1 closes)*. S1 picks the measure (interventions,
+  compactions, hours or story points) from its figures and amends this decision with them.
+- **Git strategy:** branch-per-stage (fixed — the only supported model).
+  `.plan/` is **tracked** on the plan branch and the plan branch has an
+  **upstream** — both are load-bearing, not housekeeping (preflight step 0.0).
+  `main` → `plan-stage-shape` (the plan branch; `.plan/` lives here) → one branch
+  per stage `plan-stage-shape-s<N>` (flat names — git refs can't nest a branch
+  under an existing branch), each landing as a **squash-merged** PR into
+  `plan-stage-shape`; final PR `plan-stage-shape` → `main` at closeout is a **normal
+  (non-squash) merge** so each stage keeps its own commit on `main`. Commits on
+  a stage branch are compulsory
+  and incremental (logical units as the stage progresses, not one commit at
+  the end). The agent creates and pushes stage and plan branches without
+  asking, and **opens** the stage PR as a compulsory part of finishing a
+  stage — never merging without your OK, never pushing to `main`. The one
+  carve-out is the plan-level `merge: auto` flag (Stage index, plan flags
+  line): it gives that OK in advance for **stage PRs only**, so the session
+  squash-merges its own stage PR once checks are green; the plan→main PR is
+  manual in every mode. A stage
+  cannot be marked `done` until its PR is merged into the plan branch; the
+  `done` edit itself is committed on the plan branch *after* the merge
+  (Operating protocol, finish step 5), never on the stage branch.
+- **Worktree strategy:** worktree-per-stage (fixed — the only supported
+  model). *The clone holds the plan; worktrees hold the work.* The main clone
+  stays parked on `plan-stage-shape` for the life of the plan — that is the only
+  branch ever checked out there, which is what keeps `.plan/` readable and the
+  `done` write committable at any moment without disturbing an in-flight
+  stage. Each stage branch is checked out **only** in its own sibling
+  worktree, `../plan-staged-rollout-s<N>` (`-redo-<K>` for a redo), created from
+  the plan branch tip. Provisioning prefers the harness's native worktree
+  mechanism, but only when it honors this convention's exact branch and path
+  names, and falls back to `git worktree add` otherwise; it never degrades
+  to checking a stage branch out in the clone (Operating protocol, step 4).
+  Teardown is part of finishing: a clean, fully-pushed worktree is removed
+  with its merged branch, and anything else is left alone and reported
+  (finish step 5).
+- **Final review stage:** the last stage (`SF`) is a standing plan review and
+  stays last. It catalogs loose ends — each becomes an issue, a later plan (the
+  programme), or an explicit "accepted, won't fix" — and NEVER implements and
+  never adds a stage, except a D-4 fix.
+
+## Plan review
+
+Run by bootstrap before the scaffold is committed — lenses, digest and
+outcomes are defined in the `staged-rollout` skill's
+`references/plan-review.md`.
+
+- **Date:** 2026-10-27 · **Lenses:** Simplicity (always); Architect — several components (templates, four commands, the
+  session-start hook, the remote driver) and a file-format change (stage index `gate`, stage-ID grammar); Operator — the
+  plugin's driver runs unattended and D-3/D-4 change what it fires and when it stops; Security — S1 reads local session
+  transcripts and its figures reach this public repo (turned on when the stage Artifacts were checked).
+- Stage index › S0 — delete S0, spread its edits over S2–S4 → **accepted** — S0 keeps three wave-1 stages from writing
+  SKILL.md and the PLAN.md template in one wave.
+- S0/S2 Artifacts — other `gate` consumers (SKILL.md › Unattended mode, Statuses; BRIEF template) edited by no stage →
+  **changed** S0 Steps and Artifacts.
+- Stage index › old S1 — three one-line edits run as a full stage → **changed** folded into S6; stages renumbered.
+- D-4 / S5 — the SF fix path had no state transition → **changed** D-4, S5 and this plan's SF: SF's PR lands the fix row,
+  extends SF's `depends`, resets SF to `todo`; unattended it records a block (maintainer's answer).
+- D-3 / S0, S2 — "never two `live` at once" had no mechanism → **changed** D-3 and S2: start-time refusal in `/stage-run`
+  reusing preflight 0.5's live-sibling signature.
+- S4, S5 — #227 closing walk done three times → **changed** removed from S4 and S5; SF keeps it.
+- S4 › item 6 half not walkable in S4 → **changed** moot once the walk moved to SF.
+- S2 — runners deny only `human`/`local` → **changed** D-3 and S2: fire only on `auto` or absent, unknown values refused.
+- Stage index › S1 — `local` plus `merge: auto` would auto-merge private-transcript figures → **changed** D-5 and S1 to
+  `gate: human` with a show-the-diff OK before the first push (maintainer's answer).
+- S1 › Steps — transcript scope and raw output → **changed** S1: this repo by default, structured fields, one aggregate
+  table, leak grep in acceptance.
+- S1 / D-15 — drop tokens and story points → **accepted** — #227 names both (problem statement, design call 6).
+- D-6 — state column copies ledger and PR state → **changed** D-6 and S4: ordered pointers, no state (maintainer's answer).
+- D-6 / S4 — undefined states and "last" → **changed** moot under the no-state answer.
+- S4 › `templates/PROGRAMME.md` copied into every plan → **changed** S4: format at `references/programme-format.md`.
+- D-10 / S3 — rewrite set misses `BLOCKED.md`, BRIEF and prose → **changed** D-10 and S3.
+- S3 — insert mode and dry-run unrequested → **changed** S3: one in-place operation.
+- S3 — script trusts index cells → **changed** S3: validate IDs and paths, stay inside `.plan/`, refuse symlinks.
+- S5 / D-7 — unattended SF lacks the yes its outcomes need → **changed** D-7: record under "closeout will list".
+- D-7 — dated follow-up had no check → **changed** D-7 and S5: date, check, pass condition, action on failure; nothing
+  scheduled (maintainer's answer).
+- D-4 "at most 3" had no durable count → **changed** D-4: `Fix:` titles, `#### Fixes` list, fourth fix a hard stop.
+- S2–S5, SF — the ten closing items lived only in the issue → **changed** copied into Requirements › Done.
+- D-8, D-14, D-15 restate existing rules → **changed** old D-14 removed; D-8 and the stage-models decision **accepted** —
+  the flow requires the first, and the second's reason is not readable from a stage session.
+- S2 › fixture — the hook resolves the repo root, so a fixture cwd reads this repo → **changed** S2 and Done: scratch copy,
+  `git init`.
+- This plan's SF still offered "New stage in this plan" → **changed** `stage-f-review.md` to D-4's outcomes.
+- 5 minor findings were cut from the digest by its line cap; not applied.
+
+## Stage index & dependencies
+
+| Stage | File | Depends | mode | exec | model | effort | gate |
+|---|---|---|---|---|---|---|---|
+| S0 Format contract: `gate: live` and plain stage IDs | `stage-0-format-contract.md` | — | direct | inline | sonnet | high | auto |
+| S1 Measure stage size | `stage-1-measure-size.md` | — | direct | inline | sonnet | high | human |
+| S2 Runners respect `live` | `stage-2-runners-live.md` | S0 | direct | inline | sonnet | high | auto |
+| S3 Renumbering script | `stage-3-renumber.md` | S0 | direct | inline | sonnet | high | auto |
+| S4 Bootstrap: programmes, waits, ordering | `stage-4-bootstrap.md` | S0 | direct | inline | sonnet | high | auto |
+| S5 Final review that stays last | `stage-5-final-review.md` | S2, S3, S4 | direct | inline | sonnet | high | auto |
+| S6 Docs, lens checks and changelog | `stage-6-docs.md` | S1, S5 | direct | inline | sonnet | medium | auto |
+| SF Plan review | `stage-f-review.md` | S6 | direct | inline | opus | high | auto |
+
+Plan flags: `merge: auto` · `plan-dir: delete`
+
+This table is the **single authoritative home** for every stage's `depends` /
+`mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line
+under it is the home of the plan-level `merge` and `plan-dir` flags. Stage
+files never restate them (a copy is what drifts), and the tooling reads them
+from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
+the runnable-set logic (below) reads `depends` from it, an unattended runner
+reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
+isn't in this table is invisible to all of them — so adding a new stage
+(including one the final review spawns) means adding its row here first.
+
+The two plan flags are this plan's **declared defaults**: the answers a
+session applies when there is nobody to ask (`--unattended`). An interactive
+session still asks, taking the declared value as its recommendation. See the
+`staged-rollout` skill, *Unattended mode*, for the full classification of
+which questions have a default and which are hard stops in every mode.
+
+Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
+`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
+`gate` = `auto` \| `human` \| `local` (may the stage be launched with nobody
+watching? `human` means never — a person's judgment or presence is part of
+the stage itself; `local` means never *by a driver that could be running
+anywhere but the local machine* — the stage needs a resource only that
+machine has: local hardware, a LAN-only host, a secret not committed anywhere
+reachable, or a locally-installed toolchain. Same refusal, different reason —
+an unattended runner stops in front of either exactly the same way); `merge` =
+`manual` \| `auto` (does the session merge its own stage PR into the plan
+branch once checks are green, or offer it for your OK?); `plan-dir` =
+`delete` \| `keep` (at closeout, is `.plan/` removed as the last commit on the
+plan branch, or left in place because the plan doubles as documentation?).
+Defaults stay cheap where cheap is safe, and preserve the fully-manual flow — `direct`,
+`inline`, a model sized to finish the stage, `gate: auto`, `merge: manual`,
+`plan-dir: delete`; a missing `gate` column, a missing plan-flags line, or a
+missing entry on it means those defaults. Escalate only where a stage has
+genuine open design questions (`brainstorm`, which also makes it
+`gate: human`), needs a resource only the local machine has (`gate: local`),
+or has heavy iteration churn (`subagent`). `merge` governs stage PRs only —
+the plan→main PR at closeout is manual in every mode.
+
+### Runnable set & waves (derived, never stored)
+
+The `Depends` column is a full dependency graph, so everything about execution
+order is **derived from it** — waves and parallelism are never written down as
+their own column. A stored copy is what drifts; the graph is the truth.
+
+- **Runnable set:** every stage whose `LEDGER.md` status is `todo` and whose
+  `depends` are all `done` or `skipped` — a skip is a settled outcome, not an
+  unmet dependency, so it must not deadlock a dependent — plus any `doing`
+  stage (resumable). This is a
+  *set*, not a single stage. When it holds more than one, those stages have no
+  dependency on each other and can be run **concurrently, one per fresh
+  session**.
+- **Waves:** wave 0 is every stage with no `depends`; wave *k* is every stage
+  whose deepest prerequisite sits in wave *k−1*. The number of waves is the
+  fewest rounds the plan can take, and the **critical path** — the longest
+  chain of `depends` edges — is the floor on elapsed time that no amount of
+  parallelism removes.
+- **`depends` means "cannot safely start until", not "written after".** List
+  only genuine prerequisites. Chaining `S0 → S1 → S2 → S3` when the real graph
+  is `S0 → {S1, S2, S3}` costs three rounds instead of two and hides the cost,
+  because the index still looks correct.
+- **Concurrency is an operator action.** Nothing here launches sessions:
+  running a wave in parallel means opening one session per stage yourself —
+  or leaving it to an unattended runner outside any session, which launches
+  only `gate: auto` stages and stops in front of a `gate: human` one. What
+  the protocol owes you is that doing so is safe — see *Concurrent stages*
+  below.
+
+### Concurrent stages (when the set fans out)
+
+Running two stages at once changes nothing about the git model: still one
+branch per stage, one PR per branch, one stage per session. It adds one
+structural fact and four rules about timing.
+
+- **Separate working trees are what make concurrency physical.** Each stage
+  runs in its own worktree, so two sessions never contend for `HEAD` and
+  neither can see the other's uncommitted work. The rules below are about
+  what happens when their *branches* meet at the plan branch.
+- **A sibling's stage branch is expected state, not drift.** Two stage
+  branches cut from the same plan-branch tip is exactly what a fan-out looks
+  like. Preflight step 0.5 classifies by whose stage the mismatch belongs to:
+  drift on the stage *this* session is about to run still stops it, while
+  another stage's in-flight branch is reported and stepped over.
+- **The plan branch is the serialization point.** Parallel stage PRs merge
+  **one at a time, first come first served** — there is no queue to manage.
+  Whoever merges second re-syncs first (finish step 4): merge the plan branch
+  *into* the stage branch, resolve there, and re-run the acceptance checks. A
+  PR GitHub calls "mergeable" only means no textual conflict — not that this
+  stage still passes after the sibling's change landed.
+- **Shared write territory is a `depends` edge.** Two stages with no logical
+  relationship can still write the same files, and `Depends` is the only place
+  that can express it — so express it there and let the wave structure narrow
+  accordingly. There is deliberately **no** separate "territory" field: a
+  second place to record the same constraint is a second thing to drift. If
+  the overlap is small and genuinely order-independent, leaving both stages in
+  one wave is a legitimate choice, and the re-sync-and-re-verify rule above is
+  the net that catches it.
+- **The `done` ledger write can race.** It is a direct commit on the plan
+  branch (finish step 5), so two sessions finishing minutes apart collide
+  there. Finish step 5 says how: edit after the fast-forward, replay on
+  rejection, never force-push the plan branch.
+
+## Operating protocol (every stage session)
+
+0. **Preflight & sync (required):** run this before reading any status or
+   touching any branch. The ledger is canonical but may only be trusted
+   *after* it passes — git state inherited from a previous session, a remote
+   merge, or a crash is verified here, never assumed.
+   0. **Verify the plan is real git, not a loose directory.** Two checks,
+      both hard gates — the whole protocol rests on them:
+      - **`.plan/` is tracked:** `git ls-files --error-unmatch .plan/PLAN.md`.
+        If it fails, `.plan/` is untracked or ignored — stop. An untracked
+        plan produces no committable content, so stages that only amend
+        `PLAN.md`/`LEDGER.md` can never open a PR, which makes every
+        downstream dependency gate unsatisfiable; and the entire decision
+        record dies with the working directory. Fix by removing the ignore
+        rule (`git check-ignore -v .plan/PLAN.md` names it) and committing
+        `.plan/` on the plan branch before running any stage.
+      - **The plan branch has an upstream:**
+        `git rev-parse --abbrev-ref plan-stage-shape@{upstream}`. If it fails, the
+        branch is local-only — the fetch and fast-forward below would succeed
+        while doing nothing, forever. Push it (`git push -u origin
+        plan-stage-shape`) and continue; pushing a feature branch needs no
+        approval.
+   1. **Fetch:** `git fetch origin`.
+   2. **Sync the plan branch:** fast-forward local `plan-stage-shape` to
+      `origin/plan-stage-shape` — `git merge --ff-only origin/plan-stage-shape` when it
+      is checked out, `git fetch origin plan-stage-shape:plan-stage-shape` otherwise.
+      This holds under both remote squash-merge and merge-commit: either way
+      the remote plan branch only moves forward. If it won't fast-forward, the
+      branch has diverged — stop and report. Then **check the branch is not
+      ahead**, whichever command ran: `git rev-list --count
+      origin/plan-stage-shape..plan-stage-shape`. The check is needed because
+      `git merge --ff-only` (unlike the fetch form, which refuses)
+      prints `Already up to date.` and exits 0 when the local branch holds
+      commits the remote lacks. If the count is non-zero,
+      stop and report that many unpushed commits on `plan-stage-shape`, with the two
+      ways out: push the plan branch, or discard the commits. Never push or
+      reset on its own — unpushed commits flow into every stage worktree cut
+      from this branch and into the remote squash merge, and publishing or
+      destroying them is the user's call.
+   3. **Verify the trees:** a clean working tree is required in *this* tree
+      **and** in the main clone. The clone matters even when the stage runs
+      elsewhere: the `done` write (finish step 5) is a commit there, so a
+      dirty clone blocks the stage from ever closing. If either is dirty,
+      stop and list exactly what is uncommitted — never auto-stash.
+   4. **Verify position (the two-tree rule):** the clone is parked on
+      `plan-stage-shape`; stage branches live only in sibling worktrees. Establish
+      which tree this session is in — inside a worktree `git rev-parse
+      --git-dir` and `--git-common-dir` differ; in the clone they match —
+      then check:
+      - **The clone's HEAD must be `plan-stage-shape`.** A stage branch checked
+        out there is drift: stop and report. The fix is to check the plan
+        branch back out in the clone and give that stage its own worktree —
+        never run the stage in the clone.
+      - **A fresh stage starts in the clone**, which is where step 4 creates
+        its worktree.
+      - **A resumed stage must run inside that stage's worktree.** If the
+        worktree exists but this session is in the clone, print its path and
+        enter it (step 4's provisioning rule) — do not check the branch out.
+      - Detached HEAD anywhere, or a worktree whose HEAD is not its own stage
+        branch → stop and report.
+   5. **Reconcile ledger vs reality:** cross-check the `LEDGER.md` status
+      table against actual branch and PR state (`gh pr list --base
+      plan-stage-shape --state all`, `git branch -a --no-merged plan-stage-shape`).
+      Classify each mismatch by *whose* stage it belongs to — the stage this
+      session is about to run, or another one:
+      - **Self-healing:** a `doing` row whose stage PR is already merged
+        means the merge happened remotely — complete the finish protocol's
+        post-merge bookkeeping (finish step 5) by recording that row `done`
+        on the plan branch. If that row is the stage *this* session was
+        launched to run, the stage is finished: skip to finish step 6 (the
+        announcement) — it is neither a resume nor a redo, in any mode.
+      - **Drift — report and stop:** a `done` row with an open or unmerged
+        stage PR; an open stage PR based on `main` instead of
+        `plan-stage-shape`; and **this session's own stage** showing a `todo` row
+        while its stage branch already exists with commits (a crashed
+        earlier attempt at the very stage you are starting — resume it or
+        discard it, don't run over it).
+      - **Report and continue:** *another* stage's `todo` row with an
+        existing stage branch that has commits. Under concurrent execution
+        that is the ordinary signature of a **live sibling** — a session
+        working that stage right now, whose `doing` flip and evidence are
+        still on its own unmerged branch and therefore invisible from here.
+        Halting would stop every parallel session, so list each one in the
+        preflight report (stage id, branch, whether it has an open PR) and
+        carry on. Detection is re-aimed, not weakened: the same signature
+        with no session behind it is a crashed stage, it reappears in every
+        later preflight report, the final review stage sees it, and closeout
+        still refuses to run while any stage PR is open or unmerged.
+
+      Then reconcile **worktrees** by the same rule, from `git worktree list
+      --porcelain` — but only worktrees whose branch matches
+      `plan-stage-shape-s*`. An operator's unrelated worktree (any other branch)
+      is none of this plan's business: it is ignored entirely, never
+      classified into any bucket below and never offered for removal. A
+      worktree belonging to *this* session's stage that this session did not
+      create is the crashed-attempt case — stop, resume or discard it, don't
+      run over it. A worktree for *another* `todo`/`doing` stage is the
+      ordinary live sibling — list it and carry on. A worktree whose stage
+      branch is already merged or gone is an **orphan** from an interrupted
+      teardown — report its path and offer removal; never remove it unasked,
+      and never assume it is empty.
+
+      Finally, read `.plan/BLOCKED.md` if it exists. A `### S<N>` section there
+      records a stage a previous session or an unattended runner marked
+      `blocked` while its `LEDGER.md` row still reads `todo` or `doing` — so
+      the row alone will not tell you. List each one in the preflight report,
+      and where the section belongs to **this session's own stage**, state what
+      it was waiting on before starting, so the stage is not walked straight
+      back into the same gate. Relaunching by hand is itself the operator's
+      answer, so this does not stop the session; deleting the section is theirs
+      to do, not yours (*Recording a block*, below).
+   6. **Check the brief is current:** if `.plan/BRIEF.md` exists, compare
+      its line-1 stamp (`Generated from PLAN.md @ <hash> — do not edit`)
+      with the first 12 hex characters of `git hash-object .plan/PLAN.md`,
+      both read in the clone on the freshly synced plan branch. A match needs
+      nothing. A mismatch means the brief is stale — two sibling stages that
+      each amended `PLAN.md` and regenerated leave a merged file matching
+      neither — so regenerate it before anything reads it: rebuild each
+      section from the `PLAN.md` section its italic *From `PLAN.md` › …* line
+      names, keeping the headings and their order, write the new stamp, and
+      carry nothing over that `PLAN.md` no longer holds. Commit it directly
+      on the plan branch (`chore(plan): regenerate brief`) and push, with the
+      `done` write's race handling (finish step 5): edit after the
+      fast-forward, replay on a rejected push, never force-push. The file is
+      the brief; an artifact render of it, if one was published, is not
+      republished here. No `.plan/BRIEF.md` — a plan scaffolded before briefs
+      existed — means this step does nothing.
+   7. **Report, don't repair:** on anything preflight can't fast-forward or
+      reconcile, stop with an accurate report of the state and what would fix
+      it — no auto-stash, no reset, no branch deletion, no `git worktree
+      remove --force`, and no automatic `git worktree prune`.
+1. **Read only:** this file + the target stage file + the `LEDGER.md` status
+   table + the notes blocks of the stages this one `depends` on + any docs the
+   stage file names + the **decisions in force** covering this stage's files
+   (below). Do NOT scan the rest of the repo. (Exception: the final
+   review stage reads the *entire* ledger.)
+
+   **Decisions in force.** The repository's decisions document is the one
+   the Frozen decisions above record as adopted (bootstrap records it as a
+   **Decided** item — an existing current-decisions document, or
+   `DECISIONS.md`); with none recorded, it is `DECISIONS.md` at the
+   repository root. If it exists, match each path in the stage file's
+   `## Artifacts` section against each area's `Paths:` line — an area covers
+   an artifact when either path lies under the other (a trailing `/` is a
+   subtree, `*` and `**` are globs, `.` is the whole repository) — and read
+   too every `DECISIONS.md` in an artifact's parent folders and any file an
+   area's `Moved:` line names. Show the covering areas' entries, verbatim
+   under their area headings, before implementing. They bind the stage as
+   frozen decisions do: work that would contradict one is settled only by a
+   frozen decision here that says so — otherwise it is a question for the
+   user, and unattended it is a block (*Recording a block*). An adopted
+   document with no `Paths:` lines cannot be matched: name it in one line so
+   the stage reads what applies. No decisions document, or no `## Artifacts`
+   section, means nothing to show and nothing else changes.
+2. **Weight check:** compare the session's model against the stage's `model`
+   flag (your system prompt states your model), checked mechanically against
+   the `staged-rollout` skill's **Model weight tiers** rubric — not a guess
+   about your own weight; state the `effort` actually set, read from
+   `CLAUDE_EFFORT`, next to the stage's `effort` flag (`med` = `medium`), and
+   say it could not be read if that variable is absent rather than assuming
+   it matched — an unreadable effort is not a mismatch and neither asks nor
+   blocks. If the session is lighter than recommended, or the effort set
+   differs from the flag (higher or lower — both are misaligned), **stop**
+   before doing anything: name the mismatch and the model and effort to
+   relaunch with. There is no continue option; nothing is written and the
+   row stays `todo`. A heavier model alone is not a mismatch. Attended, end
+   the stop with one plain line the operator can act on in place — *"switch
+   the model and effort in this session's model menu to \<model> /
+   \<effort>, then type **go** (or just **.**)"* — and treat a **go** or
+   **.** as the next message as a fresh start of this same stage, re-reading
+   the model and `CLAUDE_EFFORT`: it re-checks, it never overrides. If the
+   disclosed model doesn't recognizably match a tier in the rubric, don't
+   guess — state the exact model ID/name and ask the user which tier applies.
+   **Unattended?** If this session was launched with nobody to answer it (an
+   unattended runner, or `/stage-run`'s `--unattended` argument), check the
+   stage's `gate` first: a `gate: human` or `gate: local` stage is never
+   started unattended — report that and stop here. For a `gate: auto` stage, every offer or
+   question in this step and the ones below either has a **declared default**
+   on the plan flags line or is a **hard stop** — there is no third option
+   and nothing waits for an answer (see the `staged-rollout` skill,
+   *Unattended mode*, for the full classification). Nothing in this step has a
+   declared default, so a lighter-than-recommended model, a readable effort
+   that differs from the flag, or an unrecognised tier marks the row `blocked` with the mismatch as the runbook, commits it
+   per *Recording a block* below — this step runs before step 4, so that is a
+   direct commit on the plan branch — and stops.
+3. **Dependency gate:** for every `depends` stage, confirm it is `done` or
+   `skipped` in `LEDGER.md` **AND its stage branch/PR is merged into the plan
+   branch** (`git fetch` first — the merge may be remote and not yet local).
+   Both must hold, for a `skipped` dependency exactly as for a `done` one: a
+   skip still commits its ledger row and opens a PR (nothing here exempts it
+   from the git strategy above), and a dependent branched before that PR is
+   merged would silently miss the decision. A `done`/`skipped` ledger row
+   alone is not enough: a stage branched off the plan branch before a
+   prerequisite's PR is merged will silently lack that prerequisite's work. If
+   either isn't true, stop and say so. This gate is always satisfiable:
+   **every** stage has repo artifacts, because `.plan/` is tracked and every
+   stage edits the ledger — a documentation- or decision-only stage, and a
+   skipped one, still commits its `PLAN.md`/`LEDGER.md` changes and still
+   opens a PR. A depends-stage with no PR means preflight step 0.0 was
+   skipped, not that the stage was exempt.
+4. **Branch & worktree:** the stage runs in its own sibling worktree and the
+   clone stays on the plan branch (frozen decision above). Create branch and
+   worktree together from the plan branch, which preflight step 2 already
+   brought up to date — or use them as-is if the human already made them:
+   - **Prefer the harness's native mechanism** where there is one (Claude
+     Code's `EnterWorktree`, or the `superpowers:using-git-worktrees` skill
+     when installed) — but only if it honors this protocol's naming
+     convention (branch `plan-stage-shape-s<N>`, path `../plan-staged-rollout-s<N>`).
+     A mechanism that picks its own path or branch name breaks the ledger's
+     path references, the teardown command, and the next session's resume
+     lookup — none of them can find a worktree under any name but this one.
+     If it can't be pointed at this exact name and path, don't use it.
+   - **Otherwise:** `git worktree add ../plan-staged-rollout-s<N> -b
+     plan-stage-shape-s<N> plan-stage-shape`, then work there by absolute path for the
+     rest of the stage.
+   - **If the harness refuses to work outside its starting directory:** stop,
+     print the worktree path, and tell the operator to relaunch this stage
+     with that path as the working directory. **Never** fall back to checking
+     the stage branch out in the clone — that closes the ledger window and
+     breaks every concurrent session.
+   - **A fresh worktree holds only tracked files.** Untracked local setup the
+     stage needs — `.env`, local config, build caches, dependency directories
+     — is not there. Copy what it needs and record in the ledger notes what
+     you copied, because the next session starts from the same blank slate.
+   **Redo:** re-running a `done` stage cuts a fresh
+   `plan-stage-shape-s<N>-redo-<K>` branch in its **own** worktree
+   (`../plan-staged-rollout-s<N>-redo-<K>`) from the current plan branch tip —
+   never reuse a merged stage branch or its worktree.
+5. **Honor `mode` / `exec`:**
+   - `mode: direct` → state a one-line plan, then implement.
+   - `mode: brainstorm` → run a design pass scoped to THIS stage first,
+     treating frozen decisions as settled; land outcomes as frozen decisions
+     here, not in a second spec.
+   - `exec: inline` → implement in this session.
+   - `exec: subagent(<model>)` → act as orchestrator and dispatch the
+     implementation to a subagent so the churn stays out of this context.
+6. **Scope discipline:** do only this stage. Work belonging to another stage →
+   note it in the ledger notes and leave it untouched. It may become a new
+   stage.
+7. **Finish protocol (required):**
+   1. Run the stage's **Acceptance** checks; paste the real output into the
+      stage's notes block in `LEDGER.md`.
+   2. Update the stage's table row: absolute date, verified yes/no, one-line
+      result — but the status stays `doing` here. `done` is recorded only
+      after the PR merges (step 5 below), so a `done` row is always visible
+      from a synced plan branch. Detail goes in the notes block, never the
+      table. A stage stopping `blocked` instead of finishing never reaches
+      step 5 at all — *Recording a block* below says where its row and runbook
+      are committed, and it still opens its PR at step 4.
+   3. If a decision changed or was added, amend **Frozen decisions in this
+      file** — nowhere else — and, when `.plan/BRIEF.md` exists, regenerate
+      it in the same commit (as preflight step 0.6 does).
+   4. Commit on the stage branch throughout the stage at logical units
+      (conventional messages) — not one commit at the end. Everything in this
+      step — commits, push, the PR, any sibling re-sync merge — happens
+      **inside the stage worktree**, never in the clone. There is no such
+      thing as a stage with nothing to commit: steps 1–3 above always change
+      tracked files under `.plan/`, so a stage whose Artifacts are "no host or
+      secret changes" still lands its ledger evidence and any frozen-decision
+      amendment as a commit. Push the branch
+      and **open the PR** into `plan-stage-shape` (compulsory, not offered),
+      pinning the base explicitly — `gh pr create --base plan-stage-shape` — never
+      relying on the default, which falls back to the repo's default branch
+      (`main`). Then **offer** to merge it once reviewed — never merge on
+      your own. Stage PRs are **squash-merged** (one commit per stage on the
+      plan branch), and the merged stage branch is deleted. The stage cannot
+      be marked `done` until this PR is merged.
+      **Under `merge: auto`** (plan flags line): the OK is given in advance
+      for stage PRs, so once the sibling re-sync check below has run and
+      every required check on the PR is green, squash-merge it yourself
+      (`gh pr merge --squash --delete-branch`) and continue straight to step
+      5. Never force or retry past a refusal — a red or missing check, or a
+      protection rule on the plan branch, means the merge did not happen this
+      session: leave the row `doing`, report the refusal and why, and end;
+      the next preflight (step 0.5) finishes the bookkeeping once someone
+      merges it. `merge` never applies to the plan→main PR, and it never
+      reaches a stage that is stopping `blocked` — that PR is opened and left
+      for a person (*Recording a block* below).
+      **Merge order with a sibling in flight:** parallel stage PRs merge one
+      at a time, first come first served — the plan branch is the
+      serialization point, so there is no queue to coordinate. Before
+      offering the merge, `git fetch origin` and check whether
+      `origin/plan-stage-shape` has moved past this stage branch's merge base. If
+      it has, a sibling merged while this stage was in flight: merge the plan
+      branch *into* the stage branch (`git merge origin/plan-stage-shape`),
+      resolve any conflict there, push, and **re-run the Acceptance checks**,
+      replacing the evidence in the ledger notes with the output from the
+      merged result. GitHub reporting the PR as mergeable is not enough — it
+      means no textual conflict, not that this stage still passes after the
+      sibling's change. Never rebase or force-push a stage branch: resolving
+      with a merge commit on the stage branch costs the plan branch nothing,
+      because the squash merge discards it. If yet another sibling lands in
+      the window between the re-sync and the merge, repeat the check — it is
+      cheap, and a stale re-verify is worth less than none.
+   5. **After the merge:** return to the main clone — it is already on
+      `plan-stage-shape`, so there is no checkout to do — and fast-forward it
+      (`git fetch origin` + `git merge --ff-only origin/plan-stage-shape`), then
+      flip the stage's row to `done` as a direct commit on the plan branch
+      and push. The `done` edit lives on the plan branch, after the merge —
+      never on the stage branch. If the merge doesn't happen this session,
+      leave the row `doing` and end anyway; the next session's preflight
+      (step 0.5) completes this bookkeeping when it finds the merged PR.
+      **If a sibling stage is running, this write races.** Both sessions
+      commit directly on the plan branch, so: make the edit *after* the
+      fast-forward (never before), touch only your own row, and push
+      immediately. If the clone is dirty on arrival and the change isn't
+      yours — a sibling's session is mid-edit in this same clone — wait and
+      retry rather than committing on top of it or folding it into your own
+      commit; that is the one case the push-race handling below doesn't cover,
+      because it happens before either side has pushed. If the push is
+      rejected as non-fast-forward, the sibling won the race by seconds —
+      fetch and replay your single ledger commit on top (`git pull --rebase
+      origin plan-stage-shape`), then push again. **Never
+      force-push the plan branch**: last-writer-wins would erase the
+      sibling's `done` row. If the replay conflicts, both rows are wanted —
+      the two edits touch adjacent lines of the same table, so resolve by
+      keeping **both**.
+
+      **Then tear the worktree down, from the clone.** If the stage worktree
+      is clean and fully pushed, remove it and delete the merged stage branch:
+      `git worktree remove ../plan-staged-rollout-s<N>`, then `git branch -D
+      plan-stage-shape-s<N>`. Use `-D`, not `-d` — the stage PR was squash-merged,
+      so git's own merge-tracking never sees this branch as merged into
+      `plan-stage-shape` and `-d` refuses with "not fully merged" even though the
+      squash commit already carries the work safely onto the plan branch,
+      which is exactly what makes `-D` safe here. If the worktree holds
+      anything uncommitted, unpushed, or stashed, **leave it** and report its
+      path and what is in it — a worktree is a real directory and its
+      contents are not
+      recoverable from git. Never `--force`, never `prune` to tidy up; an
+      orphan left behind is reported by every later preflight and gates
+      closeout, which is the safe failure. **The two thresholds differ on
+      purpose:** a stage leaves anything it is unsure about, and closeout
+      sweeps up whichever of those turn out to be merged with nothing
+      unpushed. Erring towards leaving costs a line in a report; erring
+      towards removing costs a directory git cannot give back. If the merge did not happen this
+      session, the worktree stays — teardown belongs with the `done` write.
+
+      End the session in the clone, on the plan branch.
+   6. Announce: this stage is **finished**, then the **complete runnable
+      set** — *every* `todo` stage whose `depends` are now all `done` or
+      `skipped`, not just the first (see *Runnable set & waves* above). For
+      each one, give
+      the exact prompt/command to run it, its recommended `model`/`effort`
+      and its `gate` from the stage index — a `gate: human` stage needs a
+      person at the keyboard and a `gate: local` stage needs a machine that
+      has what it needs, so an unattended runner reading this stops in front
+      of either. If the set holds more than one stage, say so
+      plainly: they are independent and can be launched **concurrently, one
+      per fresh session**. If it is empty, say which it is — every stage
+      `done`/`skipped` (ready for closeout) or stalled on `blocked` rows and
+      unmet dependencies. Then stop.
+
+### Recording a block (wherever it happens)
+
+A `blocked` record is only worth writing if the next reader — a person, or an
+unattended runner — can find it **without waiting for a merge**. Where the
+session commits it depends on one thing and nothing else: whether this stage's
+branch exists yet.
+
+- **Before the stage branch exists** — preflight, the weight check (step 2),
+  the `gate: human` backstop, the dependency gate (step 3). This session is in
+  the clone, on the plan branch, and no stage branch can be holding unmerged
+  edits to this stage's row. Set the row `blocked` in `LEDGER.md`, write the
+  runbook in its notes block, and commit that **directly on the plan branch,
+  then push** — the same write as the `done` edit of finish step 5, with the
+  same race handling: edit after the fast-forward, touch only your own row,
+  replay on a rejected push, never force-push.
+- **After the stage branch exists** — any block from step 4 onwards, including
+  a mid-stage question the frozen decisions don't settle. The row and its notes
+  may already carry this stage's own committed evidence on the stage branch, so
+  the plan branch must not be edited into conflict with it. Two writes, in this
+  order:
+  1. **In the worktree, on the stage branch:** set the row `blocked`, write the
+     full runbook in the stage's notes block, commit, push, and **open the
+     stage PR** into `plan-stage-shape` (compulsory at finish step 4 in every case)
+     so the runbook is reviewable there. Never merge it — a blocked stage is
+     not a finished one, and `merge: auto` does not reach it.
+  2. **In the clone, on the plan branch:** append a `### S<N>` section to
+     `.plan/BLOCKED.md` — **never** the ledger row — carrying one line on what
+     is being waited for, the stage branch name, and the stage PR's URL. Commit
+     and push it. Point at the PR for the detail rather than restating the
+     runbook: a copy is what drifts.
+
+  Leave the plan branch's ledger row reading `doing`. It becomes `blocked`
+  there only once the stage PR is merged, and that is a person's call.
+
+**The discovered case — `needs-local`.** `gate: local` (Stage index &
+dependencies, above) covers a local-resource need known at authoring time. A
+stage can also discover this *mid-run*, with nothing declared up front — a
+credential that turns out to live only on this machine, a host only reachable
+from a LAN this session isn't on, a locally-installed toolchain the session
+doesn't have. Record it exactly like any other block above — same two cases
+by whether the stage branch exists yet, same commit points — but write the
+one-line reason as the literal token `needs-local`: in the row's `Result`
+cell for the before-the-branch case, or as the first line of the
+`.plan/BLOCKED.md` section's body for the after-the-branch case. That literal
+token is what lets an unattended runner's report say "re-run this stage
+locally" instead of a bare failure the next reader has to diagnose from
+scratch. The full runbook — what exactly is missing and how to get it — still
+goes in the notes block or the stage PR, same as any other block; `needs-local`
+is a machine-readable tag, not a substitute for it.
+
+**Not every unattended stop is a block.** A stage that did its work and stopped
+only because `merge: manual` withheld the merge — or because a required check
+was red — is not `blocked`: it leaves the row `doing` with its PR open, exactly
+as finish step 4 says, and writes nothing here. This record is for a question
+or a gate the stage cannot get past at all.
+
+**Why the sibling file and not the row.** `.plan/BLOCKED.md` is the one file no
+stage branch ever edits, so a write to it on the plan branch cannot contend
+with the stage branch's own ledger edits. Writing the block into `LEDGER.md` on
+the plan branch instead would diverge from the stage branch's unmerged commit
+and leave that stage's own PR unmergeable — the runbook would be naming a merge
+its own write had just made impossible.
+
+**Both readers see it.** Preflight step 0.5 reads `.plan/BLOCKED.md` alongside
+the ledger, and an unattended runner treats any stage id with a `### S<N>`
+section there as `blocked` and never retries it, whatever the `LEDGER.md` row
+still reads. Nothing clears a section automatically: delete that stage's
+section by hand once the stage is resolved — its PR merged, or its row `done`.

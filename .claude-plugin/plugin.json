@@ -1,6 +1,6 @@
 {
   "name": "plan-staged-rollout",
-  "version": "0.14.2",
+  "version": "0.15.0",
   "description": "Run big projects as many small sessions — not one huge one. Plus skills to write and work GitHub issues or Jira tickets. Installs a session-start hook and command guards.",
   "author": {
     "name": "Carlos Eng",

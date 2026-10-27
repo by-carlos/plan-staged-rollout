@@ -54,7 +54,7 @@
   <text x="375" y="36">Planning · Analysis · Design</text>
   <text x="753" y="36">Implementation · Deployment</text>
   <text x="1005" y="36">Maintenance</text>
-  <text x="879" y="72" font-size="14" font-style="italic">Testing — in each stage, and again at the final review</text>
+  <text x="753" y="72" font-size="14" font-style="italic">Testing — acceptance checks written here, run in each stage, run again at the final review</text>
 </g>
 <g stroke="#C0AB95" stroke-width="1.6" fill="none">
   <path d="M132 56v-8M132 48h486M618 48v8"/>
@@ -62,7 +62,7 @@
   <path d="M888 56v-8M888 48h234M1122 48v8"/>
 </g>
 <g stroke="#C0AB95" stroke-width="1.6" fill="none" stroke-dasharray="6 5">
-  <path d="M636 90v-8M636 82h486M1122 82v8"/>
+  <path d="M384 90v-8M384 82h738M1122 82v8"/>
 </g>
 
 <line x1="20" y1="100" x2="1130" y2="100" stroke="#CBB8A4" stroke-width="1.6"/>
@@ -91,7 +91,7 @@
 <!-- ================= gutter lane labels ================= -->
 <g fill="#8A7664" font-size="12" letter-spacing="1.2" text-anchor="end">
   <text x="112" y="200">YOU</text><text x="112" y="215">SAY</text>
-  <text x="112" y="298">PSR</text><text x="112" y="313">DOES</text>
+  <text x="112" y="298">PLUGIN</text><text x="112" y="313">DOES</text>
   <text x="112" y="420">WHAT</text><text x="112" y="435">LANDS</text>
 </g>
 
@@ -124,12 +124,12 @@
 <text x="154" y="340" font-size="13.5" fill="#8A7664" font-style="italic">complementary, not required</text>
 <!-- c2 -->
 <text x="406" y="284" font-size="17" fill="#3B2A1E">Split it into stages</text>
-<text x="406" y="314" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-stages</text>
-<text x="406" y="340" font-size="13" fill="#8A7664" font-style="italic">dependency-ordered, with a brief</text>
+<text x="406" y="314" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-stages &lt;idea&gt;</text>
+<text x="406" y="340" font-size="13" fill="#8A7664" font-style="italic">requirements, decisions, stages</text>
 <!-- c3 -->
 <text x="658" y="280" font-size="17" fill="#3B2A1E">One fresh session</text>
 <text x="658" y="300" font-size="17" fill="#3B2A1E">per stage</text>
-<text x="658" y="326" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/stage-run ×N</text>
+<text x="658" y="326" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/stage-run &lt;N&gt;</text>
 <text x="658" y="348" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-run</text>
 <text x="752" y="348" font-size="13" fill="#8A7664" font-style="italic">drives them all</text>
 <!-- c4 -->
@@ -163,11 +163,12 @@
 <use href="#g-pr" x="658" y="458"/>
 <text x="682" y="472" font-size="13.5" fill="#2F7D5E">one PR per stage</text>
 <!-- c4 -->
-<use href="#g-pr" x="910" y="396"/>
-<text x="934" y="410" font-size="15.5" fill="#3B2A1E">Final PR into <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#2F7D5E">main</tspan></text>
-<use href="#g-doc" x="910" y="430"/>
-<text x="934" y="444" font-size="14" fill="#2F7D5E" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">lessons.md</text>
-<text x="910" y="468" font-size="13" fill="#8A7664" font-style="italic">the blunt retro</text>
+<use href="#g-pr" x="910" y="394"/>
+<text x="934" y="408" font-size="15.5" fill="#3B2A1E">Final PR into <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#2F7D5E">main</tspan></text>
+<text x="934" y="428" font-size="13" fill="#C9563C" font-style="italic">you merge it, always</text>
+<use href="#g-doc" x="910" y="440"/>
+<text x="934" y="454" font-size="14" fill="#2F7D5E" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">lessons.md</text>
+<text x="934" y="472" font-size="13" fill="#8A7664" font-style="italic">the blunt retro</text>
 
 <!-- ================= rework loop ================= -->
 <path d="M1005 478V508" stroke="#C9563C" stroke-width="2" fill="none" marker-end="url(#arT)"/>
@@ -204,7 +205,7 @@
   <rect x="136" y="700" width="14" height="14" rx="4" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.6"/>
   <text x="158" y="712">what you say</text>
   <rect x="136" y="726" width="14" height="14" rx="4" fill="#F0A33A"/>
-  <text x="158" y="738">what PSR does</text>
+  <text x="158" y="738">what the plugin does</text>
   <rect x="136" y="752" width="14" height="14" rx="4" fill="#4FB98C"/>
   <text x="158" y="764">what lands in the repo</text>
   <rect x="136" y="778" width="14" height="14" rx="4" fill="#FFF8EE" stroke="#D8B88A" stroke-width="1.4" stroke-dasharray="4 3"/>

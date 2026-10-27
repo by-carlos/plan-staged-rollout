@@ -34,6 +34,9 @@ _(empty)_
 
   done      — paste the real acceptance output, then the as-built summary and
               any gotchas the next stage needs to know.
+  actuals   — every session on the stage, whatever its outcome, adds one
+              `Actuals:` line (`scripts/effortlog.py usage`, its `line` as is);
+              `/plan-close` sums them against the estimates.
   doing     — tick the completed Steps checkboxes in the stage file; write a
               handoff note here (what's left, where to resume).
   blocked   — record exactly what human/external action unblocks it, as a

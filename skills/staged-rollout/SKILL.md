@@ -164,9 +164,12 @@ the review lenses' triggers — never by how many stages it has.
 ## Flag heuristics
 
 Each stage declares `depends` / `mode` / `exec` / `model` / `effort` / `gate`
-in the **PLAN.md stage index** — the single authoritative home for these
-flags, read by `/stage-run`'s weight check and the runnable-set logic both
-commands share. The plan as
+/ `estimate` in the **PLAN.md stage index** — the single authoritative home
+for these flags, read by `/stage-run`'s weight check and the runnable-set
+logic both commands share. `estimate` is a range in hours, judged at
+bootstrap and measured against at finish; the method, including how later
+plans calibrate from earlier actuals, is
+[`references/estimates.md`](references/estimates.md). The plan as
 a whole declares two more, `merge` and `plan-dir`, on the **plan flags** line
 directly under that index — those two are the plan's *declared defaults*, the
 answers an unattended session applies where an interactive one would ask (see

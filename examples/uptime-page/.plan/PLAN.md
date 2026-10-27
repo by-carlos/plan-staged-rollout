@@ -80,18 +80,23 @@ stage (Operating protocol, finish step 3).
 
 ## Stage index & dependencies
 
-| Stage | File | Depends | mode | exec | model | effort | gate |
-|---|---|---|---|---|---|---|---|
-| S0 Checker core | `stage-0-checker-core.md` | — | direct | inline | opus | high | auto |
-| S1 CLI runner | `stage-1-cli.md` | S0 | direct | inline | sonnet | low | auto |
-| S2 Status page | `stage-2-status-page.md` | S0, S1 | direct | inline | sonnet | med | auto |
-| SF Plan review | `stage-f-review.md` | S2 | direct | inline | sonnet | med | auto |
+| Stage | File | Depends | mode | exec | model | effort | gate | estimate |
+|---|---|---|---|---|---|---|---|---|
+| S0 Checker core | `stage-0-checker-core.md` | — | direct | inline | opus | high | auto | 1.5–3h |
+| S1 CLI runner | `stage-1-cli.md` | S0 | direct | inline | sonnet | low | auto | 0.5–1h |
+| S2 Status page | `stage-2-status-page.md` | S0, S1 | direct | inline | sonnet | med | auto | 1–2h |
+| SF Plan review | `stage-f-review.md` | S2 | direct | inline | sonnet | med | auto | 0.5–1h |
 
 Plan flags: `merge: manual` · `plan-dir: delete`
 
+Plan estimate: summed 3.5–7h · elapsed 3.5–7h
+
 This table is the **single authoritative home** for every stage's `depends` /
-`mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line
-under it is the home of the plan-level `merge` and `plan-dir` flags. Stage
+`mode` / `exec` / `model` / `effort` / `gate` / `estimate`, and the **plan
+flags** line under it is the home of the plan-level `merge` and `plan-dir`
+flags. The **plan estimate** line is computed from the `estimate` column by
+the `staged-rollout` skill's `scripts/estimates.py plan`, never added up by
+hand. Stage
 files never restate them (a copy is what drifts), and the tooling reads them
 from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
 the runnable-set logic (below) reads `depends` from it, an unattended runner
@@ -384,7 +389,10 @@ structural fact and four rules about timing.
    stage.
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
-      stage's notes block in `LEDGER.md`.
+      stage's notes block in `LEDGER.md`. Then add this session's
+      **`Actuals:` line** to the same block (`scripts/effortlog.py usage`,
+      its `line` pasted as is), including when the stage stops `doing` or
+      `blocked`.
    2. Update the stage's table row: absolute date, verified yes/no, one-line
       result — but the status stays `doing` here. `done` is recorded only
       after the PR merges (step 5 below), so a `done` row is always visible

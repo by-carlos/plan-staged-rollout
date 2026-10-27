@@ -253,7 +253,10 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    **Before dispatching, copy the templates yourself**, as a plain copy with
    nothing else in the command: `mkdir -p <repo>/.plan && cp
    "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/references/templates/"*.md
-   <repo>/.plan/`. Give the subagent **only `<repo>/.plan/`** — never the
+   <repo>/.plan/`, then `cp
+   "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/references/decisions-format.md"
+   <repo>/.plan/` — the final review stage reads `.plan/decisions-format.md`
+   first, and a cloud session has no plugin to fall back on. Give the subagent **only `<repo>/.plan/`** — never the
    plugin's templates path — and tell it to edit those working copies with
    the Edit and Write tools, no shell text substitution. The plugin cache
    sits under the Claude config directory, outside the repo: a shell command

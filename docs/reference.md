@@ -25,6 +25,7 @@ Everything lives in `.plan/` at the repo root, committed on the plan branch.
 | `stage-N-<slug>.md` | One stage: its goal, steps as checkboxes, and its acceptance check. An optional `Issue:` line under the title (`#123`, `owner/repo#123` or a URL) names the issue the stage came from; `stage-run` prints it and `plan-close` lists them all. Nothing posts to the issue or changes its status. | `plan-stages`, or the review stage for a follow-up stage |
 | `stage-f-review.md` | The review stage, `SF` | `plan-stages` |
 | `RUNNER.md` | What a cloud session follows to run one stage, since plugins don't load in the cloud | `plan-stages`; backfilled for older plans before their first cloud run |
+| `decisions-format.md` | A copy of the decisions-document spec, so the final review stage can read it in a cloud session with no plugin | `plan-stages` |
 | `BLOCKED.md` | A `### S<N>` section per stage that blocked mid-run, so the block shows on the plan branch before the stage PR merges | a stage that blocks mid-run; nothing clears it automatically |
 
 ## Statuses

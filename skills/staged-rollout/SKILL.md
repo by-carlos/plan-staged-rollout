@@ -407,6 +407,7 @@ two kinds:
 | A stage PR's merge | offered | `merge` flag — `auto` merges it, `manual` is a **hard stop** |
 | Checking out the plan branch to reach `.plan/` | offered | default: check it out when exactly one plan branch matches; two or more is a **hard stop** |
 | A stage worktree still present at closeout | offered for removal when its branch is merged and nothing is unpushed | removed on that same condition; anything else is a **hard stop** |
+| The final review stage's kept-decisions list | asked in one batch | the stage applies its own proposals, and merging the plan→main PR approves them; an ambiguous decisions target is a **hard stop** for that step only |
 | Deleting `.plan/` at closeout | asked | `plan-dir` flag |
 | Merging the plan→main PR | the PR is proposed; you merge it | the PR is opened; you merge it — **no session merges it in any mode**, no flag, no override |
 
@@ -579,6 +580,11 @@ recorded); one is expected under concurrency (another
 stage's in-flight branch — reported, not fatal, see *Parallel stages*);
 everything else is drift, and the preflight **reports and stops** — it never
 auto-stashes, resets, or deletes branches.
+
+**Decisions in force.** At the start of each stage the session is shown the
+decisions-document entries whose `Paths:` overlap the stage file's
+`## Artifacts`, and `BRIEF.md`'s stamp is checked against `PLAN.md`; the
+template `PLAN.md`'s protocol defines both.
 
 ## The final review stage
 

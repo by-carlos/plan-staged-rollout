@@ -67,6 +67,9 @@ one) once filled. -->
   then follow `.plan/RUNNER.md`". Keep the checkout in the instruction: a
   cloud session starts on the default branch, where this folder does not
   exist.
+- `decisions-format.md` — a copy of the portable decisions-document spec. The
+  final review stage reads it first, and a cloud session has no plugin to
+  read it from.
 - `BLOCKED.md` — only present once a stage has been blocked outside the
   ledger: by an unattended driver that ran out of attempts, or by a stage
   session that blocked after its stage branch existed (`PLAN.md`, *Recording

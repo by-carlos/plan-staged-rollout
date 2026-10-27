@@ -113,7 +113,7 @@ In order, it:
   `depends`, putting the keystone (the piece everything needs) first as S0.
   Stages are numbered in the order they run, with plain numbers (`S3`, never
   `S12b`). A stage is too big when a run of it would need more than 4 of your
-  messages or more than an hour of active time; aim for about 25 minutes. A
+  messages or more than an hour of active time; aim for about 0.4 hours. A
   wait measured in days (a soak period, a vendor's reply) is never a stage:
   it is recorded as a dated follow-up, and the review stage files it as an
   issue. A stage that deploys or changes a running system is marked

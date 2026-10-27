@@ -14,14 +14,14 @@ protocol, finish protocol).
 
 | Stage | Status | Verified | Date | Result |
 |---|---|---|---|---|
-| S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes; PR #247 merged |
+| S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes; PR #241 merged |
 | S1 Measure stage size | done | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR #242 merged |
 | S2 Runners respect `live` | done | yes | 2026-10-27 | every runner fires only `auto`/absent and refuses `live`/unknown; hook run on fixture; validator passes; PR #244 merged |
 | S3 Renumbering script | done | yes | 2026-10-27 | renumber_stages.py renumbers only unstarted stages; 37-test suite passes; PR #245 merged |
 | S4 Bootstrap: programmes, waits, ordering | done | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes; PR #243 merged |
 | S5 Final review that stays last | done | yes | 2026-10-27 | SF template, SKILL.md section, PLAN template line and both drivers now give D-4/D-7 outcomes, capped fix, docs on clean pass only, unattended stop; validator passes; PR #246 merged |
 | S6 Docs, lens checks and changelog | done | yes | 2026-10-27 | two lens checks, template line, stage-size guidance, docs, examples and changelog written; validator passes; PR #247 merged |
-| SF Plan review | todo | — | — | — |
+| SF Plan review | doing | yes | 2026-10-27 | clean pass: #227 walk 10/10 met, 13 loose ends sorted (1 issue), 9 decisions kept, docs updated, cold reader 7/7 |
 
 ## Notes
 
@@ -342,4 +342,90 @@ Left alone: `templates/RUNNER.md` and `hooks/session-start` still *read* a suffi
 -->
 
 ### SF Plan review
-_(empty)_
+
+Run 2026-10-27, attended, worktree `../plan-staged-rollout-sf`, branch `plan-stage-shape-sf`. Clean pass: no fix.
+
+Re-run on the SF worktree: `python scripts/validate_plugin.py` → `validate-plugin: OK`;
+`python -m unittest discover -s skills/staged-rollout/tests` → `Ran 37 tests` / `OK (skipped=2)`.
+
+#### #227 closing walk (PLAN.md › Requirements › Done)
+
+1. Programme above threshold — **met**: `commands/plan-stages.md:98` *Programme check* (counts outcomes, D-1).
+2. Day-long wait is not a stage — **met**: `commands/plan-stages.md:139`, `SKILL.md:149`.
+3. Build or live; only build runs parallel/unattended — **met as D-3 defines it**: `remote-driver.md:207` fires only
+   `auto`/absent; `commands/stage-run.md:168` *Live check* refuses a second `live`. D-3 narrowed "parallel" to "never two
+   `live` at once" (a `live` stage may run beside a build stage) — loose end 3.
+4. `delete_branch_on_merge` — **met by D-2's documented rationale, written in this stage**: at the walk no file mentioned
+   the setting (grep over `*.md`, `.plan/` excluded, empty). This stage added `docs/faq.md` › *Is GitHub's "Automatically
+   delete head branches" setting safe?* and the D-2 entry in `DECISIONS.md` › Planning flow ("a plan branch is only ever the
+   head of its final PR, so deleting it on that merge removes nothing still needed").
+5. Plain IDs, suffix rejected — **met**: `commands/plan-stages.md:152`, `renumber_stages.py:235` (refuses an unstarted
+   suffixed ID).
+6. Running order at scaffold and after a change — **met**: `commands/plan-stages.md:152`; S3's fixture run; the 37 tests
+   above.
+7. Nothing after SF; SF adds no stages — **met**: `renumber_stages.py:240` ("SF must be the last row"); `SKILL.md:637`.
+8. Need-the-user stages at start and end — **met**: `commands/plan-stages.md:189-193`, `SKILL.md:132`.
+9. Stage-size decision with figures — **met**: D-15 (S1 notes); `SKILL.md:103`.
+10. Docs and changelog — **met**: `CHANGELOG.md` `## [Unreleased]` has four #227 entries. Docs were missing programmes,
+    `live` in README and the renumber flow (loose ends 2 and 12); this stage wrote them.
+
+#### Loose ends
+
+1. Criterion 4 undocumented → written by this stage (FAQ answer + D-2 entry); approved as a non-fix by the maintainer.
+2. Programmes, `live`, plain numbering and stage size absent from README/`docs/` (S4 left it for S6) → written by this
+   stage's README step: README *How a plan runs*, `docs/staged-rollout.md` § 1 Plan.
+3. Criterion 3 narrower than written → **accepted, won't fix**: D-3 settled it at plan review.
+4. `SKILL.md` *Unattended mode* table has no row for "SF finds a fix" → **accepted, won't fix**: the "mid-stage question"
+   row and *The final review stage* section already say it stops.
+5. Private retrospective figures (by-carlos/linux#638) → **accepted, won't fix**: D-5 leaves them to the maintainer; nothing
+   waits on them.
+6. D-15 caveats (protocol approvals counted as interventions; not a designed sample) → **accepted, won't fix**: carried as
+   the D-15 entry's Revisit condition.
+7. `renumber_stages.py` limits (rewrites a bare `S<N>` in prose; leaves BRIEF and ledger row order) → **accepted, won't
+   fix**: the template and FAQ say to regenerate the brief; the caller reads the diff.
+8. Two symlink tests skip on Windows → **accepted, won't fix**: a mocked test covers the refusal.
+9. This plan's own `PLAN.md` protocol still says "human or local" → **accepted, won't fix**: `.plan/` is deleted at closeout.
+10. Five minor plan-review findings cut by the digest cap → **accepted, won't fix**: not recoverable.
+11. Ledger S0 row cited PR #247; it was #241 → corrected in this stage.
+12. `docs/faq.md` *How do I add a stage?* said the review stage adds follow-up stages, and the How-it-works flowchart drew
+    "follow-up work" looping back → rewritten by this stage (renumber script, fix-only exception).
+13. CI never runs `skills/staged-rollout/tests` → **issue** by-carlos/plan-staged-rollout#248 (maintainer said file it); `CONTRIBUTING.md`
+    now says to run them locally until it lands.
+
+No later-plan items, no `#### Fixes` entries. Unrelated local branch `feat/205-log-gap-review-tally-each` is not this
+plan's.
+
+#### Fixes
+
+None.
+
+#### Kept decisions
+
+- D-1 — entry — `DECISIONS.md` › Planning flow
+- D-2 — entry — `DECISIONS.md` › Planning flow
+- D-3 — entry — `DECISIONS.md` › Running stages (new area; two entries)
+- D-4 — entry — `DECISIONS.md` › Planning flow
+- D-5 — drop — it governed only S1's run
+- D-6 — entry — `DECISIONS.md` › Planning flow
+- D-7 — entry — `DECISIONS.md` › Planning flow
+- D-8 — drop — it only chose this plan's decisions target
+- D-9 — entry — `DECISIONS.md` › Planning flow
+- D-10 — entry — `DECISIONS.md` › Planning flow
+- D-11 — drop — `SKILL.md` *Group by gate* states the rule plainly
+- D-12 — drop — the Operator lens text states it
+- D-13 — drop — the Simplicity lens and the `stage-N.md` template state it
+- D-14 — drop — this plan's index only; the tier rubric covers model choice
+- D-15 — entry — `DECISIONS.md` › Planning flow
+
+Approved by the maintainer on 2026-10-27 (one batch). Planning flow `Paths:` gained `programme-format.md` and
+`scripts/renumber_stages.py`. Pointer line already in `CLAUDE.md`; skipped.
+
+#### Cold-reader check
+
+One Sonnet subagent, repository only, told never to open `.plan/`. Questions: (1) how to test, incl. the renumber script;
+(2) where the renumber code is and what it refuses; (3) why no `delete_branch_on_merge` guard; (4) why SF never adds
+stages and the exception; (5) why runners refuse `gate: live`, and two at once; (6) where a programme's plan list lives and
+who edits it; (7) how big a stage should be and the basis. First pass: all seven answered correctly, with sources in
+`CONTRIBUTING.md`, `DECISIONS.md`, `docs/faq.md`, `docs/staged-rollout.md`, `SKILL.md`, `programme-format.md`. One note:
+"0.4 hours" and "25 minutes" stated the target two ways → `docs/staged-rollout.md` now says 0.4 hours. No misses, so no
+second pass was needed.

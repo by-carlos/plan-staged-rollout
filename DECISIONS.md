@@ -81,7 +81,7 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
 
 ## Running stages
 
-Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`
+Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`
 
 - **A runner fires a stage only when its `gate` is `auto` or absent; `human`,
   `local`, `live` and any unknown value are refused and named.** — an
@@ -92,6 +92,19 @@ Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `
   only notes it.** — `live` changes a running system, and the refusal reuses
   preflight's live-sibling signature rather than a new lock. Revisit: if a
   plan needs two `live` stages on unrelated systems. Source: #227
+- **Stage actuals come from the session's own transcript, and usage is
+  reported in tokens only — no dollar cost, no share of a usage limit.** —
+  the transcript is the one source in the CLI, the desktop app and cloud
+  sessions alike; a price table goes stale and means nothing on a
+  subscription, and a usage limit is shared with other sessions. Revisit: if
+  Claude Code exposes a per-session cost or limit share everywhere.
+  Source: #228
+- **Estimates are ranges in hours, judged against written anchors and scaled
+  by the median actual-to-estimate ratio of past `stage-run` rows (three or
+  more) in the effort log; the plan total is computed by
+  `estimates.py`, never by hand.** — no size column to fill and drift, and
+  `effort` measures reasoning depth, not work. Revisit: once the log is large
+  enough to replace the anchors by stage kind. Source: #228
 
 ## Decisions format
 

@@ -12,6 +12,17 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Time estimates per stage and for the plan, and a usage report at the
+  end.** The stage index gains an `estimate` column (a range in hours) and a
+  `Plan estimate:` line with the total both summed and elapsed, computed by
+  the new `scripts/estimates.py`. `/stage-run` shows the estimate and what is
+  left before it starts; every session adds an `Actuals:` line, its time and
+  tokens read from its own transcript by the new `effortlog.py usage`, to the
+  stage's ledger notes. `/plan-close` puts estimates against actuals in the
+  final PR. Effort-log rows now carry the estimate, the time and the tokens,
+  and `/plan-stages` scales its estimates from them once there are three.
+  Plans scaffolded before this keep working and report "no estimate".
+
 - **Requirements, a brief and a plan review before stage 1, and kept
   decisions after `.plan/` is gone.** `plan-stages` now captures and plays back
   your requirements before deciding how, sorts decisions into Decided, Needs

@@ -199,6 +199,15 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    **Needs you** decision names must be one that genuinely consumes it — the
    same naming rule as for edges above.
 
+   **Then estimate every stage**, `SF` included, as a range in hours for the
+   index's `estimate` column. First run the `staged-rollout` skill's
+   `scripts/estimates.py calibrate`; then judge each range from the stage's
+   Steps and Artifacts against the anchors in
+   `skills/staged-rollout/references/estimates.md`, and multiply both ends by
+   the calibration `factor` when it is not null. A stage whose honest range
+   runs past 4h is split, not estimated. The estimate is a guess at the
+   stage's own session time, not a promise; it leaves out waits and blockers.
+
 5. **Git model (fixed, not a question).** Record the frozen git protocol in
    `PLAN.md`: **branch-per-stage** — `main` → `plan-<slug>` (the plan branch)
    → one `plan-<slug>-s<N>` branch and PR per stage, no exceptions, final PR
@@ -279,7 +288,7 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    - the frozen decisions from step 3, each with its triage group (and, for a
      pending **Needs you**, the stages it blocks);
    - the completed stage index from step 4, including the standing `SF: plan
-     review` row and every stage's `gate`;
+     review` row and every stage's `gate` and `estimate`;
    - the frozen git model and worktree model from step 5, and the complete
      plan flags line it decided (both `merge` and `plan-dir`);
    - the plugin version from `.claude-plugin/plugin.json`, for `RUNNER.md`'s
@@ -339,7 +348,12 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    already exists on `main` (this plan is a later one, and its line is
    already there) or when no programme was accepted.
 
-7. **Brief.** Generate `.plan/BRIEF.md` from the filled `PLAN.md`, following
+7. **Brief.** First fill the **plan estimate** line under the stage index:
+   run the `staged-rollout` skill's
+   `scripts/estimates.py plan --plan-dir <repo>/.plan` and write its `line`
+   there as is (its `unestimated` list must be empty; a stage left without an
+   estimate goes back to step 4). Then generate `.plan/BRIEF.md` from the
+   filled `PLAN.md`, following
    the generation rules in the `BRIEF.md` copy's header comment (and dropping
    that comment): line 1 is the stamp
    `Generated from PLAN.md @ <hash> — do not edit`, `<hash>` being the first
@@ -436,7 +450,11 @@ ask with the brief (step 8) — plus the commit OK (step 9).
     State the two facts that follow: the wave count is the fewest rounds this
     plan can take, and the critical path is the floor on elapsed time that no
     amount of parallelism removes. Name which waves fan out so the operator
-    knows where concurrency is available.
+    knows where concurrency is available. Then the plan's **estimate**, from
+    the `Plan estimate:` line under the stage index (summed: the session
+    time the plan costs; elapsed: the clock time when every wave runs in
+    parallel), and whether calibration scaled it ("scaled by 1.4 from 12
+    past stages") or the anchors were used as written.
 
     Then hand off **wave 0** — the stages that can run now — exactly as
     `/stage-run`'s end announcement hands off a runnable set: for each one,

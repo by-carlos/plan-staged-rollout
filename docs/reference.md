@@ -54,6 +54,7 @@ don't skimp on the hard parts:
 | `mode` | `direct` \| `brainstorm` | Whether the stage needs a design pass first. `brainstorm` also makes the stage `gate: human`, because a design pass is a conversation. |
 | `exec` | `inline` \| `subagent(<model>)` | Where the implementation churn lives: this session, or a subagent it coordinates |
 | `model` / `effort` | launch hints | The recommended session weight; checked at the start of the stage, never faked |
+| `estimate` | a range in hours, e.g. `1–2h`, or `—` | A rough guess at the stage's own session time, leaving out waits and blockers. `/stage-run` shows it before it starts; the `Plan estimate:` line under the index totals it, summed and elapsed. Method: [`estimates.md`](../skills/staged-rollout/references/estimates.md). |
 | `gate: auto` | | The stage may be launched with nobody watching |
 | `gate: human` | | Never started unattended: a person's judgment or presence is part of the stage. `stage-run --unattended` refuses it, and `plan-run` skips it and carries on with the other stages. |
 | `gate: local` | | Never run unattended or in a cloud session: the stage needs a resource only the local machine has. `stage-run --unattended`, any cloud session, and `plan-run` (which skips it) all refuse it. Run it yourself in a local session. |
@@ -144,7 +145,9 @@ It is therefore split in two:
   nudge;
 - a **notes section**, one block per stage, for as-built detail, acceptance
   output, gotchas and handoff notes. Sessions read only the blocks of the
-  stages they depend on.
+  stages they depend on. Each session also adds one `Actuals:` line there —
+  its time and tokens, read from its own transcript — which `/plan-close`
+  sums into the usage report in the final PR.
 
 This split came from field experience: in the pilot rollout the detailed notes
 lived inside table cells, and by stage 5 a single row had grown to about 500

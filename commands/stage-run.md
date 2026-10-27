@@ -177,6 +177,16 @@ Work through these steps **in order**:
    limits changes to a running system, not parallel work. The session-start hook
    only notes this; the refusal is here.
 
+   **Then show the estimate**, in one line, before any stage work: the
+   stage's `estimate` from the index and what is left of the plan. Run the
+   `staged-rollout` skill's `scripts/estimates.py plan --plan-dir .plan` and
+   quote its `remaining_line` ("S2 Status page: about 1–2h. Left: summed
+   2–4h · elapsed 2–4h"). A `—` cell, or an index with no `estimate` column
+   (a plan scaffolded before estimates existed), is said as "no estimate":
+   the script's refusal there is not a failure, and nothing stops. The
+   estimate leaves out waits and blockers; the method is
+   `skills/staged-rollout/references/estimates.md`.
+
 4. **Dependency gate (ergonomic surfacing of the protocol's rule).** Apply
    `PLAN.md`'s dependency gate for every stage this one `depends` on. If a
    prerequisite is not satisfied, stop and say exactly which one and why — do
@@ -230,6 +240,10 @@ Work through these steps **in order**:
 7. **End announcement.** When you stop, state explicitly:
    - The stage's outcome: **finished**, or `blocked`/`doing` — and if not
      finished, exactly what remains (which checkboxes, what it's waiting on).
+     Then this session's time and tokens against the estimate, from the
+     `Actuals:` line the finish protocol put in the notes block ("took 2.4h
+     against 1.5–3h; 48k tokens out"). A session stopping `doing` adds that
+     line with its handoff note, committed with it.
      For a `blocked` outcome, name **where the record was committed** — the
      plan branch's ledger row, or the stage branch plus the plan branch's
      `.plan/BLOCKED.md` section and the stage PR — so whoever reads this knows
@@ -342,6 +356,7 @@ Work through these steps **in order**:
    python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" log \
      --source stage-run --repo <owner/repo> --target <plan-slug>/S<N> \
      --estimated-tier <the stage's model/effort from the index> \
+     --estimate "<the stage's estimate from the index; omit it when —>" \
      --outcome <stage-done|stage-blocked|stage-doing> [--tripped] \
      --note "<one line: what made this stage easy or hard>"
    ```

@@ -19,11 +19,18 @@ elsewhere. See 0.4.0 for the split.
   finding into a new stage, a new plan, or a ticket, and a bracket strip
   mapping the phases onto the classic software lifecycle. It opens the README
   and [How a staged rollout works](docs/staged-rollout.md).
-  `docs/diagrams/gates.svg` shows what a driver fires unattended and what it
-  skips for you, in [Running a plan in the cloud](docs/ON-THE-RUN.md). Both
-  ship as SVG with a 2300px PNG export for slides, and `CONTRIBUTING.md` now
-  requires a change that alters what a diagram shows to update it in the same
-  pull request.
+  `docs/diagrams/gates.svg` shows what the orchestrator fires unattended and
+  what it skips for you, in
+  [Running a plan in the cloud](docs/ON-THE-RUN.md). Each ships as SVG with a
+  2300px PNG export for slides, and `CONTRIBUTING.md` now requires a change
+  that alters what a diagram shows to update it in the same pull request —
+  Mermaid blocks included.
+- **"What stops it becoming a different project", in [Why](docs/why.md).** The
+  five moments a plan is checked against the project it was supposed to be —
+  discovery plan, requirements before decisions, plan review, the scope
+  referee and the final review stage — collected in one place for the first
+  time, with `docs/diagrams/drift-guards.svg`. The mechanisms already existed;
+  only the answer to "what stops this drifting" was scattered.
 
 - **Time estimates per stage and for the plan, and a usage report at the
   end.** The stage index gains an `estimate` column (a range in hours) and a

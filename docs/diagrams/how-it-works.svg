@@ -103,8 +103,8 @@
   <rect x="888" y="182" width="234" height="52" rx="10"/>
 </g>
 <g fill="#C9563C" text-anchor="middle">
-  <text x="249" y="202" font-size="15">“I need…”</text>
-  <text x="249" y="222" font-size="15">“I have this issue…”</text>
+  <text x="249" y="202" font-size="15">“I want to build…”</text>
+  <text x="249" y="222" font-size="15">“We’re moving X to Y.”</text>
   <text x="501" y="214" font-size="17">“What? How?”</text>
   <text x="753" y="214" font-size="17">“Run the next stage.”</text>
   <text x="1005" y="214" font-size="17">“Is this in scope?”</text>

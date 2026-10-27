@@ -20,7 +20,8 @@ GitHub issue or Jira ticket, and `work-issue` has Claude work one. See
 | A build that needs **four or more sessions**, with parts that depend on each other | a **staged rollout** |
 | Work you want to stop for days and pick up exactly where you left it | a **staged rollout** |
 | One task that fits in **one to three sessions** | a **ticket**: `create-issue`, then `work-issue` |
-| Exploring, with no design you could write down yet | neither, for now |
+| **A question you must answer before you can design** — a PoC, a spike | a **discovery plan**: it delivers the decision, not the prototype; the build is the next plan |
+| **No settleable design at all** — every session would legitimately rewrite the decisions | neither, for now |
 
 **What it costs you:** one planning session on an Opus-class model, then one
 session per stage, each on the model its stage recommends. The example plan

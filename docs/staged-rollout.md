@@ -84,7 +84,10 @@ sessions. Work that fits one issue is small: its acceptance criteria are the
 spec, and it gets no brief and no plan review. `plan-stages` says so and
 offers to stop; [`work-issue`](tickets.md) or a single session fits better.
 An idea too vague to say what finished looks like becomes a **discovery
-plan** whose outcome is a decision; the build is the next plan.
+plan** whose outcome is a decision; the build is the next plan. A prototype
+built on the way to that decision is **evidence for it, not the start of the
+build** — a discovery plan that starts building is exactly what the scope
+referee stops.
 How deep a plan goes after that depends on what it touches, not on how many
 stages it has.
 

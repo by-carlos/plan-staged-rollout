@@ -43,6 +43,19 @@ elsewhere. See 0.4.0 for the split.
   pages that were listed only in the README — brainstorming and single
   session or many — are now in every page's navigation bar.
 
+- **The PoC case, in "Is it for me?".** The README table told anyone with a
+  proof of concept or a spike "neither, for now", while
+  [Why](docs/why.md) documented the **discovery plan** as the path for
+  exactly that. It now has a row of its own, saying what the plan delivers —
+  the decision, not the prototype, with the build as the next plan — and
+  [How a staged rollout works](docs/staged-rollout.md) says plainly that a
+  prototype built on the way is evidence for the decision, not the start of
+  the build. The row that read "exploring" now says what it meant: no
+  settleable design at all. The diagram's opening lines changed with it,
+  from "I need…" and "I have this issue…" to "I want to build…" and "We're
+  moving X to Y." — an issue small enough to work is a ticket, and the
+  picture no longer offers it a plan.
+
 - **Time estimates per stage and for the plan, and a usage report at the
   end.** The stage index gains an `estimate` column (a range in hours) and a
   `Plan estimate:` line with the total both summed and elapsed, computed by

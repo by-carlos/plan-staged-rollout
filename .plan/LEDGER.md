@@ -14,13 +14,13 @@ protocol, finish protocol).
 
 | Stage | Status | Verified | Date | Result |
 |---|---|---|---|---|
-| S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
+| S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes; PR #247 merged |
 | S1 Measure stage size | done | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR #242 merged |
 | S2 Runners respect `live` | done | yes | 2026-10-27 | every runner fires only `auto`/absent and refuses `live`/unknown; hook run on fixture; validator passes; PR #244 merged |
 | S3 Renumbering script | done | yes | 2026-10-27 | renumber_stages.py renumbers only unstarted stages; 37-test suite passes; PR #245 merged |
 | S4 Bootstrap: programmes, waits, ordering | done | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes; PR #243 merged |
 | S5 Final review that stays last | done | yes | 2026-10-27 | SF template, SKILL.md section, PLAN template line and both drivers now give D-4/D-7 outcomes, capped fix, docs on clean pass only, unattended stop; validator passes; PR #246 merged |
-| S6 Docs, lens checks and changelog | doing | yes | 2026-10-27 | two lens checks, template line, stage-size guidance, docs, examples and changelog written; validator passes |
+| S6 Docs, lens checks and changelog | done | yes | 2026-10-27 | two lens checks, template line, stage-size guidance, docs, examples and changelog written; validator passes; PR #247 merged |
 | SF Plan review | todo | — | — | — |
 
 ## Notes

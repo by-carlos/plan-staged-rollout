@@ -127,7 +127,8 @@ from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
 the runnable-set logic (below) reads `depends` from it, an unattended runner
 reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
 isn't in this table is invisible to all of them — so adding a new stage
-(including one the final review spawns) means adding its row here first, in
+(including one the final review spawns) means passing the scope referee
+(*Adding a stage*, below), then adding its row here first, in
 running order, then running the `staged-rollout` skill's
 `scripts/renumber_stages.py --slug <slug>`, which renumbers only the unstarted
 stages (index, file names, ledger, `depends`, `BLOCKED.md`, `S<N>` references);
@@ -243,6 +244,46 @@ structural fact and four rules about timing.
   branch (finish step 5), so two sessions finishing minutes apart collide
   there. Finish step 5 says how: edit after the fast-forward, replay on
   rejection, never force-push the plan branch.
+
+### Adding a stage — the scope referee
+
+A plan may grow; it should not quietly become a different plan. Every stage
+added after the scaffold commit — by a stage session, by the final review's
+`Fix:` stages, or by hand mid-plan — passes the **scope referee** first.
+Nothing else triggers it: amending a decision, rewording a stage or skipping
+one never does, so most sessions never meet it.
+
+1. **Ask the referee before writing the new row.** Dispatch a fresh subagent
+   (Sonnet-class) with exactly these inputs and nothing from this session's
+   conversation — its value is that it has no stake in the work so far:
+   - `## Requirements` › **Outcome** and **Out of scope**, verbatim;
+   - the stage being added: its name, and one line on why it is needed;
+   - every `Added by` line already in `LEDGER.md`'s notes blocks.
+
+   With no subagent tool, judge it in this session against the same inputs
+   only, and say so. The referee returns one verdict and one line of reason:
+   - **grows** — the stage serves the Outcome. Add it.
+   - **losing shape** — it serves the Outcome, but together with the earlier
+     additions it reads as unplanned growth: several additions chasing one
+     problem, or additions with no common thread. Add it, and tell the user
+     in one line, naming the pattern and suggesting a re-plan of the
+     remaining stages. Nothing waits for an answer.
+   - **different plan** — it no longer serves the Outcome, or crosses Out of
+     scope: a review that starts implementing, a proof of concept turning
+     into the production build, a change in what is being built. **Stop
+     before writing anything**, show the Outcome, the stage and the reason,
+     and offer three choices: **carry on** (add it as asked); **re-plan**
+     (amend `## Requirements` to the new direction with the user, then add
+     and renumber); or **close this plan** as a milestone (remaining stages
+     `skipped` with the reason, `SF`, closeout) and bootstrap a new plan for
+     the new direction. The user decides.
+2. **Record it** as the first line of the new stage's notes block in
+   `LEDGER.md`: `Added by <S<N> | hand> — <why> — referee: <verdict>`, plus
+   ` → <choice>` after a **different plan** answer. A recorded line settles
+   that stage: it is never refereed again, including on a redo.
+3. **Unattended, no stage is added.** The work goes in this stage's notes
+   block as a follow-up (*Scope discipline*, step 6), where the final review
+   finds it; the referee runs when a person later adds it.
 
 ## Operating protocol (every stage session)
 
@@ -483,7 +524,7 @@ structural fact and four rules about timing.
      implementation to a subagent so the churn stays out of this context.
 6. **Scope discipline:** do only this stage. Work belonging to another stage →
    note it in the ledger notes and leave it untouched. It may become a new
-   stage.
+   stage, through the scope referee (*Adding a stage*, above).
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
       stage's notes block in `LEDGER.md`. Then add this session's

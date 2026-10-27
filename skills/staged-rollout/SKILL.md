@@ -635,6 +635,32 @@ decisions-document entries whose `Paths:` overlap the stage file's
 `## Artifacts`, and `BRIEF.md`'s stamp is checked against `PLAN.md`; the
 template `PLAN.md`'s protocol defines both.
 
+## Drift — the scope referee
+
+Plans drift, and some drift is the plan doing its job: a stage finds work
+nobody could have planned. What hurts is a plan that becomes a different
+plan one reasonable step at a time — a review that starts implementing, a
+proof of concept that turns into the production build, a direction change
+carried on under the old Outcome. The check is about **kind, not amount**:
+there is no threshold and no count.
+
+It fires at one moment only: **when a stage is added** after the scaffold
+commit, by anyone. A fresh-context subagent — the **scope referee** — sees the
+plan's Outcome and Out of scope, the new stage with its reason, and the
+earlier additions, and nothing of the session that wants the stage, so it has
+no stake in the work so far. Its verdicts: **grows** (add it, silently),
+**losing shape** (add it, one line to the user suggesting a re-plan), or
+**different plan** (stop and offer: carry on, re-plan, or close this plan as
+a milestone and start a new one). The user always decides; a session running
+unattended never adds a stage at all. The template `PLAN.md`'s *Adding a
+stage* defines the inputs, the record line in the ledger and each verdict's
+handling, and the session-start hook points every session of a plan that
+carries that section at it.
+
+The cheapest drift is the one prevented at bootstrap: an idea too vague to
+state its Done checks is scaffolded as a **discovery plan** whose Outcome is
+a decision, and the build becomes the next plan (`/plan-stages`, step 2).
+
 ## The final review stage
 
 `SF` is the one stage exempt from the read-scope rule: it reads the *entire*
@@ -707,6 +733,47 @@ When the plan belongs to a programme, closeout also removes the plan's own line
 from `PROGRAMME.md` (the last plan removes the file), so the final PR carries
 it and the next plan is always the first line left; it then offers to plan that
 next plan, to be bootstrapped from `main` after the merge.
+
+### Lessons at close
+
+A retro written as a record is read by nobody. Closeout's lessons exist to
+change the **next** plan, so they are short, blunt, and fed forward.
+
+- **What.** Three to six one-line lessons in two groups, in this fixed
+  layout, printed in the chat and copied as a `## Lessons` section into the
+  final PR body:
+
+  ```markdown
+  ### Lessons from this plan
+
+  🧭 **For you, next time**
+  - <what happened, with its number> — <what to do differently>
+
+  🔧 **For the plugin**
+  - <what the plugin got wrong or lacked> — <what it should do>
+  ```
+
+  A group with nothing actionable reads `- nothing this time`.
+- **Evidence only.** Each line comes from the plan's own record: the
+  scaffold's `PLAN.md` against the final one (stages, requirements, frozen
+  decisions), the `Added by` lines and their referee verdicts, skipped stages
+  and their reasons, blocks and what they waited on, rows not verified,
+  `SF`'s fixes, and closeout's usage report — estimates against actuals: a
+  stage that ran far outside its range, or a plan total far off its
+  estimate, is a lesson about sizing ("S3 took 6h against 1–2h — split a
+  stage whose Steps name two components"). A plan with no estimates has no
+  such line. A lesson with no evidence behind it is not written.
+- **Tone rule.** Blunt, whatever register the user's assistant normally uses:
+  no praise, no pleasantries, no "went well" lines, no softening. Each line
+  names what happened and what to do differently; a line that is not an
+  action is dropped. A flattering retro teaches nothing.
+- **Fed forward.** The next `/plan-stages` in the same repository reads the
+  last merged plan's `## Lessons` and checks the new requirements against the
+  *For you* lines during the playback — that is where a lesson can still
+  change something. Each *For the plugin* line is offered, attended and after
+  the user's yes, as an issue in the plugin's repository, scrubbed of
+  project detail. Lessons are for plans only: work done as a single ticket
+  gets none.
 
 **Stage worktrees are part of closeout's gate, under one rule in both modes.**
 A surviving worktree whose branch matches `plan-<slug>-s*` means some stage

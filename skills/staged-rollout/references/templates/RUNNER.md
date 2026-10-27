@@ -169,6 +169,10 @@ You know about one stage and nothing else.
   the protocol says and stop. A person decides what happens next.
 - Do not send a notification of any kind — no email, no message, no comment
   written to be read as one.
+- Unattended (§3), do not add a stage. Work that belongs in a new stage is
+  written as a follow-up in this stage's notes block, where the final review
+  finds it; adding a stage passes the scope referee (`.plan/PLAN.md`,
+  *Adding a stage*), which needs a person present.
 - Do not create files, flags or state beyond what the protocol already
   writes: the ledger row, the stage's notes block, `.plan/BLOCKED.md`, a
   regenerated `.plan/BRIEF.md` (§3), and the stage's own artifacts.

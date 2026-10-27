@@ -1,6 +1,6 @@
 # Customizing the ticket template
 
-[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · **Ticket template** · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
+[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Brainstorming](superpowers-brainstorming.md) · [One or many sessions](single-vs-multi-session.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · **Ticket template** · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
 **In short:** you don't need a template. To change the ticket format, write a
 small TOML file that says `extends = "default"` and states only what

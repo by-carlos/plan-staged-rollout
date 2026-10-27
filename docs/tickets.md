@@ -1,6 +1,6 @@
 # Tickets — `create-issue` and `work-issue`
 
-[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Cloud runs](ON-THE-RUN.md) · **Tickets** · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
+[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Brainstorming](superpowers-brainstorming.md) · [One or many sessions](single-vs-multi-session.md) · [Cloud runs](ON-THE-RUN.md) · **Tickets** · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
 **In short:** two skills for work smaller than a plan, one GitHub issue or
 one Jira ticket at a time. `create-issue` writes a ticket and posts it only

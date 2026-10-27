@@ -167,7 +167,7 @@
 <text x="934" y="408" font-size="15.5" fill="#3B2A1E">Final PR into <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace" fill="#2F7D5E">main</tspan></text>
 <text x="934" y="428" font-size="13" fill="#C9563C" font-style="italic">you merge it, always</text>
 <use href="#g-doc" x="910" y="440"/>
-<text x="934" y="454" font-size="14" fill="#2F7D5E" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">lessons.md</text>
+<text x="934" y="454" font-size="14" fill="#2F7D5E" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">## Lessons</text>
 <text x="934" y="472" font-size="13" fill="#8A7664" font-style="italic">the blunt retro</text>
 
 <!-- ================= rework loop ================= -->

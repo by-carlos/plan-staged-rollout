@@ -1,6 +1,6 @@
 # Running a plan in the cloud — `plan-run`
 
-[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · **Cloud runs** · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
+[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Brainstorming](superpowers-brainstorming.md) · [One or many sessions](single-vs-multi-session.md) · **Cloud runs** · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
 **In short:** instead of opening a new session for every stage, keep one
 local session open (the **orchestrator**) and run `plan-run`. It fires each

@@ -1,6 +1,6 @@
 # FAQ
 
-[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · **FAQ** · [Reference](reference.md) · [Why](why.md)
+[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Brainstorming](superpowers-brainstorming.md) · [One or many sessions](single-vs-multi-session.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · **FAQ** · [Reference](reference.md) · [Why](why.md)
 
 Short answers, each with a link to the full story.
 
@@ -13,6 +13,7 @@ Short answers, each with a link to the full story.
 **Changing the plan:**
 [Skip a stage](#how-do-i-skip-a-stage) ·
 [Add a stage](#how-do-i-add-a-stage) ·
+[Re-plan after a design change](#the-design-changed-how-do-i-re-plan) ·
 [Change a stage's model or effort](#how-do-i-change-a-stages-model-or-effort) ·
 [Undo a stage](#how-do-i-undo-a-stage) ·
 [Abandon a plan](#how-do-i-abandon-a-plan)
@@ -112,6 +113,44 @@ offers: carry on, re-plan, or close this plan as a milestone and start a new
 one). You decide. A session running unattended never adds a stage; it notes
 the work for the review stage instead.
 
+### The design changed. How do I re-plan?
+
+Something outside the plan moved — a new constraint, a different platform, a
+decision reversed — or ten stages in, the Outcome you wrote is not the one you
+want any more. **Don't rewrite the solution inside a stage session.** A stage
+session reads its own stage file and the ledger; it has neither the shape of
+the whole plan nor the standing to change it, and a design rewritten there
+lands as drift nobody agreed to. Re-planning is its own session, the way a
+changed design is its own meeting:
+
+1. **Settle the stage that is running** — let it land, or stop it
+   ([Stopping halfway](staged-rollout.md#stopping-halfway)). Don't re-plan
+   around work that is still moving.
+2. **Open a normal session on the plan branch**, on the tier you planned
+   with, not the one stages run on. Say that the plan is being re-planned and
+   what changed.
+3. **Rewrite `PLAN.md` first**: the Outcome, the Out of scope, and the frozen
+   decisions the change touches. Everything else points at `PLAN.md`, so this
+   is the only place the new direction has to be stated.
+4. **Then the stages that have not started.** Drop the ones the change kills,
+   rewrite the ones it bends, add the ones it needs
+   ([How do I add a stage?](#how-do-i-add-a-stage)), and regenerate
+   `BRIEF.md` in the same commit. Stages already `done` stay done: their work
+   is merged, and their ledger rows are history, not plans.
+5. **Commit it on the plan branch as one commit**, so the plan and the ledger
+   never disagree, then carry on with `stage-run <N>`.
+
+**When it is a new plan instead.** If the Outcome is being replaced rather
+than adjusted, close this plan as a milestone: mark the stages you will not do
+as `skipped` with a reason (`plan-close` refuses to run while a row is still
+`todo`), close it, and run `plan-stages` for the new direction. The test is
+the one the scope referee uses — not how much has changed, but whether this is
+still the project the plan set out to do.
+
+If every plan needs re-planning in its first few stages, the plan is not the
+problem: the design was not settled before it was decomposed. See
+[Pairing with superpowers brainstorming](superpowers-brainstorming.md).
+
 ### How do I change a stage's model or effort?
 
 Edit that stage's row in the stage index in `PLAN.md`, on the plan branch.
@@ -184,7 +223,9 @@ first and follow `.plan/RUNNER.md`.
 reaches `main`. Nothing is lost: its full history stays in git, and the final
 PR body carries the plan's decisions and as-built story. To keep the folder
 (for a plan that doubles as documentation), set `plan-dir: keep` on the plan
-flags line in `PLAN.md`. See [Close](staged-rollout.md#4-close--plan-close).
+flags line in `PLAN.md`. See [Close](staged-rollout.md#4-close--plan-close)
+and [After it closes](staged-rollout.md#after-it-closes), which says what a
+change months later reads instead.
 
 ### Is GitHub's "Automatically delete head branches" setting safe?
 

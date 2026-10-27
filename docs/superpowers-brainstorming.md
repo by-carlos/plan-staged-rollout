@@ -1,6 +1,6 @@
 # Pairing with superpowers brainstorming
 
-[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
+[Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · **Brainstorming** · [One or many sessions](single-vs-multi-session.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
 **In short:** use the superpowers `brainstorming` skill to settle the design,
 then let `plan-stages` turn the result into stages. The design ends up as

@@ -32,6 +32,17 @@ elsewhere. See 0.4.0 for the split.
   time, with `docs/diagrams/drift-guards.svg`. The mechanisms already existed;
   only the answer to "what stops this drifting" was scattered.
 
+- **How to re-plan, and what a later change reads once the plan is gone.**
+  Two questions the docs never answered: [the FAQ](docs/faq.md) gains *The
+  design changed. How do I re-plan?* — the rewrite happens in its own session
+  on the plan branch, never inside a stage — and
+  [How a staged rollout works](docs/staged-rollout.md) gains *After it
+  closes*, naming the four things a maintainer reads months later (the code
+  and its docs, `DECISIONS.md`, one commit per stage on `main`, and the final
+  PR body) and how a later change routes to a ticket or a new plan. The two
+  pages that were listed only in the README — brainstorming and single
+  session or many — are now in every page's navigation bar.
+
 - **Time estimates per stage and for the plan, and a usage report at the
   end.** The stage index gains an `estimate` column (a range in hours) and a
   `Plan estimate:` line with the total both summed and elapsed, computed by

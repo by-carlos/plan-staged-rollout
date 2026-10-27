@@ -1,6 +1,6 @@
 # How a staged rollout works
 
-[Home](../README.md) · [Install](install.md) · **How it works** · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
+[Home](../README.md) · [Install](install.md) · **How it works** · [Brainstorming](superpowers-brainstorming.md) · [One or many sessions](single-vs-multi-session.md) · [Cloud runs](ON-THE-RUN.md) · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
 **In short:** plan once, run each stage in its own fresh session, review,
 close. Every stage ends with a merged PR into the plan branch and proof in
@@ -452,6 +452,34 @@ alone. Then it:
 It runs unattended too: `plan-close --unattended` applies the plan flags
 instead of asking. `plan-run` never fires it; you run it. **Merging that final
 PR is always yours.**
+
+## After it closes
+
+Two months later someone asks for a change, and the plan is gone: `.plan/`
+was deleted at close and the sessions that did the work ended long ago.
+Nothing is lost, and nobody has to read the plan to work on the project
+again. What a later change reads instead:
+
+- **The code, and the docs next to it.** Before the plan closes, the review
+  stage updates the README or the module's own doc, and a cold-reader
+  subagent that sees only the repo — never `.plan/` — tries to answer how to
+  test it, where things live and why they were built that way. Every miss it
+  found was fixed.
+- **`DECISIONS.md`.** The frozen decisions worth keeping, as short entries
+  under area headings that list the paths they cover, plus a line in
+  `CLAUDE.md` telling agents to read it before changing a covered path. See
+  [Which decisions outlive the plan](#which-decisions-outlive-the-plan).
+- **The commits on `main`.** One per stage, because the final PR is a normal
+  merge rather than a squash — so `git log` and `git blame` lead from a line
+  of code to the stage that wrote it and the PR that reviewed it.
+- **The final PR body.** `PLAN.md` and the ledger turned into the *why* and
+  the as-built story, carrying the kept decisions and the plan's lessons.
+
+Then route the change by its size, exactly as you would without a plan: a fix
+or a small piece of work is a ticket (`create-issue`, then `work-issue`);
+something with parts that depend on each other is a new plan of its own. The
+closed plan is not reopened and not edited — it is finished. See
+[Should this be a ticket or a plan?](faq.md#should-this-be-a-ticket-or-a-plan).
 
 ## Branches and worktrees
 

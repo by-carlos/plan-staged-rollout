@@ -12,6 +12,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -576,6 +577,17 @@ class HookTests(unittest.TestCase):
                     "command gh pr create -b @b.md",
                     "gh pr comment 3 -Fb.md"):
             self.assertEqual(self.decision(cmd), "deny", cmd)
+
+    def test_deny_names_a_runnable_adapter_path(self):
+        # CLAUDE_PLUGIN_ROOT is unset in the Bash tool, so the suggested
+        # command must carry the adapter's real path, not the variable.
+        proc = subprocess.run([find_bash(), str(HOOKS / "gh-body-guard")],
+                              input=json.dumps({"tool_input": {"command": "gh pr comment 3 -F b.md"}}),
+                              capture_output=True, text=True, encoding="utf-8", check=False)
+        reason = json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertNotIn("CLAUDE_PLUGIN_ROOT", reason)
+        path = re.search(r'python "([^"]+)"', reason).group(1)
+        self.assertTrue(Path(path).is_file(), path)
 
     def test_allows_everything_else(self):
         for cmd in ("gh api repos/o/r/issues --input -",

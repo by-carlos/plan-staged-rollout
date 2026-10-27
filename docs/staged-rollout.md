@@ -414,11 +414,14 @@ alone. Then it:
 1. turns `PLAN.md` and the ledger into the final PR body, so the *why* and
    the as-built story survive on `main`. The body includes a **Kept
    decisions** section copied from the review stage's list; if that list was
-   applied unattended, the section says that merging the PR approves it;
+   applied unattended, the section says that merging the PR approves it.
+   Each issue the stages link to gets a `Closes` line, so merging the PR
+   closes it; one the review stage found only partly delivered gets `Refs`
+   instead;
 2. offers to remove the stage worktrees that are finished (branch merged,
    nothing unpushed), and stops on any that still holds work git cannot
    recover. It also lists the issues the stages link to, if any, without
-   commenting on or closing them;
+   commenting on them or changing their status;
 3. offers to delete `.plan/` as the last commit on the plan branch,
    recommending what the `plan-dir` flag says (`delete` by default), and
    commits only after your OK. Nothing is lost: the full plan history stays

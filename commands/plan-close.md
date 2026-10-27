@@ -102,8 +102,10 @@ Work through these steps **in order**:
    of every `.plan/stage-*.md` file (the `staged-rollout` skill's *Linking a
    stage to its issue* defines the format) — before step 4 can delete them —
    and print one list, `Linked issues:`, one row per stage that has one
-   (`S<N> — <ref>`). A plan whose stages carry none prints nothing. This is
-   report-only: never comment on an issue or change its status.
+   (`S<N> — <ref>`). A plan whose stages carry none prints nothing. Never
+   comment on an issue or change its status from here: the one effect is the
+   closing keyword step 3 writes into the final PR body, which closes the
+   issue only when a person merges that PR.
 
 3. **Distill the story — dispatch a subagent.** `.plan/PLAN.md` and the full
    `.plan/LEDGER.md` are the largest material this command touches, and
@@ -130,6 +132,17 @@ Work through these steps **in order**:
      or revert any entry on this branch first if one is wrong.* When the `SF`
      notes carry no such list (a plan scaffolded before the decision triage
      existed), write the section as one line saying no decision triage ran;
+   - the distinct linked issues from step 2, and the rule for closing them:
+     one `Closes <ref>` line per issue, near the top of the body, with an
+     issue URL rewritten as `owner/repo#N`. GitHub honours a closing keyword
+     only in a PR into the default branch, which this final PR always
+     targets, and only that exact keyword form — "Implements #N" or a bare
+     reference leaves the issue open after the merge. An issue the `SF`
+     notes record as not met or only partly delivered gets `Refs <ref>`
+     instead, so the merge does not close it. Open the lines with one
+     sentence: *merging this PR closes these issues; change a line to
+     `Refs` first if one is not fully delivered.* No linked issues means no
+     such lines;
    - the instruction not to just paste the raw files, but to summarize them
      into a readable PR description.
 

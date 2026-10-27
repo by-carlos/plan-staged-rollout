@@ -78,6 +78,13 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   context never did (no compaction up to 376K tokens). Revisit: when a
   designed sample can separate stage types, or count only unprompted
   interventions. Source: #227
+- **A stage's `Issue:` line is closed only by the final PR's merge: `/plan-close`
+  writes `Closes <ref>` for each linked issue (`Refs` for one `SF` records as
+  not fully delivered), and no command posts to an issue or changes its
+  status.** — a person merging the PR is the approval, as it is for kept
+  decisions, and a reference without the keyword left #227 open after its
+  plan merged. Revisit: if a plan's final PR ever targets a branch other than
+  the default. Source: #250
 
 ## Running stages
 

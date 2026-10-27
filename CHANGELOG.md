@@ -12,6 +12,19 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Hand-drawn diagrams of how the plugin works, for the docs and for
+  presenting.** `docs/diagrams/how-it-works.svg` shows the four phases
+  (brainstorm, plan, build, close) in three lanes — what you say, what the
+  plugin does, and what lands in your repo — with the rework loop that turns a
+  finding into a new stage, a new plan, or a ticket, and a bracket strip
+  mapping the phases onto the classic software lifecycle. It opens the README
+  and [How a staged rollout works](docs/staged-rollout.md).
+  `docs/diagrams/gates.svg` shows what a driver fires unattended and what it
+  skips for you, in [Running a plan in the cloud](docs/ON-THE-RUN.md). Both
+  ship as SVG with a 2300px PNG export for slides, and `CONTRIBUTING.md` now
+  requires a change that alters what a diagram shows to update it in the same
+  pull request.
+
 - **Time estimates per stage and for the plan, and a usage report at the
   end.** The stage index gains an `estimate` column (a range in hours) and a
   `Plan estimate:` line with the total both summed and elapsed, computed by

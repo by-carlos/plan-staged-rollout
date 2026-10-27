@@ -51,6 +51,27 @@ yet, so run them locally when you touch `skills/staged-rollout/`:
 python3 -m unittest discover -s skills/staged-rollout/tests
 ```
 
+## Diagrams
+
+`docs/diagrams/` holds the hand-authored diagrams. The `.svg` is the source; the
+`.png` beside it is an export for slides and is never edited by hand.
+
+- **A change that alters what a diagram shows updates the diagram in the same
+  pull request.** Renaming a command or a `.plan/` file, adding or removing a
+  phase, or changing what a stage produces all count. A diagram that disagrees
+  with the page around it is worse than no diagram.
+- **Re-export the `.png` whenever you touch the `.svg`**, so the two never
+  disagree. Export at **2300px wide** with a rasterizer that loads system fonts
+  — the committed files were produced with
+  [`@resvg/resvg-js`](https://github.com/thx/resvg-js).
+- **Keep the one style:** the `docs/hero.jpg` palette (cream ground, rounded
+  boxes, terracotta for what you say, orange for what the plugin does, green for
+  what lands in the repo), plain `<svg>` with no scripts or external references,
+  and a `<title>`/`<desc>` pair plus an `aria-label` carrying the same sentence
+  as the image's alt text.
+- **No brand logos.** Use the plain glyphs already in the files rather than the
+  GitHub or Atlassian marks, which carry trademark terms of their own.
+
 ## Ground rules
 
 - Match the existing style and structure of the code you're touching.

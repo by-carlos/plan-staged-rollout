@@ -29,15 +29,12 @@ below has three stages plus a review; the
 
 ## How a plan runs
 
-```mermaid
-flowchart LR
-    idea([Your idea]) --> plan["<b>1. Plan</b><br/>split into stages"]
-    plan --> run["<b>2. Run a stage</b><br/>new session each time"]
-    run -->|"more stages left"| run
-    run --> review["<b>3. Review</b><br/>catch loose ends,<br/>keep the decisions"]
-    review --> close["<b>4. Close</b><br/>one PR into main"]
-    close --> merge([You merge it])
-```
+[![How a plan runs: four phases — brainstorm, plan, build, close — showing what you say, what the plugin does, and what lands in your repo at each one, with the rework loop that turns a finding into a new stage, a new plan, or a ticket.](docs/diagrams/how-it-works.svg)](docs/diagrams/how-it-works.svg)
+
+The bottom row is the part people ask about first: **everything the plugin
+produces lands in your repo as a file you can read** — the plan and its
+ledger, the code, the docs, the tests, the decisions, and a blunt retro at
+the end.
 
 - **Each stage gets a fresh session**, so a stage costs about the same
   however many came before it.

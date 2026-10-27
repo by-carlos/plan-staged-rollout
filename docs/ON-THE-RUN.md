@@ -86,6 +86,8 @@ or `skipped`, or what is left is gated, `blocked`, or waiting on those. It
 stops outright only on a dead run. The end report lists every gated stage
 with the command to run it yourself.
 
+[![What a driver runs on its own: a gate auto stage is fired unattended and merges itself, while gate human, gate local and gate live stages are skipped and left for you — and the driver carries on with the next stage either way.](diagrams/gates.svg)](diagrams/gates.svg)
+
 When every stage is settled, run `plan-close`: it proposes the final PR into
 `main`, which you merge yourself. `plan-run` never opens or merges that PR.
 

@@ -622,23 +622,37 @@ template `PLAN.md`'s protocol defines both.
 ## The final review stage
 
 `SF` is the one stage exempt from the read-scope rule: it reads the *entire*
-ledger — every note, gotcha, shortcut, and known gap — and sweeps for stragglers.
-Crucially, **it catalogs; it never implements.** Each finding becomes exactly one
-of three outcomes:
+ledger — every note, gotcha, shortcut, and known gap — and `PLAN.md` ›
+Requirements › Out of scope, and sweeps for stragglers. Crucially, **it
+catalogs; it never implements, and it never adds a stage** — bar one capped
+exception below. Each finding becomes exactly one outcome:
 
-- **A new stage in this plan** — follow-up work belonging to this project. It
-  gets a **PLAN.md stage index row** (with its flags — required, since the weight
-  check and next-runnable logic only see stages listed in the index), a ledger
-  row, and a stage file, and runs later as a normal stage in its own fresh
-  session and branch.
-- **A spin-off candidate** — work that has outgrown this plan (a genuinely new
-  project). Recorded in the ledger and surfaced in the final PR body as follow-up;
-  it does *not* block closeout. Start it later with its own bootstrap.
+- **An issue** — work that belongs in its own ticket. A wait measured in days
+  (never a stage) is a **dated follow-up**, also an issue: its body states the
+  date, the exact check, the pass condition (with the basis for its threshold)
+  and the action on failure. Nothing is scheduled. Attended, `SF` files it
+  through `create-issue` after the user's yes. Unattended it files nothing: it
+  records the item under a `closeout will list` heading in its ledger notes, and
+  `/plan-close` copies it into the final PR body.
+- **A later plan** — work for a later plan of the programme (the programme index
+  `PROGRAMME.md` names it). Unattended, recorded under the same `closeout will
+  list` heading.
 - **An explicit "accepted, won't fix"** — with a one-line reason, so the gap is a
   decision instead of a surprise.
+- **Exception — a fix.** Never a feature: a fix names the requirement, failing
+  Done check or regression it repairs, and needs the user present and saying
+  yes, with its own verification. Fix stages are titled `Fix: …`, and `SF`'s
+  ledger notes keep a `#### Fixes` list, the durable count. At most 3 per plan;
+  a fourth fix is a hard stop in every mode. How it runs: `SF`'s PR lands what it
+  found — the `Fix:` stage's index row placed before `SF` (via
+  `scripts/renumber_stages.py`, so `SF` stays last), `SF`'s `depends` extended to
+  it, and `SF`'s row set back to `todo` — so the catalogue of loose ends is
+  kept. The fix runs as an ordinary stage, then `SF` re-runs from the top as a
+  redo. Unattended, `SF` stops and asks: it records a block through *Recording a
+  block* instead of adding the fix.
 
-Its acceptance check: every loose end in the notes is either a new stage (a
-stage index row, a ledger row, and a stage file) or explicitly closed.
+Its acceptance check: every loose end in the notes has exactly one of these
+outcomes.
 
 **It also owns what outlives `.plan/`.** Closeout deletes the plan, so `SF`
 decides what survives it:
@@ -656,8 +670,10 @@ decides what survives it:
 - **Cold-reader check.** Read the updated docs as someone who never saw the
   plan, and fix what they could not follow.
 
-These are documentation writes, not product code, so "catalogs, never
-implements" still holds. `SF` stays `gate: auto` by default.
+All three are written **only on a clean pass**: a run that adds a fix writes none
+of them, and the redo does. These are documentation writes, not product code, so
+"catalogs, never implements" still holds. `SF` stays `gate: auto` by default,
+though an unattended run stops and asks when it finds a fix.
 
 ## Closeout
 

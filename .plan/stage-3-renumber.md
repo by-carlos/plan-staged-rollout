@@ -22,7 +22,7 @@ index, so numbers follow running order without touching a started stage
 
 ## Steps
 
-- [ ] Write `renumber_stages.py` (standard library only) with one operation, in
+- [x] Write `renumber_stages.py` (standard library only) with one operation, in
   place: renumber the unstarted stages that follow the edited stage index; git
   on the stage branch is the undo, so there is no insert mode and no dry-run
   flag. A stage counts as **started** when its ledger status is not `todo`,
@@ -32,17 +32,17 @@ index, so numbers follow running order without touching a started stage
   the `.plan/BLOCKED.md` sections, and the `S<N>` references in stage-file
   prose. The caller regenerates `.plan/BRIEF.md` in the same commit. It
   refuses a suffixed new ID.
-- [ ] Make it safe on untrusted index cells: validate every `File` cell and
+- [x] Make it safe on untrusted index cells: validate every `File` cell and
   every stage ID against the grammar, keep every path inside `.plan/`, refuse
   symlinks, and exit before any write on a refusal.
-- [ ] Write `test_renumber_stages.py` with a fixture plan, in the same test
+- [x] Write `test_renumber_stages.py` with a fixture plan, in the same test
   framework as `test_preflight_ahead.py`; it covers each refusal (suffixed ID,
   a `File` cell outside the grammar, a path escaping `.plan/`, a symlink) and
   the started-stage cases (non-`todo` status, an existing stage branch, a
   `BLOCKED.md` section).
-- [ ] In the PLAN.md template, point the "adding a new stage" sentence at the
+- [x] In the PLAN.md template, point the "adding a new stage" sentence at the
   script.
-- [ ] Run the test and a fixture renumbering; paste the output into the ledger
+- [x] Run the test and a fixture renumbering; paste the output into the ledger
   notes.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks

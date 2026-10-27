@@ -17,7 +17,7 @@ protocol, finish protocol).
 | S0 Format contract: `gate: live` and plain stage IDs | done | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
 | S1 Measure stage size | done | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR #242 merged |
 | S2 Runners respect `live` | todo | — | — | — |
-| S3 Renumbering script | todo | — | — | — |
+| S3 Renumbering script | doing | yes | 2026-10-27 | renumber_stages.py + 37-test suite pass; PR open |
 | S4 Bootstrap: programmes, waits, ordering | done | yes | 2026-10-27 | programme, wait refusal, running-order IDs and `live` grouping written into plan-stages/plan-close/SKILL.md; validator passes; PR #243 merged |
 | S5 Final review that stays last | todo | — | — | — |
 | S6 Docs, lens checks and changelog | todo | — | — | — |
@@ -108,7 +108,34 @@ threshold (more than 4 interventions or 1 hour of active time) into SKILL.md ›
 _(empty)_
 
 ### S3 Renumbering script
-_(empty)_
+
+Acceptance output (2026-10-27, worktree `../plan-staged-rollout-s3`, branch `plan-stage-shape-s3`):
+
+- `python -m unittest discover -s skills/staged-rollout/tests` → `Ran 37 tests` / `OK (skipped=2)` (the two skips are the
+  real-symlink tests on Windows without symlink rights; a mocked-`is_symlink` test covers the same refusal everywhere).
+- `python scripts/validate_plugin.py` → `validate-plugin: OK`
+- Both re-run after merging `plan-stage-shape` (S4, PR #243) into the stage branch: 37 tests OK (skipped=2); validator OK.
+- Fixture run (scratch copy, `git init`ed; a new `S6 Fix: login` row inserted before S2; S0 done, S1 doing with a
+  `BLOCKED.md` section): `renumber_stages.py --slug demo` printed `S6 -> S2`, `S2 -> S3`, `S3 -> S4`, `S4 -> S5`, exit 0.
+  Index afterwards: S0, S1, S2 Fix: login, S3 Parser, S4 Writer, S5 Docs (`depends` S3, S4), SF (`depends` S5, S2) — SF last;
+  stage files renamed to match; `BLOCKED.md` prose `S3` became `S4`; S0 and S1 kept their numbers and files.
+
+As built: `skills/staged-rollout/scripts/renumber_stages.py --slug <slug> [--plan-dir .plan]`, standard library only. The
+caller edits the index (row order is running order; a new stage has a row, a ledger row and a stage file under any unused
+plain ID); the script walks the index and gives each unstarted stage the next free plain number above the previous row, then
+rewrites file names and every `S<N>` token in `PLAN.md`, `LEDGER.md`, `BLOCKED.md` and the stage files from one mapping, so
+swaps cannot collide. Started = non-`todo` status, a `plan-<slug>-s<N>[-redo-K]` ref (local or remote), or a `BLOCKED.md`
+section. Everything is validated before the first write (grammar, `depends` order, SF last, paths inside `.plan/`, no
+symlinks, UTF-8); a refusal exits 2.
+
+Gotchas for S5 (the fix-insertion path):
+- Pass `--slug`; the script reads `git for-each-ref` from the repo above `.plan/`, so it must run where that repo is.
+- It does not touch `BRIEF.md` (regenerate in the same commit) and does not reorder ledger rows or notes blocks.
+- An **unstarted** stage with a suffixed ID is refused (it cannot tell a new one from an old one); a started one is kept.
+- A bare `S<N>` in prose that means something else is rewritten too; read the diff.
+- The new fix row needs an ID not already in the index (next free number) — a duplicate is refused.
+
+Template: `references/templates/PLAN.md` "adding a new stage" sentence now names the script. No frozen decision changed.
 
 ### S4 Bootstrap: programmes, waits, ordering
 

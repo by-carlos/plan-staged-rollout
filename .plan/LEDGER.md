@@ -14,7 +14,7 @@ protocol, finish protocol).
 
 | Stage | Status | Verified | Date | Result |
 |---|---|---|---|---|
-| S0 Format contract: `gate: live` and plain stage IDs | todo | — | — | — |
+| S0 Format contract: `gate: live` and plain stage IDs | doing | yes | 2026-10-27 | `live` gate and plain-ID rule written into PLAN/BRIEF templates and SKILL.md; validator passes |
 | S1 Measure stage size | doing | yes | 2026-10-27 | D-15 amended from 46 stage sessions (interventions + active hours); PR open |
 | S2 Runners respect `live` | todo | — | — | — |
 | S3 Renumbering script | todo | — | — | — |
@@ -29,7 +29,21 @@ As-built notes, acceptance evidence, gotchas, handoff notes, follow-ups. One
 block per stage; sessions read only the blocks of their `depends` stages.
 
 ### S0 Format contract: `gate: live` and plain stage IDs
-_(empty)_
+
+Acceptance output (2026-10-27, worktree `../plan-staged-rollout-s0`, branch `plan-stage-shape-s0`):
+
+- `python3 scripts/validate_plugin.py` → `validate-plugin: OK`
+- `grep -n "live"` shows the new rule at:
+  - `templates/PLAN.md` 131–145 (`live` value, never driver-fired, fire only on `auto`/absent, unknown values refused and named, build-stage definition, two-`live` start-time refusal), 156 (escalation list), 193 (operator-action bullet), and a new **Stage IDs** paragraph after the flag values.
+  - `templates/BRIEF.md` 87–89 (stage-map gate label).
+  - `SKILL.md` 124–130 (*Group by gate*), 187–207 (*Flag heuristics* `gate` bullet), 266 and the *Derive, never store* bullet (*Parallel stages*: no two `live` at once, ID rule), 357 (*Statuses and human-gated stages*), 417–418 and 440 (*Unattended mode* table rows and "never launched" sentence).
+- "An **absent** `gate` column reads as `auto`" is untouched (`SKILL.md` 220); the template's "a missing `gate` column … means those defaults" also stands.
+
+As built: the ID rule says plain numbers plus `SF`, suffixed IDs read but never created (scaffold or insert), numbering in running order with side-by-side stages consecutive, and no stage numbered below anything it depends on. The *Group by gate* bullet was extended to `live` (D-11) and now says "front or end … as far as the dependencies allow".
+
+Left for later stages (not touched here, per scope):
+- S2: the template `PLAN.md` operating protocol still says "a `gate: human` or `gate: local` stage is never started unattended" (weight-check step, finish step 6 announcement, *The discovered case*), and `templates/RUNNER.md` §4 refuses only `human`/`local`; both need `live` and the unknown-value refusal. The `/stage-run` preflight check for two `live` stages is S2's too.
+- S3/S4: the stage-ID grammar in `RUNNER.md` §1 and the hook/command text still describe suffixed IDs as ordinary; the "rejected at scaffold time and on insert" behaviour belongs to S3/S4.
 
 ### S1 Measure stage size
 Scratchpad script (not committed) read structured transcript fields only. Stage session = first user message names

@@ -166,5 +166,4 @@ Built by **Carlos Eng** —
 ## License
 
 [FSL-1.1-ALv2](LICENSE) © Carlos Eng — free for any use except building a
-competing commercial product, and each release becomes Apache-2.0 two years
-after it is made available. Versions before 0.6.0 remain MIT.
+competing commercial product.

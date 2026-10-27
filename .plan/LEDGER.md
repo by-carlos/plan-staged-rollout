@@ -84,7 +84,7 @@ reported. Throwaway script lives in the session scratchpad only.
 Leak grep over the stage diff (personal paths, project folder names, hostnames, emails, token-like strings); output empty:
 
 ```
-git diff plan-stage-shape...HEAD | grep -nE '[C]:[\/]Users|[/]Users[/]|[/]home[/]|[C]--|[[:alnum:]-]+[.](local|lan|internal|home|corp)|[[:alnum:]._-]+[@][[:alnum:].-]+[.][a-z]{2,}|gh[pousr]_[[:alnum:]]{20}|sk-[[:alnum:]]{20}|AKIA[[:alnum:]]{16}|[[:alnum:]+/]{40,}'
+git diff plan-stage-shape...HEAD | grep -nE '[C]:[\/]Users|[/]Users[/]|[/]home[/]|[C]--|[[:alnum:]-]+[.](local|lan|internal|home|corp)\b|[[:alnum:]._-]+[@][[:alnum:].-]+[.][a-z]{2,}|gh[pousr]_[[:alnum:]]{20}|sk-[[:alnum:]]{20}|AKIA[[:alnum:]]{16}|[[:alnum:]+/]{40,}'
 ```
 
 Decision change: D-15 amended in `.plan/PLAN.md`; `.plan/BRIEF.md` regenerated in the same commit. Follow-up for S6: write the

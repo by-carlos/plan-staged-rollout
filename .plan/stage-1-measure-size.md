@@ -22,7 +22,7 @@ work*.
 
 ## Steps
 
-- [ ] Write a script in the session scratchpad (not committed) that combs local
+- [x] Write a script in the session scratchpad (not committed) that combs local
   Claude Code session transcripts of past staged-rollout stage runs (sessions
   that ran `/stage-run` or followed `.plan/RUNNER.md`) and reports, per stage
   session: wall-clock duration, number of user messages after the first
@@ -32,13 +32,13 @@ work*.
   reads structured fields only and never prints message text, file paths,
   session IDs or project names. Its output is one fixed aggregate table with
   ordinal labels (stage session 1, 2, …).
-- [ ] Check there are enough sessions to say anything, and state the count.
-- [ ] Run the script. Report figures only, no private project detail (D-5).
-- [ ] Amend D-15 in `.plan/PLAN.md` with the figures, the chosen measure
+- [x] Check there are enough sessions to say anything, and state the count.
+- [x] Run the script. Report figures only, no private project detail (D-5).
+- [x] Amend D-15 in `.plan/PLAN.md` with the figures, the chosen measure
   (interventions, compactions, hours or story points) and threshold, and the
   recommendation of smaller stages or in-stage checkpoints. Regenerate
   `.plan/BRIEF.md` in the same commit.
-- [ ] Paste the script's summary output into the ledger notes.
+- [x] Paste the script's summary output into the ledger notes.
 - [ ] Before the first push, show the user the full stage diff and wait for
   their OK (D-5): nothing from the transcripts is pushed unseen.
 

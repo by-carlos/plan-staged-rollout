@@ -130,8 +130,21 @@ same commit; feedback on the brief is applied here, never to the brief.
   lens: a threshold says why that number and whether the check can detect the difference.
 - **D-14 — Stage models** *(Decided)*. Implementation stages run on Sonnet (the maintainer's standing rule: stage runs default
   to the cheaper model; stronger models for review turns); SF runs on Opus. Where effort is arguable, take the higher.
-- **D-15 — What makes a stage too big** *(Default for now — revisit when S1 closes)*. S1 picks the measure (interventions,
-  compactions, hours or story points) from its figures and amends this decision with them.
+- **D-15 — What makes a stage too big** *(Decided — measured in S1)*. The measure is **interventions** (user messages after
+  the one that launched the stage session), read with **active hours** (session time with gaps over 10 minutes dropped, so a
+  session resumed days later does not count the idle days). Sample, taken 2026-10-27 by a throwaway script that reads
+  structured fields only: 46 stage sessions pooled from this repository and the maintainer's other local projects (10 of them
+  from this repository alone). Figures (median / 75th percentile / maximum): active hours 0.39 / 0.88 / 2.4; interventions
+  2 / 4 / 13; model calls 50 / 97 / 227; output tokens 28K / 66K / 190K; peak context 148K / 231K / 376K tokens; compactions 0
+  in all 46. Sessions above the median active time averaged 3.5 interventions against 1.7 below it; above-median peak context
+  made no difference (2.6 against 2.6). Threshold: a stage is **too big when a run of it needs more than 4 interventions or
+  more than 1 hour of active time** (about one stage session in five did either); aim for a stage that fits in about 0.4 hours.
+  Recommendation: **smaller stages**, not in-stage checkpoints — context was never the limit (no compaction at up to 376K
+  tokens), time is; the ticked-checkbox resume stays for a stage that cannot be split. Caveats: interventions include
+  approvals the protocol asks for (human gates, the weight-check **go**), so the count overstates size-driven help; and the
+  sample is stage sessions that happened to run, not a designed experiment. Rejected as the measure: compactions (no signal),
+  tokens and peak context (no link to interventions), story points (never recorded in a session, so nothing to measure). S6
+  writes this into SKILL.md › *Decomposing the work*.
 - **Git strategy:** branch-per-stage (fixed — the only supported model).
   `.plan/` is **tracked** on the plan branch and the plan branch has an
   **upstream** — both are load-bearing, not housekeeping (preflight step 0.0).

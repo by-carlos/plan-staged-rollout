@@ -19,6 +19,7 @@ Short answers, each with a link to the full story.
 [Abandon a plan](#how-do-i-abandon-a-plan)
 
 **Running it differently:**
+[Will it test what it builds?](#will-it-test-what-it-builds) ·
 [Two stages at once](#can-i-run-two-stages-at-once) ·
 [Without me at the keyboard](#can-stages-run-without-me-at-the-keyboard) ·
 [Stage PRs that merge themselves](#can-stage-prs-merge-themselves) ·
@@ -35,7 +36,8 @@ Short answers, each with a link to the full story.
 [Implement, not just guide](#how-do-i-get-claude-to-implement-a-ticket-not-just-guide-me) ·
 [Does `work-issue` merge on its own?](#will-work-issue-merge-on-its-own) ·
 [Queue tickets](#can-i-queue-tickets) ·
-[Ticket or plan?](#should-this-be-a-ticket-or-a-plan)
+[Ticket or plan?](#should-this-be-a-ticket-or-a-plan) ·
+[Too big for one plan](#my-project-is-too-big-for-one-plan)
 
 **Install:**
 [Can't find the plugin](#i-cant-find-the-plugin) ·
@@ -181,6 +183,24 @@ used `plan-run`, also clear the spent routines at claude.ai/code/routines.
 
 ## Running it differently
 
+### Will it test what it builds?
+
+Yes, to the extent that you say what *confirmed* means. Each stage carries its
+own acceptance check, and the stage is `done` only when that check **ran** and
+the output it produced is pasted into its ledger notes. The model reporting
+success is not enough, and that is the whole point of the ledger.
+
+Some stages can test themselves. Where several have to land before anything
+can be exercised, write a later stage whose job is to test them — and if you
+forget, the final review stage reads every stage's notes and sweeps for what
+was left behind.
+
+The part that stays yours is saying what counts as working: put it in the
+plan's **Done, as checks** and in each stage's acceptance check, in words a
+script or a person can actually run. Leave it implicit and a stage can
+reasonably conclude there was nothing to check. See
+[Run a stage](staged-rollout.md#2-run-a-stage--stage-run-n).
+
 ### Can I run two stages at once?
 
 Yes, when neither depends on the other. Each stage works in its own worktree
@@ -287,6 +307,23 @@ three tickets is three sessions.
 
 One to three sessions of work: a ticket. Four or more, with parts that depend
 on each other: a plan. See [Tickets](tickets.md).
+
+### My project is too big for one plan
+
+Then it is a **programme**: one plan per milestone, rather than one plan for
+everything. When your requirements hold two or more outcomes that could each
+merge into `main` on their own, `plan-stages` asks whether to split them. Say
+yes and it scaffolds only the first plan and writes `PROGRAMME.md` at the repo
+root — the plans in running order, one line each, pointing at its plan branch.
+Each `plan-close` removes its own line and offers to plan the next one.
+
+It is also the answer when a plan turns out to be two: close the current one
+as a milestone and start the next,
+[as re-planning describes](#the-design-changed-how-do-i-re-plan).
+
+So the ladder is: one to three sessions is a ticket, one outcome is a plan,
+several outcomes that could each ship on their own is a programme. See
+[Plan](staged-rollout.md#1-plan--plan-stages-project-idea).
 
 ## Install
 

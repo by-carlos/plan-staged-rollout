@@ -56,6 +56,17 @@ elsewhere. See 0.4.0 for the split.
   moving X to Y." — an issue small enough to work is a ticket, and the
   picture no longer offers it a plan.
 
+- **Two questions the FAQ never answered: testing, and work too big for one
+  plan.** *Will it test what it builds?* says what `done` actually requires —
+  the acceptance check ran and its output is in the ledger — and what stays
+  the author's job. *My project is too big for one plan* points at the
+  programme, which `plan-stages` already proposes but which the FAQ mentioned
+  only in passing, and sets out the ladder: a ticket, a plan, a programme.
+  [Why](docs/why.md) also names a fifth failure mode in its problem list, the
+  one people recognize fastest — without a structure, you are the loop
+  between every round, running and checking the work by hand and remembering
+  what you already verified.
+
 - **Time estimates per stage and for the plan, and a usage report at the
   end.** The stage index gains an `estimate` column (a range in hours) and a
   `Plan estimate:` line with the total both summed and elapsed, computed by

@@ -35,6 +35,11 @@ outcome is a single monster session (or a monster plan executed in one):
   There is no glanceable state, and "done" means the model *said* it was done.
 - **Undo is surgery.** Everything landed as one tangle of commits (or none).
   Rolling back the last piece of work means picking it apart by hand.
+- **You become the loop.** With no structure around it, the only thing holding
+  the work together between rounds is you: running it, checking it, deciding
+  whether it still matches what you asked for, and remembering what you
+  already verified. That works for a few rounds. It does not survive twenty,
+  and none of what you checked is written down anywhere.
 
 Planning workflows (brainstorming skills, plan mode, spec-driven setups) help
 you produce a *good plan* — but they still hand you one big artifact to

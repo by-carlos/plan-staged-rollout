@@ -23,20 +23,20 @@ on this.
 
 ## Steps
 
-- [ ] `commands/plan-stages.md`: propose a programme per D-1; refuse a wait
+- [x] `commands/plan-stages.md`: propose a programme per D-1; refuse a wait
   measured in days as a stage per D-7; number stages in running order with
   parallel stages consecutive; reject suffixed IDs; make the group-by-gate rule
   cover `live`; add a step that creates `PROGRAMME.md` at the repository root
   when a programme is accepted.
-- [ ] `commands/plan-close.md`: remove this plan's line from `PROGRAMME.md` (the last plan removes the file) per D-6 and offer to plan
+- [x] `commands/plan-close.md`: remove this plan's line from `PROGRAMME.md` (the last plan removes the file) per D-6 and offer to plan
   the next plan.
-- [ ] `SKILL.md` › *Decomposing the work* and *Closeout* sections only: the
+- [x] `SKILL.md` › *Decomposing the work* and *Closeout* sections only: the
   same rules.
-- [ ] Add the programme index format as
+- [x] Add the programme index format as
   `skills/staged-rollout/references/programme-format.md`. It lives outside
   `templates/` on purpose: the bootstrap copies `templates/*.md` into every
   plan, and the programme index belongs at the repository root, not in a plan.
-- [ ] Check `scripts/validate_plugin.py`: `TEMPLATE_FILES` lists the files
+- [x] Check `scripts/validate_plugin.py`: `TEMPLATE_FILES` lists the files
   expected in `templates/`; because the new file is not a template, the list
   stays as is. Confirm that, and name any change in the ledger notes if the
   validator turns out to need one.

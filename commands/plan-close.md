@@ -154,6 +154,15 @@ Work through these steps **in order**:
    for an OK — declaring the flag *is* the OK, exactly as `merge: auto` is
    for a stage PR.
 
+   **Programme index.** When `PROGRAMME.md` exists at the repository root
+   (`skills/staged-rollout/references/programme-format.md`), remove **this
+   plan's line** — the one whose pointer is `plan-<slug>` — in its own commit
+   on the plan branch (e.g. `chore(plan): remove this plan from PROGRAMME.md`),
+   so the final PR carries the removal. If that was the last line, remove the
+   file instead. No file means no programme: do nothing. A file with no line
+   for this plan is reported and left unchanged. This runs whatever `plan-dir`
+   says, and unattended it needs no OK: it is bookkeeping, not a choice.
+
 5. **Propose the final PR.** Push the plan branch, then propose the PR from it
    to `main` using the distilled body from step 3. Unlike the per-stage PRs
    (which are squash-merged), this final PR is a **normal (non-squash) merge**,
@@ -186,4 +195,9 @@ Work through these steps **in order**:
    session, or always under `--unattended`) with its URL, which worktrees
    were removed, which `.plan/` decision was applied, the linked issues from
    step 2 (when any), and that there is
-   nothing left to run **except the merge, which is the user's**. Then stop.
+   nothing left to run **except the merge, which is the user's**. When a
+   programme file remains after step 4, **offer to plan the next plan**: name
+   its first line and give the command
+   `/plan-staged-rollout:plan-stages <that outcome>`, to be run from `main`
+   once the final PR is merged. Unattended, print the same line and offer
+   nothing. Then stop.

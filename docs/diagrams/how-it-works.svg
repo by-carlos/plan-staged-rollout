@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 820" width="1150" height="820" role="img" aria-label="How plan-staged-rollout works: four phases, what you say, what the plugin does, and what lands in the repo, with the rework loop.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" width="1200" height="820" role="img" aria-label="How plan-staged-rollout works: four phases, what you say, what the plugin does, and what lands in the repo, with the rework loop.">
 <title>How plan-staged-rollout works</title>
-<desc>Four phases left to right: Brainstorm, Plan, Build, Close. Three lanes show what you say, what the plugin does, and what lands in the repo. A rework loop sends in-scope findings back to Build, large ones to a new plan, and small ones to create-issue then work-issue. A bracket strip across the top maps the phases to the classic software lifecycle.</desc>
+<desc>Four phases left to right: Brainstorm, Plan, Build, Close. Three lanes show what you say, what the plugin does, and what lands in the repo. A rework loop sends in-scope findings back to Build, large ones to a new plan, and small ones to create-issue then work-issue. A bracket strip across the top maps the phases to the classic software lifecycle — planning, analysis and design over the first two, implementation and deployment over Build, acceptance and review over Close, testing from Plan onward — and a bracket down the right marks the rework loop and the issue chain as maintenance.</desc>
 
-<rect x="0" y="0" width="1150" height="820" fill="#F8EFE4"/>
-<rect x="1" y="1" width="1148" height="818" fill="none" stroke="#E2D2BE" stroke-width="2"/>
+<rect x="0" y="0" width="1200" height="820" fill="#F8EFE4"/>
+<rect x="1" y="1" width="1198" height="818" fill="none" stroke="#E2D2BE" stroke-width="2"/>
 
 <defs>
   <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -53,7 +53,7 @@
 <g font-size="15.5" fill="#6F5B49" text-anchor="middle">
   <text x="375" y="36">Planning · Analysis · Design</text>
   <text x="753" y="36">Implementation · Deployment</text>
-  <text x="1005" y="36">Maintenance</text>
+  <text x="1005" y="36">Acceptance · Review</text>
   <text x="753" y="72" font-size="14" font-style="italic">Testing — acceptance checks written here, run in each stage, run again at the final review</text>
 </g>
 <g stroke="#C0AB95" stroke-width="1.6" fill="none">
@@ -199,6 +199,12 @@
 <rect x="897" y="762" width="216" height="42" rx="10" fill="#FFFFFF" stroke="#F0A33A" stroke-width="1.6"/>
 <use href="#g-issue" x="918" y="774"/>
 <text x="1016" y="789" font-size="15" fill="#A2691F" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/work-issue</text>
+
+<!-- maintenance: the lifecycle phase the rework loop and the issue chain are -->
+<g stroke="#C0AB95" stroke-width="1.6" fill="none">
+  <path d="M1134 486h8M1142 486v314M1134 800h8"/>
+</g>
+<text transform="rotate(-90 1166 643)" x="1166" y="643" text-anchor="middle" font-size="15.5" fill="#6F5B49">Maintenance</text>
 
 <!-- ================= legend ================= -->
 <g font-size="13.5" fill="#6F5B49">

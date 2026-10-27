@@ -31,10 +31,9 @@ below has three stages plus a review; the
 
 [![How a plan runs: four phases — brainstorm, plan, build, close — showing what you say, what the plugin does, and what lands in your repo at each one, with the rework loop that turns a finding into a new stage, a new plan, or a ticket.](docs/diagrams/how-it-works.svg)](docs/diagrams/how-it-works.svg)
 
-The bottom row is the part people ask about first: **everything the plugin
-produces lands in your repo as a file you can read** — the plan and its
-ledger, the code, the docs, the tests, the decisions, and a blunt retro at
-the end.
+The bottom row is the part people ask about first: **what the plugin produces
+lands in your repo, not in a chat log** — the plan and its ledger, the code,
+the docs, the tests, the decisions, and a blunt retro at the end.
 
 - **Each stage gets a fresh session**, so a stage costs about the same
   however many came before it.

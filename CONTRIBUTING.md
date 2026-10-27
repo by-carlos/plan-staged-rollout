@@ -53,13 +53,19 @@ python3 -m unittest discover -s skills/staged-rollout/tests
 
 ## Diagrams
 
-`docs/diagrams/` holds the hand-authored diagrams. The `.svg` is the source; the
-`.png` beside it is an export for slides and is never edited by hand.
+This repository draws diagrams two ways: **Mermaid blocks inside the pages**, for
+the detailed mechanics, and **hand-authored SVG in `docs/diagrams/`**, for the
+few pictures that carry the whole story and get reused in slides. For an SVG the
+`.svg` is the source; the `.png` beside it is an export and is never edited by
+hand.
 
 - **A change that alters what a diagram shows updates the diagram in the same
-  pull request.** Renaming a command or a `.plan/` file, adding or removing a
-  phase, or changing what a stage produces all count. A diagram that disagrees
-  with the page around it is worse than no diagram.
+  pull request — Mermaid blocks included.** Renaming a command or a `.plan/`
+  file, adding or removing a phase, or changing what a stage produces all count.
+  A diagram that disagrees with the page around it is worse than no diagram.
+- **Where a Mermaid block and an SVG cover the same ground**, say in one line
+  what the Mermaid adds, so neither is left looking redundant and both get
+  updated.
 - **Re-export the `.png` whenever you touch the `.svg`**, so the two never
   disagree. Export at **2300px wide** with a rasterizer that loads system fonts
   — the committed files were produced with

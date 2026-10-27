@@ -186,7 +186,9 @@ unfilled template placeholder all read as "no linked issue", silently, so a
 plan without the field behaves exactly as before. No command posts to the
 issue or changes its status because of it. Its one effect is at closeout:
 `/plan-close` writes a `Closes <ref>` line for each linked issue into the
-final PR body, so the issue closes when a person merges that PR.
+final PR body, so the issue closes when a person merges that PR (`Refs`
+instead when the plan only partly delivers it; `/plan-close` step 3 has the
+rule).
 
 - `mode: direct` by default (state a one-line plan, implement). Use `brainstorm`
   only where the stage has real open design choices. A full brainstorm on a

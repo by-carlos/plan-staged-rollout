@@ -6,7 +6,7 @@ Issue: <#N, owner/repo#N or an issue URL — or delete this line>
 the PLAN.md stage index — the single authoritative home. Do not restate them
 here; a copy is what drifts. The `Issue:` line above is not a flag — it only
 records which issue this stage came from. `/stage-run` prints it, and
-`/plan-close` writes `Closes <ref>` for it into the final PR body. It is
+`/plan-close` writes `Closes <ref>` (or `Refs`) for it into the final PR body. It is
 optional; a stage without it runs unchanged. -->
 
 > First read `.plan/PLAN.md` (Frozen decisions + Operating protocol) and

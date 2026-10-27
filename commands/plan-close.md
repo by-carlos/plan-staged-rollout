@@ -134,12 +134,14 @@ Work through these steps **in order**:
      existed), write the section as one line saying no decision triage ran;
    - the distinct linked issues from step 2, and the rule for closing them:
      one `Closes <ref>` line per issue, near the top of the body, with an
-     issue URL rewritten as `owner/repo#N`. GitHub honours a closing keyword
-     only in a PR into the default branch, which this final PR always
-     targets, and only that exact keyword form — "Implements #N" or a bare
-     reference leaves the issue open after the merge. An issue the `SF`
-     notes record as not met or only partly delivered gets `Refs <ref>`
-     instead, so the merge does not close it. Open the lines with one
+     issue URL rewritten as `owner/repo#N`. GitHub closes an issue only from
+     a PR into the default branch, which this final PR always targets, and
+     only on a closing keyword such as `Closes` — "Implements #N" or a bare
+     reference leaves the issue open after the merge. An issue gets
+     `Refs <ref>` instead, so the merge does not close it, when the `SF`
+     notes record it as not met or only partly delivered, or when
+     `PROGRAMME.md` still lists a plan other than this one: a programme's
+     issue closes with its last plan. Open the lines with one
      sentence: *merging this PR closes these issues; change a line to
      `Refs` first if one is not fully delivered.* No linked issues means no
      such lines;

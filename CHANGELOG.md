@@ -56,8 +56,9 @@ elsewhere. See 0.4.0 for the split.
 - **Merging a plan closes its issue.** `plan-close` now writes a `Closes`
   line into the final PR body for each issue the stages link to, so merging
   the PR closes it. An issue the review stage found only partly delivered
-  gets `Refs` instead. Before, the body only named the issue, and it stayed
-  open after the merge.
+  gets `Refs` instead, and so does every issue while a programme still lists
+  another plan. Before, the body only named the issue, and it stayed open
+  after the merge.
 
 ## [0.14.2] - 2026-10-23
 

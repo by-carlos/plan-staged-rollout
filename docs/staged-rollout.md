@@ -416,8 +416,9 @@ alone. Then it:
    decisions** section copied from the review stage's list; if that list was
    applied unattended, the section says that merging the PR approves it.
    Each issue the stages link to gets a `Closes` line, so merging the PR
-   closes it; one the review stage found only partly delivered gets `Refs`
-   instead;
+   closes it. One the review stage found only partly delivered gets `Refs`
+   instead, and so does every issue while the programme index still lists
+   another plan;
 2. offers to remove the stage worktrees that are finished (branch merged,
    nothing unpushed), and stops on any that still holds work git cannot
    recover. It also lists the issues the stages link to, if any, without

@@ -84,9 +84,13 @@ same commit; feedback on the brief is applied here, never to the brief.
   Teardown is part of finishing: a clean, fully-pushed worktree is removed
   with its merged branch, and anything else is left alone and reported
   (finish step 5).
-- **Final review stage:** the last stage (`SF`) is a standing plan review. It
-  catalogs loose ends — each becomes a new in-plan stage, a spin-off
-  candidate, or an explicit "accepted, won't fix" — and NEVER implements.
+- **Final review stage:** the last stage (`SF`) is a standing plan review and
+  stays last. It catalogs loose ends — each becomes an issue, a later plan (the
+  programme), or an explicit "accepted, won't fix" — and NEVER implements and
+  never adds a stage, except a **fix**: one that names the requirement, failing
+  Done check or regression it repairs (never a feature), with the user present
+  and saying yes, at most 3 per plan (a fourth is a hard stop in every mode).
+  Unattended, `SF` stops and asks instead of adding a fix.
 
 ## Plan review
 

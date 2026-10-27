@@ -22,7 +22,7 @@ SF stops and asks on a fix.
 
 ## Steps
 
-- [ ] `stage-f-review.md` template: outcomes per D-4; dated follow-ups per D-7;
+- [x] `stage-f-review.md` template: outcomes per D-4; dated follow-ups per D-7;
   docs written only on a clean pass; the fix exception with its limits (names
   what it repairs, user present and yes, `Fix: …` titles, a `#### Fixes` list
   in SF's ledger notes, at most 3 with a fourth a hard stop in every mode, own
@@ -32,9 +32,9 @@ SF stops and asks on a fix.
   instead); a dated follow-up's body states the date, exact check, pass
   condition and action on failure (D-7). Remove the "New stage in this plan"
   outcome.
-- [ ] `SKILL.md` › *The final review stage* section only: the same rules.
-- [ ] PLAN.md template: rewrite the "Final review stage" frozen-decision line.
-- [ ] `commands/plan-run.md` and `remote-driver.md`: an unattended SF stops and
+- [x] `SKILL.md` › *The final review stage* section only: the same rules.
+- [x] PLAN.md template: rewrite the "Final review stage" frozen-decision line.
+- [x] `commands/plan-run.md` and `remote-driver.md`: an unattended SF stops and
   asks on a fix.
 
 <!-- Checkboxes are the resume mechanism: a session that stops mid-stage marks

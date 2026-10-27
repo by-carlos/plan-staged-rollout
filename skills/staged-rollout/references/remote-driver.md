@@ -209,6 +209,12 @@ so the contract survives the scripts:
   never fired. A cloud container has strictly less access than the local
   machine, and a `live` stage changes a running system, which no driver does.
   Report the stage, naming its `gate` as written, and stop in front of it.
+- **An unattended `SF` that finds a fix stops and asks.** A fix stage needs the
+  user present and saying yes, so a fired `SF` records a block instead of adding
+  one. The orchestrator reports that block as a fix awaiting the user, quotes
+  its `.plan/BLOCKED.md` section, and does not re-fire `SF`, add the
+  `Fix:` stage or choose the fix itself; the user runs `/stage-run SF`
+  attended to approve it.
 - **Dependencies must be settled.** Fire a stage only when every stage in its
   `depends` list reads `done` or `skipped` in `.plan/LEDGER.md`. Firing out of
   order is an operator's deliberate choice, never a default.

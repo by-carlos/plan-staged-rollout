@@ -122,7 +122,10 @@ Work through these steps **in order**, after the notice above is confirmed:
    loop to the next stage in the set. A row that settles `blocked` is reported
    — name the stage, quote its `.plan/BLOCKED.md` section, and continue with
    the rest of the runnable set; a blocked stage does not stop stages that
-   don't depend on it. A run that stays dead past the grace period is reported
+   don't depend on it. A blocked `SF` whose section describes a fix is the
+   unattended final review stopping to ask (`remote-driver.md`, *What the
+   orchestrator refuses*): say so, and leave the fix to the user — run
+   `/stage-run SF` attended, never add a `Fix:` stage or re-fire `SF` from here. A run that stays dead past the grace period is reported
    exactly as `remote-driver.md` prescribes — session id, link, what
    `get_run_log` showed, and what was actually left behind — and this command
    stops entirely: it never writes to the repository or guesses at the

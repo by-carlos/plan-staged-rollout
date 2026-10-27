@@ -19,10 +19,12 @@ here; a copy is what drifts. -->
 ## Goal
 
 Close the plan out twice over. First, catalog every loose end the plan
-accumulated and sort each into one of three outcomes. Second, write the
-lasting record — the decisions worth keeping, the README, the pointer line —
-so what the plan settled survives `.plan/` being deleted at closeout. This
-stage writes documentation only; it never writes product code.
+accumulated and sort each into one of the outcomes below. Second, on a clean
+pass only, write the lasting record — the decisions worth keeping, the README,
+the pointer line — so what the plan settled survives `.plan/` being deleted at
+closeout. This stage writes documentation only; it never writes product code,
+and it never adds a stage — the one exception is a capped, user-approved
+**fix** (below).
 
 ## Steps
 
@@ -30,20 +32,50 @@ stage writes documentation only; it never writes product code.
 
 - [ ] Read every ledger row's notes end to end; list every loose end, gotcha,
   shortcut, and known gap surfaced across all stages.
+- [ ] Read `PLAN.md` › Requirements › Out of scope as well: a **dated
+  follow-up** recorded there at bootstrap (a wait measured in days, which is
+  never a stage) is a loose end to list here.
 - [ ] For each loose end, resolve it into exactly one outcome:
-  - **New stage in this plan** — add a **PLAN.md stage index row** (with its
-    `depends` / `mode` / `exec` / `model` / `effort` / `gate` flags — the index is the
-    authoritative home, so `/stage-run`'s weight check and next-runnable logic
-    can see the stage), a ledger row, and a stage file; it runs later as a
-    normal stage in its own fresh session and branch.
-  - **Spin-off candidate** — record it in the ledger and note it for the
-    final PR body as follow-up; it does not block closeout.
+  - **Issue** — work that belongs in its own ticket, including a **dated
+    follow-up** for a wait measured in days. A dated follow-up's body states
+    the **date**, the **exact check** to make, the **pass condition** (with
+    the basis for its threshold) and the **action on failure**; nothing is
+    scheduled. Attended: file it through `create-issue` after the user's yes.
+    Unattended: file nothing; record it under a `closeout will list` heading
+    in this stage's ledger notes, and `/plan-close` copies it into the final
+    PR body.
+  - **Later plan** — work for a later plan of the programme (the programme
+    index, `PROGRAMME.md` at the repository root, names it). Unattended:
+    record it under the same `closeout will list` heading.
   - **Accepted, won't fix** — write a one-line reason in the ledger so the
     gap is a decision, not a surprise.
+  - **Exception — a fix.** Never a feature. A fix names the requirement,
+    failing Done check or regression it repairs, and is made only with the
+    user present and saying yes, each with its own verification. Fix stages
+    are titled `Fix: …`; keep a `#### Fixes` list in this stage's ledger notes
+    — one line per fix — because it is the durable count. **At most 3 per
+    plan: a fourth fix is a hard stop in every mode.**
+    - *How a fix runs.* This stage's own PR lands what it found, so the
+      catalogue of loose ends is kept: the `Fix:` stage's index row placed
+      **before SF** (a new stage has an index row, a ledger row and a stage
+      file under an unused plain ID; run the plugin's
+      `skills/staged-rollout/scripts/renumber_stages.py --slug <slug>`, so the
+      numbers stay in running order and SF stays last), SF's `depends` extended to it, and
+      SF's row set back to `todo`. The fix runs as an ordinary stage; this
+      stage then re-runs **from the top** as a redo.
+    - *Documentation waits.* A pass that adds a fix writes none of the
+      Decision triage and README steps below — they run only on a clean pass,
+      the redo that finds nothing to fix.
+    - *Unattended.* Unattended, this stage stops and asks: it records a block
+      through the plan's *Recording a block* path instead of adding the fix.
 - [ ] Confirm no loose end was dropped: every item from the first step maps
-  to exactly one of the three outcomes above.
+  to exactly one of the outcomes above.
 
 ### Decision triage
+
+Runs only on a clean pass — no fix added by this run of the stage. If the
+loose-end step added a fix, skip this section and the next, record the fix and
+stop at the finish protocol.
 
 - [ ] **Find the target.** Adopt what the repository already has, per the
   spec's *Where it lives*: an existing ADR folder takes the ADRs, an existing
@@ -79,6 +111,8 @@ stage writes documentation only; it never writes product code.
 
 ### README, pointer line and cold reader
 
+Clean pass only, as above.
+
 - [ ] **Update the README** — the repository's, or the module's own doc when
   the plan changed one module — so it describes what the plan built: how to
   use it, how to test it, where its parts live. Only what a reader needs once
@@ -103,10 +137,14 @@ ledger. Re-running the stage resumes from the first unticked box. -->
 
 ## Acceptance
 
-- Every loose end captured from the ledger is either a new stage (a PLAN.md
-  stage index row **plus** a ledger row **plus** a stage file) or explicitly
-  closed (spin-off note or accepted-won't-fix reason) — paste the resulting
-  list into the ledger notes as evidence.
+- Every loose end captured from the ledger has exactly one outcome: an issue
+  (filed, or listed under `closeout will list` when unattended — a dated
+  follow-up carrying its date, exact check, pass condition and action on
+  failure), a later plan, an accepted-won't-fix reason, or a fix recorded in
+  the `#### Fixes` list (never more than 3) — paste the resulting list into
+  the ledger notes as evidence.
+- A pass that added a fix wrote no decisions entry, README change or pointer
+  line. On a clean pass, the rest of this list holds:
 - Every frozen decision has an outcome in the `#### Kept decisions` list in the
   ledger notes, with how the list was approved, and every entry or ADR on it
   exists at its target path.
@@ -117,8 +155,8 @@ ledger. Re-running the stage resumes from the first unticked box. -->
 
 ## Artifacts
 
-<Any new stage index rows, ledger rows, or stage files this review spawned;
-the decisions record it wrote (`DECISIONS.md` or the adopted document, and any
+<Any `Fix: …` stage (index row, ledger row and stage file) this review added,
+none expected; the decisions record it wrote (`DECISIONS.md` or the adopted document, and any
 ADRs); the README or module doc it updated; the agent instructions file that
 gained the pointer line. No product code — this stage writes documentation
 only.>

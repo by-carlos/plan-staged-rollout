@@ -17,3 +17,4 @@ jobs:
       - run: python3 scripts/validate_plugin.py
       - run: python3 -m unittest discover -s tickets/tests
       - run: python3 -m unittest discover -s tickets/scripts/tests
+      - run: python3 -m unittest discover -s skills/staged-rollout/tests

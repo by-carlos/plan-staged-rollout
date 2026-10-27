@@ -23,6 +23,7 @@ import json
 import re
 import shlex
 import sys
+from pathlib import Path
 
 HEREDOC_RE = re.compile(r"<<-?[ \t]*(['\"]?)([A-Za-z_][A-Za-z0-9_]*)\1")
 ASSIGN_RE = re.compile(r"""^[A-Za-z_][A-Za-z0-9_]*=(?:'[^']*'|"(?:[^"\\]|\\.)*"|\S*)\s+""")
@@ -161,8 +162,11 @@ def is_issue_create(seg: str) -> bool:
 
 # -------------------------------------------------------------------- hook
 
+# The adapter's real path, not ${CLAUDE_PLUGIN_ROOT}: that variable is set for
+# the hook but not in the Bash tool the model runs the suggestion from.
+ADAPTER = (Path(__file__).resolve().parent / "github_adapter.py").as_posix()
 REPLACEMENT = ('Use the plan-staged-rollout GitHub adapter instead: python '
-               '"${CLAUDE_PLUGIN_ROOT}/tickets/scripts/github_adapter.py" create|comment|repair ... -- it posts '
+               f'"{ADAPTER}" create|comment|repair ... -- it posts '
                "ASCII-escaped JSON through gh api --input and verifies the body that actually landed.")
 
 

@@ -80,14 +80,16 @@ stage (Operating protocol, finish step 3).
 
 ## Stage index & dependencies
 
-| Stage | File | Depends | mode | exec | model | effort | gate |
-|---|---|---|---|---|---|---|---|
-| S0 Checker core | `stage-0-checker-core.md` | — | direct | inline | opus | high | auto |
-| S1 CLI runner | `stage-1-cli.md` | S0 | direct | inline | sonnet | low | auto |
-| S2 Status page | `stage-2-status-page.md` | S0, S1 | direct | inline | sonnet | med | auto |
-| SF Plan review | `stage-f-review.md` | S2 | direct | inline | sonnet | med | auto |
+| Stage | File | Depends | mode | exec | model | effort | gate | estimate |
+|---|---|---|---|---|---|---|---|---|
+| S0 Checker core | `stage-0-checker-core.md` | — | direct | inline | opus | high | auto | 1.5–3h |
+| S1 CLI runner | `stage-1-cli.md` | S0 | direct | inline | sonnet | low | auto | 0.5–1h |
+| S2 Status page | `stage-2-status-page.md` | S0, S1 | direct | inline | sonnet | med | auto | 1–2h |
+| SF Plan review | `stage-f-review.md` | S2 | direct | inline | sonnet | med | auto | 0.5–1h |
 
 Plan flags: `merge: manual` · `plan-dir: delete`
+
+Plan estimate: summed 3.5–7h · elapsed 3.5–7h
 
 This table is the **single authoritative home** for every stage's `depends` /
 `mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line

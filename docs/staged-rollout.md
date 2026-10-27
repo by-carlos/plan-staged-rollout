@@ -420,11 +420,15 @@ alone. Then it:
 1. turns `PLAN.md` and the ledger into the final PR body, so the *why* and
    the as-built story survive on `main`. The body includes a **Kept
    decisions** section copied from the review stage's list; if that list was
-   applied unattended, the section says that merging the PR approves it;
+   applied unattended, the section says that merging the PR approves it.
+   Each issue the stages link to gets a `Closes` line, so merging the PR
+   closes it. One the review stage found only partly delivered gets `Refs`
+   instead, and so does every issue while the programme index still lists
+   another plan;
 2. offers to remove the stage worktrees that are finished (branch merged,
    nothing unpushed), and stops on any that still holds work git cannot
    recover. It also lists the issues the stages link to, if any, without
-   commenting on or closing them;
+   commenting on them or changing their status;
 3. offers to delete `.plan/` as the last commit on the plan branch,
    recommending what the `plan-dir` flag says (`delete` by default), and
    commits only after your OK. Nothing is lost: the full plan history stays
@@ -433,7 +437,8 @@ alone. Then it:
 4. proposes the PR from `plan-<slug>` to `main`. You review and merge it;
 5. prints **lessons**: three to six blunt one-liners, *For you, next time*
    and *For the plugin*, each backed by what the plan files show — stages
-   added or skipped, blocks, fixes. They are also in the PR body, and the
+   added or skipped, blocks, fixes, stages that ran far over their
+   estimate. They are also in the PR body, and the
    next `plan-stages` in the repository reads them back while it captures
    the new plan's requirements. Each plugin lesson is offered as an issue,
    filed only on your yes.

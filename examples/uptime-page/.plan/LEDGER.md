@@ -47,6 +47,8 @@ result, never wrap the call in try/except for flow control.
 PR #1 squash-merged into `plan-uptime-page` on 2026-07-08; this row was
 flipped to `done` on the plan branch after the merge (finish step 5).
 
+Actuals: 2026-07-08T12:41:09Z → 2026-07-08T15:02:44Z · 142 min · tokens in=212 out=48310 cache_read=6120455 cache_write=301877 · subagents=1
+
 ### S1 CLI runner
 
 Handoff (2026-07-10, stopped mid-stage on `plan-uptime-page-s1`): steps 1–2
@@ -56,6 +58,8 @@ step 3 (`--config` path override + friendly `ConfigError` message) and step 4
 (exit codes 0/1/2) plus their tests. Resume from the first unticked box in
 `stage-1-cli.md`. No surprises so far — S0's no-raise contract (see S0 notes)
 held.
+
+Actuals: 2026-07-10T09:15:30Z → 2026-07-10T09:58:02Z · 43 min · tokens in=96 out=15872 cache_read=1830411 cache_write=118204 · subagents=0
 
 ### S2 Status page
 _(empty)_

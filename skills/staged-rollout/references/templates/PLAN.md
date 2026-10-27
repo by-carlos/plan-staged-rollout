@@ -105,18 +105,23 @@ outcomes are defined in the `staged-rollout` skill's
 
 ## Stage index & dependencies
 
-| Stage | File | Depends | mode | exec | model | effort | gate |
-|---|---|---|---|---|---|---|---|
-| S0 <keystone stage — the piece everything needs> | `stage-0-<slug>.md` | — | direct | inline | <model> | <effort> | auto |
-| S1 <stage name> | `stage-1-<slug>.md` | S0 | direct | inline | <model> | <effort> | auto |
-| ... | ... | ... | ... | ... | ... | ... | ... |
-| SF Plan review | `stage-f-review.md` | <last impl stage> | direct | inline | <model> | <effort> | auto |
+| Stage | File | Depends | mode | exec | model | effort | gate | estimate |
+|---|---|---|---|---|---|---|---|---|
+| S0 <keystone stage — the piece everything needs> | `stage-0-<slug>.md` | — | direct | inline | <model> | <effort> | auto | <lo>–<hi>h |
+| S1 <stage name> | `stage-1-<slug>.md` | S0 | direct | inline | <model> | <effort> | auto | <lo>–<hi>h |
+| ... | ... | ... | ... | ... | ... | ... | ... | ... |
+| SF Plan review | `stage-f-review.md` | <last impl stage> | direct | inline | <model> | <effort> | auto | 0.5–1h |
 
 Plan flags: `merge: manual` · `plan-dir: delete`
 
+Plan estimate: summed <lo>–<hi>h · elapsed <lo>–<hi>h
+
 This table is the **single authoritative home** for every stage's `depends` /
-`mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line
-under it is the home of the plan-level `merge` and `plan-dir` flags. Stage
+`mode` / `exec` / `model` / `effort` / `gate` / `estimate`, and the **plan
+flags** line under it is the home of the plan-level `merge` and `plan-dir`
+flags. The **plan estimate** line is computed from the `estimate` column by
+the `staged-rollout` skill's `scripts/estimates.py plan`, never added up by
+hand, and recomputed whenever a row's estimate or `depends` changes. Stage
 files never restate them (a copy is what drifts), and the tooling reads them
 from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
 the runnable-set logic (below) reads `depends` from it, an unattended runner
@@ -152,6 +157,9 @@ files it may touch are its `## Artifacts` list. Two `live` stages never run at
 once: `/stage-run` preflight refuses to start a `live` stage while another
 `live` stage's row is `todo` with a stage branch that has commits (preflight
 step 0.5's live-sibling signature), and the session-start hook only notes it);
+`estimate` = a range in hours such as `1–2h`, or `—` for none (a rough guess
+at the stage's own session time, leaving out waits and blockers; the method
+is the skill's `references/estimates.md`);
 `merge` = `manual` \| `auto` (does the session merge its own stage PR into the plan
 branch once checks are green, or offer it for your OK?); `plan-dir` =
 `delete` \| `keep` (at closeout, is `.plan/` removed as the last commit on the
@@ -519,7 +527,11 @@ one never does, so most sessions never meet it.
    stage, through the scope referee (*Adding a stage*, above).
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
-      stage's notes block in `LEDGER.md`.
+      stage's notes block in `LEDGER.md`. Then add this session's
+      **`Actuals:` line** to the same block: run the skill's
+      `scripts/effortlog.py usage` and paste its `line` as is. Every session
+      that worked on the stage adds one, including one that stops `doing` or
+      `blocked` (with its handoff note or runbook).
    2. Update the stage's table row: absolute date, verified yes/no, one-line
       result — but the status stays `doing` here. `done` is recorded only
       after the PR merges (step 5 below), so a `done` row is always visible

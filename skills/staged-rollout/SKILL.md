@@ -164,9 +164,12 @@ the review lenses' triggers — never by how many stages it has.
 ## Flag heuristics
 
 Each stage declares `depends` / `mode` / `exec` / `model` / `effort` / `gate`
-in the **PLAN.md stage index** — the single authoritative home for these
-flags, read by `/stage-run`'s weight check and the runnable-set logic both
-commands share. The plan as
+/ `estimate` in the **PLAN.md stage index** — the single authoritative home
+for these flags, read by `/stage-run`'s weight check and the runnable-set
+logic both commands share. `estimate` is a range in hours, judged at
+bootstrap and measured against at finish; the method, including how later
+plans calibrate from earlier actuals, is
+[`references/estimates.md`](references/estimates.md). The plan as
 a whole declares two more, `merge` and `plan-dir`, on the **plan flags** line
 directly under that index — those two are the plan's *declared defaults*, the
 answers an unattended session applies where an interactive one would ask (see
@@ -183,9 +186,12 @@ file and not in the stage index. Commands read it as follows: the first line
 of the stage file that starts with `Issue:`, above the first `##` heading,
 whose value is one of those three forms. No such line, a blank value or an
 unfilled template placeholder all read as "no linked issue", silently, so a
-plan without the field behaves exactly as before. The field is read-only for
-the tooling: no command posts to the issue or changes its status because of
-it.
+plan without the field behaves exactly as before. No command posts to the
+issue or changes its status because of it. Its one effect is at closeout:
+`/plan-close` writes a `Closes <ref>` line for each linked issue into the
+final PR body, so the issue closes when a person merges that PR (`Refs`
+instead when the plan only partly delivers it; `/plan-close` step 3 has the
+rule).
 
 - `mode: direct` by default (state a one-line plan, implement). Use `brainstorm`
   only where the stage has real open design choices. A full brainstorm on a
@@ -750,8 +756,12 @@ change the **next** plan, so they are short, blunt, and fed forward.
 - **Evidence only.** Each line comes from the plan's own record: the
   scaffold's `PLAN.md` against the final one (stages, requirements, frozen
   decisions), the `Added by` lines and their referee verdicts, skipped stages
-  and their reasons, blocks and what they waited on, rows not verified, and
-  `SF`'s fixes. A lesson with no evidence behind it is not written.
+  and their reasons, blocks and what they waited on, rows not verified,
+  `SF`'s fixes, and closeout's usage report — estimates against actuals: a
+  stage that ran far outside its range, or a plan total far off its
+  estimate, is a lesson about sizing ("S3 took 6h against 1–2h — split a
+  stage whose Steps name two components"). A plan with no estimates has no
+  such line. A lesson with no evidence behind it is not written.
 - **Tone rule.** Blunt, whatever register the user's assistant normally uses:
   no praise, no pleasantries, no "went well" lines, no softening. Each line
   names what happened and what to do differently; a line that is not an

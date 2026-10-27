@@ -12,6 +12,17 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Time estimates per stage and for the plan, and a usage report at the
+  end.** The stage index gains an `estimate` column (a range in hours) and a
+  `Plan estimate:` line with the total both summed and elapsed, computed by
+  the new `scripts/estimates.py`. `/stage-run` shows the estimate and what is
+  left before it starts; every session adds an `Actuals:` line, its time and
+  tokens read from its own transcript by the new `effortlog.py usage`, to the
+  stage's ledger notes. `/plan-close` puts estimates against actuals in the
+  final PR. Effort-log rows now carry the estimate, the time and the tokens,
+  and `/plan-stages` scales its estimates from them once there are three.
+  Plans scaffolded before this keep working and report "no estimate".
+
 - **Requirements, a brief and a plan review before stage 1, and kept
   decisions after `.plan/` is gone.** `plan-stages` now captures and plays back
   your requirements before deciding how, sorts decisions into Decided, Needs
@@ -44,9 +55,10 @@ elsewhere. See 0.4.0 for the split.
   re-plan, or — when the plan is becoming a different plan — stops and offers
   to carry on, re-plan, or close this plan and start a new one. Nothing else
   triggers it, and unattended sessions never add a stage. `plan-close` prints
-  three to six blunt, evidence-backed lessons for you and for the plugin and
-  copies them into the final PR; the next `plan-stages` reads them back. A
-  vague idea is scaffolded as a discovery plan (#229).
+  three to six blunt, evidence-backed lessons for you and for the plugin —
+  estimates against actuals included — and copies them into the final PR;
+  the next `plan-stages` reads them back. A vague idea is scaffolded as a
+  discovery plan (#229).
 - **A measured stage size.** The stage-size guidance in the skill rests on 46
   past stage sessions: a stage is too big when a run needs more than 4
   interventions or more than 1 hour of active time (#227).
@@ -59,6 +71,15 @@ elsewhere. See 0.4.0 for the split.
   plan). Unattended, it stops and asks instead. The decision triage and README
   update run only on a clean pass, and `plan-close` lists what an unattended
   review recorded in the final PR (#227).
+
+### Fixed
+
+- **Merging a plan closes its issue.** `plan-close` now writes a `Closes`
+  line into the final PR body for each issue the stages link to, so merging
+  the PR closes it. An issue the review stage found only partly delivered
+  gets `Refs` instead, and so does every issue while a programme still lists
+  another plan. Before, the body only named the issue, and it stayed open
+  after the merge.
 
 ## [0.14.2] - 2026-10-23
 

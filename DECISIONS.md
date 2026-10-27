@@ -78,6 +78,13 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   context never did (no compaction up to 376K tokens). Revisit: when a
   designed sample can separate stage types, or count only unprompted
   interventions. Source: #227
+- **A stage's `Issue:` line is closed only by the final PR's merge: `/plan-close`
+  writes `Closes <ref>` for each linked issue (`Refs` for one `SF` records as
+  not fully delivered, or while `PROGRAMME.md` lists another plan), and no
+  command posts to an issue or changes its status.** — a person merging the PR is the approval, as it is for kept
+  decisions, and a reference without the keyword left #227 open after its
+  plan merged. Revisit: if a plan's final PR ever targets a branch other than
+  the default. Source: #250
 - **Drift is judged by kind, not amount: a fresh-context scope referee checks
   each stage added after the scaffold against the plan's Outcome and Out of
   scope, and only its "different plan" verdict stops the session; nothing but
@@ -94,7 +101,7 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
 
 ## Running stages
 
-Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`
+Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`
 
 - **A runner fires a stage only when its `gate` is `auto` or absent; `human`,
   `local`, `live` and any unknown value are refused and named.** — an
@@ -109,6 +116,19 @@ Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `
   the work is noted for the final review instead.** — the scope referee's
   "different plan" verdict needs a person to choose. Revisit: if the referee
   gains a declared default. Source: #229
+- **Stage actuals come from the session's own transcript, and usage is
+  reported in tokens only — no dollar cost, no share of a usage limit.** —
+  the transcript is the one source in the CLI, the desktop app and cloud
+  sessions alike; a price table goes stale and means nothing on a
+  subscription, and a usage limit is shared with other sessions. Revisit: if
+  Claude Code exposes a per-session cost or limit share everywhere.
+  Source: #228
+- **Estimates are ranges in hours, judged against written anchors and scaled
+  by the median actual-to-estimate ratio of past `stage-run` rows (three or
+  more) in the effort log; the plan total is computed by
+  `estimates.py`, never by hand.** — no size column to fill and drift, and
+  `effort` measures reasoning depth, not work. Revisit: once the log is large
+  enough to replace the anchors by stage kind. Source: #228
 
 ## Decisions format
 

@@ -1,7 +1,7 @@
 # SF — Plan review
 
-<!-- This stage's flags (depends / mode / exec / model / effort / gate) live ONLY in
-the PLAN.md stage index — the single authoritative home. Do not restate them
+<!-- This stage's flags (depends / mode / exec / model / effort / gate /
+estimate) live ONLY in the PLAN.md stage index — the single authoritative home. Do not restate them
 here; a copy is what drifts. -->
 
 > First read `.plan/PLAN.md` (Frozen decisions + Operating protocol) and

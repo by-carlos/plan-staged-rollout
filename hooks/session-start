@@ -149,7 +149,8 @@ parse_ledger() {
 }
 
 # Parse the "## Stage index" table of PLAN.md
-# (| Stage | File | Depends | mode | exec | model | effort | gate |).
+# (| Stage | File | Depends | mode | exec | model | effort | gate | estimate |;
+# the estimate column is not read here).
 # Also sets has_referee when the section carries the "### Adding a stage"
 # subsection (the scope referee); a plan scaffolded before it has none.
 has_referee=0

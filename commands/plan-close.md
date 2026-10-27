@@ -102,8 +102,10 @@ Work through these steps **in order**:
    of every `.plan/stage-*.md` file (the `staged-rollout` skill's *Linking a
    stage to its issue* defines the format) — before step 4 can delete them —
    and print one list, `Linked issues:`, one row per stage that has one
-   (`S<N> — <ref>`). A plan whose stages carry none prints nothing. This is
-   report-only: never comment on an issue or change its status.
+   (`S<N> — <ref>`). A plan whose stages carry none prints nothing. Never
+   comment on an issue or change its status from here: the one effect is the
+   closing keyword step 3 writes into the final PR body, which closes the
+   issue only when a person merges that PR.
 
 3. **Distill the story — dispatch a subagent.** `.plan/PLAN.md` and the full
    `.plan/LEDGER.md` are the largest material this command touches, and
@@ -135,14 +137,37 @@ Work through these steps **in order**:
      or revert any entry on this branch first if one is wrong.* When the `SF`
      notes carry no such list (a plan scaffolded before the decision triage
      existed), write the section as one line saying no decision triage ran;
+   - the distinct linked issues from step 2, and the rule for closing them:
+     one `Closes <ref>` line per issue, near the top of the body, with an
+     issue URL rewritten as `owner/repo#N`. GitHub closes an issue only from
+     a PR into the default branch, which this final PR always targets, and
+     only on a closing keyword such as `Closes` — "Implements #N" or a bare
+     reference leaves the issue open after the merge. An issue gets
+     `Refs <ref>` instead, so the merge does not close it, when the `SF`
+     notes record it as not met or only partly delivered, or when
+     `PROGRAMME.md` still lists a plan other than this one: a programme's
+     issue closes with its last plan. Open the lines with one
+     sentence: *merging this PR closes these issues; change a line to
+     `Refs` first if one is not fully delivered.* No linked issues means no
+     such lines;
    - a **`## Lessons`** section, built by the `staged-rollout` skill's
      *Lessons at close* — its fixed layout, its evidence (the scaffold's
      `PLAN.md` against the final one, the `Added by` lines and their referee
-     verdicts, skipped and blocked stages, unverified rows, `SF`'s fixes),
-     three to six lines in all, and its tone rule: blunt, no praise, every
+     verdicts, skipped and blocked stages, unverified rows, `SF`'s fixes,
+     and the usage report below: the stages whose actual hours fell outside
+     their estimate range, and the plan's actual total against its
+     estimate), three to six lines in all, and its tone rule: blunt, no praise, every
      line an action backed by evidence;
    - the instruction not to just paste the raw files, but to summarize them
-     into a readable PR description.
+     into a readable PR description;
+   - the **usage report**, which you run here before dispatching, because it
+     reads `.plan/` and step 4 may delete it:
+     `python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" report --plan-dir .plan`.
+     It goes in the body as its own **Usage** section, verbatim: estimates
+     against actual time and tokens, per stage and for the plan. A plan with
+     no `estimate` column (scaffolded before estimates existed) makes the
+     script refuse; the section then says in one line that the plan carried
+     no estimates.
 
    The subagent returns **PR body text only** — it must not write files, run
    git, or call `gh`. Every write stays here in the parent: the `.plan/`
@@ -205,7 +230,8 @@ Work through these steps **in order**:
 6. **End announcement.** State explicitly: the plan is **closed**, the final
    PR has been proposed (or opened, if the user acted on it during this
    session, or always under `--unattended`) with its URL, which worktrees
-   were removed, which `.plan/` decision was applied, the linked issues from
+   were removed, which `.plan/` decision was applied, the usage report's
+   three totals (estimate, actual, tokens) from step 3, the linked issues from
    step 2 (when any), and that there is
    nothing left to run **except the merge, which is the user's**.
 

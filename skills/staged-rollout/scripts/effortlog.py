@@ -8,6 +8,9 @@ Two jobs, deliberately kept in a script rather than in skill prose:
   log    Append one NDJSON row describing how the run went.
   tally  Append one NDJSON row for a create-issue run: what the gap review
          produced and whether it changed the ticket. Same log, same switch.
+  usage  Print this session's actuals -- wall-clock span and summed tokens,
+         subagents included -- and the `Actuals:` line a stage's ledger notes
+         carry. Reads only; never gated by `CLAUDE_EFFORT_LOG`.
 
 Why a script. A skill could in principle instruct the model to do the same
 arithmetic inline, but the session that most needs this check is the one that
@@ -40,6 +43,7 @@ Exit codes
   check   0 under budget, 3 over budget (the trip), 2 usage/IO failure
   log     0 written or deliberately skipped, 2 usage/IO failure
   tally   0 written or deliberately skipped, 2 usage/IO failure
+  usage   0 printed, 2 no session id, transcript or usage
 """
 
 from __future__ import annotations
@@ -167,6 +171,121 @@ def measure_subagents() -> int | None:
     return sum(totals) if totals else None
 
 
+USAGE_KEYS = {
+    "in": "input_tokens",
+    "out": "output_tokens",
+    "cache_read": "cache_read_input_tokens",
+    "cache_write": "cache_creation_input_tokens",
+}
+
+
+def sum_usage(transcript: Path) -> dict:
+    """Running token totals, first and last timestamp of one transcript.
+
+    Unlike `read_transcript`, this is a SUM: it answers "what did this run
+    spend", not "how big is the context now". Streaming writes one assistant
+    message as several lines that repeat the same usage, so each message id is
+    counted once -- summing lines would double or triple the figure.
+    """
+    tokens = {name: 0 for name in USAGE_KEYS}
+    seen: set[str] = set()
+    first = last = None
+    with transcript.open(encoding="utf-8", errors="ignore") as handle:
+        for line in handle:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                row = json.loads(line)
+            except ValueError:
+                continue
+            stamp = row.get("timestamp")
+            if isinstance(stamp, str):
+                first = first or stamp
+                last = stamp
+            if row.get("type") != "assistant":
+                continue
+            message = row.get("message") or {}
+            usage = message.get("usage") or {}
+            if not usage:
+                continue
+            key = message.get("id") or row.get("uuid")
+            if key in seen:
+                continue
+            if key:
+                seen.add(key)
+            for name, field in USAGE_KEYS.items():
+                tokens[name] += int(usage.get(field, 0) or 0)
+    return {"start": first, "finish": last, "tokens": tokens}
+
+
+def parse_stamp(stamp: str | None) -> datetime | None:
+    if not stamp:
+        return None
+    try:
+        return datetime.fromisoformat(stamp.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+
+
+def measure_usage() -> dict:
+    """This session's actuals: wall-clock span and tokens, subagents included.
+
+    The span runs from the transcript's first timestamp to its last, so it
+    includes any time spent waiting on the user -- an estimate leaves that out,
+    and a reader comparing the two should know it.
+    """
+    sid = session_id()
+    if not sid:
+        raise RuntimeError("CLAUDE_CODE_SESSION_ID is not set")
+    transcript = find_transcript(sid)
+    if transcript is None:
+        raise RuntimeError(f"no transcript found for session {sid}")
+    main = sum_usage(transcript)
+    subagents = sorted((transcript.parent / sid / "subagents").glob("*.jsonl"))
+    tokens = dict(main["tokens"])
+    for path in subagents:
+        for name, value in sum_usage(path)["tokens"].items():
+            tokens[name] += value
+    start, finish = parse_stamp(main["start"]), parse_stamp(main["finish"])
+    minutes = round((finish - start).total_seconds() / 60) if start and finish else None
+    return {
+        "start": main["start"],
+        "finish": main["finish"],
+        "elapsed_minutes": minutes,
+        "tokens": tokens,
+        "subagents": len(subagents),
+        "session_id": sid,
+    }
+
+
+def actuals_line(usage: dict) -> str:
+    """The one line `/stage-run` pastes into a ledger notes block.
+
+    Fixed shape, raw integers: `estimates.py report` parses it back, so a
+    rounded "3.6k" here would be a number nobody can add up later.
+    """
+    t = usage["tokens"]
+    return (
+        f"Actuals: {usage['start']} → {usage['finish']} · "
+        f"{usage['elapsed_minutes']} min · "
+        f"tokens in={t['in']} out={t['out']} cache_read={t['cache_read']} "
+        f"cache_write={t['cache_write']} · subagents={usage['subagents']}"
+    )
+
+
+def cmd_usage(args: argparse.Namespace) -> int:
+    try:
+        usage = measure_usage()
+    except RuntimeError as exc:
+        return fail(str(exc))
+    usage["line"] = actuals_line(usage)
+    if hasattr(sys.stdout, "reconfigure"):
+        sys.stdout.reconfigure(encoding="utf-8")
+    print(json.dumps(usage, indent=2, ensure_ascii=False))
+    return 0
+
+
 def measure() -> tuple[int, str | None]:
     sid = session_id()
     if not sid:
@@ -217,6 +336,10 @@ def cmd_log(args: argparse.Namespace) -> int:
     except RuntimeError:
         # A record without a measurement still beats no record at all.
         total, model = None, None
+    try:
+        usage = measure_usage()
+    except (RuntimeError, OSError):
+        usage = {}
 
     row = {
         "ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
@@ -227,6 +350,9 @@ def cmd_log(args: argparse.Namespace) -> int:
         "actual_model": args.model or model,
         "actual_effort": os.environ.get("CLAUDE_EFFORT"),
         "size": args.size,
+        "estimate": args.estimate,
+        "elapsed_minutes": usage.get("elapsed_minutes"),
+        "tokens": usage.get("tokens"),
         "context_tokens": total,
         "subagent_tokens": measure_subagents(),
         "tripped": bool(args.tripped),
@@ -324,6 +450,7 @@ def build_parser() -> argparse.ArgumentParser:
     log.add_argument("--estimated-tier", dest="estimated_tier", help="the Effort the run was launched on")
     log.add_argument("--model", help="override; by default read from the transcript")
     log.add_argument("--size", help="declared scope, when there is one")
+    log.add_argument("--estimate", help="the stage's estimate from the index, e.g. 1-2h")
     log.add_argument(
         "--outcome",
         help="merged | pr-open | abandoned | stage-done | stage-blocked | plan-scaffolded",
@@ -331,6 +458,9 @@ def build_parser() -> argparse.ArgumentParser:
     log.add_argument("--tripped", action="store_true", help="the breaker fired during this run")
     log.add_argument("--note", help="one free-text line for a human reading this later")
     log.set_defaults(func=cmd_log)
+
+    usage = subparsers.add_parser("usage", help="this session's elapsed time and token totals")
+    usage.set_defaults(func=cmd_usage)
 
     tally = subparsers.add_parser("tally", help="append one create-issue gap-review row")
     tally.add_argument("--work", required=True, help="the run's work folder")

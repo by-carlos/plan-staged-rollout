@@ -407,8 +407,9 @@ structural fact and four rules about timing.
    guess — state the exact model ID/name and ask the user which tier applies.
    **Unattended?** If this session was launched with nobody to answer it (an
    unattended runner, or `/stage-run`'s `--unattended` argument), check the
-   stage's `gate` first: a `gate: human` or `gate: local` stage is never
-   started unattended — report that and stop here. For a `gate: auto` stage, every offer or
+   stage's `gate` first: a stage whose `gate` is anything but `auto` — `human`,
+   `local`, `live`, or a value not in that list — is never
+   started unattended; report that and stop here. For a `gate: auto` stage, every offer or
    question in this step and the ones below either has a **declared default**
    on the plan flags line or is a **hard stop** — there is no third option
    and nothing waits for an answer (see the `staged-rollout` skill,
@@ -577,9 +578,10 @@ structural fact and four rules about timing.
       each one, give
       the exact prompt/command to run it, its recommended `model`/`effort`
       and its `gate` from the stage index — a `gate: human` stage needs a
-      person at the keyboard and a `gate: local` stage needs a machine that
-      has what it needs, so an unattended runner reading this stops in front
-      of either. If the set holds more than one stage, say so
+      person at the keyboard, a `gate: local` stage needs a machine that
+      has what it needs, and a `gate: live` stage changes a running system (no
+      two at once), so an unattended runner reading this stops in front
+      of each. If the set holds more than one stage, say so
       plainly: they are independent and can be launched **concurrently, one
       per fresh session**. If it is empty, say which it is — every stage
       `done`/`skipped` (ready for closeout) or stalled on `blocked` rows and

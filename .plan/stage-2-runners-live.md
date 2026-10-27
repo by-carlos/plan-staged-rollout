@@ -23,15 +23,15 @@ builds on the shared driver text.
 
 ## Steps
 
-- [ ] `commands/stage-run.md`: add the start-time refusal. In preflight, reuse
+- [x] `commands/stage-run.md`: add the start-time refusal. In preflight, reuse
   preflight 0.5's live-sibling signature (another stage's `todo` row with a
   stage branch that has commits, or a worktree for another `todo`/`doing`
   stage): if that other stage is `live` and this one is `live`, refuse to start
   and name the sibling. Also refuse an unattended `live` stage.
-- [ ] `hooks/session-start`: parse `gate`; when two or more `live` stages are
+- [x] `hooks/session-start`: parse `gate`; when two or more `live` stages are
   runnable, list them and note that only one may run at a time (the refusal
   itself is `/stage-run`'s); keep parsing legacy suffixed IDs.
-- [ ] Add `live` to every place that names the refused values, so no runner is
+- [x] Add `live` to every place that names the refused values, so no runner is
   left denying only `human` and `local`:
   - `commands/plan-run.md`: the lead note on skipped gates; step 3 (see the next
     item); step 5 (the gate branches: fire only on `auto` or absent, refuse and
@@ -45,14 +45,14 @@ builds on the shared driver text.
   - `skills/staged-rollout/references/templates/RUNNER.md`: section 4
     ("Refuse a `gate: human` or `gate: local` stage"), so it refuses `live`
     and any unknown value too.
-- [ ] `commands/plan-run.md` step 3: a plan whose `.plan/RUNNER.md` predates
+- [x] `commands/plan-run.md` step 3: a plan whose `.plan/RUNNER.md` predates
   this change is refreshed by the existing refresh rule (RUNNER.md's header:
   regenerate it from the plugin template, never edit the two out of step),
   not left stale; the step today only back-fills a missing file.
-- [ ] Add a fixture plan under
+- [x] Add a fixture plan under
   `skills/staged-rollout/tests/fixtures/live-plan/.plan/` with build and live
   stages, including one row with an unknown gate value.
-- [ ] Run the hook against the fixture and paste what it prints. Copy the
+- [x] Run the hook against the fixture and paste what it prints. Copy the
   fixture to a scratch directory, `git init` there and run the hook from it;
   the hook resolves the plan root with `git rev-parse --show-toplevel`, so
   running it inside this repository would read this repository's `.plan/`.

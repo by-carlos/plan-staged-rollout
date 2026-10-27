@@ -46,6 +46,24 @@ normalize_status() {
     return "$rc"
 }
 
+# Set REPLY to the canonical lowercase form of a stage's gate. An empty cell or
+# a dash reads as `auto` (an absent gate column reads as `auto`). A value
+# outside auto/human/local/live comes back as written and the function fails,
+# so the caller can refuse it by name.
+normalize_gate() {
+    local rc=0
+    shopt -s nocasematch
+    case "$1" in
+        ''|'—'|'-'|'–'|auto) REPLY=auto ;;
+        human) REPLY=human ;;
+        local) REPLY=local ;;
+        live) REPLY=live ;;
+        *) REPLY="$1"; rc=1 ;;
+    esac
+    shopt -u nocasematch
+    return "$rc"
+}
+
 # Escape string for JSON embedding using bash parameter substitution.
 escape_for_json() {
     local s="$1"
@@ -67,6 +85,7 @@ index_ids=()
 index_depends=()
 index_models=()
 index_efforts=()
+index_gates=()
 
 # Split a markdown table row into the global `cells` array.
 # Fails on non-table lines; separator/header rows are rejected later by
@@ -147,6 +166,7 @@ parse_index() {
         trim "${cells[2]}"; index_depends+=("$REPLY")
         trim "${cells[5]:-}"; index_models+=("$REPLY")
         trim "${cells[6]:-}"; index_efforts+=("$REPLY")
+        trim "${cells[7]:-}"; index_gates+=("$REPLY")
     done < "$1"
 }
 
@@ -204,8 +224,12 @@ deps_satisfied() {
 
 # Set REPLY to one runnable stage as a single markdown bullet body: its id and
 # name, the exact plan-run command, and the launch hints from the stage index.
+# A stage whose gate is not `auto` is never offered a driver command: it gets
+# /stage-run and a note on why (`human`, `local`, `live`), or, for a value this
+# hook does not know, a refusal that names the value as written.
 describe_stage() {
     local i="$1" id name num model="" effort="" weight="" pos
+    local cmd="plan-run" gate="auto" gate_note=""
     id="${ledger_ids[$i]}"
     name="${ledger_names[$i]}"
     # The number is the id less its S; a letter suffix is already lowercase
@@ -216,11 +240,23 @@ describe_stage() {
         pos="$REPLY"
         model="${index_models[$pos]}"
         effort="${index_efforts[$pos]}"
+        if normalize_gate "${index_gates[$pos]:-}"; then
+            gate="$REPLY"
+            case "$gate" in
+                human) gate_note=" — \`gate: human\`: a person must be present, so no driver fires it" ;;
+                local) gate_note=" — \`gate: local\`: it needs a resource only the local machine has, so no driver fires it" ;;
+                live) gate_note=" — \`gate: live\`: it changes a running system, so no driver fires it" ;;
+            esac
+        else
+            gate="$REPLY"
+            gate_note=" — REFUSED: \`gate: $gate\` is not a gate value (auto, human, local or live), so no driver or unattended run starts it; the stage index needs fixing first"
+        fi
+        [ "$gate" = "auto" ] || cmd="stage-run"
     fi
     case "$model" in ''|'—'|'-') ;; *) weight="model \`$model\`" ;; esac
     case "$effort" in ''|'—'|'-') ;; *) weight="${weight:+$weight, }effort \`$effort\`" ;; esac
-    printf -v REPLY '**%s%s** — `/plan-staged-rollout:plan-run %s`%s' \
-        "$id" "${name:+ — $name}" "$num" "${weight:+ ($weight)}"
+    printf -v REPLY '**%s%s** — `/plan-staged-rollout:%s %s`%s%s' \
+        "$id" "${name:+ — $name}" "$cmd" "$num" "${weight:+ ($weight)}" "$gate_note"
 }
 
 main() {
@@ -294,6 +330,24 @@ Surface all of them to the user and wait for their go-ahead — do NOT auto-run 
             [ "$dep_unparsed" -eq 0 ] || return 0
             context="**Active staged rollout in this repo** (\`.plan/\` present), but no stage is currently runnable — the remaining stages are \`blocked\` or waiting on unmet dependencies. Surface this to the user and point them at \`.plan/LEDGER.md\` — and at \`.plan/BLOCKED.md\` if it exists, which is where an unattended driver, or a stage session that blocked after its stage branch existed, records a block that cannot go in the ledger — for the details. Do not run any stage."
         fi
+    fi
+
+    # Never two `live` stages at once. The refusal itself is /stage-run's
+    # (start-time, from preflight's live-sibling signature); this only notes it
+    # when the runnable set holds two or more.
+    local live_list="" live_n=0 k
+    for k in "${runnable[@]}"; do
+        index_pos_of "${ledger_ids[$k]}" || continue
+        pos="$REPLY"
+        normalize_gate "${index_gates[$pos]:-}" || continue
+        [ "$REPLY" = "live" ] || continue
+        live_n=$((live_n + 1))
+        live_list="${live_list:+$live_list, }${ledger_ids[$k]}"
+    done
+    if [ "$live_n" -ge 2 ] && [ -n "${context:-}" ]; then
+        context="$context
+
+**Only one \`live\` stage may run at a time.** $live_list are all \`gate: live\` and runnable: start one, and finish it (its PR merged) before the next — \`/stage-run\` refuses to start a second \`live\` stage while another one's branch or worktree is open. This note is all the hook does; the refusal is \`/stage-run\`'s."
     fi
 
     # A stage that blocked mid-stage left its `blocked` row on its own unmerged

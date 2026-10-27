@@ -204,9 +204,11 @@ them; nothing here depends on the exact interval, only on there being one.
 The refusals the retired drivers enforced carry over unchanged, and live here
 so the contract survives the scripts:
 
-- **`gate: human` and `gate: local` stages are never fired.** A cloud container
-  has strictly less access than the local machine. Report the stage and stop in
-  front of it.
+- **Fire a stage only when its `gate` is `auto` or absent.** `gate: human`,
+  `gate: local`, `gate: live` and any other value — an unknown one included — are
+  never fired. A cloud container has strictly less access than the local
+  machine, and a `live` stage changes a running system, which no driver does.
+  Report the stage, naming its `gate` as written, and stop in front of it.
 - **Dependencies must be settled.** Fire a stage only when every stage in its
   `depends` list reads `done` or `skipped` in `.plan/LEDGER.md`. Firing out of
   order is an operator's deliberate choice, never a default.

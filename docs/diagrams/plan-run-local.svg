@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 530" width="1150" height="530" role="img" aria-label="How plan-run-local runs a plan: this session starts a background driver, which runs each runnable stage as a fresh local session at its own model and effort, reads the ledger after each, and wakes the session only when a person is needed.">
+<title>How plan-run-local runs a plan</title>
+<desc>You run /plan-run-local in a session, which becomes the orchestrator. It starts a driver in the background. The driver picks the next runnable stage whose gate is auto, absent or local, starts it as a fresh local claude -p session at the stage's own model and effort, and the stage works, opens its PR, merges it under merge: auto and pushes its ledger row. The driver reads the ledger as pushed: done loops to the next stage; anything else ends the driver with one STATUS line. The orchestrator wakes, tells you at the desk or on your phone, offers a merge the stage could not ask for, and starts the driver again. The driver never writes the ledger or BLOCKED.md, never fires human or live stages, and never touches the plan-to-main pull request.</desc>
+
+<rect x="0" y="0" width="1150" height="530" fill="#F8EFE4"/>
+<rect x="1" y="1" width="1148" height="528" fill="none" stroke="#E2D2BE" stroke-width="2"/>
+
+<defs>
+  <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="#8A7664"/>
+  </marker>
+</defs>
+
+<g font-family="ui-sans-serif, system-ui, 'Segoe UI', Helvetica, Arial, sans-serif">
+
+<!-- column captions -->
+<g fill="#8A7664" font-size="12" letter-spacing="1.2">
+  <text x="40" y="46">YOU</text>
+  <text x="230" y="46">THIS SESSION</text>
+  <text x="520" y="46">THE DRIVER, IN THE BACKGROUND</text>
+  <text x="860" y="46">A FRESH SESSION PER STAGE</text>
+</g>
+<line x1="40" y1="56" x2="1110" y2="56" stroke="#CBB8A4" stroke-width="1.4"/>
+
+<!-- you -->
+<rect x="40" y="88" width="160" height="72" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="40" y="88" width="6" height="72" rx="3" fill="#C9563C"/>
+<text x="60" y="116" font-size="16" fill="#3B2A1E">You say</text>
+<text x="60" y="141" font-size="13" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-run-local</text>
+
+<!-- orchestrator -->
+<rect x="230" y="80" width="240" height="150" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="230" y="80" width="6" height="150" rx="3" fill="#F0A33A"/>
+<text x="252" y="108" font-size="16" fill="#3B2A1E">The orchestrator</text>
+<g font-size="12.5" fill="#8A7664" font-style="italic">
+  <text x="252" y="132">this session · Sonnet, low effort</text>
+  <text x="252" y="158">waits, and wakes only when</text>
+  <text x="252" y="176">the driver exits</text>
+  <text x="252" y="202">answers “how is it going?”</text>
+  <text x="252" y="220">from the status file</text>
+</g>
+
+<!-- acts on the status -->
+<rect x="230" y="362" width="240" height="114" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="230" y="362" width="6" height="114" rx="3" fill="#F0A33A"/>
+<text x="252" y="390" font-size="16" fill="#3B2A1E">Acts on the status</text>
+<g font-size="12.5" fill="#8A7664" font-style="italic">
+  <text x="252" y="414">tells you, at the desk or on</text>
+  <text x="252" y="432">your phone; offers a merge the</text>
+  <text x="252" y="450">stage could not ask for, then</text>
+  <text x="252" y="468">starts the driver again</text>
+</g>
+
+<!-- driver: pick -->
+<rect x="520" y="80" width="290" height="64" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="520" y="80" width="6" height="64" rx="3" fill="#F0A33A"/>
+<text x="542" y="106" font-size="15" fill="#3B2A1E">Pick the next runnable stage</text>
+<text x="542" y="128" font-size="12.5" fill="#8A7664" font-style="italic">gate auto, absent or local · depends done</text>
+
+<!-- driver: launch -->
+<rect x="520" y="170" width="290" height="80" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="520" y="170" width="6" height="80" rx="3" fill="#F0A33A"/>
+<text x="542" y="196" font-size="15" fill="#3B2A1E">Start it as a fresh session</text>
+<text x="542" y="218" font-size="12.5" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">claude -p stage-run &lt;N&gt;</text>
+<text x="542" y="238" font-size="12.5" fill="#8A7664" font-style="italic">at the stage’s own model and effort</text>
+
+<!-- driver: read -->
+<rect x="520" y="276" width="290" height="64" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="520" y="276" width="6" height="64" rx="3" fill="#F0A33A"/>
+<text x="542" y="302" font-size="15" fill="#3B2A1E">Read the ledger as pushed</text>
+<text x="542" y="324" font-size="12.5" fill="#8A7664" font-style="italic">done → next stage · anything else → exit</text>
+
+<!-- driver: status -->
+<rect x="520" y="378" width="290" height="64" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="520" y="378" width="6" height="64" rx="3" fill="#F0A33A"/>
+<text x="542" y="404" font-size="13" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">STATUS: &lt;status&gt; · &lt;why&gt;</text>
+<text x="542" y="426" font-size="12.5" fill="#8A7664" font-style="italic">only when a person is needed</text>
+
+<!-- stage session -->
+<rect x="860" y="162" width="250" height="96" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="860" y="162" width="6" height="96" rx="3" fill="#F0A33A"/>
+<text x="882" y="190" font-size="15" fill="#3B2A1E">Works the stage</text>
+<g font-size="12.5" fill="#8A7664" font-style="italic">
+  <text x="882" y="214">opens its PR, merges it under</text>
+  <text x="882" y="232">merge: auto, pushes its row</text>
+</g>
+
+<!-- lands -->
+<rect x="860" y="290" width="250" height="72" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="860" y="290" width="6" height="72" rx="3" fill="#4FB98C"/>
+<text x="882" y="316" font-size="15" fill="#3B2A1E">On the plan branch</text>
+<text x="882" y="336" font-size="12.5" fill="#8A7664" font-style="italic">a merged PR and a done row,</text>
+<text x="882" y="353" font-size="12.5" fill="#8A7664" font-style="italic">or a runbook</text>
+
+<!-- arrows -->
+<g stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)">
+  <path d="M200 124h28"/>
+  <path d="M470 112h48"/>
+  <path d="M665 144v24"/>
+  <path d="M810 210h48"/>
+  <path d="M985 258v30"/>
+  <path d="M860 326h-48"/>
+  <path d="M665 340v36"/>
+  <path d="M520 410h-48"/>
+  <path d="M230 420h-115v-258"/>
+  <path d="M520 308h-22v-196h20" stroke-dasharray="5 4"/>
+</g>
+<g font-size="12" fill="#8A7664" font-style="italic">
+  <text x="476" y="104">starts it</text>
+  <text x="122" y="300">tells you</text>
+</g>
+
+<!-- never -->
+<text x="575" y="508" font-size="13" fill="#8A7664" font-style="italic" text-anchor="middle">The driver never writes LEDGER.md or BLOCKED.md, never fires a human or live stage, and never touches the PR into main.</text>
+
+</g>
+</svg>

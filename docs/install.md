@@ -89,6 +89,7 @@ Some parts need more than a session:
 |---|---|---|
 | [Session-start nudge](staged-rollout.md#session-start-nudge), the `gh-body-guard` ticket check and the opt-in [`tracker-write-guard`](tickets.md#trackers-and-requirements) | `bash` (on Windows, Git Bash). The hooks run through a cmd/bash wrapper, so they work on Linux, macOS and Windows. The write guard also needs Python 3.11 or later on `PATH`. | No nudge, and `gh` commands and ticket creates go unchecked. Everything else works: the commands are run by the model, not by shell scripts. |
 | [Running a plan in the cloud](ON-THE-RUN.md) | The plan flag `merge: auto`; cloud access on your Claude account (very likely required); and GitHub connected to claude.ai/code for the repo. The orchestrator (the local session running `plan-run-cloud`) fires stages through Claude Code's built-in `RemoteTrigger` tool, so there is nothing to install. | No cloud runs. Run stages locally. |
+| [Running every stage on this machine](staged-rollout.md#running-every-stage-on-this-machine) | Claude Code 2.1.268 or later and Python 3 on `PATH`, and the `claude` command logged in for sessions it starts (`claude auth status` in a terminal says so; `claude auth login` fixes it, or `CLAUDE_STAGE_LAUNCHER` names a wrapper). The plan flag `merge: auto` for a hands-off run. | Run stages one by one with `stage-run <N>`. |
 | [Ticket skills](tickets.md) | Python 3.11 or later. `gh` for GitHub; the Atlassian MCP server for Jira. | That tracker is unavailable. |
 
 **Typing `/plan-staged-rollout:<command>` always works.** Plain language

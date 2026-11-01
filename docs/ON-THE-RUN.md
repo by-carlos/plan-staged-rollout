@@ -9,6 +9,10 @@ another, so a whole build can run while you watch from your phone. It needs
 the plan flag `merge: auto`. The computer running the orchestrator has to
 stay on, and the final merge into `main` is always yours.
 
+To run the stages as fresh sessions on your own machine instead, with no
+cloud sessions and with `gate: local` stages included, use `plan-run-local`:
+[Running every stage on this machine](staged-rollout.md#running-every-stage-on-this-machine).
+
 ```mermaid
 sequenceDiagram
     actor You

@@ -103,10 +103,40 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
 
 Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run-local.md`, `skills/staged-rollout/scripts/plan_run_local.py`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`
 
-- **A runner fires a stage only when its `gate` is `auto` or absent; `human`,
-  `local`, `live` and any unknown value are refused and named.** — an
-  allow-list fails safe when a new gate value appears. Revisit: never.
-  Source: #227
+- **A runner fires a stage only when its `gate` is `auto` or absent, and the
+  local runner (`/plan-run-local`) also `local`; `human`, `live` and any
+  unknown value are refused and named by every runner.** — an allow-list
+  fails safe when a new gate value appears, and `local` means "never by a
+  driver that could be running anywhere but the local machine", which the
+  local runner cannot be. Revisit: never. Source: #227, #266
+- **The local runner is a standard-library Python driver started in the
+  background by an interactive orchestrator session; the driver holds the
+  loop, and the session reads only its one `STATUS:` line.** — a headless
+  orchestrator lost its background command when its `-p` run ended (CLI
+  2.1.268), only a session can reach the user and pass an ask-rule merge,
+  and a script keeps the session's context flat. The cloud runner stays
+  model-driven (`remote-driver.md`). Revisit: if Claude Code gives headless
+  runs long-lived background commands. Source: #266
+- **The local runner checks each stage session's opening line for the
+  permission mode, model and effort it asked for, and stops a mismatch before
+  any work; it never works around a managed setting.** — auto mode turned off
+  by an organisation starts `--permission-mode auto` sessions in Manual
+  without an error, and a headless Manual session denies everything and keeps
+  spending. Revisit: if the CLI refuses an unavailable mode instead.
+  Source: #266
+- **The local runner's settings are environment variables
+  (`CLAUDE_STAGE_LAUNCHER`, `CLAUDE_STAGE_PERMISSION_MODE`,
+  `CLAUDE_STAGE_IDLE_MINUTES`, `CLAUDE_STAGE_MAX_BUDGET_USD`); the launcher is
+  one executable with no arguments, and the plugin never reads a secret.** —
+  no shell-quoting rules that differ between PowerShell and POSIX, and a login
+  wrapper stays the user's. No dollar cap by default, in line with the
+  tokens-only usage rule. Revisit: if the plugin gains a settings file.
+  Source: #266
+- **The local runner keeps its status file and logs in the clone's git
+  directory (`plan-run-local/<slug>/`), never in `.plan/`, and stops at plan
+  completion instead of running closeout.** — nothing to commit or ignore,
+  and closeout opens the PR into `main`, a moment the user should be present
+  for. Revisit: if users ask for a hands-off closeout. Source: #266
 - **Never two `live` stages at once: `/stage-run` refuses at start when
   another `live` stage has a branch or worktree open; the session-start hook
   only notes it.** — `live` changes a running system, and the refusal reuses

@@ -212,12 +212,14 @@ what can run side by side. See
 
 ### Can stages run without me at the keyboard?
 
-Yes: `plan-run-cloud` fires every remaining stage as a cloud session, one after
-another, from one local session that has to stay open. It needs
-`merge: auto` on the plan flags line; under the default `merge: manual` each
-cloud stage stops with its PR open. Stages marked `gate: human`, `gate: local` or
-`gate: live` are never fired. See [Running a plan in the
-cloud](ON-THE-RUN.md).
+Yes, two ways, each from one session that has to stay open.
+`plan-run-local` runs every remaining stage as a fresh session on your own
+machine, `gate: local` stages included; see [Running every stage on this
+machine](staged-rollout.md#running-every-stage-on-this-machine).
+`plan-run-cloud` fires them as cloud sessions instead and skips `gate: local`;
+see [Running a plan in the cloud](ON-THE-RUN.md). Both want `merge: auto` on
+the plan flags line; under the default `merge: manual` each stage stops with
+its PR open. Neither fires a `gate: human` or `gate: live` stage.
 
 ### Can stage PRs merge themselves?
 

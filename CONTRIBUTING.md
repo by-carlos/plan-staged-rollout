@@ -87,7 +87,7 @@ hand.
 
 ## Status and layout
 
-**Shipped.** The skill, the four commands, the two ticket skills and the
+**Shipped.** The skill, the five commands, the two ticket skills and the
 templates are implemented; the user documentation is the README plus the
 pages in `docs/`. The staged-rollout pieces were built with the method
 itself — decomposed into a `.plan/` and executed stage by stage in this repo

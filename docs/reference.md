@@ -7,7 +7,7 @@ Look things up here. For how the pieces fit together, read
 
 **On this page:** [Plan files](#plan-files) · [Statuses](#statuses) ·
 [Stage flags](#stage-flags) · [Plan flags](#plan-flags) ·
-[Defaults](#defaults) · [Naming](#naming) ·
+[Defaults](#defaults) · [The local runner](#the-local-runner) · [Naming](#naming) ·
 [Brief, review and decisions formats](#brief-review-and-decisions-formats) ·
 [The ledger, kept slim](#the-ledger-kept-slim) ·
 [Why model and effort are hints](#why-model-and-effort-are-hints-not-automation)
@@ -56,8 +56,8 @@ don't skimp on the hard parts:
 | `model` / `effort` | launch hints | The recommended session weight; checked at the start of the stage, never faked |
 | `estimate` | a range in hours, e.g. `1–2h`, or `—` | A rough guess at the stage's own session time, leaving out waits and blockers. `/stage-run` shows it before it starts; the `Plan estimate:` line under the index totals it, summed and elapsed. Method: [`estimates.md`](../skills/staged-rollout/references/estimates.md). |
 | `gate: auto` | | The stage may be launched with nobody watching |
-| `gate: human` | | Never started unattended: a person's judgment or presence is part of the stage. `stage-run --unattended` refuses it, and `plan-run` skips it and carries on with the other stages. |
-| `gate: local` | | Never run unattended or in a cloud session: the stage needs a resource only the local machine has. `stage-run --unattended`, any cloud session, and `plan-run` (which skips it) all refuse it. Run it yourself in a local session. |
+| `gate: human` | | Never started unattended: a person's judgment or presence is part of the stage. `stage-run --unattended` refuses it, and both runners skip it and carry on with the other stages. |
+| `gate: local` | | Never run in a cloud session or by a runner that could be anywhere but the local machine: the stage needs a resource only that machine has. `plan-run-local` runs it, since its stage sessions run on your machine; `plan-run-cloud` skips it, and `stage-run --unattended` without `--runner local` refuses it. You can always run it yourself in a local session. |
 | `gate: live` | | Never fired by any driver: the stage changes a running system (a deploy, a migration, a configuration change), where a person should decide when. Only one `live` stage runs at a time; `stage-run` refuses a second while another is open. Any other value is refused and named, not guessed at. |
 
 ## Plan flags
@@ -92,6 +92,39 @@ Raise a stage above the defaults only where it needs it:
 - `gate: local` for a stage that needs a resource only the local machine has;
 - `subagent` for a stage with heavy iteration churn;
 - `merge: auto` only for a plan you intend to run unattended.
+
+## The local runner
+
+`plan-run-local` starts a driver,
+[`plan_run_local.py`](../skills/staged-rollout/scripts/plan_run_local.py),
+in the background of the session you run it from. The driver runs one stage
+at a time as `claude -p "/plan-staged-rollout:stage-run <N> --unattended
+--runner local"`, at the `model` and `effort` the stage index books
+(`med` becomes `medium`), and exits with one `STATUS:` line when a person is
+needed. It needs Claude Code 2.1.268 or later and Python 3.
+
+| Setting (environment) | Default | What it does |
+|---|---|---|
+| `CLAUDE_STAGE_LAUNCHER` | `claude` | One executable, no arguments, run in place of `claude` with the same arguments: a wrapper that supplies a login for the stage sessions. The plugin never reads a secret. |
+| `CLAUDE_STAGE_PERMISSION_MODE` | `auto` | The stage sessions' permission mode: `auto`, `manual`, `acceptEdits` or `dontAsk`. Nobody answers a prompt, so anything that would prompt is denied. |
+| `CLAUDE_STAGE_IDLE_MINUTES` | `15` | Minutes without output before a stage session is stopped and reported dead. |
+| `CLAUDE_STAGE_MAX_BUDGET_USD` | unset | Passed to each stage session as `--max-budget-usd`. Unset means no cap. |
+
+The status file and one log per stage live in the clone's git directory,
+under `plan-run-local/<plan slug>/`, so nothing is committed.
+`plan_run_local.py status` prints the run so far, and `next` names the stage
+`run` would start without starting it.
+
+| `STATUS:` | Meaning |
+|---|---|
+| `plan-complete` | Every stage is `done` or `skipped`; close the plan. |
+| `gated` | What is left is behind `human`, `live` or unknown gates. |
+| `waiting` | Nothing is runnable; the rest waits on `doing` or `blocked` rows. |
+| `stage-blocked` | A stage recorded a block and a runbook. When the block is a merge the stage could not make, the orchestrator offers it, as for `stage-stopped`. |
+| `stage-stopped` | A stage ended short of `done` with no block, its row `doing` or its stage branch pushed (a stage's `doing` row rides its branch until the merge), most often a `merge: auto` merge that was refused. The orchestrator offers that merge in its own session, where your permission rules ask you, and resumes. |
+| `stage-dead` | A stage ended with its row unmoved and nothing pushed, or went quiet past the idle limit. |
+| `launch-mismatch` | A stage session started in another permission mode, model or effort than asked, such as Manual because auto mode is turned off or `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is set, and was stopped before any work. |
+| `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running` | Nothing more was run; the message names the fix. |
 
 ## Naming
 

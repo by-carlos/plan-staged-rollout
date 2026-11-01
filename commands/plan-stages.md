@@ -486,7 +486,12 @@ ask with the brief (step 8) — plus the commit OK (step 9).
     whichever this session has, under the same conditions and with the same
     fields. Read that bullet's "what the finished stage left behind" as "what
     the bootstrap left behind". The printed command stays the handoff on every
-    surface that shows no card. If step 6 found a modal-model majority, repeat
+    surface that shows no card. Then offer the whole plan in one line: to run
+    every remaining stage without starting each one,
+    **`/plan-staged-rollout:plan-run-local`** runs them as fresh sessions on
+    this machine from one session, and **`/plan-staged-rollout:plan-run-cloud`**
+    does the same in the cloud (it may use additional credits); both stop when
+    a stage needs a person. If step 6 found a modal-model majority, repeat
     that recommendation here too (e.g. *"consider `/model opus` as your
     session default — it covers 6 of 8 stages"*). Repeat the plan flags line.
     When a programme was accepted, also say that this scaffolds the first plan

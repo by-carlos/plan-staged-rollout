@@ -129,7 +129,8 @@ language once the plugin is installed.
 |---|---|---|
 | Split a project into stages | `plan-stages <idea>` | "break this project into stages" |
 | Run one stage in this session | `stage-run <N>` | "run stage 2", "run the next stage" |
-| Run every remaining stage in the cloud, instead of one by one (the plan needs `merge: auto`) | `plan-run` | "run the plan" |
+| Run every remaining stage as fresh sessions on this machine, instead of one by one | `plan-run-local` | "run the plan" |
+| Run every remaining stage in the cloud instead (the plan needs `merge: auto`) | `plan-run-cloud` | "run the plan in the cloud" |
 | Finish the plan and propose the final PR | `plan-close` | "close the plan" |
 | Write one ticket | `create-issue` | "create an issue for …" |
 | Have Claude work one ticket | `work-issue <ticket>` | "work issue 124" |

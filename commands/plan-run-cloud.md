@@ -1,21 +1,23 @@
 ---
-description: Drive every remaining stage of a staged-rollout .plan/ to completion, firing each one as a cloud session. Use when the user says "run the plan", "drive the rest of the stages", or "fire off the remaining stages".
+description: Drive every remaining stage of a staged-rollout .plan/ to completion, firing each one as a cloud session. Use when the user says "run the plan in the cloud", "drive the rest of the stages in the cloud", or "fire off the remaining stages as cloud sessions".
 argument-hint: (no arguments — drives the plan's current runnable set, and keeps going)
 ---
 
-# /plan-run — drive the whole plan remotely
+# /plan-run-cloud — drive the whole plan remotely
 
-**This is not the single-stage command.** `/plan-run` fires **every remaining
+**This is not the single-stage command.** `/plan-run-cloud` fires **every remaining
 stage** of the plan, one after another, as cloud sessions on Anthropic's
 infrastructure — not in this session, and not just the next one. If you want
-to run one stage yourself, in this session, use **`/stage-run <N>`** instead.
+to run one stage yourself, in this session, use **`/stage-run <N>`** instead;
+to run every stage as fresh sessions on this machine, use
+**`/plan-run-local`**.
 
 Before doing anything else, show this notice and stop for a yes/no answer:
 
 > **This drives all remaining stages of the plan on the cloud, one cloud
 > session per stage, until nothing runnable is left or a gate stops it.** It
 > does not run any stage in this session. For a single local stage, use
-> `/stage-run <N>` instead.
+> `/stage-run <N>` instead; to run them all on this machine, `/plan-run-local`.
 >
 > - **Cloud sessions don't have what this machine has.** Each stage runs in a
 >   fresh sandbox holding only a clone of the repository: no local files
@@ -90,7 +92,8 @@ Work through these steps **in order**, after the notice above is confirmed:
    - **Any `gate` other than `auto` (an absent column reads as `auto`)** —
      never fire it: `human`, `local`, `live` and any unknown value alike. Report
      the stage and why (a person needs to be present; the stage needs a resource
-     only the local machine has; the stage changes a running system, which a
+     only the local machine has, which `/plan-run-local` or `/stage-run <N>` on
+     that machine provides; the stage changes a running system, which a
      driver never fires; or the value is not one this command knows), name the
      value as written, and move on to the next stage in the set without firing
      this one. Naming it here is the point: a person reading this
@@ -149,7 +152,7 @@ Work through these steps **in order**, after the notice above is confirmed:
    - If every stage is now `done` or `skipped`, say so and point at closeout —
      **"close out the plan"** or **`/plan-staged-rollout:plan-close`**.
    - Otherwise, exactly what is left runnable, blocked, or gated, so a rerun of
-     `/plan-run` — or a person picking one stage up with `/stage-run <N>` — has
+     `/plan-run-cloud` — or a person picking one stage up with `/stage-run <N>` — has
      something concrete to act on.
    Then stop. This command never opens or merges the plan→main pull request in
    any case — that stays a person's action, always.

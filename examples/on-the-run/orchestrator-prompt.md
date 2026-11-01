@@ -4,7 +4,7 @@ This file is **retired** (#127). It held the pasted prompt for a person's own
 interactive session to drive a whole plan by firing hand-provisioned cloud
 routines, back when that setup was a manual step done before a run.
 
-That mechanism is gone. Driving a plan is now **`/plan-run`**, which follows
+That mechanism is gone. Driving a plan is now **`/plan-run-cloud`**, which follows
 [`skills/staged-rollout/references/remote-driver.md`](../../skills/staged-rollout/references/remote-driver.md)
 directly: it fires each stage itself via `RemoteTrigger`, watches it, and
 moves to the next one — nothing to paste in first.

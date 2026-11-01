@@ -445,7 +445,7 @@ two kinds:
 | Decision point | Interactive | Unattended |
 |---|---|---|
 | A `gate: human` stage | announced — the person at the keyboard *is* the gate | **hard stop**, never started |
-| A `gate: local` stage | announced — running it here means this session already has what it needs | **hard stop**, never started |
+| A `gate: local` stage | announced — running it here means this session already has what it needs | **hard stop**, never started — except by `/plan-run-local`, whose driver runs on this machine |
 | A `gate: live` stage | announced — the person at the keyboard chooses when the running system changes | **hard stop**, never started |
 | A `gate` value that is not `auto`, `human`, `local` or `live` | refused and named | **hard stop**, never started |
 | Weight check: lighter model than recommended, or a readable effort that differs from the flag | **hard stop** — relaunch named, nothing written | **hard stop** — `blocked` + runbook |
@@ -469,8 +469,8 @@ plan branch pointing at it is one the next pass never reads.
 
 **What no mode loosens.** The plan→main PR is opened by closeout and merged
 by a person, always. A `gate: human` stage is never launched unattended, and
-neither is a `gate: local` or a `gate: live` one — same refusal, different
-reason. A
+neither is a `gate: live` one, nor a `gate: local` one by any runner but
+`/plan-run-local` — same refusal, different reason. A
 worktree holding real uncommitted or unpushed work is never removed, and never
 with `--force`. A merge the platform refuses is never forced or retried.
 

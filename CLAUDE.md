@@ -12,7 +12,8 @@ installable standalone with
 ## Layout
 
 - `skills/staged-rollout/` — the core skill; `commands/` — the slash commands
-  (`plan-stages`, `stage-run`, `plan-run`, `plan-close`).
+  (`plan-stages`, `stage-run`, `plan-run-local`,
+  `plan-run-cloud`, `plan-close`).
 - `hooks/` — the session-start hook; `scripts/` — validation and release scripts.
 - `examples/` — sample `.plan/` folders; `docs/` — user documentation.
 - `.github/workflows/` — CI and the release pipeline; its

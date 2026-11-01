@@ -151,8 +151,9 @@ reachable, or a locally-installed toolchain; `live` means never by a driver
 either — the stage deploys or changes a running system, so a person chooses
 when it fires. Same refusal, different reason — an unattended runner stops in
 front of any of the three exactly the same way. Runners fire a stage only when
-its `gate` is `auto` or absent; any other value, unknown ones included, is
-refused and named. Every stage that is not `live` is a build stage, and the
+its `gate` is `auto` or absent — and the local runner, `/plan-run-local`, also
+`local`, since it runs on the local machine; any other value, unknown ones
+included, is refused and named. Every stage that is not `live` is a build stage, and the
 files it may touch are its `## Artifacts` list. Two `live` stages never run at
 once: `/stage-run` preflight refuses to start a `live` stage while another
 `live` stage's row is `todo` with a stage branch that has commits (preflight
@@ -206,8 +207,9 @@ their own column. A stored copy is what drifts; the graph is the truth.
 - **Concurrency is an operator action.** Nothing here launches sessions:
   running a wave in parallel means opening one session per stage yourself —
   or leaving it to an unattended runner outside any session, which launches
-  only `gate: auto` stages (or stages with no `gate` column) and stops in
-  front of any other value — `human`, `local` or `live`. What
+  only `gate: auto` stages (or stages with no `gate` column; the local runner
+  also `local` ones) and stops in front of any other value — `human`, `live`,
+  and `local` for a cloud runner. What
   the protocol owes you is that doing so is safe — see *Concurrent stages*
   below.
 
@@ -462,7 +464,9 @@ one never does, so most sessions never meet it.
    unattended runner, or `/stage-run`'s `--unattended` argument), check the
    stage's `gate` first: a stage whose `gate` is anything but `auto` — `human`,
    `local`, `live`, or a value not in that list — is never
-   started unattended; report that and stop here. For a `gate: auto` stage, every offer or
+   started unattended; report that and stop here. The one exception is
+   `local` in a session `/plan-run-local` launched (`/stage-run`'s
+   `--runner local`): that driver runs on the local machine, so it starts. For a stage that starts, every offer or
    question in this step and the ones below either has a **declared default**
    on the plan flags line or is a **hard stop** — there is no third option
    and nothing waits for an answer (see the `staged-rollout` skill,

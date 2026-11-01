@@ -50,7 +50,7 @@
 <text x="532" y="131" font-size="13" fill="#8A7664" font-style="italic">it merges that PR only under merge: auto</text>
 <path d="M830 105h32" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a2)"/>
 <rect x="870" y="81" width="240" height="48" rx="10" fill="#EAF7F1" stroke="#4FB98C" stroke-width="1.6"/>
-<text x="990" y="110" font-size="14.5" fill="#2F7D5E" text-anchor="middle">the orchestrator (/plan-run)</text>
+<text x="990" y="110" font-size="14.5" fill="#2F7D5E" text-anchor="middle">the orchestrator (/plan-run-cloud)</text>
 
 <!-- ============ row 2 : human ============ -->
 <rect x="320" y="182" width="150" height="36" rx="9" fill="#FFFFFF" stroke="#F0A33A" stroke-width="1.6"/>

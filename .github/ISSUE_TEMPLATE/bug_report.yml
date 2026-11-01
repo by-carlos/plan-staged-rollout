@@ -9,7 +9,7 @@ body:
       description: Which part is affected?
       options:
         - /plan-stages (bootstrap)
-        - /plan-run (stage execution)
+        - /stage-run, /plan-run-local, /plan-run-cloud (stage execution)
         - /plan-close (closeout)
         - SessionStart hook
         - Install / marketplace

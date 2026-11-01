@@ -8,6 +8,41 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **`/plan-run-local` runs every remaining stage as fresh sessions on your
+  own machine.** The session you run it from starts a standard-library
+  driver in the background and waits; the driver runs one stage at a time
+  with `claude -p`, at the model and effort each stage books, and wakes the
+  session only when a person is needed: a block, a dead or stopped stage,
+  only gated stages left, or the plan done. Stages keep local tools, files
+  and networks, it uses no cloud sessions, and it runs `gate: local` stages,
+  which no runner could before. A `merge: auto` merge your permission rules
+  ask about is offered to you in the orchestrator's session, and the run
+  carries on. It checks the stage sessions' login first, stops a stage before
+  any work when your organisation has turned auto mode off, and never writes
+  the ledger. Diagram: `docs/diagrams/plan-run-local.svg`, in
+  [How a staged rollout works](docs/staged-rollout.md#running-every-stage-on-this-machine);
+  settings in [Reference](docs/reference.md#the-local-runner).
+- **`/plan-stages` and the session-start nudge offer both runners**, so a new
+  plan says how to run it all, not only its first stage.
+
+### Changed
+
+- **`/plan-run` is now `/plan-run-cloud`.** Same contract, a name that says
+  where it runs. "Run the plan" now means the local runner; say "run the plan
+  in the cloud" for this one.
+- **`/stage-run` takes `--runner local`** after `--unattended`. The one
+  change: a `gate: local` stage starts, since the driver runs on this machine.
+
+### Fixed
+
+- **The session-start nudge named `plan-run <N>` for each runnable stage**, a
+  leftover from when that was the single-stage command; it would have fired
+  the whole plan in the cloud. It now names `stage-run <N>`.
+
 ## [0.15.0] - 2026-10-27
 
 ### Added

@@ -134,6 +134,15 @@ class Selection(unittest.TestCase):
         self.assertTrue(pick["complete"])
         self.assertIsNone(pick["stage"])
 
+    def test_blocked_section_holds_a_todo_row(self):
+        pick = prl.select(self.stages, ledger(), {"S0": "Waiting on the vendor."})
+        self.assertIsNone(pick["stage"])
+        self.assertEqual(pick["waiting"], [{"id": "S0", "status": "blocked"}])
+
+    def test_blocked_section_on_a_done_row_is_ignored(self):
+        pick = prl.select(self.stages, ledger(S0="done"), {"S0": ""})
+        self.assertEqual(pick["stage"]["id"], "S1")
+
     def test_missing_ledger_row_reads_as_todo(self):
         self.assertEqual(prl.select(self.stages, {})["stage"]["id"], "S0")
 

@@ -176,15 +176,20 @@ def effort_flag(value: str) -> str:
     return EFFORTS[value]
 
 
-def select(stages: list[dict], ledger: dict) -> dict:
+def select(stages: list[dict], ledger: dict, blocked: dict | None = None) -> dict:
     """The next stage to run, and why nothing else is.
 
     Returns {"stage": <row or None>, "gated": [...], "waiting": [...],
     "complete": bool}. A stage is runnable when its row reads `todo` (or is
     missing) and every `depends` entry reads `done` or `skipped`; it is fired
     only when its gate is `auto`, absent or `local`. Index order breaks ties.
+    A stage with a BLOCKED.md section reads `blocked` until a person deletes
+    the section, whatever its row says, as it does for the cloud runner.
     """
     status = {s["id"]: ledger.get(s["id"], {}).get("status", "todo") for s in stages}
+    for sid in blocked or {}:
+        if sid in status and status[sid] not in CLOSED:
+            status[sid] = "blocked"
     gated, waiting, chosen = [], [], None
     for s in stages:
         if status[s["id"]] != "todo":
@@ -573,7 +578,7 @@ class Driver:
                 first = None
                 pick = {"stage": stage, "gated": [], "waiting": [], "complete": False}
             else:
-                pick = select(stages, ledger)
+                pick = select(stages, ledger, blocked)
             self.state["gated"] = pick["gated"]
             stage = pick["stage"]
             if stage is None:
@@ -656,8 +661,8 @@ def cmd_run(args: argparse.Namespace) -> int:
 def cmd_next(args: argparse.Namespace) -> int:
     repo = Path(args.repo).resolve()
     branch = current_branch(repo)
-    stages, ledger, _ = PlanSource(repo, branch).load()
-    pick = select(stages, ledger)
+    stages, ledger, blocked = PlanSource(repo, branch).load()
+    pick = select(stages, ledger, blocked)
     conf = settings(dict(os.environ))
     out = {"plan_branch": branch, "gated": pick["gated"], "waiting": pick["waiting"],
            "complete": pick["complete"], "stage": None, "command": None}

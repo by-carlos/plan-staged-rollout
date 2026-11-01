@@ -158,7 +158,9 @@ class Flags(unittest.TestCase):
     def test_settings_defaults(self):
         conf = prl.settings({})
         self.assertEqual(conf, {"launcher": "claude", "mode": "auto",
-                                "idle_seconds": 900.0, "budget": ""})
+                                "idle_seconds": 900.0, "budget": "", "scrub": False})
+        self.assertTrue(prl.settings({"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"})["scrub"])
+        self.assertFalse(prl.settings({"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "0"})["scrub"])
 
     def test_settings_refuse_bypass_and_bad_numbers(self):
         for env in ({"CLAUDE_STAGE_PERMISSION_MODE": "bypassPermissions"},
@@ -231,6 +233,8 @@ class Outcome(unittest.TestCase):
             (("todo", "doing", False, True), "stage-dead"),
             (("doing", "doing", False, False), "stage-dead"),
             (("doing", "done", False, False), "done"),
+            (("todo", "todo", False, False, True), "stage-stopped"),
+            (("todo", "todo", False, True, True), "stage-dead"),
         ]
         for args, want in cases:
             self.assertEqual(prl.outcome(*args), want, args)
@@ -258,6 +262,9 @@ FAKE = textwrap.dedent('''\
         if mode == "block" and row == "doing":
             open(os.path.join(".plan", "BLOCKED.md"), "w", encoding="utf-8").write(
                 "# Blocked\\n\\n### " + stage + "\\n\\nThe staging host is unreachable.\\n")
+    if mode == "pr":  # pushes its stage branch, then its merge is refused: the row never moves
+        import subprocess
+        subprocess.run(["git", "branch", "plan-demo-s" + stage[1:].lower()], check=True)
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False,
                       "result": "stage " + stage + " " + mode, "session_id": "fake-" + stage}), flush=True)
 ''')
@@ -286,7 +293,7 @@ class DriverLoop(unittest.TestCase):
         subprocess.run(["git", "-C", str(self.repo), *args], check=True, capture_output=True)
 
     def drive(self, env=None, resume=None):
-        env = {"FAKE_MODE": "done", **(env or {})}
+        env = {"FAKE_MODE": "done", "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "", **(env or {})}
         with mock.patch.dict(os.environ, env):
             driver = prl.Driver(self.repo, dict(os.environ),
                                 launcher_argv=[sys.executable, str(self.fake)], grace_seconds=0)
@@ -323,6 +330,23 @@ class DriverLoop(unittest.TestCase):
     def test_stopped_stage(self):
         line, _ = self.drive({"FAKE_MODE": "stop", "FAKE_STAGE": "S0"})
         self.assertTrue(line.startswith("STATUS: stage-stopped"), line)
+
+    def test_unmerged_stage_branch_is_a_stop_not_a_dead_run(self):
+        line, state = self.drive({"FAKE_MODE": "pr"})
+        self.assertTrue(line.startswith("STATUS: stage-stopped"), line)
+        self.assertIn("after pushing its stage branch", line)
+        self.assertTrue(state["stages"][0]["pushed"])
+        self.assertEqual(self.ledger_now()["S0"]["status"], "todo")
+
+    def test_an_old_stage_branch_does_not_count_as_a_push(self):
+        self.git("branch", "plan-demo-s0")
+        line, state = self.drive({"FAKE_MODE": "silent"})
+        self.assertTrue(line.startswith("STATUS: stage-dead"), line)
+        self.assertFalse(state["stages"][0]["pushed"])
+
+    def test_env_scrub_is_named_in_the_mismatch(self):
+        line, _ = self.drive({"FAKE_MODE": "no-auto", "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"})
+        self.assertIn("CLAUDE_CODE_SUBPROCESS_ENV_SCRUB is set", line)
 
     def test_auto_mode_unavailable_stops_before_work(self):
         line, state = self.drive({"FAKE_MODE": "no-auto"})

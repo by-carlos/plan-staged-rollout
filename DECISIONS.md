@@ -124,6 +124,13 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   without an error, and a headless Manual session denies everything and keeps
   spending. Revisit: if the CLI refuses an unavailable mode instead.
   Source: #266
+- **The local runner reads a stage whose plan-branch row never moved, but
+  whose stage branch it pushed or updated during the run, as stopped, not
+  dead.** — a stage records `doing` on its own branch, so a merge refused
+  under `-p` leaves the plan branch reading `todo`; calling that dead hid the
+  merge offer (measured in the #266 end-to-end run). A stage branch left from
+  an earlier run does not count. Revisit: if stages start pushing `doing` to
+  the plan branch. Source: #266
 - **The local runner's settings are environment variables
   (`CLAUDE_STAGE_LAUNCHER`, `CLAUDE_STAGE_PERMISSION_MODE`,
   `CLAUDE_STAGE_IDLE_MINUTES`, `CLAUDE_STAGE_MAX_BUDGET_USD`); the launcher is

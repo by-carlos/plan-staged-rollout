@@ -208,19 +208,23 @@ def select(stages: list[dict], ledger: dict, blocked: dict | None = None) -> dic
     return {"stage": chosen, "gated": gated, "waiting": waiting, "complete": complete}
 
 
-def outcome(before: str, after: str, blocked: bool, killed: bool) -> str:
-    """Classify a finished stage session by its ledger row alone.
+def outcome(before: str, after: str, blocked: bool, killed: bool, pushed: bool = False) -> str:
+    """Classify a finished stage session by its ledger row and stage branch.
 
     `done`/`skipped` carry on; `blocked`, or `doing` with a BLOCKED.md
     section, is a block; `doing` with none is a stop (a refused merge, the
-    breaker); a row that never moved is a dead run, as in remote-driver.md.
+    breaker). A row that never moved is a stop too when the session pushed its
+    stage branch, since the `doing` flip rides that branch until it merges;
+    with no push it is a dead run, as in remote-driver.md.
     """
     if after in CLOSED:
         return "done"
     if after == "blocked" or (after == "doing" and blocked):
         return "stage-blocked"
-    if after == before or killed:
+    if killed:
         return "stage-dead"
+    if after == before:
+        return "stage-stopped" if pushed else "stage-dead"
     if after == "doing":
         return "stage-stopped"
     return "stage-dead"
@@ -254,6 +258,7 @@ def settings(env: dict) -> dict:
         "mode": mode,
         "idle_seconds": idle_min * 60,
         "budget": budget,
+        "scrub": env.get("CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "").strip().lower() not in ("", "0", "false"),
     }
 
 
@@ -278,7 +283,8 @@ def check_init(init: dict, stage: dict, conf: dict) -> list[str]:
     mode = init.get("permissionMode") or ""
     if MODE_ALIASES.get(mode, mode) != conf["mode"]:
         problems.append(f"permission mode {mode or 'unreported'!r}, asked {conf['mode']!r}"
-                        + (" (auto mode is unavailable to this session)" if conf["mode"] == "auto" else ""))
+                        + ((" (CLAUDE_CODE_SUBPROCESS_ENV_SCRUB is set, which forces Manual)" if conf.get("scrub")
+                            else " (auto mode is unavailable to this session)") if conf["mode"] == "auto" else ""))
     model = (init.get("model") or "").lower()
     if stage["model"] and stage["model"].lower() not in model:
         problems.append(f"model {init.get('model')!r}, asked {stage['model']!r}")
@@ -294,6 +300,17 @@ def check_init(init: dict, stage: dict, conf: dict) -> list[str]:
 def git(repo: Path, *args: str) -> subprocess.CompletedProcess:
     return subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
                           text=True, encoding="utf-8", errors="replace")
+
+
+def stage_heads(repo: Path, plan_branch: str, stage_id: str) -> dict[str, str]:
+    """The stage's branches (`<plan>-s<N>`, `-redo-<K>`) as `{ref: sha}`, on
+    origin when there is one, else local."""
+    want = re.compile(rf"refs/heads/{re.escape(plan_branch)}-s{re.escape(stage_arg(stage_id).lower())}(-redo-\d+)?$")
+    r = git(repo, "ls-remote", "--heads", "origin")
+    if r.returncode:
+        r = git(repo, "for-each-ref", "--format=%(objectname)\t%(refname)", "refs/heads")
+    heads = (line.split("\t", 1) for line in r.stdout.splitlines() if "\t" in line)
+    return {ref.strip(): sha for sha, ref in heads if want.match(ref.strip())}
 
 
 def current_branch(repo: Path) -> str:
@@ -594,6 +611,7 @@ class Driver:
                       "log": str(self.dir / f"{stage['id']}.jsonl")}
             self.state["current"] = record
             self.save()
+            heads = stage_heads(self.repo, self.branch, stage["id"])
             ran = run_stage(cmd, self.repo, Path(record["log"]), stage, conf, self.save)
             record.update({k: ran.get(k) for k in
                            ("session_id", "exit_code", "killed", "mismatch", "is_error", "result", "usage", "init")})
@@ -605,13 +623,16 @@ class Driver:
                                    f"{stage['id']} started with {'; '.join(ran['mismatch'])}; stopped before any work")
             source.refresh()
             after, now_blocked = self.read_row(source, stage["id"])
-            result = outcome(before, after, now_blocked, bool(ran["killed"]))
+            pushed = stage_heads(self.repo, self.branch, stage["id"]) not in ({}, heads)
+            result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed)
             if result not in ("done",) and self.grace:
                 time.sleep(self.grace)
                 source.refresh()
                 after, now_blocked = self.read_row(source, stage["id"])
-                result = outcome(before, after, now_blocked, bool(ran["killed"]))
+                pushed = stage_heads(self.repo, self.branch, stage["id"]) not in ({}, heads)
+                result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed)
             record["outcome"] = result
+            record["pushed"] = pushed
             record["row"] = after
             self.state["stages"].append(record)
             self.state["current"] = None
@@ -622,8 +643,10 @@ class Driver:
             reason = blocked.get(stage["id"]) or ledger.get(stage["id"], {}).get("result", "")
             msg = {
                 "stage-blocked": f"{stage['id']} is blocked: {reason or 'see .plan/BLOCKED.md'}",
-                "stage-stopped": f"{stage['id']} stopped with its row `doing` and no block recorded "
-                                 "(a refused merge or the breaker); its session's last words are in the status file",
+                "stage-stopped": f"{stage['id']} stopped short of `done` with no block recorded"
+                                 + (" after pushing its stage branch" if pushed else "")
+                                 + ": most often a merge that did not happen (a permission rule, red checks) "
+                                 "or the breaker; its session's last words are in the status file",
                 "stage-dead": f"{stage['id']} ended with its row still `{after}`"
                               + (" after going quiet for the idle threshold" if ran["killed"] == "idle" else "")
                               + "; nothing was written on its behalf",

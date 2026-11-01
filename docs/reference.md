@@ -121,9 +121,9 @@ under `plan-run-local/<plan slug>/`, so nothing is committed.
 | `gated` | What is left is behind `human`, `live` or unknown gates. |
 | `waiting` | Nothing is runnable; the rest waits on `doing` or `blocked` rows. |
 | `stage-blocked` | A stage recorded a block and a runbook. When the block is a merge the stage could not make, the orchestrator offers it, as for `stage-stopped`. |
-| `stage-stopped` | A stage ended with its row `doing` and no block, most often a `merge: auto` merge that was refused. The orchestrator offers that merge in its own session, where your permission rules ask you, and resumes. |
-| `stage-dead` | A stage ended, or went quiet past the idle limit, with its row unmoved. |
-| `launch-mismatch` | A stage session started in another permission mode, model or effort than asked, such as Manual because auto mode is turned off, and was stopped before any work. |
+| `stage-stopped` | A stage ended short of `done` with no block, its row `doing` or its stage branch pushed (a stage's `doing` row rides its branch until the merge), most often a `merge: auto` merge that was refused. The orchestrator offers that merge in its own session, where your permission rules ask you, and resumes. |
+| `stage-dead` | A stage ended with its row unmoved and nothing pushed, or went quiet past the idle limit. |
+| `launch-mismatch` | A stage session started in another permission mode, model or effort than asked, such as Manual because auto mode is turned off or `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is set, and was stopped before any work. |
 | `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running` | Nothing more was run; the message names the fix. |
 
 ## Naming

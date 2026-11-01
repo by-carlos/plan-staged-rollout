@@ -164,7 +164,8 @@ Work through these steps **in order**:
    value is not one this command can vouch for — name the
    stage, and stop — a runner reading the previous stage's end announcement
    should already have stopped in front of it, so this is the backstop, not
-   the mechanism. For a `gate: auto` stage run
+   the mechanism. For a `gate: auto` stage (or a `local` one under
+   `--runner local`) run
    unattended, a weight-check stop has no one to relaunch the session and the
    tier question has no one to answer it — a readable effort that differs from the flag counts here too;
    an effort that could not be read does not: mark the row

@@ -89,11 +89,22 @@ only. Work through these steps **in order**:
    | `plan-complete` | Step 8. |
    | `gated` | Name each gated stage with its gate and `/stage-run <N>`: `human` needs a person present, `live` changes a running system and a person chooses when, an unknown value means the index needs fixing. Step 8. |
    | `waiting` | Nothing is runnable; name the `doing` and `blocked` rows the rest waits on. Step 8. |
-   | `stage-blocked` | Tell the user which stage blocked and the first line of its runbook (in the message); the full runbook is the stage's `.plan/BLOCKED.md` section or its ledger notes. A blocked `SF` describing a fix is the final review asking: the user runs `/stage-run SF` attended. Step 8. |
-   | `stage-stopped` | The row stayed `doing` with no block: most often a `merge: auto` merge that a permission ask rule on `gh pr merge` denied, since a headless session cannot ask. Look for the stage's open pull request into the plan branch (`gh pr list --base <plan branch> --state open`). If there is one, show it and ask (`AskUserQuestion`, header `Merge?`); on yes, run `gh pr merge <N> --squash --delete-branch` as its own command, where the user's own rule prompts them, then go back to step 5 with `--resume S<N>`: the stage's preflight sees the merged PR and records it `done`. On no, or with no open PR, report the message and stop. |
+   | `stage-blocked` | Tell the user which stage blocked and the first line of its runbook (in the message); the full runbook is the stage's `.plan/BLOCKED.md` section or its ledger notes. **If the block is a merge the stage could not make** (a permission ask rule on `gh pr merge` denies it in a headless session), handle it as a merge below. A blocked `SF` describing a fix is the final review asking: the user runs `/stage-run SF` attended. Otherwise step 8. |
+   | `stage-stopped` | The row stayed `doing` with no block: most often a `merge: auto` merge that GitHub or a permission rule refused. Handle it as a merge below; with no open PR, report the message and step 8. |
    | `stage-dead` | Report it as the message says, with the stage's session id and log path from `driver status`. Never write the ledger or guess the outcome. Step 8. |
    | `launch-mismatch` | The stage session started with a different permission mode, model or effort than asked, and was stopped before any work. For auto mode turned off by managed settings, give the two ways on: allow the stage's commands in the project's settings and set `CLAUDE_STAGE_PERMISSION_MODE=manual` (or `dontAsk`), or run the stages yourself with `/stage-run <N>`. Never try to get around the setting. Step 8. |
    | anything else | `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running`: report the message as it is, with the fix it names. Step 8. |
+
+   **A merge the stage could not make.** Look for the stage's open pull
+   request into the plan branch (`gh pr list --base <plan branch> --state open`).
+   If there is one, show it and ask (`AskUserQuestion`, header `Merge?`); on
+   yes, run `gh pr merge <N> --squash --delete-branch` as its own command,
+   where the user's own rule prompts them, then go back to step 5 with
+   `--resume S<N>`: the stage's preflight sees the merged PR and records the
+   row `done`. Where the stage also left a `.plan/BLOCKED.md` section, tell
+   the user to delete it once the row reads `done`: this session never
+   writes that file, and `plan-close` refuses while it is there. On no,
+   report and go to step 8.
 
    Every status reaches the user's phone through Remote Control's push when
    that is on; write the message so it stands on its own there.

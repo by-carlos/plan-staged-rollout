@@ -466,7 +466,7 @@ one never does, so most sessions never meet it.
    `local`, `live`, or a value not in that list — is never
    started unattended; report that and stop here. The one exception is
    `local` in a session `/plan-run-local` launched (`/stage-run`'s
-   `--runner local`): that driver runs on the local machine, so it starts. For a `gate: auto` stage, every offer or
+   `--runner local`): that driver runs on the local machine, so it starts. For a stage that starts, every offer or
    question in this step and the ones below either has a **declared default**
    on the plan flags line or is a **hard stop** — there is no third option
    and nothing waits for an answer (see the `staged-rollout` skill,

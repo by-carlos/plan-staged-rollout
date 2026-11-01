@@ -66,7 +66,8 @@ Everything the plugin needs after that, it writes into that repository's
 
 Installed plugin commands carry the plugin's name as a prefix
 (`/plan-staged-rollout:stage-run`). The other pages use the short names
-(`plan-stages`, `stage-run`, `plan-run-cloud`, `plan-close`) to stay readable.
+(`plan-stages`, `stage-run`, `plan-run-local`, `plan-run-cloud`, `plan-close`)
+to stay readable.
 
 ## Where it runs
 

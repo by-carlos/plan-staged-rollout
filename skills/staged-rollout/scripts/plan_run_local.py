@@ -710,6 +710,10 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    # The STATUS line carries `·`; a Windows console code page would mangle it.
+    for stream in (sys.stdout, sys.stderr):
+        if hasattr(stream, "reconfigure"):
+            stream.reconfigure(encoding="utf-8", errors="replace")
     args = build_parser().parse_args(argv)
     try:
         return args.fn(args)

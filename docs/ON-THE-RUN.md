@@ -1,9 +1,9 @@
-# Running a plan in the cloud — `plan-run`
+# Running a plan in the cloud — `plan-run-cloud`
 
 [Home](../README.md) · [Install](install.md) · [How it works](staged-rollout.md) · [Brainstorming](superpowers-brainstorming.md) · [One or many sessions](single-vs-multi-session.md) · **Cloud runs** · [Tickets](tickets.md) · [Ticket template](ticket-templates.md) · [FAQ](faq.md) · [Reference](reference.md) · [Why](why.md)
 
 **In short:** instead of opening a new session for every stage, keep one
-local session open (the **orchestrator**) and run `plan-run`. It fires each
+local session open (the **orchestrator**) and run `plan-run-cloud`. It fires each
 remaining stage as its own cloud session against your GitHub repo, one after
 another, so a whole build can run while you watch from your phone. It needs
 the plan flag `merge: auto`. The computer running the orchestrator has to
@@ -15,7 +15,7 @@ sequenceDiagram
     participant O as Orchestrator<br/>(your machine)
     participant C as Cloud session<br/>(one per stage)
     participant G as GitHub<br/>(plan branch)
-    You->>O: plan-run, then yes
+    You->>O: plan-run-cloud, then yes
     loop each stage that can run
         O->>G: read LEDGER.md
         O->>C: fire the stage
@@ -28,7 +28,7 @@ sequenceDiagram
 
 ## What it does
 
-You run `plan-run` in one local Claude Code session, in a clone of your
+You run `plan-run-cloud` in one local Claude Code session, in a clone of your
 repository. From there:
 
 1. It reads `.plan/LEDGER.md` on the plan branch to work out which stage can
@@ -44,7 +44,7 @@ repository. From there:
 
 ## What you need first
 
-- **The plugin installed locally.** `plan-run` is a command in your local
+- **The plugin installed locally.** `plan-run-cloud` is a command in your local
   session, not something that runs by itself.
 - **A plan on GitHub**, with `.plan/RUNNER.md` in it. `plan-stages` creates
   and pushes the plan branch `plan-<slug>`; check it is on GitHub before you
@@ -61,7 +61,7 @@ repository. From there:
 
 ## Running it
 
-Type `/plan-staged-rollout:plan-run` in your local session. Before touching
+Type `/plan-staged-rollout:plan-run-cloud` in your local session. Before touching
 anything it shows a plain-language notice and waits for a yes, because it is
 a much bigger action than `stage-run` and shares part of its name. The notice
 says that:
@@ -89,7 +89,7 @@ with the command to run it yourself.
 [![What the orchestrator runs on its own: a gate auto stage is fired unattended and opens its own PR, while gate human, gate local and gate live stages are skipped and left for you — and the orchestrator carries on with the next stage either way.](diagrams/gates.svg)](diagrams/gates.svg)
 
 When every stage is settled, run `plan-close`: it proposes the final PR into
-`main`, which you merge yourself. `plan-run` never opens or merges that PR.
+`main`, which you merge yourself. `plan-run-cloud` never opens or merges that PR.
 
 ## What a cloud stage can't reach
 
@@ -102,9 +102,9 @@ tells you to run it yourself.
 ## When a stage is gated, blocked or dead
 
 - **Gated** (`gate: human` or `gate: local`): never fired; its row stays
-  `todo`. Run it yourself with `stage-run <N>`, then run `plan-run` again for
+  `todo`. Run it yourself with `stage-run <N>`, then run `plan-run-cloud` again for
   the stages after it.
-- **Blocked:** the stage recorded a block and wrote you a runbook. `plan-run`
+- **Blocked:** the stage recorded a block and wrote you a runbook. `plan-run-cloud`
   never retries it. Do what the runbook says, then run the stage yourself
   with `stage-run <N>`. Where the runbook is, and how to clear the block:
   [Where a `blocked` record lands](staged-rollout.md#where-a-blocked-record-lands).
@@ -124,7 +124,7 @@ tells you to run it yourself.
 | **A cloud run can't delete remote branches** (the git proxy refuses with 403). | Merged stage branches linger on GitHub until you delete them. |
 | **No worktrees.** Nothing outside the primary clone persists between tool calls, so a sibling worktree could vanish mid-stage. | A cloud run uses one branch per stage, without a worktree per stage. |
 | **The branch name may look wrong.** The checkout's content is the plan branch, but its HEAD may show a platform-named branch. | Expected; the stage prompt tells the session so. |
-| **Cloud access is a likely requirement, not a measured one.** | If `plan-run` can't fire, check that cloud sessions work on your account. |
+| **Cloud access is a likely requirement, not a measured one.** | If `plan-run-cloud` can't fire, check that cloud sessions work on your account. |
 | **Proven once, on a small plan** (see below). | A long plan with slow stages is still unmeasured. |
 
 **The proof run** ([#168](https://github.com/by-carlos/plan-staged-rollout/issues/168),
@@ -148,10 +148,10 @@ tells you to run it yourself.
 ## Under the hood
 
 The orchestrator is an ordinary interactive Claude Code session running
-`plan-run` with no arguments. Each fired stage is a first-class session at
+`plan-run-cloud` with no arguments. Each fired stage is a first-class session at
 claude.ai/code that you can open, watch and resume. Close the laptop and the
 stage already fired runs to its end, but nothing fires the next one. The full
-command is [`commands/plan-run.md`](../commands/plan-run.md).
+command is [`commands/plan-run-cloud.md`](../commands/plan-run-cloud.md).
 
 It fires stages through **`RemoteTrigger`**, a tool built into Claude Code
 that talks to the claude.ai routines API with your account's own
@@ -169,7 +169,7 @@ Its guarantees:
 - **`gate: human` and `gate: local` stages are never fired.** A cloud session
   has strictly less access than your machine.
 - **Dependencies must read `done` or `skipped` in the ledger** before a stage
-  fires. `plan-run` never fires out of order; to do that, run the stage
+  fires. `plan-run-cloud` never fires out of order; to do that, run the stage
   yourself with `stage-run <N>`.
 - **It refuses to run from a protected branch** (such as `main`), and **the
   merge into `main` is always done by a person.**

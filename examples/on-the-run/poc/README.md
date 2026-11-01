@@ -1,12 +1,12 @@
 # The end-to-end proof of concept
 
 > **Era note (15 Sep 2026).** This fixture and its setup steps date from the
-> retired routine-per-model design (#110). The current mechanism is `/plan-run`
+> retired routine-per-model design (#110). The current mechanism is `/plan-run-cloud`
 > firing cloud sessions via `RemoteTrigger` — see `docs/ON-THE-RUN.md`. The
 > plan files still work as a fixture; the routine setup below does not apply.
 >
 > **Re-run on the current mechanism, 25 Sep 2026 (#168), and passed.** Setup
-> steps 1–3 below still hold; replace 4–5 with running `/plan-run` in a clone
+> steps 1–3 below still hold; replace 4–5 with running `/plan-run-cloud` in a clone
 > of the throwaway repository — it backfills `.plan/RUNNER.md` on the plan
 > branch before the first fire. `verify_run.py` needed no change. In that run
 > SF opened the plan-to-main pull request, because `stage-f-closeout.md` then

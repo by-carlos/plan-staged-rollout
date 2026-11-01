@@ -179,7 +179,7 @@ There is no command for it, and none is needed: nothing reaches `main` until
 you merge the final PR. Stop running stages, close any open stage PRs, then
 remove the `../<repo>-s<N>` worktrees (`git worktree remove`) and delete the
 plan branch and every `plan-<slug>-s*` branch, locally and on GitHub. If you
-used `plan-run`, also clear the spent routines at claude.ai/code/routines.
+used `plan-run-cloud`, also clear the spent routines at claude.ai/code/routines.
 
 ## Running it differently
 
@@ -212,7 +212,7 @@ what can run side by side. See
 
 ### Can stages run without me at the keyboard?
 
-Yes: `plan-run` fires every remaining stage as a cloud session, one after
+Yes: `plan-run-cloud` fires every remaining stage as a cloud session, one after
 another, from one local session that has to stay open. It needs
 `merge: auto` on the plan flags line; under the default `merge: manual` each
 cloud stage stops with its PR open. Stages marked `gate: human`, `gate: local` or
@@ -262,7 +262,7 @@ setting exists.
 Not the protocol: a plan follows the operating protocol scaffolded into its
 own `PLAN.md`. An update can change the plugin-side layer around it:
 `stage-run`'s model-tier check and handoff chips, the session-start nudge,
-and `plan-run`'s orchestrator loop. See [Install and
+and `plan-run-cloud`'s orchestrator loop. See [Install and
 update](install.md#does-updating-disturb-a-plan-in-progress).
 
 ### Can I keep a record of how runs went?

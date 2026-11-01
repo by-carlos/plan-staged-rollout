@@ -7,7 +7,7 @@ up one routine per model before a run.
 That mechanism is gone. A stage's contract now lives in **`.plan/RUNNER.md`**,
 scaffolded into every plan from
 [`skills/staged-rollout/references/templates/RUNNER.md`](../../skills/staged-rollout/references/templates/RUNNER.md).
-`/plan-run` fires each stage itself with that file as the instruction, through
+`/plan-run-cloud` fires each stage itself with that file as the instruction, through
 `RemoteTrigger` — see
 [`skills/staged-rollout/references/remote-driver.md`](../../skills/staged-rollout/references/remote-driver.md)
 for the mechanism.

@@ -129,8 +129,8 @@
 <text x="658" y="280" font-size="17" fill="#3B2A1E">One fresh session</text>
 <text x="658" y="300" font-size="17" fill="#3B2A1E">per stage</text>
 <text x="658" y="326" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/stage-run &lt;N&gt;</text>
-<text x="658" y="348" font-size="15" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-run</text>
-<text x="752" y="348" font-size="13" fill="#8A7664" font-style="italic">drives them all</text>
+<text x="658" y="348" font-size="14" fill="#A2691F" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">/plan-run-local</text>
+<text x="792" y="348" font-size="13" fill="#8A7664" font-style="italic">drives all</text>
 <!-- c4 -->
 <text x="910" y="280" font-size="17" fill="#3B2A1E">Final review stage —</text>
 <text x="910" y="300" font-size="17" fill="#3B2A1E">reads the whole ledger</text>

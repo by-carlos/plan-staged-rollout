@@ -56,8 +56,8 @@ don't skimp on the hard parts:
 | `model` / `effort` | launch hints | The recommended session weight; checked at the start of the stage, never faked |
 | `estimate` | a range in hours, e.g. `1–2h`, or `—` | A rough guess at the stage's own session time, leaving out waits and blockers. `/stage-run` shows it before it starts; the `Plan estimate:` line under the index totals it, summed and elapsed. Method: [`estimates.md`](../skills/staged-rollout/references/estimates.md). |
 | `gate: auto` | | The stage may be launched with nobody watching |
-| `gate: human` | | Never started unattended: a person's judgment or presence is part of the stage. `stage-run --unattended` refuses it, and `plan-run` skips it and carries on with the other stages. |
-| `gate: local` | | Never run unattended or in a cloud session: the stage needs a resource only the local machine has. `stage-run --unattended`, any cloud session, and `plan-run` (which skips it) all refuse it. Run it yourself in a local session. |
+| `gate: human` | | Never started unattended: a person's judgment or presence is part of the stage. `stage-run --unattended` refuses it, and `plan-run-cloud` skips it and carries on with the other stages. |
+| `gate: local` | | Never run unattended or in a cloud session: the stage needs a resource only the local machine has. `stage-run --unattended`, any cloud session, and `plan-run-cloud` (which skips it) all refuse it. Run it yourself in a local session. |
 | `gate: live` | | Never fired by any driver: the stage changes a running system (a deploy, a migration, a configuration change), where a person should decide when. Only one `live` stage runs at a time; `stage-run` refuses a second while another is open. Any other value is refused and named, not guessed at. |
 
 ## Plan flags

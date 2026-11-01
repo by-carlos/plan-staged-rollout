@@ -101,7 +101,7 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
 
 ## Running stages
 
-Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`
+Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run-local.md`, `skills/staged-rollout/scripts/plan_run_local.py`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`
 
 - **A runner fires a stage only when its `gate` is `auto` or absent; `human`,
   `local`, `live` and any unknown value are refused and named.** — an

@@ -104,7 +104,7 @@ Layout:
   docs/
     install.md                   # install, requirements, updating
     staged-rollout.md            # how a plan runs, from planning to close
-    ON-THE-RUN.md                # running a plan in the cloud (plan-run)
+    ON-THE-RUN.md                # running a plan in the cloud (plan-run-cloud)
     tickets.md                   # create-issue and work-issue
     ticket-templates.md          # customizing the ticket template
     faq.md                       # short answers to common questions
@@ -122,7 +122,8 @@ Layout:
   commands/
     plan-stages.md               # plan-stages <idea>  — split a project into stages, write .plan/
     stage-run.md                 # stage-run <N>       — run one stage, in this session
-    plan-run.md                  # plan-run            — run every remaining stage in the cloud
+    plan-run-local.md            # plan-run-local      — run every remaining stage on this machine
+    plan-run-cloud.md            # plan-run-cloud      — run every remaining stage in the cloud
     plan-close.md                # plan-close          — final PR + cleanup
   skills/create-issue/SKILL.md   # draft, review, post and verify one ticket
   skills/work-issue/SKILL.md     # work one named ticket to a confirmed merge

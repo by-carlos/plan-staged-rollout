@@ -18,7 +18,7 @@ evidence in the ledger, PR opened via the GitHub MCP with the base pinned to
 the plan branch, `merge: auto` squash-merge, `done` row pushed, next-runnable
 set reported and not started.
 
-**Full `/plan-run` loop proven, 25 Sep 2026 (#168):** a four-stage fixture
+**Full `/plan-run` loop (now `/plan-run-cloud`) proven, 25 Sep 2026 (#168):** a four-stage fixture
 plan (two dependent `gate: auto` stages, a `gate: human` stage, an auto
 closeout) was driven to completion on a disposable repository — each auto
 stage fired, watched to a `done` row and followed by the next without a

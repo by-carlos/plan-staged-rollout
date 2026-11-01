@@ -30,7 +30,7 @@ flowchart TD
 |---|---|---|---|
 | 1. Plan | `plan-stages <idea>` | once | Settles the design, splits the work into stages, commits and pushes `.plan/`. Runs no stage. |
 | 2. Run stages | `stage-run <N>` | once per stage, each in a new session | Does one stage, runs its acceptance check, records the output, opens its PR. |
-| | `plan-run` | once, and again after each stop | Instead of `stage-run`: runs every remaining stage in the cloud. The plan needs `merge: auto`. See [Running a plan in the cloud](ON-THE-RUN.md). |
+| | `plan-run-cloud` | once, and again after each stop | Instead of `stage-run`: runs every remaining stage in the cloud. The plan needs `merge: auto`. See [Running a plan in the cloud](ON-THE-RUN.md). |
 | 3. Review | `stage-run f` (f for final: stage `SF`) | once, last | Reads every note in the ledger and turns each loose end into a stage or a decision. |
 | 4. Close | `plan-close` | once | Writes the final PR from the plan, cleans up and proposes the PR into `main`. |
 
@@ -289,7 +289,7 @@ block*). It depends on whether the stage's branch exists yet:
 
 **Clearing a mid-stage block:** nothing removes a `.plan/BLOCKED.md` section
 automatically. Delete it by hand once the stage is resolved; until you do,
-`plan-run` treats the stage as `blocked` and never fires it, and
+`plan-run-cloud` treats the stage as `blocked` and never fires it, and
 `plan-close` refuses to run.
 
 ## Starting the next stage
@@ -332,7 +332,7 @@ locally**:
 |---|---|
 | **Start locally** | **Yes.** Runs in your clone, which the stage leaves on the plan branch while it works in its own worktree. |
 | Start with worktree | Works, but the app's worktree is based on the default branch, so the stage ignores it and makes its own; the app's one is left behind unused. |
-| Send to cloud | Works for a plan with `.plan/RUNNER.md`, but **may use additional credits**, and refuses a `gate: local` stage. For cloud runs, use [`plan-run`](ON-THE-RUN.md). |
+| Send to cloud | Works for a plan with `.plan/RUNNER.md`, but **may use additional credits**, and refuses a `gate: local` stage. For cloud runs, use [`plan-run-cloud`](ON-THE-RUN.md). |
 | Fix in this session | **No.** It lands in the finished stage's session instead of a fresh one; the stage refuses to start there. |
 
 - **The chip usually starts on the finishing session's model and effort**,
@@ -453,7 +453,7 @@ alone. Then it:
    filed only on your yes.
 
 It runs unattended too: `plan-close --unattended` applies the plan flags
-instead of asking. `plan-run` never fires it; you run it. **Merging that final
+instead of asking. `plan-run-cloud` never fires it; you run it. **Merging that final
 PR is always yours.**
 
 ## After it closes

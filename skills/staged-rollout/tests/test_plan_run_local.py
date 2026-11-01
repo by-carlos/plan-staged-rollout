@@ -331,6 +331,16 @@ class DriverLoop(unittest.TestCase):
         line, _ = self.drive({"FAKE_MODE": "stop", "FAKE_STAGE": "S0"})
         self.assertTrue(line.startswith("STATUS: stage-stopped"), line)
 
+    def test_a_recorded_block_skips_the_grace_wait(self):
+        with mock.patch.object(prl.time, "sleep") as slept, \
+                mock.patch.dict(os.environ, {"FAKE_MODE": "block", "FAKE_STAGE": "S0",
+                                             "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": ""}):
+            driver = prl.Driver(self.repo, dict(os.environ),
+                                launcher_argv=[sys.executable, str(self.fake)], grace_seconds=5)
+            line = driver.run()
+        self.assertTrue(line.startswith("STATUS: stage-blocked"), line)
+        self.assertNotIn(mock.call(5), slept.call_args_list)
+
     def test_unmerged_stage_branch_is_a_stop_not_a_dead_run(self):
         line, state = self.drive({"FAKE_MODE": "pr"})
         self.assertTrue(line.startswith("STATUS: stage-stopped"), line)

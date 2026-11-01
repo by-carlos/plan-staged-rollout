@@ -625,7 +625,7 @@ class Driver:
             after, now_blocked = self.read_row(source, stage["id"])
             pushed = stage_heads(self.repo, self.branch, stage["id"]) not in ({}, heads)
             result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed)
-            if result not in ("done",) and self.grace:
+            if result not in ("done", "stage-blocked") and self.grace:
                 time.sleep(self.grace)
                 source.refresh()
                 after, now_blocked = self.read_row(source, stage["id"])

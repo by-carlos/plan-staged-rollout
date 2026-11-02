@@ -44,8 +44,8 @@ python3 scripts/validate_plugin.py
 ```
 
 The staged-rollout skill has its own unit tests (`renumber_stages.py`, and the
-plan protocol's check for unpushed plan-branch commits). CI does not run them
-yet, so run them locally when you touch `skills/staged-rollout/`:
+plan protocol's check for unpushed plan-branch commits). CI runs them on every
+pull request; to run them locally when you touch `skills/staged-rollout/`:
 
 ```
 python3 -m unittest discover -s skills/staged-rollout/tests

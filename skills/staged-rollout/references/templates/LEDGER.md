@@ -37,6 +37,9 @@ _(empty)_
   actuals   — every session on the stage, whatever its outcome, adds one
               `Actuals:` line (`scripts/effortlog.py usage`, its `line` as is);
               `/plan-close` sums them against the estimates.
+  artifacts — the finish protocol adds one `Artifacts check:` line
+              (`scripts/artifacts_check.py`, its line as is); a record, never
+              a gate — the final review judges each `outside` line.
   doing     — tick the completed Steps checkboxes in the stage file; write a
               handoff note here (what's left, where to resume).
   blocked   — record exactly what human/external action unblocks it, as a

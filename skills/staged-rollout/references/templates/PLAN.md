@@ -529,13 +529,27 @@ one never does, so most sessions never meet it.
 6. **Scope discipline:** do only this stage. Work belonging to another stage →
    note it in the ledger notes and leave it untouched. It may become a new
    stage, through the scope referee (*Adding a stage*, above).
+   **Acceptance is the stop line.** Once this stage's Acceptance checks pass,
+   the stage is finished. More of the same work — a proof of concept
+   hardened into the production build, one more feature in the same files —
+   is a new stage however natural the next step looks, and it is handled
+   exactly as above: a note, then the scope referee when attended, a
+   follow-up note when unattended. Work that crosses `## Requirements` ›
+   **Outcome** or **Out of scope** is handled the same way before Acceptance
+   passes too.
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
       stage's notes block in `LEDGER.md`. Then add this session's
       **`Actuals:` line** to the same block: run the skill's
       `scripts/effortlog.py usage` and paste its `line` as is. Every session
       that worked on the stage adds one, including one that stops `doing` or
-      `blocked` (with its handoff note or runbook).
+      `blocked` (with its handoff note or runbook). Then add the
+      **`Artifacts check:` line**, from the stage worktree: run the skill's
+      `scripts/artifacts_check.py --stage-file .plan/<this stage's file>
+      --base origin/plan-<slug>` and paste its line as is — `match`,
+      `undeclared` (no paths in `## Artifacts`) or `outside: <paths>`. It is a
+      record, never a gate: nothing stops on it, and the final review judges
+      each `outside` line.
    2. Update the stage's table row: absolute date, verified yes/no, one-line
       result — but the status stays `doing` here. `done` is recorded only
       after the PR merges (step 5 below), so a `done` row is always visible

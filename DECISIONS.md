@@ -131,6 +131,18 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   merge offer (measured in the #266 end-to-end run). A stage branch left from
   an earlier run does not count. Revisit: if stages start pushing `doing` to
   the plan branch. Source: #266
+- **The cloud runner reads the same signature the same way, and re-fires the
+  stage after the person's merge.** — it records the stage's remote branches
+  when firing; after the grace period an unmoved row with a branch created or
+  moved since then is a stop with a merge pending, not a dead run, and the
+  orchestrator offers the merge (`Merge?`, the person's yes only). Re-firing
+  lets the fresh session's preflight record `done`, so the orchestrator still
+  never writes the ledger and the run stays hands-off, at the cost of one
+  short cloud session. Rejected: pushing `doing` to the plan branch before
+  the PR (changes the protocol every plan carries), and rewording the dead
+  report only (the person still diagnoses a merge as a crash). Revisit: if a
+  cloud run shows the re-fired session does not record `done`, or if stages
+  start pushing `doing` to the plan branch. Source: #268
 - **The local runner's settings are environment variables
   (`CLAUDE_STAGE_LAUNCHER`, `CLAUDE_STAGE_PERMISSION_MODE`,
   `CLAUDE_STAGE_IDLE_MINUTES`, `CLAUDE_STAGE_MAX_BUDGET_USD`); the launcher is

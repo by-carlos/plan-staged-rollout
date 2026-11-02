@@ -671,7 +671,8 @@ its declared files. Both live in the templates, so a plan scaffolded before
 them carries neither.
 
 The cheapest drift is the one prevented at bootstrap: an idea too vague to
-state its Done checks, or whose checks name nothing observable, is
+state its Done checks, whose checks name nothing observable, or whose
+Outcome has no edge ("exhaustive", "etc." with no list of what is in) is
 scaffolded as a **discovery plan** by default — its Outcome a decision, its
 Out of scope `Building <subject> — that is the next plan.`, so the referee
 has a written boundary to judge by. A build plan from such requirements is

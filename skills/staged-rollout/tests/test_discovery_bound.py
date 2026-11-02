@@ -46,6 +46,11 @@ class DiscoveryBoundTest(unittest.TestCase):
             text,
         )
 
+    def test_command_treats_unbounded_scope_as_thin(self):
+        text = flat(COMMAND)
+        self.assertIn("**Unbounded** (a kind of thin)", text)
+        self.assertIn("only the user's own list of what is in can", text)
+
     def test_skill_carries_the_frame(self):
         self.assertIn(FRAME, flat(SKILL_MD))
 

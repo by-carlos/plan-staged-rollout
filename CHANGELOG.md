@@ -48,6 +48,11 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **The hooks failed with `Permission denied` on Linux and WSL2**, because the
+  wrapper that launches them was stored in git without the executable bit, so
+  the session-start nudge and both command guards never ran there. The wrapper
+  is now executable, and `validate_plugin.py` fails if any hook script loses
+  the bit again.
 - **The session-start nudge named `plan-run <N>` for each runnable stage**, a
   leftover from when that was the single-stage command; it would have fired
   the whole plan in the cloud. It now names `stage-run <N>`.

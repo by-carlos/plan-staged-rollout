@@ -148,7 +148,21 @@ def validate_utf8():
             err(f"{path.relative_to(ROOT)}: not valid UTF-8 (byte {e.start}: {e.reason})")
 
 
+def validate_hook_modes():
+    # hooks.json runs hooks/run-hook.cmd directly, so on Linux and WSL2 it needs
+    # the executable bit in git; without it every hook fails "Permission denied".
+    # Read the index mode, since a Windows checkout has no exec bit to inspect.
+    staged = subprocess.run(
+        ["git", "ls-files", "-s", "-z", "hooks"], cwd=ROOT, capture_output=True, check=True
+    ).stdout.split(b"\0")
+    for entry in filter(None, staged):
+        meta, name = entry.decode("utf-8").split("\t", 1)
+        if name != "hooks/hooks.json" and meta.split()[0] != "100755":
+            err(f"{name}: mode {meta.split()[0]} in git, expected 100755 (hooks run on Linux and WSL2)")
+
+
 def main():
+    validate_hook_modes()
     validate_utf8()
     validate_manifest()
     validate_commands()

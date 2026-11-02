@@ -35,6 +35,11 @@ and it never adds a stage — the one exception is a capped, user-approved
 - [ ] Read `PLAN.md` › Requirements › Out of scope as well: a **dated
   follow-up** recorded there at bootstrap (a wait measured in days, which is
   never a stage) is a loose end to list here.
+- [ ] Every `Artifacts check: outside: <paths>` line in the notes is a loose
+  end too. Judge it against that stage's Goal and the Outcome: a routine
+  touch (a shared helper, a fixture) is **accepted, won't fix** with its
+  one-line reason; work of a different kind than the stage was for is drift,
+  and goes to an issue or a later plan like any other loose end.
 - [ ] For each loose end, resolve it into exactly one outcome:
   - **Issue** — work that belongs in its own ticket, including a **dated
     follow-up** for a wait measured in days. A dated follow-up's body states

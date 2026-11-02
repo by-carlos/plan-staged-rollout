@@ -12,8 +12,8 @@ and ends in a go/no-go decision. Used to exercise the scope referee
   in production.
 - **Constraints, ranked:** (1) no change to the production export; (2) at
   most a week of effort.
-- **Out of scope:** building or deploying the streaming pipeline;
-  migrating consumers.
+- **Out of scope:** Building the streaming pipeline — that is the next
+  plan. Deploying it; migrating consumers.
 - **Done, as checks:** a decision record exists with throughput and failure
   numbers from the prototype.
 

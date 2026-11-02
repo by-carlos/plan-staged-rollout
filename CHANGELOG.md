@@ -12,6 +12,19 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **A stage now stops when its Acceptance passes, and records whether it
+  stayed inside its declared files.** The proof of concept that quietly
+  becomes the production build never adds a stage, so the scope referee
+  never saw it. Now each stage reads the plan's Outcome and Out of scope
+  before it starts, and more of the same work after its Acceptance checks
+  pass is a new stage, through the referee. The finish protocol adds an
+  `Artifacts check:` ledger line from the new `scripts/artifacts_check.py`
+  (`match`, `undeclared` or `outside: <paths>`), and the final review judges
+  each `outside` line. It never stops a stage, and `## Artifacts` needs no new
+  format. Applies to plans scaffolded from this version; the drift diagram in
+  [Why it is built this way](docs/why.md#what-stops-it-becoming-a-different-project)
+  gains the row.
+
 - **`/plan-run-local` runs every remaining stage as fresh sessions on your
   own machine.** The session you run it from starts a standard-library
   driver in the background and waits; the driver runs one stage at a time

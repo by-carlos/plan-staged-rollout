@@ -92,6 +92,17 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   threshold is arbitrary and noisy, and the session that drifted is the worst
   judge of its own drift. Revisit: if real plans show the referee too quiet or
   too noisy. Source: #229
+- **Inside a running stage, drift is prevented, not caught: a stage's
+  Acceptance is its stop line, so more of the same work after it passes is a
+  new stage through the scope referee, and each stage records an
+  `Artifacts check:` line (`match`, `undeclared` or `outside`) that only the
+  final review judges.** — a check at a stage's end cannot save that stage's
+  work, a file mismatch is a weak drift signal (zero real drift across this
+  repo's first six stage PRs, and both raw mismatches were parsing noise), and
+  `## Artifacts` stays free prose, read for backticked paths only, so no
+  existing plan changes. Revisit: if recorded `outside` lines turn out to be
+  real drift, which would justify pausing the stage PR's merge on them.
+  Source: #259
 - **An idea too vague to state its Done checks, or whose checks name nothing
   a script could assert or a person could see (or leave the Outcome
   uncovered), gets a discovery plan as the recommended answer; its Out of

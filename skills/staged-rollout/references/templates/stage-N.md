@@ -9,8 +9,9 @@ records which issue this stage came from. `/stage-run` prints it, and
 `/plan-close` writes `Closes <ref>` (or `Refs`) for it into the final PR body. It is
 optional; a stage without it runs unchanged. -->
 
-> First read `.plan/PLAN.md` (Frozen decisions + Operating protocol) and
-> `.plan/LEDGER.md`. Follow the protocol, including the finish protocol.
+> First read `.plan/PLAN.md` (Requirements › Outcome and Out of scope, Frozen
+> decisions, Operating protocol) and `.plan/LEDGER.md`. Follow the protocol,
+> including the finish protocol: this stage ends when its Acceptance passes.
 > <List any extra docs to read for THIS stage, or delete this line.>
 
 ## Goal

@@ -190,9 +190,9 @@ again" is a number, not a judgement call (#122).
   one stage": the merged squash brings the stage's `doing` row onto the plan
   branch, and the fresh session's preflight finds that row with its PR
   merged and records `done` (`templates/PLAN.md`, *Self-healing*), so the
-  run carries on without the person. On no, or with no open PR (reported as
-  dead below, naming the branch it found), the run stops as it does for a
-  dead stage. Not measured in a cloud run yet; the local runner reads the same
+  run carries on without the person. On no, or with no open PR, the run
+  stops as it does for a dead stage, reported as the next bullet prescribes
+  and naming the branch it found. Not measured in a cloud run yet; the local runner reads the same
   signature the same way (`plan_run_local.py`, `outcome()`).
 - **Still unmoved after the grace period, with no stage branch pushed during
   the run — the stage is dead.** This is the

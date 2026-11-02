@@ -26,6 +26,15 @@ elsewhere. See 0.4.0 for the split.
   the ledger. Diagram: `docs/diagrams/plan-run-local.svg`, in
   [How a staged rollout works](docs/staged-rollout.md#running-every-stage-on-this-machine);
   settings in [Reference](docs/reference.md#the-local-runner).
+- **`/plan-run-cloud` reads an unmerged stage branch as a stop, not a dead
+  run.** A cloud stage whose pull request was not merged leaves its ledger row
+  unmoved on the plan branch; the orchestrator now compares the stage's remote
+  branches with what they were at fire time, and when one was pushed during
+  the run it shows the open pull request, asks whether to merge it, and on
+  yes merges, re-fires the stage so it records `done`, and carries on. A
+  session that pushed nothing is still reported dead. No cloud run has
+  exercised this path yet. Same rule as the local runner; see
+  [Running a plan in the cloud](docs/ON-THE-RUN.md#when-a-stage-is-gated-blocked-stopped-or-dead).
 - **`/plan-stages` and the session-start nudge offer both runners**, so a new
   plan says how to run it all, not only its first stage.
 

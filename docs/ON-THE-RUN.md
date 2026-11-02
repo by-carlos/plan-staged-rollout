@@ -57,7 +57,8 @@ repository. From there:
 - **`merge: auto`** on the plan flags line in `PLAN.md` (see
   [Plan flags](reference.md#plan-flags)). Under the default `merge: manual`
   the first cloud stage leaves its PR open and stops, the ledger row on the
-  plan branch never moves, and the orchestrator reports the run as dead.
+  plan branch never moves, and the orchestrator reports a stop with a merge
+  waiting for you (see [When a stage is gated, blocked, stopped or dead](#when-a-stage-is-gated-blocked-stopped-or-dead)).
 - **Cloud access on your Claude account.** `RemoteTrigger` very likely needs
   it (not yet checked across account types).
 - **GitHub connected to claude.ai/code for this repository**, so a cloud
@@ -87,7 +88,8 @@ on desktop or in the phone app to watch it or read its log.
 It **skips** a `gate: human` or `gate: local` stage and carries on with the
 others. It ends when a round has nothing left to fire: every stage is `done`
 or `skipped`, or what is left is gated, `blocked`, or waiting on those. It
-stops outright only on a dead run. The end report lists every gated stage
+stops outright only on a dead run, or on a stop whose merge you decline or
+GitHub refuses. The end report lists every gated stage
 with the command to run it yourself.
 
 [![What the orchestrator runs on its own: a gate auto stage is fired unattended and opens its own PR, while gate human, gate local and gate live stages are skipped and left for you — and the orchestrator carries on with the next stage either way.](diagrams/gates.svg)](diagrams/gates.svg)
@@ -103,7 +105,7 @@ but not committed to the repo. That's what `gate: local` is for: mark a stage
 that needs something only your machine has, and the orchestrator skips it and
 tells you to run it yourself.
 
-## When a stage is gated, blocked or dead
+## When a stage is gated, blocked, stopped or dead
 
 - **Gated** (`gate: human` or `gate: local`): never fired; its row stays
   `todo`. Run it yourself with `stage-run <N>`, then run `plan-run-cloud` again for
@@ -112,8 +114,19 @@ tells you to run it yourself.
   never retries it. Do what the runbook says, then run the stage yourself
   with `stage-run <N>`. Where the runbook is, and how to clear the block:
   [Where a `blocked` record lands](staged-rollout.md#where-a-blocked-record-lands).
-- **Dead** means the cloud run ended but the ledger row never moved, even
-  after a grace period (10 minutes) for the ledger to catch up. The orchestrator reports the session
+- **Stopped, merge pending** means the cloud run ended and the ledger row
+  never moved, even after a grace period (10 minutes), but the stage pushed
+  its branch during the run (a branch left from an earlier run does not
+  count). The stage did its work and its pull request is waiting on a merge
+  that did not happen. The orchestrator shows you that pull request and asks
+  whether to merge it; on yes it merges it with `gh pr merge --squash
+  --delete-branch`, fires the stage again so the fresh session records
+  `done`, and carries on. GitHub refuses the merge over red required checks
+  as it would any other, and the orchestrator then reports the refusal and
+  stops. On no, it stops and reports. Not yet observed in a cloud run.
+- **Dead** means the cloud run ended, the ledger row never moved, even
+  after a grace period (10 minutes) for the ledger to catch up, and the stage
+  pushed no branch during the run. The orchestrator reports the session
   id, its claude.ai link, what its log showed, and whether the stage branch or
   its pull request exist on GitHub. It never writes to the plan branch on the
   stage's behalf. You decide: fire the stage again, fix it by hand, or run it

@@ -90,6 +90,13 @@ ask with the brief (step 8) — plus the commit OK (step 9).
      or no Done check covers the Outcome. Name each such check in the
      playback; one the user sharpens there is no longer thin. Unranked
      constraints or a short Out of scope are not thin.
+   - **Unbounded** (a kind of thin) — the Outcome claims a scope with no
+     edge: "exhaustive", "everything", "all of it", "and improvements",
+     "etc." in any language, with no list of what it covers. Checks you
+     write to cover such an Outcome do not bound it — "a report per area
+     exists" passes while every area grows — so they cannot clear it; only
+     the user's own list of what is in can. Quote the words in the
+     playback and ask for that list.
 
    Either one puts a **Needs you** decision in step 3's batch proposing a
    **discovery plan**, with the discovery plan as the recommended answer:

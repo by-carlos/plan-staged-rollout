@@ -112,7 +112,12 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   waved through and a refusal only pushes people past every guardrail, while
   the referee needs a written boundary, not a resemblance. "Thin" is kept
   narrow (unranked constraints and a short Out of scope do not count) so
-  clear plans are never nagged, and the gate adds no question round. Applies
+  clear plans are never nagged, and the gate adds no question round. An
+  Outcome with no edge ("exhaustive", "everything", "etc." with no list of
+  what it covers) is thin too, and checks the session writes cannot clear
+  it — only the user's list can — because such checks pass while the scope
+  grows (an exhaustive-analysis ask otherwise scaffolds open-ended stages
+  unchallenged). Applies
   to plans scaffolded after it; earlier plans are not migrated. Revisit: if
   real plans show the thin check nagging clear requirements, or reasons
   given that never held. Source: #261

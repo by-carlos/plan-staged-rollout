@@ -84,8 +84,9 @@ not in a separate spec that would become a second source of truth.
 sessions. Work that fits one issue is small: its acceptance criteria are the
 spec, and it gets no brief and no plan review. `plan-stages` says so and
 offers to stop; [`work-issue`](tickets.md) or a single session fits better.
-An idea too vague to say what finished looks like, or whose finish line
-names nothing anyone could observe, becomes a **discovery plan** by default:
+An idea too vague to say what finished looks like, whose finish line names
+nothing anyone could observe, or whose outcome has no edge ("exhaustive",
+"etc." with no list of what is in) becomes a **discovery plan** by default:
 its outcome is a decision, and its out of scope says the build is the next
 plan. Building anyway is your call; it takes one sentence of why, kept with
 the plan's decisions. A prototype

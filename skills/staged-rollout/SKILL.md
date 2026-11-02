@@ -657,6 +657,19 @@ stage* defines the inputs, the record line in the ledger and each verdict's
 handling, and the session-start hook points every session of a plan that
 carries that section at it.
 
+**Inside a running stage** the referee sees nothing, because a stage that
+keeps going adds no stage — the proof of concept that becomes the production
+build. Two things cover it. A stage's **Acceptance is its stop line**: once
+its checks pass, more of the same work is a new stage, through the referee
+like any other, and every stage file has the session read the Outcome and
+Out of scope before it starts. After the fact, the finish protocol records an
+**`Artifacts check:` line** — `scripts/artifacts_check.py` compares the files
+the stage changed with the paths its `## Artifacts` names — and the final
+review judges each `outside` line. It is a record, never a gate: touching an
+unlisted file is routine, and a proof of concept can become production inside
+its declared files. Both live in the templates, so a plan scaffolded before
+them carries neither.
+
 The cheapest drift is the one prevented at bootstrap: an idea too vague to
 state its Done checks is scaffolded as a **discovery plan** whose Outcome is
 a decision, and the build becomes the next plan (`/plan-stages`, step 2).

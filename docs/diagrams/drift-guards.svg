@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 667" width="1150" height="667" role="img" aria-label="Where a plan is checked against the project it was supposed to be: six moments, from before there is a plan to the final review, each with the check that fires and what can come of it.">
 <title>Where drift gets caught</title>
-<desc>Six moments where a plan is checked against the project it was supposed to be. Before there is a plan, a too-vague idea becomes a discovery plan. While the plan is written, requirements are captured before decisions and played back. Before stage one runs, lens subagents review the uncommitted scaffold. While a stage runs, its Acceptance is its stop line: more of the same work is a new stage, and the files it changed are recorded against its declared Artifacts for the final review. Whenever a stage is added, a fresh-context scope referee judges it against the plan's outcome. At the end, the final review stage catalogs loose ends, never implements, and adds a stage only for a fix it found, at most three per plan.</desc>
+<desc>Six moments where a plan is checked against the project it was supposed to be. Before there is a plan, a vague or thin idea becomes a discovery plan by default, its Out of scope naming the build as the next plan; building anyway needs your reason, kept as a decision. While the plan is written, requirements are captured before decisions and played back. Before stage one runs, lens subagents review the uncommitted scaffold. While a stage runs, its Acceptance is its stop line: more of the same work is a new stage, and the files it changed are recorded against its declared Artifacts for the final review. Whenever a stage is added, a fresh-context scope referee judges it against the plan's outcome. At the end, the final review stage catalogs loose ends, never implements, and adds a stage only for a fix it found, at most three per plan.</desc>
 
 <rect x="0" y="0" width="1150" height="667" fill="#F8EFE4"/>
 <rect x="1" y="1" width="1148" height="665" fill="none" stroke="#E2D2BE" stroke-width="2"/>
@@ -27,11 +27,12 @@
 <rect x="330" y="63" width="460" height="74" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
 <rect x="330" y="63" width="6" height="74" rx="3" fill="#F0A33A"/>
 <text x="352" y="90" font-size="16" fill="#3B2A1E">Discovery plan</text>
-<text x="352" y="112" font-size="13.5" fill="#8A7664">An idea too vague to state its Done checks does not</text>
-<text x="352" y="129" font-size="13.5" fill="#8A7664">become a build plan.</text>
+<text x="352" y="112" font-size="13.5" fill="#8A7664">A vague or thin idea becomes one by default. Building</text>
+<text x="352" y="129" font-size="13.5" fill="#8A7664">anyway needs your reason, kept as a decision.</text>
 <path d="M790 100h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
 <rect x="820" y="76" width="290" height="48" rx="10" fill="#EAF7F1" stroke="#4FB98C" stroke-width="1.5"/>
-<text x="965" y="105" font-size="14" fill="#2F7D5E" text-anchor="middle">its Outcome is a decision</text>
+<text x="965" y="96" font-size="14" fill="#2F7D5E" text-anchor="middle">its Outcome is a decision;</text>
+<text x="965" y="114" font-size="14" fill="#2F7D5E" text-anchor="middle">the build is the next plan</text>
 
 <!-- ===== row 2 ===== -->
 <rect x="40" y="168" width="260" height="48" rx="10" fill="#FFFFFF" stroke="#CBB8A4" stroke-width="1.5"/>

@@ -58,6 +58,17 @@ elsewhere. See 0.4.0 for the split.
   in the cloud" for this one.
 - **`/stage-run` takes `--runner local`** after `--unattended`. The one
   change: a `gate: local` stage starts, since the driver runs on this machine.
+- **`/plan-stages` holds a vague or thin idea to a discovery plan unless you
+  say why.** An idea too vague to state its Done checks, or whose checks name
+  nothing a script could assert or a person could see, gets a discovery plan
+  as the recommended answer, and its Out of scope now reads
+  `Building <subject> — that is the next plan.`, so the scope referee has a
+  written boundary to stop a "now build it" stage against. Asking for the
+  build plan anyway is never refused; it takes one sentence of why, recorded
+  as a frozen decision with the drift risk and shown in the brief. Clear
+  requirements see no change, and plans already scaffolded are untouched.
+  Diagram: `docs/diagrams/drift-guards.svg`, in
+  [Why](docs/why.md#what-stops-it-becoming-a-different-project).
 
 ### Fixed
 

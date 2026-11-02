@@ -103,6 +103,19 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   existing plan changes. Revisit: if recorded `outside` lines turn out to be
   real drift, which would justify pausing the stage PR's merge on them.
   Source: #259
+- **An idea too vague to state its Done checks, or whose checks name nothing
+  a script could assert or a person could see (or leave the Outcome
+  uncovered), gets a discovery plan as the recommended answer; its Out of
+  scope reads `Building <subject> — that is the next plan.`; and a build plan
+  from such requirements is never refused but needs the user's reason,
+  recorded as a frozen decision with the drift risk.** — a warning alone is
+  waved through and a refusal only pushes people past every guardrail, while
+  the referee needs a written boundary, not a resemblance. "Thin" is kept
+  narrow (unranked constraints and a short Out of scope do not count) so
+  clear plans are never nagged, and the gate adds no question round. Applies
+  to plans scaffolded after it; earlier plans are not migrated. Revisit: if
+  real plans show the thin check nagging clear requirements, or reasons
+  given that never held. Source: #261
 - **Lessons at close are three to six blunt, evidence-backed lines in two
   groups, kept only in the final PR body and read back by the next
   `/plan-stages` in the same repository; there is no retro file, and work done

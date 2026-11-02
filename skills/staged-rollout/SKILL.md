@@ -671,8 +671,12 @@ its declared files. Both live in the templates, so a plan scaffolded before
 them carries neither.
 
 The cheapest drift is the one prevented at bootstrap: an idea too vague to
-state its Done checks is scaffolded as a **discovery plan** whose Outcome is
-a decision, and the build becomes the next plan (`/plan-stages`, step 2).
+state its Done checks, or whose checks name nothing observable, is
+scaffolded as a **discovery plan** by default — its Outcome a decision, its
+Out of scope `Building <subject> — that is the next plan.`, so the referee
+has a written boundary to judge by. A build plan from such requirements is
+never refused, but it needs the user's reason, recorded as a frozen
+decision with the drift risk (`/plan-stages`, step 2).
 
 ## The final review stage
 

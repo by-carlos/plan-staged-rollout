@@ -110,8 +110,13 @@ Three things are worth drawing out of that picture:
   usually routine.
 
 The earliest check is the cheapest one: an idea too vague to state its Done
-checks never becomes a build plan at all. It becomes a **discovery plan**
-whose Outcome is a decision, and the build is the plan after it.
+checks, or whose checks name nothing anyone could observe, becomes a
+**discovery plan** by default. Its Outcome is a decision, its Out of scope
+says the build is the next plan, and that written line is what the referee
+judges a "now build it" stage against. You can still ask for the build plan;
+it costs one sentence of why, and that sentence is kept in the plan's frozen
+decisions with the drift risk next to it, where every later session and the
+final review read it.
 
 ## When *not* to use this
 

@@ -62,8 +62,7 @@ elsewhere. See 0.4.0 for the split.
   say why.** An idea too vague to state its Done checks, or whose checks name
   nothing a script could assert or a person could see, or whose Outcome has
   no edge ("exhaustive", "everything", "etc." with no list of what is in),
-  gets a discovery plan
-  as the recommended answer, and its Out of scope now reads
+  gets a discovery plan as the recommended answer, and its Out of scope now reads
   `Building <subject> — that is the next plan.`, so the scope referee has a
   written boundary to stop a "now build it" stage against. Asking for the
   build plan anyway is never refused; it takes one sentence of why, recorded

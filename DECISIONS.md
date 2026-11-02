@@ -117,8 +117,7 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   what it covers) is thin too, and checks the session writes cannot clear
   it — only the user's list can — because such checks pass while the scope
   grows (an exhaustive-analysis ask otherwise scaffolds open-ended stages
-  unchallenged). Applies
-  to plans scaffolded after it; earlier plans are not migrated. Revisit: if
+  unchallenged). Applies to plans scaffolded after it; earlier plans are not migrated. Revisit: if
   real plans show the thin check nagging clear requirements, or reasons
   given that never held. Source: #261
 - **Lessons at close are three to six blunt, evidence-backed lines in two

@@ -80,9 +80,9 @@ into one (naming both lenses), and orders what is left by how much of the plan
 it would change. An unsound verdict that names a consequence heads the digest,
 above every finding, naming its lens; one that names none is dropped like a
 finding. An unsound verdict is always put to the user in the one ask
-(*Three outcomes*). If more than ~40 lines
-survive, the least consequential findings are cut from the digest and counted
-in that last line too ("7 minor findings not shown — see the lens files").
+(*Three outcomes*). If more than ~40 lines survive, the least consequential
+findings are cut from the digest and counted in that last line too ("7 minor
+findings not shown — see the lens files").
 
 ## Three outcomes
 
@@ -105,9 +105,9 @@ finding that reaches the digest is never silently dropped.
 ## The record
 
 `PLAN.md` › Plan review holds the review's record: the date, the lenses that
-ran with the trigger that fired each, and one line per digest finding with
-its outcome — the location changed, the follow-up's reference, or the reason
-it was accepted. The lens files themselves are scratch and are not committed.
+ran with the trigger that fired each, any unsound verdict with the user's
+answer to it, and one line per digest finding with its outcome — the location
+changed, the follow-up's reference, or the reason it was accepted. The lens files themselves are scratch and are not committed.
 
 ## Cost
 

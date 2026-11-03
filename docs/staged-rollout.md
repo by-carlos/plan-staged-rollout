@@ -188,7 +188,12 @@ one subagent per lens:
 The brief lists each lens with the reason it is on, and you can add or drop
 lenses when you answer the batch. At most four run. The session reads one
 merged digest of at most about 40 lines, never the lens files, and a finding
-with no plan location and no proposed change is dropped. Every finding ends
+is dropped unless it names a plan location, a concrete consequence (what
+breaks, leaks, costs or is wasted) and a proposed change. A Security finding
+must also name who could exploit the gap and how; checklist hygiene with no
+such path is dropped. A lens that finds the plan genuinely broken can say so
+in one blunt **Unsound:** line, which heads the digest and always comes to
+you. A quiet review is a normal result for a sound plan. Every finding ends
 as one of three things: **change the plan**, **file a follow-up**, or
 **accept with a reason**. Findings that would change a **Needs you** decision
 come to you in one ask, together with the brief. The record lands in

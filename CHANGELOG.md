@@ -70,6 +70,17 @@ elsewhere. See 0.4.0 for the split.
   requirements see no change, and plans already scaffolded are untouched.
   Diagram: `docs/diagrams/drift-guards.svg`, in
   [Why](docs/why.md#what-stops-it-becoming-a-different-project).
+- **Every plan-review finding now names a concrete consequence, or it is
+  dropped.** A finding used to need only a plan location and a proposed
+  edit, so a lens could still raise box-ticking points that change nothing
+  real. The finding shape gains a `**Consequence:**` line — what breaks,
+  leaks, costs or is wasted if the plan ships as written — and the digest
+  drops and counts findings without one. A Security finding must also name a
+  plausible actor and the path they take; checklist hygiene with no one to
+  exploit its absence is dropped. A lens that finds the plan genuinely broken
+  can open with a one-line `**Unsound:**` verdict, which heads the digest and
+  always goes to the user. A quiet review stays a valid result for a sound
+  plan. Lens triggers, count and models are unchanged.
 
 ### Fixed
 

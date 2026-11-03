@@ -100,6 +100,8 @@ outcomes are defined in the `staged-rollout` skill's
 
 - **Date:** <YYYY-MM-DD> · **Lenses:** Simplicity (always); <Lens> — <trigger
   that fired>.
+- **Unsound** (<Lens>; only when a lens raised one): <verdict, one line> →
+  <the user's answer>.
 - <Where> — <finding, one line> → **changed** <what> | **follow-up** <issue> |
   **accepted** — <reason>.
 

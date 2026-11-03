@@ -126,6 +126,13 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   as a single ticket gets none.** — a retro kept as a record changes nothing;
   the next plan's playback is where a lesson can still act. Revisit: if
   lessons need to reach plans in other repositories. Source: #229
+- **A plan-review finding needs a location, a concrete consequence and a
+  change, or the digest drops it; a Security finding also names a plausible
+  actor and path. A lens may add a one-line unsound verdict, which always
+  reaches the user.** — a location and an edit alone let box-ticking findings
+  through, and the review should help the plan move, stay quiet when nothing
+  matters, and flag bluntly only what is broken. Revisit: if real plans show
+  a genuine risk dropped for lack of a stated actor. Source: #276
 
 ## Running stages
 

@@ -436,8 +436,10 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    Simplicity and Operator; this session's own model for Architect and
    Security), each writing its findings to its own scratchpad file. Then one
    Sonnet subagent merges them into the digest that `plan-review.md` ›
-   *The digest* defines (finding rule applied, duplicates folded, at most
-   ~40 lines) and writes it to the scratchpad. **This session reads the
+   *The digest* defines (finding rule applied, so a finding with no
+   location, no concrete consequence or no change is dropped; duplicates
+   folded; any unsound verdict on top; at most ~40 lines) and writes it to
+   the scratchpad. **This session reads the
    digest only, never the lens files.**
 
    Give every digest finding one of the three outcomes (`plan-review.md` ›

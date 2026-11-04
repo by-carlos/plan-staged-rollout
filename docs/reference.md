@@ -180,7 +180,9 @@ It is therefore split in two:
   output, gotchas and handoff notes. Sessions read only the blocks of the
   stages they depend on. Each session also adds one `Actuals:` line there —
   its time and tokens, read from its own transcript — which `/plan-close`
-  sums into the usage report in the final PR. A finishing stage adds one
+  sums into the usage report in the final PR; a stage is not recorded `done`
+  until `estimates.py check` finds that line (or an `Actuals waived:` reason).
+  A finishing stage adds one
   `Artifacts check:` line too, saying whether the files it changed match the
   ones its `## Artifacts` declares; the final review judges any that do not.
 

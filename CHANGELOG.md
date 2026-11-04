@@ -8,6 +8,19 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **A stage can no longer be recorded `done` without its actual-time line.**
+  The usage report at closeout listed stages as "not measured" when a session
+  skipped its `Actuals:` line, understating the plan's actual total. The
+  finish protocol now runs the new `estimates.py check --stage <ID>` before
+  flipping a row to `done`; it exits 1, naming the stage, when the ledger
+  notes block has no `Actuals:` line. Where `effortlog.py usage` cannot run, an
+  `Actuals waived: <reason>` line stands in. Applies to plans scaffolded from
+  this version.
+
 ## [0.16.0] - 2026-11-02
 
 ### Added

@@ -50,6 +50,8 @@ takes the list back and writes it in one transaction.
 dry run above was made after calling it from the test helper. S1's real
 `run` must call it only after the post succeeds (D-4).
 
+Actuals: 2026-09-15T08:12:03Z → 2026-09-15T10:41:37Z · 149 min · tokens in=188 out=41256 cache_read=5310642 cache_write=262114 · subagents=1
+
 ### S1 Render and post
 
 **Acceptance evidence** (2026-09-16, stage worktree):
@@ -77,6 +79,8 @@ exit 2
 **D-6 revisited:** the busiest fixture day has 26 entries; 30 stays, and
 PLAN.md › D-6 now records it (brief regenerated in the same commit).
 
+Actuals: 2026-09-16T08:30:11Z → 2026-09-16T09:52:40Z · 82 min · tokens in=104 out=22318 cache_read=2874190 cache_write=151806 · subagents=0
+
 ### S2 Scheduler and runbook
 
 Ran on the laptop on the home network (`gate: local` — the server is not
@@ -98,6 +102,8 @@ Finished feed-digest.service.
 
 **Not committed:** `/etc/feed-digest/env` on the server, created by hand
 with mode 600.
+
+Actuals: 2026-09-16T08:34:50Z → 2026-09-16T10:03:22Z · 88 min · tokens in=97 out=19844 cache_read=2410377 cache_write=139562 · subagents=0
 
 ### SF Plan review
 
@@ -138,3 +144,5 @@ Cold-reader subagent (repository only, `.plan/` off limits):
 | Why is the webhook URL not in `feeds.toml`? | From `DECISIONS.md` › Posting — correct | — |
 
 Second pass: four of four answered correctly.
+
+Actuals: 2026-09-18T09:05:26Z → 2026-09-18T09:47:09Z · 42 min · tokens in=63 out=12907 cache_read=1693021 cache_write=98440 · subagents=2

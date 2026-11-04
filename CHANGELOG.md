@@ -19,7 +19,8 @@ elsewhere. See 0.4.0 for the split.
   flipping a row to `done`; it exits 1, naming the stage, when the ledger
   notes block has no `Actuals:` line. Where `effortlog.py usage` cannot run, an
   `Actuals waived: <reason>` line stands in. Applies to plans scaffolded from
-  this version.
+  this version; the `uptime-page` and `feed-digest` example plans carry the new step
+  (`feed-digest` also gains the `estimate` column and sample `Actuals:` lines).
 
 ## [0.16.0] - 2026-11-02
 

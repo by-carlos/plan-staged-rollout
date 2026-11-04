@@ -163,19 +163,23 @@ outcomes are defined in the `staged-rollout` skill's
 
 ## Stage index & dependencies
 
-| Stage | File | Depends | mode | exec | model | effort | gate |
-|---|---|---|---|---|---|---|---|
-| S0 Fetch and state (keystone) | `stage-0-fetch-and-state.md` | — | direct | inline | opus | high | auto |
-| S1 Render and post | `stage-1-render-post.md` | S0 | direct | inline | sonnet | medium | auto |
-| S2 Scheduler and runbook | `stage-2-scheduler.md` | S0 | direct | inline | sonnet | medium | local |
-| SF Plan review | `stage-f-review.md` | S1, S2 | direct | inline | opus | high | auto |
+| Stage | File | Depends | mode | exec | model | effort | gate | estimate |
+|---|---|---|---|---|---|---|---|---|
+| S0 Fetch and state (keystone) | `stage-0-fetch-and-state.md` | — | direct | inline | opus | high | auto | 1.5–3h |
+| S1 Render and post | `stage-1-render-post.md` | S0 | direct | inline | sonnet | medium | auto | 1–2h |
+| S2 Scheduler and runbook | `stage-2-scheduler.md` | S0 | direct | inline | sonnet | medium | local | 1–2h |
+| SF Plan review | `stage-f-review.md` | S1, S2 | direct | inline | opus | high | auto | 0.5–1h |
 
 Plan flags: `merge: manual` · `plan-dir: delete`
 
+Plan estimate: summed 4–8h · elapsed 3–6h
+
 This table is the **single authoritative home** for every stage's `depends` /
-`mode` / `exec` / `model` / `effort` / `gate`, and the **plan flags** line
-under it is the home of the plan-level `merge` and `plan-dir` flags. Stage
-files never restate them (a copy is what drifts), and the tooling reads them
+`mode` / `exec` / `model` / `effort` / `gate` / `estimate`, and the **plan
+flags** line under it is the home of the plan-level `merge` and `plan-dir`
+flags. The **plan estimate** line is computed from the `estimate` column by
+the `staged-rollout` skill's `scripts/estimates.py plan`, never added up by
+hand. Stage files never restate them (a copy is what drifts), and the tooling reads them
 from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
 the runnable-set logic (below) reads `depends` from it, an unattended runner
 reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
@@ -514,7 +518,10 @@ structural fact and four rules about timing.
    stage.
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
-      stage's notes block in `LEDGER.md`.
+      stage's notes block in `LEDGER.md`. Then add this session's
+      **`Actuals:` line** to the same block (`scripts/effortlog.py usage`,
+      its `line` pasted as is), including when the stage stops `doing` or
+      `blocked`.
    2. Update the stage's table row: absolute date, verified yes/no, one-line
       result — but the status stays `doing` here. `done` is recorded only
       after the PR merges (step 5 below), so a `done` row is always visible
@@ -569,9 +576,18 @@ structural fact and four rules about timing.
       cheap, and a stale re-verify is worth less than none.
    5. **After the merge:** return to the main clone — it is already on
       `plan-feed-digest`, so there is no checkout to do — and fast-forward it
-      (`git fetch origin` + `git merge --ff-only origin/plan-feed-digest`), then
-      flip the stage's row to `done` as a direct commit on the plan branch
-      and push. The `done` edit lives on the plan branch, after the merge —
+      (`git fetch origin` + `git merge --ff-only origin/plan-feed-digest`).
+      Then run the skill's `scripts/estimates.py check --plan-dir .plan
+      --stage <ID>`. If it exits non-zero, **stop: do not record the row
+      `done`** — the stage's notes block has no `Actuals:` line, and without
+      it the usage report at closeout understates the plan. Add the line (run
+      `scripts/effortlog.py usage` and paste its `line`) when this session is
+      the one that worked the stage; when `usage` cannot run (it exits 2), or
+      a later session is recording a stage it did not work, add
+      `Actuals waived: <reason>` to the block instead. Commit the line with
+      the `done` row and run the check again. With the check passing, flip
+      the stage's row to `done` as a direct commit on the plan branch and
+      push. The `done` edit lives on the plan branch, after the merge —
       never on the stage branch. If the merge doesn't happen this session,
       leave the row `doing` and end anyway; the next session's preflight
       (step 0.5) completes this bookkeeping when it finds the merged PR.

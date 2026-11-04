@@ -36,7 +36,10 @@ _(empty)_
               any gotchas the next stage needs to know.
   actuals   — every session on the stage, whatever its outcome, adds one
               `Actuals:` line (`scripts/effortlog.py usage`, its `line` as is);
-              `/plan-close` sums them against the estimates.
+              `/plan-close` sums them against the estimates. A stage is
+              recorded `done` only once `scripts/estimates.py check` passes;
+              where `usage` cannot run, an `Actuals waived: <reason>` line
+              stands in for the `Actuals:` line.
   artifacts — the finish protocol adds one `Artifacts check:` line
               (`scripts/artifacts_check.py`, its line as is); a record, never
               a gate — the final review judges each `outside` line.

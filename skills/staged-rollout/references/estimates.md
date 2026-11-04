@@ -73,6 +73,12 @@ Actuals: 2026-07-08T12:41:09Z → 2026-07-08T15:02:44Z · 142 min · tokens in=2
   usage limit is the account's, shared with every other session.
 - The fields are raw integers on purpose: `estimates.py report` reads them
   back. A resumed stage has one line per session, and the report sums them.
+- **A stage is not recorded `done` without one.** The finish protocol runs
+  `estimates.py check --plan-dir .plan --stage <ID>` first; it exits 1, naming
+  the stage, when the notes block has no `Actuals:` line. Where `usage` itself
+  cannot run (it exits 2: no session id, no transcript, or no usage yet), write
+  `Actuals waived: <reason>` in the block instead. The check accepts it; the
+  report still lists the stage as not measured.
 
 ## The usage report
 

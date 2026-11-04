@@ -606,9 +606,17 @@ one never does, so most sessions never meet it.
       cheap, and a stale re-verify is worth less than none.
    5. **After the merge:** return to the main clone — it is already on
       `plan-<slug>`, so there is no checkout to do — and fast-forward it
-      (`git fetch origin` + `git merge --ff-only origin/plan-<slug>`), then
-      flip the stage's row to `done` as a direct commit on the plan branch
-      and push. The `done` edit lives on the plan branch, after the merge —
+      (`git fetch origin` + `git merge --ff-only origin/plan-<slug>`). Then
+      run the skill's `scripts/estimates.py check --plan-dir .plan --stage
+      <ID>`. If it exits non-zero, **stop: do not record the row `done`** — the
+      stage's notes block has no `Actuals:` line, and without it the usage
+      report at closeout understates the plan. Add the line (run
+      `scripts/effortlog.py usage` and paste its `line`) when this session is
+      the one that worked the stage; when `usage` cannot run (it exits 2), or a
+      later session is recording a stage it did not work, add
+      `Actuals waived: <reason>` to the block instead. Commit the line with
+      the `done` row and run the check again. With the check passing, flip the
+      stage's row to `done` as a direct commit on the plan branch and push. The `done` edit lives on the plan branch, after the merge —
       never on the stage branch. If the merge doesn't happen this session,
       leave the row `doing` and end anyway; the next session's preflight
       (step 0.5) completes this bookkeeping when it finds the merged PR.

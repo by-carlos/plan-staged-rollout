@@ -12,6 +12,12 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **The plan review's first pass now shows it read every stage's notes.** The
+  review stage writes one coverage line per stage notes block (stage id, loose
+  ends found or none) into its own ledger notes, and its "no loose end was
+  dropped" check fails on any stage with notes but no line. Before, a skipped
+  or skimmed stage was invisible until a forced second pass found what the
+  first had missed.
 - **A stage can no longer be recorded `done` without its actual-time line.**
   The usage report at closeout listed stages as "not measured" when a session
   skipped its `Actuals:` line, understating the plan's actual total. The

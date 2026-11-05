@@ -74,8 +74,14 @@ and it never adds a stage — the one exception is a capped, user-approved
       the redo that finds nothing to fix.
     - *Unattended.* Unattended, this stage stops and asks: it records a block
       through the plan's *Recording a block* path instead of adding the fix.
+- [ ] Write one coverage line per stage notes block into this stage's own
+  ledger notes, under a `Coverage` heading: `<stage id> — <n loose ends found |
+  none>`. A stage whose notes you did not read has no line, so the lines are
+  the proof the first pass read every block.
 - [ ] Confirm no loose end was dropped: every item from the first step maps
-  to exactly one of the outcomes above.
+  to exactly one of the outcomes above, and every stage with a notes block has
+  a coverage line. A missing line is a failure: read that stage's notes, add
+  its line, and resolve what it surfaces before moving on.
 
 ### Decision triage
 

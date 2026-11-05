@@ -5,10 +5,19 @@ estimate) live ONLY in the PLAN.md stage index — the single authoritative home
 here; a copy is what drifts. -->
 
 > First read `.plan/PLAN.md` (Frozen decisions + Operating protocol) and
-> `.plan/LEDGER.md` — the *entire* ledger, every note, gotcha, shortcut, and
-> known gap. This is the one stage exempt from the read-scope rule: read
-> everything, not just what this stage depends on. Follow the protocol,
-> including the finish protocol.
+> `.plan/LEDGER.md`. This is the one stage exempt from the read-scope rule, and
+> what it reads depends on which run this is:
+>
+> - **First pass** — the *entire* ledger: every note, gotcha, shortcut, and
+>   known gap, not just what this stage depends on.
+> - **Redo** (this stage re-run from the top after a fix; its own ledger notes
+>   already hold a `Coverage` list) — only: the plan file, the first pass's
+>   loose-end list with its outcomes, the notes blocks of the `Fix:` stages
+>   added since, and every stage whose notes block is missing from the
+>   `Coverage` list or differs from what the first pass read. The other stages'
+>   notes are not re-read.
+>
+> Follow the protocol, including the finish protocol.
 >
 > Also read the `DECISIONS.md` format spec, `decisions-format.md`:
 > `.plan/decisions-format.md` when the plan carries a copy, otherwise the
@@ -30,8 +39,13 @@ and it never adds a stage — the one exception is a capped, user-approved
 
 ### Loose ends
 
-- [ ] Read every ledger row's notes end to end; list every loose end, gotcha,
-  shortcut, and known gap surfaced across all stages.
+- [ ] **First pass:** read every ledger row's notes end to end; list every
+  loose end, gotcha, shortcut, and known gap surfaced across all stages.
+  **Redo:** carry the first pass's loose-end list and outcomes forward, and
+  read only the redo scope in the header — the fix stages' notes blocks and any
+  stage whose notes block is missing from the `Coverage` list or differs from
+  it. Add the new loose ends and extend the `Coverage` list for the blocks
+  read.
 - [ ] Read `PLAN.md` › Requirements › Out of scope as well: a **dated
   follow-up** recorded there at bootstrap (a wait measured in days, which is
   never a stage) is a loose end to list here.
@@ -68,7 +82,8 @@ and it never adds a stage — the one exception is a capped, user-approved
       `skills/staged-rollout/scripts/renumber_stages.py --slug <slug>`, so the
       numbers stay in running order and SF stays last), SF's `depends` extended to it, and
       SF's row set back to `todo`. The fix runs as an ordinary stage; this
-      stage then re-runs **from the top** as a redo.
+      stage then re-runs **from the top** as a redo, with the narrower read scope
+  in the header.
     - *Documentation waits.* A pass that adds a fix writes none of the
       Decision triage and README steps below — they run only on a clean pass,
       the redo that finds nothing to fix.

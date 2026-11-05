@@ -10,6 +10,16 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Changed
+
+- **A plan review redo after a fix now re-reads only what changed.** The review
+  stage used to rerun from the top and re-read the whole ledger, so one
+  finished plan's review cost about 19.2M input tokens over two sessions, twice
+  the next most expensive stage. The first pass still reads everything; a redo
+  reads the plan file, the first pass's loose-end list with outcomes, the notes
+  of the fix stages added since, and any stage whose notes are missing from or
+  differ from the first pass's coverage record.
+
 ### Added
 
 - **The plan review's first pass now shows it read every stage's notes.** The

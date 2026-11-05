@@ -681,9 +681,12 @@ decision with the drift risk (`/plan-stages`, step 2).
 
 ## The final review stage
 
-`SF` is the one stage exempt from the read-scope rule: it reads the *entire*
-ledger — every note, gotcha, shortcut, and known gap — and `PLAN.md` ›
-Requirements › Out of scope, and sweeps for stragglers. Crucially, **it
+`SF` is the one stage exempt from the read-scope rule: on its first pass it
+reads the *entire* ledger — every note, gotcha, shortcut, and known gap — and
+`PLAN.md` › Requirements › Out of scope, and sweeps for stragglers. A redo
+after a fix reads only the plan file, the first pass's loose-end list with
+outcomes, the notes of the `Fix:` stages added since, and any stage whose notes
+are missing from or differ from the first pass's coverage record. Crucially, **it
 catalogs; it never implements, and it never adds a stage** — bar one capped
 exception below. Each finding becomes exactly one outcome:
 

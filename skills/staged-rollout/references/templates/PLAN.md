@@ -423,8 +423,9 @@ one never does, so most sessions never meet it.
 1. **Read only:** this file + the target stage file + the `LEDGER.md` status
    table + the notes blocks of the stages this one `depends` on + any docs the
    stage file names + the **decisions in force** covering this stage's files
-   (below). Do NOT scan the rest of the repo. (Exception: the final
-   review stage reads the *entire* ledger.)
+   (below). Do NOT scan the rest of the repo. (Exception: the final review
+   stage reads the *entire* ledger on its first pass; a redo after a fix reads
+   only what the stage file's header lists.)
 
    **Decisions in force.** The repository's decisions document is the one
    the Frozen decisions above record as adopted (bootstrap records it as a

@@ -686,7 +686,8 @@ reads the *entire* ledger — every note, gotcha, shortcut, and known gap — an
 `PLAN.md` › Requirements › Out of scope, and sweeps for stragglers. A redo
 after a fix reads only the plan file, the first pass's loose-end list with
 outcomes, the notes of the `Fix:` stages added since, and any stage whose notes
-are missing from or differ from the first pass's coverage record. Crucially, **it
+are missing from the first pass's coverage record or changed since the commit
+it records (`git diff` of the ledger against it). Crucially, **it
 catalogs; it never implements, and it never adds a stage** — bar one capped
 exception below. Each finding becomes exactly one outcome:
 

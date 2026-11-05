@@ -12,6 +12,11 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
+- **A plan review redo can now tell which stage notes changed.** The coverage
+  record keeps counts, not content, so "differs from the first pass" had no
+  test. The first pass now records the commit it read the ledger at, and a
+  redo re-reads a stage only when `git diff` of the ledger against that commit
+  touches its notes block.
 - **A plan review redo after a fix now re-reads only what changed.** The review
   stage used to rerun from the top and re-read the whole ledger, so one
   finished plan's review cost about 19.2M input tokens over two sessions, twice

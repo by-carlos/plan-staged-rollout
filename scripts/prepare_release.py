@@ -43,9 +43,13 @@ def current_version():
 
 def bump(version, kind):
     major, minor, patch = (int(part) for part in version.split("."))
+    if kind == "major":
+        return f"{major + 1}.0.0"
     if kind == "minor":
         return f"{major}.{minor + 1}.0"
-    return f"{major}.{minor}.{patch + 1}"
+    if kind == "patch":
+        return f"{major}.{minor}.{patch + 1}"
+    raise ValueError(f"unknown bump kind: {kind!r}")
 
 
 def has_feat_commit(since_tag):
@@ -141,7 +145,7 @@ def rotate_upgrading(new_version):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--bump", choices=["auto", "patch", "minor"], default="auto")
+    parser.add_argument("--bump", choices=["auto", "patch", "minor", "major"], default="auto")
     parser.add_argument("--github-output")
     args = parser.parse_args()
 

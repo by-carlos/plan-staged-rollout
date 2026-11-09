@@ -12,7 +12,7 @@ these steps by hand — the sequence was easy to half-complete, most damagingly
 by moving `release` without bumping the version.
 
 1. Run **`release-prepare.yml`** from the Actions tab, choosing a bump of
-   `auto`, `patch` or `minor`. It bumps `version` in
+   `auto`, `patch`, `minor` or `major`. It bumps `version` in
    `.claude-plugin/plugin.json`, renames `## [Unreleased]` to
    `## [x.y.z] - YYYY-MM-DD`, adds the `[x.y.z]: …/releases/tag/vx.y.z` link
    and rewrites the `[Unreleased]` compare link, then opens the release pull
@@ -34,7 +34,8 @@ by moving `release` without bumping the version.
 - **Semver:** a `feat` in the batch ⇒ **minor** bump; only `fix`/`docs`/`chore` ⇒
   **patch**. Pre-1.0, breaking changes go in a minor. The `auto` bump infers
   this by looking for a `feat` commit since the last tag, so pass an explicit
-  `minor` or `patch` when you disagree with it.
+  `minor` or `patch` when you disagree with it. `auto` never picks **major**;
+  choose `major` explicitly.
 - **Optional codename, hand-added per release.** After `release-prepare.yml` dates
   a section, a `**Codename:** <name>` line may be added as the first line of that
   section's body, before merging the release PR. `release-publish.yml` strips it

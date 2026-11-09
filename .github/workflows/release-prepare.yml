@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       bump:
-        description: "Version bump (auto infers minor from a feat commit since the last tag, else patch)"
+        description: "Version bump (auto infers minor from a feat commit since the last tag, else patch; auto never picks major, choose it explicitly)"
         type: choice
-        options: [auto, patch, minor]
+        options: [auto, patch, minor, major]
         default: auto
 
 jobs:

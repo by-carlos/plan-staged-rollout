@@ -10,6 +10,13 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **The release preparation can now cut a major version.** `release-prepare.yml`
+  and `scripts/prepare_release.py` accept a `major` bump (x.y.z becomes
+  x+1.0.0), which the 1.0.0 release needs. `auto` still picks only minor or
+  patch, and an unknown bump kind is now an error instead of a silent patch.
+
 ### Changed
 
 - **A plan review redo can now tell which stage notes changed.** The coverage

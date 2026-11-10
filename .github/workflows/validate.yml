@@ -7,14 +7,32 @@ on:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    name: validate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
         with:
           python-version: "3.x"
-      - run: python3 -m pip install pyyaml
-      - run: python3 scripts/validate_plugin.py
-      - run: python3 -m unittest discover -s tickets/tests
-      - run: python3 -m unittest discover -s tickets/scripts/tests
-      - run: python3 -m unittest discover -s skills/staged-rollout/tests
+      - run: python -m pip install pyyaml
+      - run: python scripts/validate_plugin.py
+      - name: Retired names
+        run: python scripts/check_retired_names.py
+      - name: Links and anchors
+        run: python scripts/check_links.py
+      - name: Docs against commands and flags
+        run: python scripts/check_docs_truth.py
+      - name: Install the Claude Code CLI (pinned)
+        if: runner.os == 'Linux'
+        run: npm install --global @anthropic-ai/claude-code@2.1.302
+      - name: claude plugin validate --strict
+        if: runner.os == 'Linux'
+        run: python scripts/check_plugin_validate.py
+      - run: python -m unittest discover -s scripts/tests
+      - run: python -m unittest discover -s tickets/tests
+      - run: python -m unittest discover -s tickets/scripts/tests
+      - run: python -m unittest discover -s skills/staged-rollout/tests

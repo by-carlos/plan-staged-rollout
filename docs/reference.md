@@ -5,12 +5,28 @@
 Look things up here. For how the pieces fit together, read
 [How a staged rollout works](staged-rollout.md) first.
 
-**On this page:** [Plan files](#plan-files) · [Statuses](#statuses) ·
+**On this page:** [Commands](#commands) · [Plan files](#plan-files) · [Statuses](#statuses) ·
 [Stage flags](#stage-flags) · [Plan flags](#plan-flags) ·
 [Defaults](#defaults) · [The local runner](#the-local-runner) · [Naming](#naming) ·
 [Brief, review and decisions formats](#brief-review-and-decisions-formats) ·
 [The ledger, kept slim](#the-ledger-kept-slim) ·
 [Why model and effort are hints](#why-model-and-effort-are-hints-not-automation)
+
+## Commands
+
+Each command is invoked as `/plan-staged-rollout:<name>`; the short form below
+works when no other plugin has a command of the same name.
+
+| Command | What it does | Flags |
+|---|---|---|
+| `/plan-stages <project idea>` | Turns an idea into a reviewed, committed `.plan/` scaffold | none |
+| `/stage-run <N>` | Runs one stage in this session; `f` runs the review stage | `--unattended` runs it with nobody to ask (refuses a `gate: human` stage); `--runner local` marks the session as a local runner's, which lets it take a `gate: local` stage |
+| `/plan-run-local` | Drives every runnable stage as fresh sessions on this machine, until a person is needed | none |
+| `/plan-run-cloud` | Drives every runnable stage as cloud sessions and keeps going | none |
+| `/plan-close` | Closes a finished plan and proposes the final pull request to `main` | `--unattended` applies the plan's declared defaults instead of asking |
+
+The skills `create-issue`, `work-issue` and `staged-rollout` are invoked the
+same way and are described in [Tickets](tickets.md).
 
 ## Plan files
 

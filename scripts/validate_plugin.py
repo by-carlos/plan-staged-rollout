@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Validate this plugin's manifest and structure: the manifest parses and
 carries the required fields, command/skill frontmatter is present, referenced
-templates exist, and README and docs/ links resolve. No external services or
-dependencies."""
+templates exist. Links are checked by scripts/check_links.py. No external
+services or dependencies besides PyYAML."""
 
 import json
 import re
@@ -16,7 +16,6 @@ ROOT = Path(__file__).resolve().parent.parent
 TEMPLATE_FILES = ["PLAN.md", "LEDGER.md", "stage-N.md", "stage-f-review.md", "README.md", "BRIEF.md", "RUNNER.md"]
 MANIFEST_FIELDS = ["name", "version", "description"]
 SEMVER_RE = re.compile(r"^\d+\.\d+\.\d+$")
-LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
 
 errors = []
 
@@ -111,24 +110,6 @@ def validate_skills():
                     err(f"{templates_dir.relative_to(ROOT)}: missing referenced template '{template}'")
 
 
-def validate_readme_links():
-    pages = sorted(ROOT.rglob("README.md")) + sorted((ROOT / "docs").glob("*.md"))
-    for readme in pages:
-        if any(part in (".git", "_audit") for part in readme.relative_to(ROOT).parts):
-            continue
-        text = readme.read_text(encoding="utf-8")
-        for target in LINK_RE.findall(text):
-            target = target.strip()
-            if target.startswith(("http://", "https://", "mailto:", "#")):
-                continue
-            target_path = target.split("#", 1)[0]
-            if not target_path:
-                continue
-            resolved = (readme.parent / target_path).resolve()
-            if not resolved.exists():
-                err(f"{readme.relative_to(ROOT)}: broken link to '{target}'")
-
-
 TEXT_SUFFIXES = {".md", ".json", ".yml", ".yaml", ".py", ".sh", ".txt", ".toml"}
 
 
@@ -167,7 +148,6 @@ def main():
     validate_manifest()
     validate_commands()
     validate_skills()
-    validate_readme_links()
 
     if errors:
         print(f"validate-plugin: {len(errors)} error(s):\n")

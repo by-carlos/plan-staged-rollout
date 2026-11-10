@@ -1,7 +1,7 @@
 """Script tests for write_guard.py (the opt-in tracker-create guard) and the
 ticket_core commands that leave its evidence: prepare, review-skip and
 review-filter's review-filtered.json. The Jira relay-token round trip is in
-tickets/scripts/tests/test_jira_adapter.py, beside its fixtures.
+tickets/scripts/tests/test_jira_adapter_scripts.py, beside its fixtures.
 
     python -m unittest discover -s tickets/tests -v
 """

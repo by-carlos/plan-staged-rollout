@@ -12,6 +12,15 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **CI now checks for retired command names, broken links and anchors, and docs
+  that name a command or flag the plugin does not have.** Three scripts
+  (`check_retired_names.py`, `check_links.py`, `check_docs_truth.py`) run as
+  their own steps in `validate.yml`; a fourth runs `claude plugin validate
+  --strict` (CLI pinned to 2.1.302) and tolerates only the known "CLAUDE.md at
+  the plugin root" warning. The link checker now covers every tracked Markdown
+  file and replaces `validate_readme_links` in `validate_plugin.py`.
+  `docs/reference.md` gained a Commands section so every command has an entry.
+- **The test job runs on Windows as well as Ubuntu.**
 - **The release preparation can now cut a major version.** `release-prepare.yml`
   and `scripts/prepare_release.py` accept a `major` bump (x.y.z becomes
   x+1.0.0), which the 1.0.0 release needs. `auto` still picks only minor or
@@ -19,6 +28,11 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
+- **`pytest` now collects from the repository root.** The two `test_jira_adapter.py`
+  modules shared a basename; the one under `tickets/scripts/tests/` is now
+  `test_jira_adapter_scripts.py`.
+- **The cloud runner template no longer names the retired `/plan-run`.** It names
+  `/plan-run-local` and `/plan-run-cloud`.
 - **A plan review redo can now tell which stage notes changed.** The coverage
   record keeps counts, not content, so "differs from the first pass" had no
   test. The first pass now records the commit it read the ledger at, and a
@@ -851,7 +865,7 @@ elsewhere. See 0.4.0 for the split.
   narrower behaviour — run exactly one stage, in this session — is unchanged
   in substance and now lives at **`/plan-staged-rollout:stage-run <N>`**; use
   it wherever you used to reach for `/plan-run <N>`. This is a deliberate,
-  pre-1.0 rename, not a bug: see [`README.md`](README.md#driving-a-plan-remotely--plan-run)
+  pre-1.0 rename, not a bug: see [`docs/ON-THE-RUN.md`](docs/ON-THE-RUN.md)
   and [`remote-driver.md`](skills/staged-rollout/references/remote-driver.md)
   for the mechanism `/plan-run` now drives (#129).
 

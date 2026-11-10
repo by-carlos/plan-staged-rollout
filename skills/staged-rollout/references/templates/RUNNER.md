@@ -79,8 +79,8 @@ scaffolded before them does not — once each, where the protocol places them:
   show, and the stage runs as it always has.
 
 The `plan-staged-rollout` plugin may not be installed where you are running —
-cloud containers never have it — so do not rely on any `/plan-run`,
-`/stage-run`, or other plugin command or skill. `.plan/PLAN.md` is complete on
+cloud containers never have it — so do not rely on any `/plan-run-local`,
+`/plan-run-cloud`, `/stage-run`, or other plugin command or skill. `.plan/PLAN.md` is complete on
 its own.
 
 If nobody can answer you (you were fired by an orchestrator, or your opening

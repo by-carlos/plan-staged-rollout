@@ -34,13 +34,31 @@ pushes to `main`. It runs `scripts/validate_plugin.py`, which checks that:
   `description` in their frontmatter.
 - The templates referenced by each `SKILL.md` (`PLAN.md`, `LEDGER.md`, `stage-N.md`,
   `README.md`) exist under `references/templates/`.
-- Relative links in `README.md` files and in `docs/*.md` pages resolve.
 
-The script is stdlib-only Python (no external dependencies). Run it locally before
-pushing:
+The same workflow also runs these checks, each as its own step, on Ubuntu and
+Windows (the plugin validation by the Claude Code CLI on Ubuntu only). Each prints
+`path:line` per hit and exits non-zero on any hit; `CHANGELOG.md` and `DECISIONS.md`
+record history and are not counted:
+
+- `scripts/check_retired_names.py` - no retired command name (the list is in
+  the script) in any tracked file, SVG labels included. Add a name to its
+  `RETIRED` list when you rename a command.
+- `scripts/check_links.py` - every relative link and section anchor in every
+  tracked `.md` file resolves.
+- `scripts/check_docs_truth.py` - every command in `commands/` has a row in
+  `docs/reference.md` naming its flags, and the docs name no command or flag
+  that does not exist.
+- `scripts/check_plugin_validate.py` - `claude plugin validate --strict`, failing on
+  anything but the known "CLAUDE.md at the plugin root" warning.
+
+`validate_plugin.py` is stdlib-only Python apart from PyYAML. Run it and the
+checks locally before pushing:
 
 ```
 python3 scripts/validate_plugin.py
+python3 scripts/check_retired_names.py
+python3 scripts/check_links.py
+python3 scripts/check_docs_truth.py
 ```
 
 The staged-rollout skill has its own unit tests (`renumber_stages.py`, and the
@@ -138,7 +156,7 @@ Layout:
     session-start                # .plan/-aware nudge: next runnable stage
     gh-body-guard                # denies gh body shapes that corrupt non-ASCII
     tracker-write-guard          # opt-in: tracker creates only through create-issue
-  scripts/                       # validate_plugin.py and release scripts
+  scripts/                       # validate_plugin.py, check_*.py and release scripts
   .github/workflows/             # CI and the release pipeline
   CHANGELOG.md
 ```

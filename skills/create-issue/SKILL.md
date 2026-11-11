@@ -111,6 +111,12 @@ never rendered or posted.
   threshold or a definition the user did not ask for: each one becomes a
   review finding the user has to answer or delete. Finding what is missing
   is the gap review's job.
+- **One place per fact, and length follows the work.** Write each fact once,
+  in the section it belongs to, and do not restate the summary in Context.
+  How the work is done goes in the template's section for the approach, or
+  the AI prompt, or Context when the ticket has neither, never in the
+  acceptance criteria. A small ticket can carry a
+  single Context bullet; there is no word target in either direction.
 - **Type:** the template's `[types].default`, unless the user named a type
   (a bug report names the template's bug type), the ask rewrites an
   existing ticket (keep its type) or step 5 proposes a spike. Never pick
@@ -136,7 +142,11 @@ never rendered or posted.
   what `body.ai_prompt.requires` lists (`effort`: open with a
   `Proposed model/effort: <tier>` line; `repo`, `base_branch`) and end with
   how to verify the change. Name the repository and base branch whenever
-  the work lands in one, required or not.
+  the work lands in one, required or not. It is the one place where
+  repetition is required: restate every guardrail the description carries
+  (what must not be touched, rollback, when to stop), because `work-issue`
+  follows no instruction outside the prompt, and include the line "If this
+  prompt and the ticket description disagree, stop and ask."
 - **Acceptance Criteria** are a numbered list (`1.`, `2.`); `check` refuses
   bullets there.
 - Run `core check --template template.json draft.json` and fix every error
@@ -160,7 +170,10 @@ A short ticket, a simple ask or a clear source is never a reason to skip.
    more. If it fails again, run `core review-skip --work <folder> --reason
    "reviewer output unreadable twice"`, continue without a review and give a
    ⚠️ warning that the draft was not reviewed.
-4. Apply the `nits` to the draft yourself and list them in the preview.
+4. Apply the `nits` to the draft yourself and list them in the preview. An
+   `earns-its-place` nit removes or merges the text it names, and a
+   `how-in-criteria` nit moves the step out of the criteria; the preview
+   lists each cut so the user can restore one at the approval gate.
 5. Put the `questions` to the user in **one** message: every blocker, then
    gaps, as the filter ordered them. `gaps_dropped` holds the gaps cut by
    `max_questions`: fix the ones the drafter can fix alone (a title, a
@@ -172,7 +185,8 @@ A short ticket, a simple ask or a clear source is never a reason to skip.
    user stated) and fix the draft from that answer instead; say in the
    preview how many were settled this way. Give each question you do ask a
    proposed default, and say once that an unanswered question takes its
-   default.
+   default. Each answer goes into the draft once, in the section it belongs
+   to (and into the AI prompt too when it is a guardrail).
 6. A **guarded-field** question goes through `AskUserQuestion`, using the
    filter's question text unchanged. Options: each of the field's values,
    plus "Not sure, leave it unset (Recommended)". Record

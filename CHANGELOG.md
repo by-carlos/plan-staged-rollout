@@ -8,7 +8,7 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
-## [Unreleased]
+## [0.17.0] - 2026-11-11
 
 ### Changed
 
@@ -1561,7 +1561,8 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
-[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.16.0...HEAD
+[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.17.0...HEAD
+[0.17.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.17.0
 [0.16.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.16.0
 [0.15.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.15.0
 [0.14.2]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.14.2

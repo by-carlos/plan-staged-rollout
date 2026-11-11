@@ -2,8 +2,9 @@
 
 The gap reviewer reads a **draft** ticket before the user approves it. It
 finds what is missing or vague and turns each gap into a short question for
-the author. Pushback should be cheap: a few pointed questions, not a
-rewrite.
+the author. It also finds what does not earn its place, so that a review can
+shorten a ticket as well as lengthen it. Pushback should be cheap: a few
+pointed questions, not a rewrite.
 
 ## How it runs
 
@@ -69,6 +70,8 @@ common gaps come first.
 | 17 | `source-fidelity` | gap | Only when source material was given. The draft drops a requirement, constraint or open question the source states; softens something the source states firmly; or claims something the source does not say. Separately, a term in the source that nothing defines (a code, a record or system name, an unnamed "standard") is questioned whether or not the draft kept it: ask what it is and who owns it, never ask to restore it, because the source can be wrong. **Always asked**, never cut by `max_questions`. |
 | 18 | `unsourced-decision` | gap | The draft states a choice as already settled (a mechanism, a policy, a target value, who signs off) without naming the standard, decision record or person it rests on. Raise it especially where the choice carries security, reliability, data or compliance risk. Ask whether it was decided and where; when it was not, the honest ticket is often the decision itself. When the template lists `references`, a draft touching what one covers is asked, by the reference's name, whether it was checked against it, and a draft that contradicts one of its points says which. **Always asked**, never cut by `max_questions`. |
 | 19 | `plausibility` | gap | A claim with no evidence or stated confidence; a term that does not belong to the technology it is attached to (an event, table or setting name the product does not have); or an ask that does not fit the system (a production database backed up to a phone). Ask what it is and where it comes from, never declare it wrong: the reviewer's knowledge can be stale, and internal names exist that it cannot know. **Always asked**, never cut by `max_questions`. |
+| 20 | `earns-its-place` | nit | A bullet or sentence outside the AI prompt repeats what another section already says, or removing it would cause neither a wrong outcome nor a question for whoever does the work. Name what to remove or which two to merge; never rewrite it. Never raised on the AI prompt (it repeats guardrails on purpose, because an agent follows nothing outside it), on a constraint, safeguard, rollback or "stop when" condition, or on anything the source material states. |
+| 21 | `how-in-criteria` | nit | An acceptance criterion says how the work is done (a step, a command, a tool) instead of the result someone can check. Name it: the drafter moves the how to the template's section for the approach, or to the AI prompt when the template has no such section, or to Context when the ticket has neither, and keeps the result as the criterion. |
 
 Template rules from `[review].extra_checks` run after these with severity
 `gap`. Tickets matching `[review].skip_when` (for example, machine-created
@@ -92,6 +95,9 @@ The skill is exercised by hand on at least three synthetic drafts:
 - an oversized story (should hit `size` and propose a split)
 - an ask that may touch regulated data (should hit `guarded-field` and ask,
   never set the value)
+- a draft whose Context restates In plain terms and whose criteria list
+  steps (should hit `earns-its-place` and `how-in-criteria`, and leave the
+  AI prompt and every guardrail untouched)
 
 Real tickets that informed the ranking are kept privately and are not
 fixtures.

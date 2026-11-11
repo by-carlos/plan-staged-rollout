@@ -12,6 +12,17 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
+- **The gap review can now shorten a ticket, not only lengthen it.** All 19
+  existing checks looked for something missing, so every review round could
+  only add text. Two new nits, `earns-its-place` (a bullet that repeats
+  another section or changes nothing for whoever does the work) and
+  `how-in-criteria` (an acceptance criterion that is a step, not a result),
+  are applied by the drafter without costing a question, and the preview
+  lists each cut. They never touch the AI prompt, a guardrail, or anything
+  the source states. The drafting rules now say: one place per fact, length
+  follows the work with no word target, and the AI prompt repeats every
+  guardrail and stops when it disagrees with the description, because
+  `work-issue` follows nothing outside the prompt.
 - **A plan review redo can now tell which stage notes changed.** The coverage
   record keeps counts, not content, so "differs from the first pass" had no
   test. The first pass now records the commit it read the ledger at, and a

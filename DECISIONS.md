@@ -214,6 +214,23 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   `effort` measures reasoning depth, not work. Revisit: once the log is large
   enough to replace the anchors by stage kind. Source: #228
 
+## Tickets
+
+Paths: `skills/create-issue/SKILL.md`, `tickets/references/gap-rubric.md`, `tickets/scripts/ticket_core.py`
+
+- **The gap review trims as well as asks, through nits only, and never by a
+  word count.** — every earlier check could only add text, which inflated
+  small tickets; a trimming nit costs no question and is listed for the user
+  to restore at the approval gate, while a size limit would force cuts or
+  padding the work does not justify. Revisit: if trimmed tickets start
+  losing information that later comes back as a question. Source: sample of
+  20 AI-written tickets, 2026-11-11
+- **The AI prompt is the one section that repeats on purpose: it restates
+  every guardrail and stops when it disagrees with the description.** —
+  `work-issue` follows no instruction outside the prompt, so a guardrail
+  written only in the description never reaches the agent. Revisit: if
+  `work-issue` ever reads the description as instructions. Source: same
+
 ## Decisions format
 
 Paths: `skills/staged-rollout/references/decisions-format.md`

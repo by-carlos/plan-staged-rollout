@@ -80,6 +80,16 @@ class ReviewPrompt(unittest.TestCase):
         self.assertEqual(severities["source-fidelity"], "gap")
         self.assertEqual(severities["unsourced-decision"], "gap")
 
+    def test_trimming_checks_are_nits_so_they_never_cost_a_question(self):
+        severities = ticket_core.rubric_severities()
+        self.assertEqual(severities["earns-its-place"], "nit")
+        self.assertEqual(severities["how-in-criteria"], "nit")
+        items = [{"check": "earns-its-place", "severity": "gap", "where": "Context, bullet 2",
+                  "finding": "repeats In plain terms", "question": "Remove it?"}]
+        out = ticket_core.review_filter(TEMPLATE, json.dumps(items))
+        self.assertEqual(out["questions"], [])
+        self.assertEqual([n["check"] for n in out["nits"]], ["earns-its-place"])
+
     def test_always_asked_gaps_survive_the_question_cap(self):
         items = [{"check": "measurable-ac", "severity": "blocker", "where": "AC", "finding": "f",
                   "question": "q"}]

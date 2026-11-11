@@ -5,10 +5,21 @@ estimate) live ONLY in the PLAN.md stage index — the single authoritative home
 here; a copy is what drifts. -->
 
 > First read `.plan/PLAN.md` (Frozen decisions + Operating protocol) and
-> `.plan/LEDGER.md` — the *entire* ledger, every note, gotcha, shortcut, and
-> known gap. This is the one stage exempt from the read-scope rule: read
-> everything, not just what this stage depends on. Follow the protocol,
-> including the finish protocol.
+> `.plan/LEDGER.md`. This is the one stage exempt from the read-scope rule, and
+> what it reads depends on which run this is:
+>
+> - **First pass** — the *entire* ledger: every note, gotcha, shortcut, and
+>   known gap, not just what this stage depends on.
+> - **Redo** (this stage re-run from the top after a fix; its own ledger notes
+>   already hold a `Coverage` list) — only: the plan file, the first pass's
+>   loose-end list with its outcomes, the notes blocks of the `Fix:` stages
+>   added since, and every stage whose notes block is missing from the
+>   `Coverage` list or changed since the first pass read it. A block changed
+>   when `git diff <sha> -- .plan/LEDGER.md` touches it, `<sha>` being the
+>   `Read at` commit in the `Coverage` list. The other stages' notes are not
+>   re-read.
+>
+> Follow the protocol, including the finish protocol.
 >
 > Also read the `DECISIONS.md` format spec, `decisions-format.md`:
 > `.plan/decisions-format.md` when the plan carries a copy, otherwise the
@@ -30,11 +41,22 @@ and it never adds a stage — the one exception is a capped, user-approved
 
 ### Loose ends
 
-- [ ] Read every ledger row's notes end to end; list every loose end, gotcha,
-  shortcut, and known gap surfaced across all stages.
+- [ ] **First pass:** read every ledger row's notes end to end; list every
+  loose end, gotcha, shortcut, and known gap surfaced across all stages.
+  **Redo:** carry the first pass's loose-end list and outcomes forward, and
+  read only the redo scope in the header — the fix stages' notes blocks and any
+  stage whose notes block is missing from the `Coverage` list or changed
+  since its `Read at` commit (the header gives the `git diff` test; ignore
+  this stage's own block in the diff). Add the new loose ends and extend the `Coverage` list for the blocks
+  read.
 - [ ] Read `PLAN.md` › Requirements › Out of scope as well: a **dated
   follow-up** recorded there at bootstrap (a wait measured in days, which is
   never a stage) is a loose end to list here.
+- [ ] Every `Artifacts check: outside: <paths>` line in the notes is a loose
+  end too. Judge it against that stage's Goal and the Outcome: a routine
+  touch (a shared helper, a fixture) is **accepted, won't fix** with its
+  one-line reason; work of a different kind than the stage was for is drift,
+  and goes to an issue or a later plan like any other loose end.
 - [ ] For each loose end, resolve it into exactly one outcome:
   - **Issue** — work that belongs in its own ticket, including a **dated
     follow-up** for a wait measured in days. A dated follow-up's body states
@@ -63,14 +85,23 @@ and it never adds a stage — the one exception is a capped, user-approved
       `skills/staged-rollout/scripts/renumber_stages.py --slug <slug>`, so the
       numbers stay in running order and SF stays last), SF's `depends` extended to it, and
       SF's row set back to `todo`. The fix runs as an ordinary stage; this
-      stage then re-runs **from the top** as a redo.
+      stage then re-runs **from the top** as a redo, with the narrower read scope
+      in the header.
     - *Documentation waits.* A pass that adds a fix writes none of the
       Decision triage and README steps below — they run only on a clean pass,
       the redo that finds nothing to fix.
     - *Unattended.* Unattended, this stage stops and asks: it records a block
       through the plan's *Recording a block* path instead of adding the fix.
+- [ ] Write one coverage line per stage notes block into this stage's own
+  ledger notes, under a `Coverage` heading: `<stage id> — <n loose ends found |
+  none>`. A stage whose notes you did not read has no line, so the lines are
+  the proof the first pass read every block. Start the list with a
+  `Read at: <short commit SHA>` line, the plan branch's `HEAD` when the ledger
+  was read, so a redo can tell which blocks changed since.
 - [ ] Confirm no loose end was dropped: every item from the first step maps
-  to exactly one of the outcomes above.
+  to exactly one of the outcomes above, and every stage with a notes block has
+  a coverage line. A missing line is a failure: read that stage's notes, add
+  its line, and resolve what it surfaces before moving on.
 
 ### Decision triage
 

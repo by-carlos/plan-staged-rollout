@@ -66,7 +66,8 @@ Everything the plugin needs after that, it writes into that repository's
 
 Installed plugin commands carry the plugin's name as a prefix
 (`/plan-staged-rollout:stage-run`). The other pages use the short names
-(`plan-stages`, `stage-run`, `plan-run`, `plan-close`) to stay readable.
+(`plan-stages`, `stage-run`, `plan-run-local`, `plan-run-cloud`, `plan-close`)
+to stay readable.
 
 ## Where it runs
 
@@ -79,7 +80,7 @@ It does not appear in these places:
 - the desktop app's **Chat** and **Cowork** tabs, or claude.ai itself: none
   of them run Claude Code plugins;
 - a **cloud** session (the desktop app's **Send to cloud**, claude.ai/code, or
-  a stage `plan-run` fires): a copy installed on your machine is not there.
+  a stage `plan-run-cloud` fires): a copy installed on your machine is not there.
   Cloud stages don't need it: they follow `.plan/RUNNER.md`, which every
   plan carries.
 
@@ -88,7 +89,8 @@ Some parts need more than a session:
 | Part | Needs | Without it |
 |---|---|---|
 | [Session-start nudge](staged-rollout.md#session-start-nudge), the `gh-body-guard` ticket check and the opt-in [`tracker-write-guard`](tickets.md#trackers-and-requirements) | `bash` (on Windows, Git Bash). The hooks run through a cmd/bash wrapper, so they work on Linux, macOS and Windows. The write guard also needs Python 3.11 or later on `PATH`. | No nudge, and `gh` commands and ticket creates go unchecked. Everything else works: the commands are run by the model, not by shell scripts. |
-| [Running a plan in the cloud](ON-THE-RUN.md) | The plan flag `merge: auto`; cloud access on your Claude account (very likely required); and GitHub connected to claude.ai/code for the repo. The orchestrator (the local session running `plan-run`) fires stages through Claude Code's built-in `RemoteTrigger` tool, so there is nothing to install. | No cloud runs. Run stages locally. |
+| [Running a plan in the cloud](ON-THE-RUN.md) | The plan flag `merge: auto`; cloud access on your Claude account (very likely required); and GitHub connected to claude.ai/code for the repo. The orchestrator (the local session running `plan-run-cloud`) fires stages through Claude Code's built-in `RemoteTrigger` tool, so there is nothing to install. | No cloud runs. Run stages locally. |
+| [Running every stage on this machine](staged-rollout.md#running-every-stage-on-this-machine) | Claude Code 2.1.268 or later and Python 3 on `PATH`, and the `claude` command logged in for sessions it starts (`claude auth status` in a terminal says so; `claude auth login` fixes it, or `CLAUDE_STAGE_LAUNCHER` names a wrapper). The plan flag `merge: auto` for a hands-off run. | Run stages one by one with `stage-run <N>`. |
 | [Ticket skills](tickets.md) | Python 3.11 or later. `gh` for GitHub; the Atlassian MCP server for Jira. | That tracker is unavailable. |
 
 **Typing `/plan-staged-rollout:<command>` always works.** Plain language
@@ -151,8 +153,8 @@ installed when you come back to it. A new version changes what the *next*
 
 What an update *can* change is the plugin-side layer around that protocol:
 `stage-run`'s model-tier check and handoff chips, the session-start nudge,
-and `plan-run`'s orchestrator loop. None of these is scaffolded into
+and `plan-run-cloud`'s orchestrator loop. None of these is scaffolded into
 `.plan/`, so they follow the installed version. What each fired cloud stage
-follows is the plan's own `.plan/RUNNER.md`: `plan-run` writes one from the
+follows is the plan's own `.plan/RUNNER.md`: `plan-run-cloud` writes one from the
 installed version's template only when a plan has none, and uses an existing
 one as it is.

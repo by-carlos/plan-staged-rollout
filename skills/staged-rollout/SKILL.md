@@ -445,7 +445,7 @@ two kinds:
 | Decision point | Interactive | Unattended |
 |---|---|---|
 | A `gate: human` stage | announced — the person at the keyboard *is* the gate | **hard stop**, never started |
-| A `gate: local` stage | announced — running it here means this session already has what it needs | **hard stop**, never started |
+| A `gate: local` stage | announced — running it here means this session already has what it needs | **hard stop**, never started — except by `/plan-run-local`, whose driver runs on this machine |
 | A `gate: live` stage | announced — the person at the keyboard chooses when the running system changes | **hard stop**, never started |
 | A `gate` value that is not `auto`, `human`, `local` or `live` | refused and named | **hard stop**, never started |
 | Weight check: lighter model than recommended, or a readable effort that differs from the flag | **hard stop** — relaunch named, nothing written | **hard stop** — `blocked` + runbook |
@@ -469,8 +469,8 @@ plan branch pointing at it is one the next pass never reads.
 
 **What no mode loosens.** The plan→main PR is opened by closeout and merged
 by a person, always. A `gate: human` stage is never launched unattended, and
-neither is a `gate: local` or a `gate: live` one — same refusal, different
-reason. A
+neither is a `gate: live` one, nor a `gate: local` one by any runner but
+`/plan-run-local` — same refusal, different reason. A
 worktree holding real uncommitted or unpushed work is never removed, and never
 with `--force`. A merge the platform refuses is never forced or retried.
 
@@ -657,15 +657,37 @@ stage* defines the inputs, the record line in the ledger and each verdict's
 handling, and the session-start hook points every session of a plan that
 carries that section at it.
 
+**Inside a running stage** the referee sees nothing, because a stage that
+keeps going adds no stage — the proof of concept that becomes the production
+build. Two things cover it. A stage's **Acceptance is its stop line**: once
+its checks pass, more of the same work is a new stage, through the referee
+like any other, and every stage file has the session read the Outcome and
+Out of scope before it starts. After the fact, the finish protocol records an
+**`Artifacts check:` line** — `scripts/artifacts_check.py` compares the files
+the stage changed with the paths its `## Artifacts` names — and the final
+review judges each `outside` line. It is a record, never a gate: touching an
+unlisted file is routine, and a proof of concept can become production inside
+its declared files. Both live in the templates, so a plan scaffolded before
+them carries neither.
+
 The cheapest drift is the one prevented at bootstrap: an idea too vague to
-state its Done checks is scaffolded as a **discovery plan** whose Outcome is
-a decision, and the build becomes the next plan (`/plan-stages`, step 2).
+state its Done checks, whose checks name nothing observable, or whose
+Outcome has no edge ("exhaustive", "etc." with no list of what is in) is
+scaffolded as a **discovery plan** by default — its Outcome a decision, its
+Out of scope `Building <subject> — that is the next plan.`, so the referee
+has a written boundary to judge by. A build plan from such requirements is
+never refused, but it needs the user's reason, recorded as a frozen
+decision with the drift risk (`/plan-stages`, step 2).
 
 ## The final review stage
 
-`SF` is the one stage exempt from the read-scope rule: it reads the *entire*
-ledger — every note, gotcha, shortcut, and known gap — and `PLAN.md` ›
-Requirements › Out of scope, and sweeps for stragglers. Crucially, **it
+`SF` is the one stage exempt from the read-scope rule: on its first pass it
+reads the *entire* ledger — every note, gotcha, shortcut, and known gap — and
+`PLAN.md` › Requirements › Out of scope, and sweeps for stragglers. A redo
+after a fix reads only the plan file, the first pass's loose-end list with
+outcomes, the notes of the `Fix:` stages added since, and any stage whose notes
+are missing from the first pass's coverage record or changed since the commit
+it records (`git diff` of the ledger against it). Crucially, **it
 catalogs; it never implements, and it never adds a stage** — bar one capped
 exception below. Each finding becomes exactly one outcome:
 

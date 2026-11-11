@@ -10,21 +10,26 @@ Operator (daily timer). Architect off: one component, no shared interface.
 
 - **Where:** PLAN.md › Frozen decisions (webhook key in `feeds.toml`)  *(Security)*
   **Problem:** `feeds.toml` is committed, so the webhook URL would be in git history.
+  **Consequence:** anyone who can read the repository, now or from any old clone, can post to the channel with that URL; rotating it means rewriting history.
   **Change:** add a decision: the URL comes only from `FEED_DIGEST_WEBHOOK`; S1 reads it, S2's unit loads it.
   **Outcome:** change the plan — new D-3; S1 and S2 steps edited.
 - **Where:** stage-2-scheduler.md › Steps, step 3 (retry loop)  *(Simplicity, Operator)*
   **Problem:** a retry loop repeats what the next day's run does, and adds a process to watch.
+  **Consequence:** S2 builds and tests a second process that buys nothing D-4's safe reruns do not already give.
   **Change:** cut the step; D-5 says "no retry loop", relying on D-4's safe reruns.
   **Outcome:** change the plan — step cut, D-5 reworded.
 - **Where:** stage-0-fetch-and-state.md › Steps, step 2  *(Security, Operator)*
   **Problem:** no timeout or size cap: one stalled or huge feed hangs the run.
+  **Consequence:** a feed server that stalls or streams an endless response, by fault or on purpose, through S0's fetch, holds the daily run open and no digest goes out.
   **Change:** 20-second timeout and 5 MB cap per feed; a failing feed is skipped by name.
   **Outcome:** change the plan — S0 step 2 edited.
 - **Where:** stage-2-scheduler.md › Acceptance  *(Operator)*
   **Problem:** if the timer stops firing, nothing fails, so nobody is told.
+  **Consequence:** the digest silently stops for days before a reader notices it is missing.
   **Change:** add an external heartbeat check that alerts when no digest arrived by 08:00.
   **Outcome:** file a follow-up — #41; a monitoring service is outside this plan.
 - **Where:** PLAN.md › Frozen decisions › D-4  *(Simplicity)*
   **Problem:** SQLite may be heavier than a JSON file of posted keys.
+  **Consequence:** S0 carries a schema and its tests for what is only a set of keys.
   **Change:** store posted keys in `state.json`.
   **Outcome:** accept with a reason — `sqlite3` is standard library and gives the atomic update D-4 needs.

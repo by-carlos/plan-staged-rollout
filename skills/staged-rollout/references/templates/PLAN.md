@@ -100,6 +100,8 @@ outcomes are defined in the `staged-rollout` skill's
 
 - **Date:** <YYYY-MM-DD> · **Lenses:** Simplicity (always); <Lens> — <trigger
   that fired>.
+- **Unsound** (<Lens>; only when a lens raised one): <verdict, one line> →
+  <the user's answer>.
 - <Where> — <finding, one line> → **changed** <what> | **follow-up** <issue> |
   **accepted** — <reason>.
 
@@ -151,8 +153,9 @@ reachable, or a locally-installed toolchain; `live` means never by a driver
 either — the stage deploys or changes a running system, so a person chooses
 when it fires. Same refusal, different reason — an unattended runner stops in
 front of any of the three exactly the same way. Runners fire a stage only when
-its `gate` is `auto` or absent; any other value, unknown ones included, is
-refused and named. Every stage that is not `live` is a build stage, and the
+its `gate` is `auto` or absent — and the local runner, `/plan-run-local`, also
+`local`, since it runs on the local machine; any other value, unknown ones
+included, is refused and named. Every stage that is not `live` is a build stage, and the
 files it may touch are its `## Artifacts` list. Two `live` stages never run at
 once: `/stage-run` preflight refuses to start a `live` stage while another
 `live` stage's row is `todo` with a stage branch that has commits (preflight
@@ -206,8 +209,9 @@ their own column. A stored copy is what drifts; the graph is the truth.
 - **Concurrency is an operator action.** Nothing here launches sessions:
   running a wave in parallel means opening one session per stage yourself —
   or leaving it to an unattended runner outside any session, which launches
-  only `gate: auto` stages (or stages with no `gate` column) and stops in
-  front of any other value — `human`, `local` or `live`. What
+  only `gate: auto` stages (or stages with no `gate` column; the local runner
+  also `local` ones) and stops in front of any other value — `human`, `live`,
+  and `local` for a cloud runner. What
   the protocol owes you is that doing so is safe — see *Concurrent stages*
   below.
 
@@ -419,8 +423,9 @@ one never does, so most sessions never meet it.
 1. **Read only:** this file + the target stage file + the `LEDGER.md` status
    table + the notes blocks of the stages this one `depends` on + any docs the
    stage file names + the **decisions in force** covering this stage's files
-   (below). Do NOT scan the rest of the repo. (Exception: the final
-   review stage reads the *entire* ledger.)
+   (below). Do NOT scan the rest of the repo. (Exception: the final review
+   stage reads the *entire* ledger on its first pass; a redo after a fix reads
+   only what the stage file's header lists.)
 
    **Decisions in force.** The repository's decisions document is the one
    the Frozen decisions above record as adopted (bootstrap records it as a
@@ -462,7 +467,9 @@ one never does, so most sessions never meet it.
    unattended runner, or `/stage-run`'s `--unattended` argument), check the
    stage's `gate` first: a stage whose `gate` is anything but `auto` — `human`,
    `local`, `live`, or a value not in that list — is never
-   started unattended; report that and stop here. For a `gate: auto` stage, every offer or
+   started unattended; report that and stop here. The one exception is
+   `local` in a session `/plan-run-local` launched (`/stage-run`'s
+   `--runner local`): that driver runs on the local machine, so it starts. For a stage that starts, every offer or
    question in this step and the ones below either has a **declared default**
    on the plan flags line or is a **hard stop** — there is no third option
    and nothing waits for an answer (see the `staged-rollout` skill,
@@ -525,13 +532,27 @@ one never does, so most sessions never meet it.
 6. **Scope discipline:** do only this stage. Work belonging to another stage →
    note it in the ledger notes and leave it untouched. It may become a new
    stage, through the scope referee (*Adding a stage*, above).
+   **Acceptance is the stop line.** Once this stage's Acceptance checks pass,
+   the stage is finished. More of the same work — a proof of concept
+   hardened into the production build, one more feature in the same files —
+   is a new stage however natural the next step looks, and it is handled
+   exactly as above: a note, then the scope referee when attended, a
+   follow-up note when unattended. Work that crosses `## Requirements` ›
+   **Outcome** or **Out of scope** is handled the same way before Acceptance
+   passes too.
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
       stage's notes block in `LEDGER.md`. Then add this session's
       **`Actuals:` line** to the same block: run the skill's
       `scripts/effortlog.py usage` and paste its `line` as is. Every session
       that worked on the stage adds one, including one that stops `doing` or
-      `blocked` (with its handoff note or runbook).
+      `blocked` (with its handoff note or runbook). Then add the
+      **`Artifacts check:` line**, from the stage worktree: run the skill's
+      `scripts/artifacts_check.py --stage-file .plan/<this stage's file>
+      --base origin/plan-<slug>` and paste its line as is — `match`,
+      `undeclared` (no paths in `## Artifacts`) or `outside: <paths>`. It is a
+      record, never a gate: nothing stops on it, and the final review judges
+      each `outside` line.
    2. Update the stage's table row: absolute date, verified yes/no, one-line
       result — but the status stays `doing` here. `done` is recorded only
       after the PR merges (step 5 below), so a `done` row is always visible
@@ -586,9 +607,17 @@ one never does, so most sessions never meet it.
       cheap, and a stale re-verify is worth less than none.
    5. **After the merge:** return to the main clone — it is already on
       `plan-<slug>`, so there is no checkout to do — and fast-forward it
-      (`git fetch origin` + `git merge --ff-only origin/plan-<slug>`), then
-      flip the stage's row to `done` as a direct commit on the plan branch
-      and push. The `done` edit lives on the plan branch, after the merge —
+      (`git fetch origin` + `git merge --ff-only origin/plan-<slug>`). Then
+      run the skill's `scripts/estimates.py check --plan-dir .plan --stage
+      <ID>`. If it exits non-zero, **stop: do not record the row `done`** — the
+      stage's notes block has no `Actuals:` line, and without it the usage
+      report at closeout understates the plan. Add the line (run
+      `scripts/effortlog.py usage` and paste its `line`) when this session is
+      the one that worked the stage; when `usage` cannot run (it exits 2), or a
+      later session is recording a stage it did not work, add
+      `Actuals waived: <reason>` to the block instead. Commit the line with
+      the `done` row and run the check again. With the check passing, flip the
+      stage's row to `done` as a direct commit on the plan branch and push. The `done` edit lives on the plan branch, after the merge —
       never on the stage branch. If the merge doesn't happen this session,
       leave the row `doing` and end anyway; the next session's preflight
       (step 0.5) completes this bookkeeping when it finds the merged PR.

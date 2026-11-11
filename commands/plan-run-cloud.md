@@ -1,21 +1,23 @@
 ---
-description: Drive every remaining stage of a staged-rollout .plan/ to completion, firing each one as a cloud session. Use when the user says "run the plan", "drive the rest of the stages", or "fire off the remaining stages".
+description: Drive every remaining stage of a staged-rollout .plan/ to completion, firing each one as a cloud session. Use when the user says "run the plan in the cloud", "drive the rest of the stages in the cloud", or "fire off the remaining stages as cloud sessions".
 argument-hint: (no arguments — drives the plan's current runnable set, and keeps going)
 ---
 
-# /plan-run — drive the whole plan remotely
+# /plan-run-cloud — drive the whole plan remotely
 
-**This is not the single-stage command.** `/plan-run` fires **every remaining
+**This is not the single-stage command.** `/plan-run-cloud` fires **every remaining
 stage** of the plan, one after another, as cloud sessions on Anthropic's
 infrastructure — not in this session, and not just the next one. If you want
-to run one stage yourself, in this session, use **`/stage-run <N>`** instead.
+to run one stage yourself, in this session, use **`/stage-run <N>`** instead;
+to run every stage as fresh sessions on this machine, use
+**`/plan-run-local`**.
 
 Before doing anything else, show this notice and stop for a yes/no answer:
 
 > **This drives all remaining stages of the plan on the cloud, one cloud
 > session per stage, until nothing runnable is left or a gate stops it.** It
 > does not run any stage in this session. For a single local stage, use
-> `/stage-run <N>` instead.
+> `/stage-run <N>` instead; to run them all on this machine, `/plan-run-local`.
 >
 > - **Cloud sessions don't have what this machine has.** Each stage runs in a
 >   fresh sandbox holding only a clone of the repository: no local files
@@ -90,7 +92,8 @@ Work through these steps **in order**, after the notice above is confirmed:
    - **Any `gate` other than `auto` (an absent column reads as `auto`)** —
      never fire it: `human`, `local`, `live` and any unknown value alike. Report
      the stage and why (a person needs to be present; the stage needs a resource
-     only the local machine has; the stage changes a running system, which a
+     only the local machine has, which `/plan-run-local` or `/stage-run <N>` on
+     that machine provides; the stage changes a running system, which a
      driver never fires; or the value is not one this command knows), name the
      value as written, and move on to the next stage in the set without firing
      this one. Naming it here is the point: a person reading this
@@ -102,8 +105,9 @@ Work through these steps **in order**, after the notice above is confirmed:
      naming the plan branch, stage id and effort, **with the plan-branch
      checkout spelled out in it** (a cloud clone starts on the default
      branch, where `.plan/RUNNER.md` does not exist), create the
-     run-once routine carrying the stage's `model`, fire it with the `run`
-     action, and surface the returned session id and its claude.ai link
+     run-once routine carrying the stage's `model`, record the stage's remote
+     branches (`remote-driver.md`'s *Firing one stage*, step 3), fire it with
+     the `run` action, and surface the returned session id and its claude.ai link
      immediately. The `effort` value is restated in the prompt, not booked
      (#125): the one confirmation at the top covers the whole run, there is
      no per-stage pause.
@@ -125,7 +129,27 @@ Work through these steps **in order**, after the notice above is confirmed:
    don't depend on it. A blocked `SF` whose section describes a fix is the
    unattended final review stopping to ask (`remote-driver.md`, *What the
    orchestrator refuses*): say so, and leave the fix to the user — run
-   `/stage-run SF` attended, never add a `Fix:` stage or re-fire `SF` from here. A run that stays dead past the grace period is reported
+   `/stage-run SF` attended, never add a `Fix:` stage or re-fire `SF` from here.
+
+   **A run whose row never moved but whose stage branch was pushed during the
+   run** (compared with the branches recorded at fire time; one left from an
+   earlier run does not count) **is a stop with a merge pending, not a dead
+   run** — most often a merge the stage could not make under `merge: manual`
+   or a refusing rule. Look for the stage's open pull request into the plan
+   branch (`gh pr list --base <plan branch> --state open`). If there is one,
+   show it and ask (`AskUserQuestion`, header `Merge?`); on yes, run
+   `gh pr merge <N> --squash --delete-branch` as its own command, where the
+   user's own rule prompts them, then **fire the stage again** per step 5:
+   the merged `doing` row is on the plan branch now, and the fresh session's
+   preflight records `done`. Carry on with the loop when the row reads `done`.
+   If the merge is refused (red or missing checks, a protection rule), report
+   the refusal as it is and stop as for a dead run. On no, or with no open
+   PR, report the stage with the branch found and stop, as for a dead run.
+   Where the stage also left a `.plan/BLOCKED.md` section, tell the user to
+   delete it once the row reads `done`: this command never writes that file,
+   and `plan-close` refuses while it is there.
+
+   A run that stays dead past the grace period (no new push) is reported
    exactly as `remote-driver.md` prescribes — session id, link, what
    `get_run_log` showed, and what was actually left behind — and this command
    stops entirely: it never writes to the repository or guesses at the
@@ -142,14 +166,14 @@ Work through these steps **in order**, after the notice above is confirmed:
    above has stopped the command outright.
 
 8. **End announcement.** When the loop ends, state explicitly:
-   - Every stage this run fired and its outcome (`done`, `blocked`, or a dead
-     run), and every stage it found and skipped over for a `gate` other than
+   - Every stage this run fired and its outcome (`done`, `blocked`, a stop
+     with a merge left pending, or a dead run), and every stage it found and skipped over for a `gate` other than
      `auto` (`human`, `local`, `live` or an unknown value, named as written),
      each with the `/stage-run <N>` a person needs to run.
    - If every stage is now `done` or `skipped`, say so and point at closeout —
      **"close out the plan"** or **`/plan-staged-rollout:plan-close`**.
    - Otherwise, exactly what is left runnable, blocked, or gated, so a rerun of
-     `/plan-run` — or a person picking one stage up with `/stage-run <N>` — has
+     `/plan-run-cloud` — or a person picking one stage up with `/stage-run <N>` — has
      something concrete to act on.
    Then stop. This command never opens or merges the plan→main pull request in
    any case — that stays a person's action, always.

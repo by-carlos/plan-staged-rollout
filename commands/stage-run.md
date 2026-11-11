@@ -1,6 +1,6 @@
 ---
 description: Execute one stage of a staged-rollout .plan/, in this session. Use when the user says "run stage 2", "run the next stage", or "do the review stage".
-argument-hint: <stage number, or f for the review stage> [--unattended]
+argument-hint: <stage number, or f for the review stage> [--unattended [--runner local]]
 ---
 
 # /stage-run — execute one stage
@@ -24,6 +24,16 @@ line (`merge`) or becomes `blocked` + runbook (the `staged-rollout` skill,
 *Unattended mode*, classifies each one; `PLAN.md`'s *Recording a block* says
 where that runbook is committed). Without the token, nothing changes —
 every gate and offer below works exactly as it always has.
+
+A second token, **`--runner local`**, comes only after `--unattended`: the
+session was launched by `/plan-run-local`'s driver, a process on this same
+machine. Strip it too. It changes exactly one thing, in step 3's gate check:
+a `gate: local` stage is started, because `local` means never *by a driver
+that could be running anywhere but the local machine*, and this one cannot.
+That holds even where the plan's own `.plan/PLAN.md` is an older copy whose
+unattended rule names `local` among the refused gates. Everything else under
+`--unattended` stands, `human`, `live` and unknown gates included; in a cloud
+session (`CLAUDE_CODE_REMOTE` is `true`) the token is ignored.
 
 **A stage runs in a fresh session.** If this session has already run another
 stage or bootstrapped the plan — which is what happens when a desktop-app chip
@@ -145,7 +155,8 @@ Work through these steps **in order**:
    **Gate check (same step, unattended only).** Read the stage's `gate`
    column from the same index row (an absent column reads as `auto`). Under
    `--unattended`, a stage whose `gate` is anything but `auto` is not
-   started — `human`, `local`, `live`, and any unknown value alike: say
+   started — `human`, `local`, `live`, and any unknown value alike (the one
+   exception: `local` under `--runner local`, which is started): say
    plainly why — `human` needs a person present, `local` needs a resource
    only the local machine has (local hardware, a LAN-only host, a secret not
    committed anywhere reachable, or a locally-installed toolchain), `live`
@@ -153,7 +164,8 @@ Work through these steps **in order**:
    value is not one this command can vouch for — name the
    stage, and stop — a runner reading the previous stage's end announcement
    should already have stopped in front of it, so this is the backstop, not
-   the mechanism. For a `gate: auto` stage run
+   the mechanism. For a `gate: auto` stage (or a `local` one under
+   `--runner local`) run
    unattended, a weight-check stop has no one to relaunch the session and the
    tier question has no one to answer it — a readable effort that differs from the flag counts here too;
    an effort that could not be read does not: mark the row
@@ -308,7 +320,7 @@ Work through these steps **in order**:
      - `use_worktree`: `false` — the stage creates its own worktree at
        protocol step 4, so the app must not make one.
      - `cwd`: the clone's root, only when this session is not already in it.
-     - `target`: `"local"`; never `"cloud"` (that is `/plan-run`'s job).
+     - `target`: `"local"`; never `"cloud"` (that is `/plan-run-cloud`'s job).
      - `model` / `effort`: pass the stage's recommendation only when it is at
        or below this session's own (the tool ignores anything higher); omit
        otherwise and the session inherits, then stops at the model check.

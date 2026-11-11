@@ -19,7 +19,7 @@ scales by what the plan touches (the triggers below), never by stage count.
 |---|---|---|---|
 | **Simplicity** | Always, for every plan. | Stages, steps or decisions that could be cut, merged or deferred; a heavier mechanism where a lighter one meets the requirements; work no requirement asks for; a pass threshold with no basis (it must say why that number and whether the check can detect the difference). | Sonnet |
 | **Architect** | The plan touches **two or more components**, or **changes an interface** (an API, a file format, a CLI, a schema, a contract another component reads). | Wrong boundaries, missing or circular `depends` edges, two stages writing the same file in one wave, a decision that contradicts the requirements, an interface change with no stage updating its consumers. | the bootstrap session's model |
-| **Security / red team** | The plan touches **authentication, input handling, secrets, network access, or dependencies**. | Trust boundaries crossed without a check, secrets reaching a committed file or a log, unvalidated input, new dependencies taken on unexamined, an abuse path no stage closes. | the bootstrap session's model |
+| **Security / red team** | The plan touches **authentication, input handling, secrets, network access, or dependencies**. | Trust boundaries crossed without a check, secrets reaching a committed file or a log, unvalidated input, new dependencies taken on unexamined, an abuse path no stage closes. Every finding names a **plausible actor and the path** they take to the harm (who, reaching what, through which step of the plan) — never checklist hygiene ("pin versions", "add rate limiting", "follow least privilege") with no one who could exploit its absence. | the bootstrap session's model |
 | **Operator** | The **product** runs unattended or pages someone — a scheduled job, a service, an alert. Not the plan's own stages running unattended. | How it fails, who notices and how, how it is restarted or rolled back, what it logs, what a person must do at 3 a.m. and whether any stage writes that down; a protective change (a guard or an alert) that would wait on the plan branch until the final merge, which should be its own first plan or a `work-issue` ticket instead. | Sonnet |
 
 **Evaluating the triggers.** Bootstrap reads the confirmed requirements and
@@ -43,21 +43,46 @@ in the scratchpad — never to the main thread. Every finding has this shape:
 ```markdown
 - **Where:** PLAN.md › Frozen decisions › D-3  (or: stage-2-<slug>.md › Steps, step 4)
   **Problem:** <what is wrong, in one or two sentences>
+  **Consequence:** <what concretely goes wrong if the plan ships as written: what breaks, leaks, costs or is wasted, and for whom>
   **Change:** <the edit to the plan that fixes it>
 ```
 
-**The finding rule.** A finding without a plan location **and** a proposed
-change is dropped — "consider security" points at nothing and changes nothing.
-A lens that finds nothing says so in one line; that is a valid result.
+**The finding rule.** A finding without a plan location, a concrete
+consequence **and** a proposed change is dropped — "consider security" points
+at nothing and changes nothing. A consequence names an outcome someone would
+notice: a failed run, a leaked secret, a stage redone, a cost paid. "Best
+practice", "hardening", "more robust" or "defence in depth" with nothing that
+goes wrong is not a consequence, and a Security finding with no plausible
+actor and path (the table above) has none. A lens that finds nothing says so
+in one line; that is a valid result — a quiet review is the expected outcome
+for a sound plan.
+
+**The unsound verdict.** When a lens finds the plan genuinely broken — a
+stage that cannot meet its Acceptance, a decision that defeats the Outcome —
+it may open its file with one line, ahead of its findings:
+
+```markdown
+**Unsound:** <what in the plan cannot work, and the consequence>
+```
+
+The verdict is a blunt flag, not a finding: it needs no location or change of
+its own, but it must name a consequence under the finding rule, and the
+findings beneath it carry the fixes.
 
 ## The digest
 
 The main thread reads **one merged digest of at most ~40 lines**, never the
-lens files themselves. Merging drops findings that break the finding rule,
-folds duplicates across lenses into one (naming both lenses), and orders what
-is left by how much of the plan it would change. If more than ~40 lines
-survive, the least consequential findings are cut from the digest and counted
-in its last line ("7 minor findings not shown — see the lens files").
+lens files themselves. Merging drops findings that break the finding rule —
+no location, no concrete consequence, no change, or a Security finding with no
+plausible actor and path — and counts them in the digest's last line
+("3 findings dropped by the finding rule"). It folds duplicates across lenses
+into one (naming both lenses), and orders what is left by how much of the plan
+it would change. An unsound verdict that names a consequence heads the digest,
+above every finding, naming its lens; one that names none is dropped like a
+finding. An unsound verdict is always put to the user in the one ask
+(*Three outcomes*). If more than ~40 lines survive, the least consequential
+findings are cut from the digest and counted in that last line too ("7 minor
+findings not shown — see the lens files").
 
 ## Three outcomes
 
@@ -70,18 +95,19 @@ Every finding in the digest gets exactly one:
 - **Accept with a reason** — leave the plan as it is and say why in one
   clause.
 
-Outcomes the frozen decisions settle are applied without asking. A finding
-that would change a **Needs you** decision, or that turns on taste, cost or
-something external, is put to the user — all such findings together in one
-ask, each with a recommended outcome — before the scaffold is committed. A
+Outcomes the frozen decisions settle are applied without asking. An unsound
+verdict, and a finding that would change a **Needs you** decision or that
+turns on taste, cost or something external, are put to the user — all of
+them together in one ask, each with a recommended outcome — before the
+scaffold is committed. A
 finding that reaches the digest is never silently dropped.
 
 ## The record
 
 `PLAN.md` › Plan review holds the review's record: the date, the lenses that
-ran with the trigger that fired each, and one line per digest finding with
-its outcome — the location changed, the follow-up's reference, or the reason
-it was accepted. The lens files themselves are scratch and are not committed.
+ran with the trigger that fired each, any unsound verdict with the user's
+answer to it, and one line per digest finding with its outcome — the location
+changed, the follow-up's reference, or the reason it was accepted. The lens files themselves are scratch and are not committed.
 
 ## Cost
 

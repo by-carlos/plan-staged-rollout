@@ -30,7 +30,8 @@ flowchart TD
 |---|---|---|---|
 | 1. Plan | `plan-stages <idea>` | once | Settles the design, splits the work into stages, commits and pushes `.plan/`. Runs no stage. |
 | 2. Run stages | `stage-run <N>` | once per stage, each in a new session | Does one stage, runs its acceptance check, records the output, opens its PR. |
-| | `plan-run` | once, and again after each stop | Instead of `stage-run`: runs every remaining stage in the cloud. The plan needs `merge: auto`. See [Running a plan in the cloud](ON-THE-RUN.md). |
+| | `plan-run-local` | once, and again after each stop | Instead of `stage-run`: runs every remaining stage as a fresh session on this machine, from this one session. See [Running every stage on this machine](#running-every-stage-on-this-machine). |
+| | `plan-run-cloud` | once, and again after each stop | The same in the cloud. The plan needs `merge: auto`. See [Running a plan in the cloud](ON-THE-RUN.md). |
 | 3. Review | `stage-run f` (f for final: stage `SF`) | once, last | Reads every note in the ledger and turns each loose end into a stage or a decision. |
 | 4. Close | `plan-close` | once | Writes the final PR from the plan, cleans up and proposes the PR into `main`. |
 
@@ -83,8 +84,12 @@ not in a separate spec that would become a second source of truth.
 sessions. Work that fits one issue is small: its acceptance criteria are the
 spec, and it gets no brief and no plan review. `plan-stages` says so and
 offers to stop; [`work-issue`](tickets.md) or a single session fits better.
-An idea too vague to say what finished looks like becomes a **discovery
-plan** whose outcome is a decision; the build is the next plan. A prototype
+An idea too vague to say what finished looks like, whose finish line names
+nothing anyone could observe, or whose outcome has no edge ("exhaustive",
+"etc." with no list of what is in) becomes a **discovery plan** by default:
+its outcome is a decision, and its out of scope says the build is the next
+plan. Building anyway is your call; it takes one sentence of why, kept with
+the plan's decisions. A prototype
 built on the way to that decision is **evidence for it, not the start of the
 build** — a discovery plan that starts building is exactly what the scope
 referee stops.
@@ -183,7 +188,12 @@ one subagent per lens:
 The brief lists each lens with the reason it is on, and you can add or drop
 lenses when you answer the batch. At most four run. The session reads one
 merged digest of at most about 40 lines, never the lens files, and a finding
-with no plan location and no proposed change is dropped. Every finding ends
+is dropped unless it names a plan location, a concrete consequence (what
+breaks, leaks, costs or is wasted) and a proposed change. A Security finding
+must also name who could exploit the gap and how; checklist hygiene with no
+such path is dropped. A lens that finds the plan genuinely broken can say so
+in one blunt **Unsound:** line, which heads the digest and always comes to
+you. A quiet review is a normal result for a sound plan. Every finding ends
 as one of three things: **change the plan**, **file a follow-up**, or
 **accept with a reason**. Findings that would change a **Needs you** decision
 come to you in one ask, together with the brief. The record lands in
@@ -289,7 +299,7 @@ block*). It depends on whether the stage's branch exists yet:
 
 **Clearing a mid-stage block:** nothing removes a `.plan/BLOCKED.md` section
 automatically. Delete it by hand once the stage is resolved; until you do,
-`plan-run` treats the stage as `blocked` and never fires it, and
+both runners treat the stage as `blocked` and never fire it, and
 `plan-close` refuses to run.
 
 ## Starting the next stage
@@ -332,7 +342,7 @@ locally**:
 |---|---|
 | **Start locally** | **Yes.** Runs in your clone, which the stage leaves on the plan branch while it works in its own worktree. |
 | Start with worktree | Works, but the app's worktree is based on the default branch, so the stage ignores it and makes its own; the app's one is left behind unused. |
-| Send to cloud | Works for a plan with `.plan/RUNNER.md`, but **may use additional credits**, and refuses a `gate: local` stage. For cloud runs, use [`plan-run`](ON-THE-RUN.md). |
+| Send to cloud | Works for a plan with `.plan/RUNNER.md`, but **may use additional credits**, and refuses a `gate: local` stage. For cloud runs, use [`plan-run-cloud`](ON-THE-RUN.md). |
 | Fix in this session | **No.** It lands in the finished stage's session instead of a fresh one; the stage refuses to start there. |
 
 - **The chip usually starts on the finishing session's model and effort**,
@@ -347,6 +357,40 @@ locally**:
 - **No chip on a phone or in a terminal.** Paste the printed command into a
   fresh session instead. The printed command is always there; the chip is an
   addition, never a replacement.
+
+### Running every stage on this machine
+
+`plan-run-local` runs the rest of the plan for you, one stage at a time, each
+as its own fresh session on your machine, so stages keep everything this
+machine has: local tools, files, networks and logins. The session you run it
+from becomes the **orchestrator**. It starts a small driver script in the
+background and then waits; it does not run any stage itself, and it never
+reads a stage's output, so it stays cheap all plan long (Sonnet at low effort
+is enough for it).
+
+[![How plan-run-local runs a plan: this session starts a background driver, which runs each runnable stage as a fresh local session at its own model and effort, reads the ledger after each, and wakes the session only when a person is needed.](diagrams/plan-run-local.svg)](diagrams/plan-run-local.svg)
+
+- **What it runs:** stages whose `gate` is `auto`, absent or `local`, each at
+  the model and effort its stage index row books. `human`, `live` and unknown
+  gates are skipped and named for you.
+- **When it stops:** only when a person is needed: a stage blocked, stopped
+  or died; only gated stages are left; or the plan is done. You hear about it
+  at the desk or, with Remote Control on, on your phone.
+- **A merge your permission rules ask about.** A stage session runs with
+  nobody to answer, so a rule that asks before `gh pr merge` denies its
+  `merge: auto` merge. The orchestrator then offers you that merge in its own
+  session, where your rule asks you as usual, and carries on.
+- **Ask how it is going at any time.** The orchestrator answers from the
+  driver's status file.
+- **What you need:** Claude Code 2.1.268 or later, Python 3, and the
+  `claude` command logged in for the sessions it starts. A session does not
+  pass its login to the commands it runs, so the driver checks first. If
+  your organisation has turned off auto mode, stage sessions would start in
+  Manual with nobody to approve anything; the driver stops each one before
+  any work and says so.
+
+Settings, statuses and where the logs live:
+[Reference, the local runner](reference.md#the-local-runner).
 
 ## 3. Review — the last stage
 
@@ -453,7 +497,7 @@ alone. Then it:
    filed only on your yes.
 
 It runs unattended too: `plan-close --unattended` applies the plan flags
-instead of asking. `plan-run` never fires it; you run it. **Merging that final
+instead of asking. Neither runner fires it; you run it. **Merging that final
 PR is always yours.**
 
 ## After it closes

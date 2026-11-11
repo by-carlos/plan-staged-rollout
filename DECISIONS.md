@@ -92,21 +92,105 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   threshold is arbitrary and noisy, and the session that drifted is the worst
   judge of its own drift. Revisit: if real plans show the referee too quiet or
   too noisy. Source: #229
+- **Inside a running stage, drift is prevented, not caught: a stage's
+  Acceptance is its stop line, so more of the same work after it passes is a
+  new stage through the scope referee, and each stage records an
+  `Artifacts check:` line (`match`, `undeclared` or `outside`) that only the
+  final review judges.** — a check at a stage's end cannot save that stage's
+  work, a file mismatch is a weak drift signal (zero real drift across this
+  repo's first six stage PRs, and both raw mismatches were parsing noise), and
+  `## Artifacts` stays free prose, read for backticked paths only, so no
+  existing plan changes. Revisit: if recorded `outside` lines turn out to be
+  real drift, which would justify pausing the stage PR's merge on them.
+  Source: #259
+- **An idea too vague to state its Done checks, or whose checks name nothing
+  a script could assert or a person could see (or leave the Outcome
+  uncovered), gets a discovery plan as the recommended answer; its Out of
+  scope reads `Building <subject> — that is the next plan.`; and a build plan
+  from such requirements is never refused but needs the user's reason,
+  recorded as a frozen decision with the drift risk.** — a warning alone is
+  waved through and a refusal only pushes people past every guardrail, while
+  the referee needs a written boundary, not a resemblance. "Thin" is kept
+  narrow (unranked constraints and a short Out of scope do not count) so
+  clear plans are never nagged, and the gate adds no question round. An
+  Outcome with no edge ("exhaustive", "everything", "etc." with no list of
+  what it covers) is thin too, and checks the session writes cannot clear
+  it — only the user's list can — because such checks pass while the scope
+  grows (an exhaustive-analysis ask otherwise scaffolds open-ended stages
+  unchallenged). Applies to plans scaffolded after it; earlier plans are not migrated. Revisit: if
+  real plans show the thin check nagging clear requirements, or reasons
+  given that never held. Source: #261
 - **Lessons at close are three to six blunt, evidence-backed lines in two
   groups, kept only in the final PR body and read back by the next
   `/plan-stages` in the same repository; there is no retro file, and work done
   as a single ticket gets none.** — a retro kept as a record changes nothing;
   the next plan's playback is where a lesson can still act. Revisit: if
   lessons need to reach plans in other repositories. Source: #229
+- **A plan-review finding needs a location, a concrete consequence and a
+  change, or the digest drops it; a Security finding also names a plausible
+  actor and path. A lens may add a one-line unsound verdict, which always
+  reaches the user.** — a location and an edit alone let box-ticking findings
+  through, and the review should help the plan move, stay quiet when nothing
+  matters, and flag bluntly only what is broken. Revisit: if real plans show
+  a genuine risk dropped for lack of a stated actor. Source: #276
 
 ## Running stages
 
-Paths: `commands/stage-run.md`, `commands/plan-run.md`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`
+Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run-local.md`, `skills/staged-rollout/scripts/plan_run_local.py`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`
 
-- **A runner fires a stage only when its `gate` is `auto` or absent; `human`,
-  `local`, `live` and any unknown value are refused and named.** — an
-  allow-list fails safe when a new gate value appears. Revisit: never.
-  Source: #227
+- **A runner fires a stage only when its `gate` is `auto` or absent, and the
+  local runner (`/plan-run-local`) also `local`; `human`, `live` and any
+  unknown value are refused and named by every runner.** — an allow-list
+  fails safe when a new gate value appears, and `local` means "never by a
+  driver that could be running anywhere but the local machine", which the
+  local runner cannot be. Revisit: never. Source: #227, #266
+- **The local runner is a standard-library Python driver started in the
+  background by an interactive orchestrator session; the driver holds the
+  loop, and the session reads only its one `STATUS:` line.** — a headless
+  orchestrator lost its background command when its `-p` run ended (CLI
+  2.1.268), only a session can reach the user and pass an ask-rule merge,
+  and a script keeps the session's context flat. The cloud runner stays
+  model-driven (`remote-driver.md`). Revisit: if Claude Code gives headless
+  runs long-lived background commands. Source: #266
+- **The local runner checks each stage session's opening line for the
+  permission mode, model and effort it asked for, and stops a mismatch before
+  any work; it never works around a managed setting.** — auto mode turned off
+  by an organisation starts `--permission-mode auto` sessions in Manual
+  without an error, and a headless Manual session denies everything and keeps
+  spending. Revisit: if the CLI refuses an unavailable mode instead.
+  Source: #266
+- **The local runner reads a stage whose plan-branch row never moved, but
+  whose stage branch it pushed or updated during the run, as stopped, not
+  dead.** — a stage records `doing` on its own branch, so a merge refused
+  under `-p` leaves the plan branch reading `todo`; calling that dead hid the
+  merge offer (measured in the #266 end-to-end run). A stage branch left from
+  an earlier run does not count. Revisit: if stages start pushing `doing` to
+  the plan branch. Source: #266
+- **The cloud runner reads the same signature the same way, and re-fires the
+  stage after the person's merge.** — it records the stage's remote branches
+  when firing; after the grace period an unmoved row with a branch created or
+  moved since then is a stop with a merge pending, not a dead run, and the
+  orchestrator offers the merge (`Merge?`, the person's yes only). Re-firing
+  lets the fresh session's preflight record `done`, so the orchestrator still
+  never writes the ledger and the run stays hands-off, at the cost of one
+  short cloud session. Rejected: pushing `doing` to the plan branch before
+  the PR (changes the protocol every plan carries), and rewording the dead
+  report only (the person still diagnoses a merge as a crash). Revisit: if a
+  cloud run shows the re-fired session does not record `done`, or if stages
+  start pushing `doing` to the plan branch. Source: #268
+- **The local runner's settings are environment variables
+  (`CLAUDE_STAGE_LAUNCHER`, `CLAUDE_STAGE_PERMISSION_MODE`,
+  `CLAUDE_STAGE_IDLE_MINUTES`, `CLAUDE_STAGE_MAX_BUDGET_USD`); the launcher is
+  one executable with no arguments, and the plugin never reads a secret.** —
+  no shell-quoting rules that differ between PowerShell and POSIX, and a login
+  wrapper stays the user's. No dollar cap by default, in line with the
+  tokens-only usage rule. Revisit: if the plugin gains a settings file.
+  Source: #266
+- **The local runner keeps its status file and logs in the clone's git
+  directory (`plan-run-local/<slug>/`), never in `.plan/`, and stops at plan
+  completion instead of running closeout.** — nothing to commit or ignore,
+  and closeout opens the PR into `main`, a moment the user should be present
+  for. Revisit: if users ask for a hands-off closeout. Source: #266
 - **Never two `live` stages at once: `/stage-run` refuses at start when
   another `live` stage has a branch or worktree open; the session-start hook
   only notes it.** — `live` changes a running system, and the refusal reuses

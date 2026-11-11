@@ -18,7 +18,7 @@ evidence in the ledger, PR opened via the GitHub MCP with the base pinned to
 the plan branch, `merge: auto` squash-merge, `done` row pushed, next-runnable
 set reported and not started.
 
-**Full `/plan-run` loop proven, 25 Sep 2026 (#168):** a four-stage fixture
+**Full `/plan-run` loop (now `/plan-run-cloud`) proven, 25 Sep 2026 (#168):** a four-stage fixture
 plan (two dependent `gate: auto` stages, a `gate: human` stage, an auto
 closeout) was driven to completion on a disposable repository — each auto
 stage fired, watched to a `done` row and followed by the next without a
@@ -120,7 +120,13 @@ the person can watch in the session.
    ```
    RemoteTrigger({ action: "run", trigger_id: "<id returned by create>" })
    ```
-3. **Fire it directly** with `RemoteTrigger {action: "run"}`. This is measured
+3. **Fire it directly** with `RemoteTrigger {action: "run"}`. Just before it,
+   **record the stage's branches on the remote**:
+   `git ls-remote origin refs/heads/plan-<slug>-s<N> 'refs/heads/plan-<slug>-s<N>-redo-*'`
+   lists `plan-<slug>-s<N>` and any `-redo-<K>` form with their shas, or
+   nothing when none exists (a bare `s<N>*` pattern would also match `s<N>0`).
+   That list is what "pushed during the run" is measured against in "When a
+   fired run doesn't settle". The `run` call is measured
    to start the session immediately and return the new session id
    synchronously. The routine's schedule is never involved — `run` fires even a
    disabled or already-spent routine — so the `run_once_at` value is inert
@@ -165,9 +171,34 @@ again" is a number, not a judgement call (#122).
   unchanged, do not declare the stage dead yet: a session that has finished
   can still have a push in flight. Wait a further 10 minutes, then re-read
   the ledger once more.
-- **Still unmoved after the grace period — the stage is dead.** This is the
+- **Still unmoved after the grace period, with a stage branch pushed during
+  the run — the stage stopped, with a merge pending.** Compare the stage's
+  branches on the remote now (the `git ls-remote` of "Firing one stage") with
+  the list recorded when the stage was fired. A branch that did not exist
+  then, or whose sha moved since, means the session got as far as pushing
+  its work. A stage records its `doing` row on its own branch, so a stage
+  PR that was not merged (`merge: manual`, a permission rule, red or missing
+  checks, a protection rule) leaves the plan branch reading `todo`; that is a
+  merge waiting on a person, not a crash. A branch that already existed at
+  fire time with the same sha is left over from an earlier run and does not
+  count. The orchestrator finds the stage's open pull request against the
+  plan branch (`gh pr list --base plan-<slug> --state open`), shows it and
+  asks before merging, as `/plan-run-cloud` step 6 spells out; the merge goes
+  through the same checks as any other, and GitHub refuses it again over red
+  required checks, which the report then says. On the person's yes and a
+  merge that lands, the orchestrator **fires the stage again** as in "Firing
+  one stage": the merged squash brings the stage's `doing` row onto the plan
+  branch, and the fresh session's preflight finds that row with its PR
+  merged and records `done` (`templates/PLAN.md`, *Self-healing*), so the
+  run carries on without the person. On no, or with no open PR, the run
+  stops as it does for a dead stage, reported as the next bullet prescribes
+  and naming the branch it found. Not measured in a cloud run yet; the local runner reads the same
+  signature the same way (`plan_run_local.py`, `outcome()`).
+- **Still unmoved after the grace period, with no stage branch pushed during
+  the run — the stage is dead.** This is the
   crash-vs-never-started discriminator this file exists to provide: a session
-  the run log shows as ended, against a ledger row that never moved, is now
+  the run log shows as ended, against a ledger row that never moved and a
+  remote that shows no new push, is now
   distinguishable from a stage that simply has not been fired yet. Read
   `get_run_log` for that session to learn *why* — a crash, a provisioning
   failure, a denied permission, an error mid-tool-call — but treat it as
@@ -227,8 +258,11 @@ so the contract survives the scripts:
 - **It never writes `.plan/LEDGER.md` or `.plan/BLOCKED.md` itself.** Those
   files update only from a fired stage's own push, per `RUNNER.md`'s
   ledger-as-only-completion-signal rule. Whatever the orchestrator observes —
-  including a stage it has declared dead — it reports to the person; it never
-  records that observation into the plan branch on the stage's behalf.
+  including a stage it has declared dead or stopped — it reports to the person; it never
+  records that observation into the plan branch on the stage's behalf. The
+  stop with a pending merge is no exception: the merge is the person's, run
+  only on their yes, and the `done` row comes from the re-fired stage's own
+  push.
 
 ## Known limits
 

@@ -15,7 +15,7 @@ import json
 import os
 import tempfile
 import unittest
-from contextlib import redirect_stdout
+from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from unittest import mock
 
@@ -126,6 +126,55 @@ class PlanTotals(unittest.TestCase):
         self.assertIn("summed 3.0h over 2 measured stage(s)", out)
         self.assertIn("out 250", out)
         self.assertIn("**Not measured:** S2, SF", out)
+
+    def check(self, stage):
+        err = io.StringIO()
+        with redirect_stderr(err):
+            code, out = run(est, "check", "--plan-dir", str(self.dir), "--stage", stage)
+        return code, out, err.getvalue()
+
+    def test_check_passes_with_actuals_line(self):
+        code, out, _ = self.check("S1")
+        self.assertEqual(code, 0)
+        self.assertIn("S1: 2 Actuals line(s)", out)
+
+    def test_check_fails_naming_stage_without_line(self):
+        code, _, err = self.check("SF")
+        self.assertEqual(code, 1)
+        self.assertIn("SF has no `Actuals:` line", err)
+
+    def test_check_fails_when_ledger_missing(self):
+        (self.dir / "LEDGER.md").unlink()
+        code, _, err = self.check("S0")
+        self.assertEqual(code, 1)
+        self.assertIn("S0 has no", err)
+
+    def test_check_reads_the_stage_own_block(self):
+        # S0's line must not satisfy S2, and a waiver must not leak across blocks.
+        ledger = LEDGER.replace(
+            "### SF Plan review\n_(empty)_",
+            "### S2 Writer\nActuals waived: no transcript\n\n### SF Plan review\n_(empty)_",
+        )
+        (self.dir / "LEDGER.md").write_text(ledger, encoding="utf-8")
+        self.assertEqual(self.check("S2")[0], 0)
+        self.assertEqual(self.check("SF")[0], 1)
+
+    def test_check_accepts_waiver_with_reason(self):
+        ledger = LEDGER.replace("### SF Plan review\n_(empty)_",
+                                "### SF Plan review\nActuals waived: ran without a transcript\n")
+        (self.dir / "LEDGER.md").write_text(ledger, encoding="utf-8")
+        code, out, _ = self.check("SF")
+        self.assertEqual(code, 0)
+        self.assertIn("Actuals waived -- ran without a transcript", out)
+
+    def test_check_refuses_waiver_without_reason(self):
+        ledger = LEDGER.replace("### SF Plan review\n_(empty)_",
+                                "### SF Plan review\nActuals waived:\n")
+        (self.dir / "LEDGER.md").write_text(ledger, encoding="utf-8")
+        self.assertEqual(self.check("SF")[0], 1)
+
+    def test_check_unknown_stage_is_a_usage_error(self):
+        self.assertEqual(self.check("S9")[0], 2)
 
 
 class Usage(unittest.TestCase):

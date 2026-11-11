@@ -80,14 +80,46 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    line, where it can still change something. No such PR, no section, or
    no `gh` to look with: say nothing.
 
-   **A vague idea is a discovery plan.** When the idea is too vague to write
-   its **Done, as checks** — nobody can yet say what finished looks like —
-   do not invent checks to fill the bullet. Say so, and propose in step 3's
-   batch (a **Needs you** decision) a **discovery plan**: its Outcome is a
-   decision on what to build, its last implementation stage produces that
-   decision with its evidence, and the build becomes the next plan of a
-   programme. A discovery plan that starts building is exactly what the
-   scope referee (`PLAN.md`, *Adding a stage*) stops.
+   **A vague or thin idea gets a discovery plan by default.** Each condition
+   is a check, not a feeling:
+   - **Vague** — the idea is too vague to write its **Done, as checks** at
+     all: nobody can yet say what finished looks like. Do not invent checks
+     to fill the bullet; say so.
+   - **Thin** — the checks can be written but cannot hold the plan still: a
+     Done check names nothing a script could assert or a person could see,
+     or no Done check covers the Outcome. Name each such check in the
+     playback; one the user sharpens there is no longer thin. Unranked
+     constraints or a short Out of scope are not thin.
+   - **Unbounded** (a kind of thin) — the Outcome claims a scope with no
+     edge: "exhaustive", "everything", "all of it", "and improvements",
+     "etc." in any language, with no list of what it covers. Checks you
+     write to cover such an Outcome do not bound it — "a report per area
+     exists" passes while every area grows — so they cannot clear it; only
+     the user's own list of what is in can. Quote the words in the
+     playback and ask for that list.
+
+   Any one of them puts a **Needs you** decision in step 3's batch proposing a
+   **discovery plan**, with the discovery plan as the recommended answer:
+   its Outcome is a decision on what to build, its last implementation stage
+   produces that decision with its evidence, and the build becomes the next
+   plan of a programme. Its **Out of scope** names the build in a fixed
+   frame, the subject drawn from the idea:
+   `Building <subject> — that is the next plan.` That line is what lets the
+   scope referee (`PLAN.md`, *Adding a stage*) stop a discovery plan that
+   starts building: it judges against a written boundary, not an Outcome the
+   new stage merely resembles. Accepted, the Outcome and Out of scope are
+   rewritten this way and those two bullets played back again.
+
+   **Building anyway costs one sentence.** A build plan from vague or thin
+   requirements is the user's call and is never refused, but it needs their
+   reason, in their words. Record it as that decision's
+   *(Needs you — answered)* entry under Frozen decisions: the reason, then
+   that the requirements were vague or thin (naming the weak checks, or
+   quoting the unbounded words), so
+   drift is likely and the scope referee has only the Outcome to judge it
+   by. The brief's Decisions table carries it with nothing else to write.
+   No reason, no build plan: the discovery plan stands, or the user stops.
+   Requirements that are neither vague nor thin see none of this.
 
    **Existing decision record.** Check whether the repo already keeps one, as
    `decisions-format.md` › *Where it lives* defines: an ADR folder
@@ -103,7 +135,9 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    bullet, no protocol vocabulary — and wait for them to confirm or correct
    it. Corrections are folded in and the changed bullets played back again;
    nothing in step 3 starts until the requirements are confirmed. They become
-   the scaffolded `PLAN.md`'s `## Requirements` section, unchanged.
+   the scaffolded `PLAN.md`'s `## Requirements` section, unchanged unless
+   step 3's batch accepts a discovery plan or a programme, which rewrite or
+   narrow them as described there and above.
 
 3. **Decision triage — one batch ask.** List every decision the build needs
    before stage work can start, and sort each into the triage groups the
@@ -402,8 +436,10 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    Simplicity and Operator; this session's own model for Architect and
    Security), each writing its findings to its own scratchpad file. Then one
    Sonnet subagent merges them into the digest that `plan-review.md` ›
-   *The digest* defines (finding rule applied, duplicates folded, at most
-   ~40 lines) and writes it to the scratchpad. **This session reads the
+   *The digest* defines (finding rule applied, so a finding with no
+   location, no concrete consequence or no change is dropped; duplicates
+   folded; any unsound verdict on top; at most ~40 lines) and writes it to
+   the scratchpad. **This session reads the
    digest only, never the lens files.**
 
    Give every digest finding one of the three outcomes (`plan-review.md` ›
@@ -486,7 +522,12 @@ ask with the brief (step 8) — plus the commit OK (step 9).
     whichever this session has, under the same conditions and with the same
     fields. Read that bullet's "what the finished stage left behind" as "what
     the bootstrap left behind". The printed command stays the handoff on every
-    surface that shows no card. If step 6 found a modal-model majority, repeat
+    surface that shows no card. Then offer the whole plan in one line: to run
+    every remaining stage without starting each one,
+    **`/plan-staged-rollout:plan-run-local`** runs them as fresh sessions on
+    this machine from one session, and **`/plan-staged-rollout:plan-run-cloud`**
+    does the same in the cloud (it may use additional credits); both stop when
+    a stage needs a person. If step 6 found a modal-model majority, repeat
     that recommendation here too (e.g. *"consider `/model opus` as your
     session default — it covers 6 of 8 stages"*). Repeat the plan flags line.
     When a programme was accepted, also say that this scaffolds the first plan

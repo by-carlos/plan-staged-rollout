@@ -44,8 +44,8 @@ python3 scripts/validate_plugin.py
 ```
 
 The staged-rollout skill has its own unit tests (`renumber_stages.py`, and the
-plan protocol's check for unpushed plan-branch commits). CI does not run them
-yet, so run them locally when you touch `skills/staged-rollout/`:
+plan protocol's check for unpushed plan-branch commits). CI runs them on every
+pull request; to run them locally when you touch `skills/staged-rollout/`:
 
 ```
 python3 -m unittest discover -s skills/staged-rollout/tests
@@ -87,7 +87,7 @@ hand.
 
 ## Status and layout
 
-**Shipped.** The skill, the four commands, the two ticket skills and the
+**Shipped.** The skill, the five commands, the two ticket skills and the
 templates are implemented; the user documentation is the README plus the
 pages in `docs/`. The staged-rollout pieces were built with the method
 itself — decomposed into a `.plan/` and executed stage by stage in this repo
@@ -104,7 +104,7 @@ Layout:
   docs/
     install.md                   # install, requirements, updating
     staged-rollout.md            # how a plan runs, from planning to close
-    ON-THE-RUN.md                # running a plan in the cloud (plan-run)
+    ON-THE-RUN.md                # running a plan in the cloud (plan-run-cloud)
     tickets.md                   # create-issue and work-issue
     ticket-templates.md          # customizing the ticket template
     faq.md                       # short answers to common questions
@@ -122,7 +122,8 @@ Layout:
   commands/
     plan-stages.md               # plan-stages <idea>  — split a project into stages, write .plan/
     stage-run.md                 # stage-run <N>       — run one stage, in this session
-    plan-run.md                  # plan-run            — run every remaining stage in the cloud
+    plan-run-local.md            # plan-run-local      — run every remaining stage on this machine
+    plan-run-cloud.md            # plan-run-cloud      — run every remaining stage in the cloud
     plan-close.md                # plan-close          — final PR + cleanup
   skills/create-issue/SKILL.md   # draft, review, post and verify one ticket
   skills/work-issue/SKILL.md     # work one named ticket to a confirmed merge

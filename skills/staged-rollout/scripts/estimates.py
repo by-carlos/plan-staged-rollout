@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Time estimates for a `.plan/`, and the actuals measured against them.
 
-Three jobs, each a reading of files that already exist -- nothing here writes:
+Four jobs, each a reading of files that already exist -- nothing here writes:
 
   plan       Sum the stage index's `estimate` column two ways: summed (every
              stage end to end) and elapsed (the longest `depends` chain, the
@@ -10,6 +10,9 @@ Three jobs, each a reading of files that already exist -- nothing here writes:
   report     The usage report `/plan-close` shows: per stage, the estimate
              against the `Actuals:` lines its ledger notes block carries, and
              the plan's totals.
+  check      Gate for the finish protocol: exit 1, naming the stage, when its
+             ledger notes block has neither an `Actuals:` line nor an
+             `Actuals waived: <reason>` line. Run before a stage is recorded `done`.
   calibrate  Read the effort log's `stage-run` rows that carry both an
              estimate and a measured span, and say by how much past estimates
              ran long or short. `/plan-stages` scales its judged ranges by it.
@@ -24,7 +27,8 @@ guessed at. Actuals include time spent waiting on the user; estimates do not.
 
 Invoke as `python <path>/estimates.py <subcommand> ...`.
 
-Exit codes: 0 printed, 2 usage/IO failure or an unreadable plan.
+Exit codes: 0 printed (for `check`, the stage has its line or a waiver), 1
+`check` found the stage with neither, 2 usage/IO failure or an unreadable plan.
 """
 
 from __future__ import annotations
@@ -46,6 +50,10 @@ ACTUALS_RE = re.compile(
     r"Actuals:\s*(?P<start>\S+)\s*→\s*(?P<finish>\S+)\s*·\s*(?P<min>\d+|None)\s*min\s*·\s*"
     r"tokens in=(?P<in>\d+) out=(?P<out>\d+) cache_read=(?P<cr>\d+) cache_write=(?P<cw>\d+)"
 )
+# A stage whose usage cannot be measured (`effortlog.py usage` exits 2) records
+# why instead; `check` accepts the line, `report` still counts the stage as
+# not measured.
+WAIVER_RE = re.compile(r"Actuals waived:\s*(?P<reason>\S.*)")
 CLOSED = {"done", "skipped"}
 MIN_ROWS = 3  # fewer calibrated rows than this say nothing a judgement doesn't
 
@@ -110,9 +118,10 @@ def parse_index(text: str) -> list[dict]:
     return stages
 
 
-def parse_ledger(text: str) -> tuple[dict, dict]:
-    """Statuses from `## Status`, and every `Actuals:` line per notes block."""
-    statuses, actuals = {}, {}
+def parse_ledger(text: str) -> tuple[dict, dict, dict]:
+    """Statuses from `## Status`, and per notes block every `Actuals:` line
+    and every `Actuals waived:` reason."""
+    statuses, actuals, waived = {}, {}, {}
     section, block = None, None
     for line in text.splitlines():
         if line.startswith("## "):
@@ -131,7 +140,10 @@ def parse_ledger(text: str) -> tuple[dict, dict]:
             m = ACTUALS_RE.search(line)
             if m:
                 actuals.setdefault(block, []).append(m)
-    return statuses, actuals
+            m = WAIVER_RE.search(line)
+            if m:
+                waived.setdefault(block, []).append(m["reason"].strip())
+    return statuses, actuals, waived
 
 
 def longest_path(stages: list[dict], end: int) -> float:
@@ -175,20 +187,20 @@ def total_line(label: str, t: dict) -> str:
     return line
 
 
-def load(plan_dir: Path) -> tuple[list[dict], dict, dict]:
+def load(plan_dir: Path) -> tuple[list[dict], dict, dict, dict]:
     plan = plan_dir / "PLAN.md"
     if not plan.is_file():
         raise PlanError(f"no PLAN.md in {plan_dir}")
     stages = parse_index(plan.read_text(encoding="utf-8"))
     ledger = plan_dir / "LEDGER.md"
-    statuses, actuals = ({}, {})
+    statuses, actuals, waived = ({}, {}, {})
     if ledger.is_file():
-        statuses, actuals = parse_ledger(ledger.read_text(encoding="utf-8"))
-    return stages, statuses, actuals
+        statuses, actuals, waived = parse_ledger(ledger.read_text(encoding="utf-8"))
+    return stages, statuses, actuals, waived
 
 
 def cmd_plan(args: argparse.Namespace) -> int:
-    stages, statuses, _ = load(Path(args.plan_dir))
+    stages, statuses, _, _ = load(Path(args.plan_dir))
     out = {"plan": totals(stages)}
     out["line"] = total_line("Plan estimate", out["plan"])
     if statuses:
@@ -211,7 +223,7 @@ def stamp(text: str) -> datetime | None:
 
 
 def cmd_report(args: argparse.Namespace) -> int:
-    stages, statuses, actuals = load(Path(args.plan_dir))
+    stages, statuses, actuals, _ = load(Path(args.plan_dir))
     rows, grand = [], {"in": 0, "out": 0, "cache_read": 0, "cache_write": 0}
     spent_min, starts, finishes, measured = 0, [], [], 0
     for s in stages:
@@ -254,6 +266,25 @@ def cmd_report(args: argparse.Namespace) -> int:
         report.append(f"- **Not measured:** {', '.join(unmeasured)} (no `Actuals:` line in the ledger).")
     print("\n".join(report))
     return 0
+
+
+def cmd_check(args: argparse.Namespace) -> int:
+    stages, _, actuals, waived = load(Path(args.plan_dir))
+    sid = args.stage
+    if sid not in {s["id"] for s in stages}:
+        raise PlanError(f"{sid} is not a stage in the stage index")
+    if actuals.get(sid):
+        print(f"{sid}: {len(actuals[sid])} Actuals line(s) in its ledger notes block.")
+        return 0
+    if waived.get(sid):
+        print(f"{sid}: Actuals waived -- {waived[sid][0]}")
+        return 0
+    print(
+        f"estimates: {sid} has no `Actuals:` line in its LEDGER.md notes block. "
+        "Add the line (effortlog.py usage), or `Actuals waived: <reason>` when usage cannot be measured.",
+        file=sys.stderr,
+    )
+    return 1
 
 
 def cmd_calibrate(args: argparse.Namespace) -> int:
@@ -307,6 +338,10 @@ def build_parser() -> argparse.ArgumentParser:
     report = sub.add_parser("report", help="estimate against actuals, per stage and for the plan")
     report.add_argument("--plan-dir", default=".plan")
     report.set_defaults(func=cmd_report)
+    check = sub.add_parser("check", help="exit 1 naming a stage whose ledger notes block has no Actuals line")
+    check.add_argument("--plan-dir", default=".plan")
+    check.add_argument("--stage", required=True, help="stage ID, e.g. S3")
+    check.set_defaults(func=cmd_check)
     cal = sub.add_parser("calibrate", help="how far past estimates ran from their actuals")
     cal.add_argument("--log", help="NDJSON effort log; defaults to CLAUDE_EFFORT_LOG")
     cal.set_defaults(func=cmd_calibrate)

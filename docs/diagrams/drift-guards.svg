@@ -1,9 +1,9 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 575" width="1150" height="575" role="img" aria-label="Where a plan is checked against the project it was supposed to be: five moments, from before there is a plan to the final review, each with the check that fires and what can come of it.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 667" width="1150" height="667" role="img" aria-label="Where a plan is checked against the project it was supposed to be: six moments, from before there is a plan to the final review, each with the check that fires and what can come of it.">
 <title>Where drift gets caught</title>
-<desc>Five moments where a plan is checked against the project it was supposed to be. Before there is a plan, a too-vague idea becomes a discovery plan. While the plan is written, requirements are captured before decisions and played back. Before stage one runs, lens subagents review the uncommitted scaffold. Whenever a stage is added, a fresh-context scope referee judges it against the plan's outcome. At the end, the final review stage catalogs loose ends, never implements, and adds a stage only for a fix it found, at most three per plan.</desc>
+<desc>Six moments where a plan is checked against the project it was supposed to be. Before there is a plan, a vague, thin or unbounded idea (an outcome like "exhaustive" or "etc." with no list of what is in) becomes a discovery plan by default, its Out of scope naming the build as the next plan; building anyway needs your reason, kept as a decision. While the plan is written, requirements are captured before decisions and played back. Before stage one runs, lens subagents review the uncommitted scaffold. While a stage runs, its Acceptance is its stop line: more of the same work is a new stage, and the files it changed are recorded against its declared Artifacts for the final review. Whenever a stage is added, a fresh-context scope referee judges it against the plan's outcome. At the end, the final review stage catalogs loose ends, never implements, and adds a stage only for a fix it found, at most three per plan.</desc>
 
-<rect x="0" y="0" width="1150" height="575" fill="#F8EFE4"/>
-<rect x="1" y="1" width="1148" height="573" fill="none" stroke="#E2D2BE" stroke-width="2"/>
+<rect x="0" y="0" width="1150" height="667" fill="#F8EFE4"/>
+<rect x="1" y="1" width="1148" height="665" fill="none" stroke="#E2D2BE" stroke-width="2"/>
 
 <defs>
   <marker id="a3" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
@@ -27,11 +27,12 @@
 <rect x="330" y="63" width="460" height="74" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
 <rect x="330" y="63" width="6" height="74" rx="3" fill="#F0A33A"/>
 <text x="352" y="90" font-size="16" fill="#3B2A1E">Discovery plan</text>
-<text x="352" y="112" font-size="13.5" fill="#8A7664">An idea too vague to state its Done checks does not</text>
-<text x="352" y="129" font-size="13.5" fill="#8A7664">become a build plan.</text>
+<text x="352" y="112" font-size="13.5" fill="#8A7664">A vague, thin or unbounded idea becomes one by default.</text>
+<text x="352" y="129" font-size="13.5" fill="#8A7664">Building anyway needs your reason, kept as a decision.</text>
 <path d="M790 100h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
 <rect x="820" y="76" width="290" height="48" rx="10" fill="#EAF7F1" stroke="#4FB98C" stroke-width="1.5"/>
-<text x="965" y="105" font-size="14" fill="#2F7D5E" text-anchor="middle">its Outcome is a decision</text>
+<text x="965" y="96" font-size="14" fill="#2F7D5E" text-anchor="middle">its Outcome is a decision;</text>
+<text x="965" y="114" font-size="14" fill="#2F7D5E" text-anchor="middle">the build is the next plan</text>
 
 <!-- ===== row 2 ===== -->
 <rect x="40" y="168" width="260" height="48" rx="10" fill="#FFFFFF" stroke="#CBB8A4" stroke-width="1.5"/>
@@ -61,34 +62,48 @@
 <text x="965" y="299" font-size="14" fill="#2F7D5E" text-anchor="middle">after it has been reviewed</text>
 
 <!-- ===== row 4 ===== -->
-<rect x="40" y="352" width="260" height="48" rx="10" fill="#FFF1EC" stroke="#C9563C" stroke-width="1.6"/>
-<text x="170" y="381" font-size="15" fill="#B0442B" text-anchor="middle">Whenever a stage is added</text>
+<rect x="40" y="352" width="260" height="48" rx="10" fill="#FFFFFF" stroke="#CBB8A4" stroke-width="1.5"/>
+<text x="170" y="381" font-size="15" fill="#3B2A1E" text-anchor="middle">While a stage runs</text>
 <path d="M300 376h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
 <rect x="330" y="339" width="460" height="74" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
 <rect x="330" y="339" width="6" height="74" rx="3" fill="#F0A33A"/>
-<text x="352" y="366" font-size="16" fill="#3B2A1E">The scope referee</text>
-<text x="352" y="388" font-size="13.5" fill="#8A7664">A fresh session with no stake in the work so far. It sees the</text>
-<text x="352" y="405" font-size="13.5" fill="#8A7664">Outcome, the Out of scope, the new stage and the earlier additions.</text>
+<text x="352" y="366" font-size="16" fill="#3B2A1E">Acceptance is the stop line</text>
+<text x="352" y="388" font-size="13.5" fill="#8A7664">Once its checks pass the stage is done: more of the same is</text>
+<text x="352" y="405" font-size="13.5" fill="#8A7664">a new stage. Its changed files are recorded against its Artifacts.</text>
 <path d="M790 376h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
 <rect x="820" y="346" width="290" height="60" rx="10" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.5"/>
-<text x="965" y="368" font-size="13.5" fill="#3B2A1E" text-anchor="middle">grows · losing shape ·</text>
-<text x="965" y="388" font-size="13.5" fill="#C9563C" text-anchor="middle">a different plan — you decide</text>
+<text x="965" y="368" font-size="13.5" fill="#3B2A1E" text-anchor="middle">a new stage, via the referee ·</text>
+<text x="965" y="388" font-size="13.5" fill="#C9563C" text-anchor="middle">a record the final review judges</text>
 
 <!-- ===== row 5 ===== -->
-<rect x="40" y="444" width="260" height="48" rx="10" fill="#FFFFFF" stroke="#CBB8A4" stroke-width="1.5"/>
-<text x="170" y="473" font-size="15" fill="#3B2A1E" text-anchor="middle">At the end</text>
+<rect x="40" y="444" width="260" height="48" rx="10" fill="#FFF1EC" stroke="#C9563C" stroke-width="1.6"/>
+<text x="170" y="473" font-size="15" fill="#B0442B" text-anchor="middle">Whenever a stage is added</text>
 <path d="M300 468h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
 <rect x="330" y="431" width="460" height="74" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
 <rect x="330" y="431" width="6" height="74" rx="3" fill="#F0A33A"/>
-<text x="352" y="458" font-size="16" fill="#3B2A1E">The final review stage</text>
-<text x="352" y="480" font-size="13.5" fill="#8A7664">It catalogs every loose end in the ledger. It never implements,</text>
-<text x="352" y="497" font-size="13.5" fill="#8A7664">and it adds a stage only for a fix it found — at most three per plan.</text>
+<text x="352" y="458" font-size="16" fill="#3B2A1E">The scope referee</text>
+<text x="352" y="480" font-size="13.5" fill="#8A7664">A fresh session with no stake in the work so far. It sees the</text>
+<text x="352" y="497" font-size="13.5" fill="#8A7664">Outcome, the Out of scope, the new stage and the earlier additions.</text>
 <path d="M790 468h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
-<rect x="820" y="444" width="290" height="48" rx="10" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.5"/>
-<text x="965" y="466" font-size="13.5" fill="#3B2A1E" text-anchor="middle">an issue · a later plan ·</text>
-<text x="965" y="484" font-size="13.5" fill="#C9563C" text-anchor="middle">won’t fix, with a reason</text>
+<rect x="820" y="438" width="290" height="60" rx="10" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.5"/>
+<text x="965" y="460" font-size="13.5" fill="#3B2A1E" text-anchor="middle">grows · losing shape ·</text>
+<text x="965" y="480" font-size="13.5" fill="#C9563C" text-anchor="middle">a different plan — you decide</text>
 
-<text x="40" y="545" font-size="13" fill="#8A7664" font-style="italic">Every check above compares the plan against what it was supposed to be. None of them measures how much has changed — the question is always what kind of change it is.</text>
+<!-- ===== row 6 ===== -->
+<rect x="40" y="536" width="260" height="48" rx="10" fill="#FFFFFF" stroke="#CBB8A4" stroke-width="1.5"/>
+<text x="170" y="565" font-size="15" fill="#3B2A1E" text-anchor="middle">At the end</text>
+<path d="M300 560h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
+<rect x="330" y="523" width="460" height="74" rx="12" fill="#FFFFFF" stroke="#E6D5C2"/>
+<rect x="330" y="523" width="6" height="74" rx="3" fill="#F0A33A"/>
+<text x="352" y="550" font-size="16" fill="#3B2A1E">The final review stage</text>
+<text x="352" y="572" font-size="13.5" fill="#8A7664">It catalogs every loose end in the ledger. It never implements,</text>
+<text x="352" y="589" font-size="13.5" fill="#8A7664">and it adds a stage only for a fix it found — at most three per plan.</text>
+<path d="M790 560h26" stroke="#8A7664" stroke-width="2" fill="none" marker-end="url(#a3)"/>
+<rect x="820" y="536" width="290" height="48" rx="10" fill="#FFFFFF" stroke="#C9563C" stroke-width="1.5"/>
+<text x="965" y="558" font-size="13.5" fill="#3B2A1E" text-anchor="middle">an issue · a later plan ·</text>
+<text x="965" y="576" font-size="13.5" fill="#C9563C" text-anchor="middle">won’t fix, with a reason</text>
+
+<text x="40" y="637" font-size="13" fill="#8A7664" font-style="italic">Every check above compares the plan against what it was supposed to be. None of them measures how much has changed — the question is always what kind of change it is.</text>
 
 </g>
 </svg>

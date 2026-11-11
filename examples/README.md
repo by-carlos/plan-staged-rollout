@@ -109,8 +109,8 @@ All numbers (#3, #5, #41) and hosts are invented.
 ## [`on-the-run/`](on-the-run/) — driving a plan on the cloud
 
 The current design fires each stage as a Claude Code cloud session straight
-from `/plan-run`, through the built-in `RemoteTrigger` tool — no hand-set-up
-routine, no separate prompt to paste anywhere. `/plan-run` itself creates a
+from `/plan-run-cloud`, through the built-in `RemoteTrigger` tool — no hand-set-up
+routine, no separate prompt to paste anywhere. `/plan-run-cloud` itself creates a
 short-lived, run-once routine per stage under the hood as the vehicle for
 firing it; that's an implementation detail of the tool, not a setup step for
 a person. See [`docs/ON-THE-RUN.md`](../docs/ON-THE-RUN.md) for the

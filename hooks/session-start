@@ -4,7 +4,7 @@
 # If the current repo has a staged rollout in progress (a .plan/ directory at
 # the repo root), inject a short context nudge naming the next runnable stage
 # so a fresh session surfaces the rollout without the user having to remember
-# the namespaced /plan-staged-rollout:plan-run command. The nudge only OFFERS —
+# the namespaced /plan-staged-rollout:stage-run command. The nudge only OFFERS —
 # execution is still governed by the operating protocol in .plan/PLAN.md.
 #
 # Hard constraint: FAIL SILENT. This hook runs in every session in the repo,
@@ -228,13 +228,13 @@ deps_satisfied() {
 }
 
 # Set REPLY to one runnable stage as a single markdown bullet body: its id and
-# name, the exact plan-run command, and the launch hints from the stage index.
-# A stage whose gate is not `auto` is never offered a driver command: it gets
-# /stage-run and a note on why (`human`, `local`, `live`), or, for a value this
-# hook does not know, a refusal that names the value as written.
+# name, the exact stage-run command, and the launch hints from the stage index.
+# A stage whose gate is not `auto` gets a note on which runner skips it
+# (`human`, `local`, `live`), or, for a value this hook does not know, a
+# refusal that names the value as written.
 describe_stage() {
     local i="$1" id name num model="" effort="" weight="" pos
-    local cmd="plan-run" gate="auto" gate_note=""
+    local cmd="stage-run" gate="auto" gate_note=""
     id="${ledger_ids[$i]}"
     name="${ledger_names[$i]}"
     # The number is the id less its S; a letter suffix is already lowercase
@@ -249,14 +249,13 @@ describe_stage() {
             gate="$REPLY"
             case "$gate" in
                 human) gate_note=" — \`gate: human\`: a person must be present, so no driver fires it" ;;
-                local) gate_note=" — \`gate: local\`: it needs a resource only the local machine has, so no driver fires it" ;;
+                local) gate_note=" — \`gate: local\`: it needs a resource only the local machine has, so only a local session or \`/plan-run-local\` runs it" ;;
                 live) gate_note=" — \`gate: live\`: it changes a running system, so no driver fires it" ;;
             esac
         else
             gate="$REPLY"
             gate_note=" — REFUSED: \`gate: $gate\` is not a gate value (auto, human, local or live), so no driver or unattended run starts it; the stage index needs fixing first"
         fi
-        [ "$gate" = "auto" ] || cmd="stage-run"
     fi
     case "$model" in ''|'—'|'-') ;; *) weight="model \`$model\`" ;; esac
     case "$effort" in ''|'—'|'-') ;; *) weight="${weight:+$weight, }effort \`$effort\`" ;; esac
@@ -303,7 +302,7 @@ main() {
         local only="${runnable[0]}" action="run"
         [ "${ledger_statuses[$only]}" = "doing" ] && action="resume — it is \`doing\`, so a session left it partially complete"
         describe_stage "$only"
-        context="**Active staged rollout in this repo** (\`.plan/\` present). Exactly one stage is runnable; every other stage is \`done\`, \`skipped\`, or still waiting on a dependency. Next: $REPLY, to $action.
+        context="**Active staged rollout in this repo** (\`.plan/\` present). Exactly one stage is runnable; every other stage is \`done\`, \`skipped\`, or still waiting on a dependency. Next: $REPLY, to $action. To run every remaining stage from this one session instead, offer \`/plan-staged-rollout:plan-run-local\` (fresh local sessions) or \`/plan-staged-rollout:plan-run-cloud\` (cloud sessions, may use additional credits).
 
 Offer it to the user but do NOT auto-run it: surface this and wait for their go-ahead. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
     elif [ "${#runnable[@]}" -gt 1 ]; then
@@ -318,7 +317,7 @@ Offer it to the user but do NOT auto-run it: surface this and wait for their go-
         context="**Active staged rollout in this repo** (\`.plan/\` present). **${#runnable[@]} stages are runnable right now** — their \`depends\` are all satisfied and none of them depends on another, so they can be run **concurrently, one per fresh session**:
 $list
 
-Surface all of them to the user and wait for their go-ahead — do NOT auto-run any. Running more than one at a time is the user's action, one session per stage; you cannot launch independent sessions from here. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
+To run every remaining stage from this one session instead, offer \`/plan-staged-rollout:plan-run-local\` (fresh local sessions) or \`/plan-staged-rollout:plan-run-cloud\` (cloud sessions, may use additional credits). Surface all of them to the user and wait for their go-ahead — do NOT auto-run any. Running more than one at a time is the user's action, one session per stage; you cannot launch independent sessions from here. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
     else
         local open=0 st
         for st in "${ledger_statuses[@]}"; do

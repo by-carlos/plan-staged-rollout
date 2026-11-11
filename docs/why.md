@@ -87,9 +87,9 @@ concept that quietly turns into the production build, a direction change
 carried on under the old Outcome. Nobody decides to do it, so nobody notices
 it happening.
 
-[![Where drift gets caught: five moments, from before there is a plan to the final review, each with the check that fires and what can come of it.](diagrams/drift-guards.svg)](diagrams/drift-guards.svg)
+[![Where drift gets caught: six moments, from before there is a plan to the final review, each with the check that fires and what can come of it.](diagrams/drift-guards.svg)](diagrams/drift-guards.svg)
 
-Two things are worth drawing out of that picture:
+Three things are worth drawing out of that picture:
 
 - **The checks ask what kind of change it is, never how much has changed.**
   There is no threshold and no count. A plan that doubles in size while
@@ -100,10 +100,24 @@ Two things are worth drawing out of that picture:
   added before it — and nothing of the session asking for the stage,
   including how much effort has already gone in. That is the whole reason it
   can say *different plan* when the session that wants the stage cannot.
+- **A stage that keeps going is stopped by its own Acceptance, not by the
+  referee.** The proof of concept that becomes the production build never
+  adds a stage, so the referee never sees it. Instead each stage ends when
+  its Acceptance checks pass, and more of the same work becomes a new stage
+  that the referee does see. Each stage also records whether the files it
+  changed match the ones it declared, and the final review judges any that
+  do not. That record never stops anything: touching an unlisted file is
+  usually routine.
 
 The earliest check is the cheapest one: an idea too vague to state its Done
-checks never becomes a build plan at all. It becomes a **discovery plan**
-whose Outcome is a decision, and the build is the plan after it.
+checks, whose checks name nothing anyone could observe, or whose Outcome
+has no edge ("exhaustive", "etc." with no list of what is in) becomes a
+**discovery plan** by default. Its Outcome is a decision, its Out of scope
+says the build is the next plan, and that written line is what the referee
+judges a "now build it" stage against. You can still ask for the build plan;
+it costs one sentence of why, and that sentence is kept in the plan's frozen
+decisions with the drift risk next to it, where every later session and the
+final review read it.
 
 ## When *not* to use this
 

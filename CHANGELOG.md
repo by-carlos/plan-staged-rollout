@@ -23,6 +23,121 @@ elsewhere. See 0.4.0 for the split.
   follows the work with no word target, and the AI prompt repeats every
   guardrail and stops when it disagrees with the description, because
   `work-issue` follows nothing outside the prompt.
+- **A plan review redo can now tell which stage notes changed.** The coverage
+  record keeps counts, not content, so "differs from the first pass" had no
+  test. The first pass now records the commit it read the ledger at, and a
+  redo re-reads a stage only when `git diff` of the ledger against that commit
+  touches its notes block.
+- **A plan review redo after a fix now re-reads only what changed.** The review
+  stage used to rerun from the top and re-read the whole ledger, so one
+  finished plan's review cost about 19.2M input tokens over two sessions, twice
+  the next most expensive stage. The first pass still reads everything; a redo
+  reads the plan file, the first pass's loose-end list with outcomes, the notes
+  of the fix stages added since, and any stage whose notes are missing from or
+  differ from the first pass's coverage record.
+
+### Added
+
+- **The plan review's first pass now shows it read every stage's notes.** The
+  review stage writes one coverage line per stage notes block (stage id, loose
+  ends found or none) into its own ledger notes, and its "no loose end was
+  dropped" check fails on any stage with notes but no line. Before, a skipped
+  or skimmed stage was invisible until a forced second pass found what the
+  first had missed.
+- **A stage can no longer be recorded `done` without its actual-time line.**
+  The usage report at closeout listed stages as "not measured" when a session
+  skipped its `Actuals:` line, understating the plan's actual total. The
+  finish protocol now runs the new `estimates.py check --stage <ID>` before
+  flipping a row to `done`; it exits 1, naming the stage, when the ledger
+  notes block has no `Actuals:` line. Where `effortlog.py usage` cannot run, an
+  `Actuals waived: <reason>` line stands in. Applies to plans scaffolded from
+  this version; the `uptime-page` and `feed-digest` example plans carry the new step
+  (`feed-digest` also gains the `estimate` column and sample `Actuals:` lines).
+
+## [0.16.0] - 2026-11-02
+
+### Added
+
+- **A stage now stops when its Acceptance passes, and records whether it
+  stayed inside its declared files.** The proof of concept that quietly
+  becomes the production build never adds a stage, so the scope referee
+  never saw it. Now each stage reads the plan's Outcome and Out of scope
+  before it starts, and more of the same work after its Acceptance checks
+  pass is a new stage, through the referee. The finish protocol adds an
+  `Artifacts check:` ledger line from the new `scripts/artifacts_check.py`
+  (`match`, `undeclared` or `outside: <paths>`), and the final review judges
+  each `outside` line. It never stops a stage, and `## Artifacts` needs no new
+  format. Applies to plans scaffolded from this version; the drift diagram in
+  [Why it is built this way](docs/why.md#what-stops-it-becoming-a-different-project)
+  gains the row.
+
+- **`/plan-run-local` runs every remaining stage as fresh sessions on your
+  own machine.** The session you run it from starts a standard-library
+  driver in the background and waits; the driver runs one stage at a time
+  with `claude -p`, at the model and effort each stage books, and wakes the
+  session only when a person is needed: a block, a dead or stopped stage,
+  only gated stages left, or the plan done. Stages keep local tools, files
+  and networks, it uses no cloud sessions, and it runs `gate: local` stages,
+  which no runner could before. A `merge: auto` merge your permission rules
+  ask about is offered to you in the orchestrator's session, and the run
+  carries on. It checks the stage sessions' login first, stops a stage before
+  any work when your organisation has turned auto mode off, and never writes
+  the ledger. Diagram: `docs/diagrams/plan-run-local.svg`, in
+  [How a staged rollout works](docs/staged-rollout.md#running-every-stage-on-this-machine);
+  settings in [Reference](docs/reference.md#the-local-runner).
+- **`/plan-run-cloud` reads an unmerged stage branch as a stop, not a dead
+  run.** A cloud stage whose pull request was not merged leaves its ledger row
+  unmoved on the plan branch; the orchestrator now compares the stage's remote
+  branches with what they were at fire time, and when one was pushed during
+  the run it shows the open pull request, asks whether to merge it, and on
+  yes merges, re-fires the stage so it records `done`, and carries on. A
+  session that pushed nothing is still reported dead. No cloud run has
+  exercised this path yet. Same rule as the local runner; see
+  [Running a plan in the cloud](docs/ON-THE-RUN.md#when-a-stage-is-gated-blocked-stopped-or-dead).
+- **`/plan-stages` and the session-start nudge offer both runners**, so a new
+  plan says how to run it all, not only its first stage.
+
+### Changed
+
+- **`/plan-run` is now `/plan-run-cloud`.** Same contract, a name that says
+  where it runs. "Run the plan" now means the local runner; say "run the plan
+  in the cloud" for this one.
+- **`/stage-run` takes `--runner local`** after `--unattended`. The one
+  change: a `gate: local` stage starts, since the driver runs on this machine.
+- **`/plan-stages` holds a vague or thin idea to a discovery plan unless you
+  say why.** An idea too vague to state its Done checks, or whose checks name
+  nothing a script could assert or a person could see, or whose Outcome has
+  no edge ("exhaustive", "everything", "etc." with no list of what is in),
+  gets a discovery plan as the recommended answer, and its Out of scope now reads
+  `Building <subject> — that is the next plan.`, so the scope referee has a
+  written boundary to stop a "now build it" stage against. Asking for the
+  build plan anyway is never refused; it takes one sentence of why, recorded
+  as a frozen decision with the drift risk and shown in the brief. Clear
+  requirements see no change, and plans already scaffolded are untouched.
+  Diagram: `docs/diagrams/drift-guards.svg`, in
+  [Why](docs/why.md#what-stops-it-becoming-a-different-project).
+- **Every plan-review finding now names a concrete consequence, or it is
+  dropped.** A finding used to need only a plan location and a proposed
+  edit, so a lens could still raise box-ticking points that change nothing
+  real. The finding shape gains a `**Consequence:**` line — what breaks,
+  leaks, costs or is wasted if the plan ships as written — and the digest
+  drops and counts findings without one. A Security finding must also name a
+  plausible actor and the path they take; checklist hygiene with no one to
+  exploit its absence is dropped. A lens that finds the plan genuinely broken
+  can open with a one-line `**Unsound:**` verdict, which heads the digest and
+  always goes to the user. A quiet review stays a valid result for a sound
+  plan. Lens triggers, count and models are unchanged.
+
+### Fixed
+
+- **The hooks failed with `Permission denied` on Linux and WSL2**, because the
+  wrapper that launches them was stored in git without the executable bit, so
+  the session-start nudge and both command guards never ran there. The wrapper
+  is now executable, and `validate_plugin.py` fails if any hook script loses
+  the bit again.
+- **The session-start nudge named `plan-run <N>` for each runnable stage**, a
+  leftover from when that was the single-stage command; it would have fired
+  the whole plan in the cloud. It now names `stage-run <N>`.
 
 ## [0.15.0] - 2026-10-27
 
@@ -1446,7 +1561,8 @@ Initial public release of the `carlos-plugins` marketplace.
     *not* to use it.
 - Marketplace manifest, root and plugin READMEs, and MIT license.
 
-[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.15.0...HEAD
+[Unreleased]: https://github.com/by-carlos/plan-staged-rollout/compare/v0.16.0...HEAD
+[0.16.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.16.0
 [0.15.0]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.15.0
 [0.14.2]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.14.2
 [0.14.1]: https://github.com/by-carlos/plan-staged-rollout/releases/tag/v0.14.1

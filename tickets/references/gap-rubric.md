@@ -95,6 +95,9 @@ The skill is exercised by hand on at least three synthetic drafts:
 - an oversized story (should hit `size` and propose a split)
 - an ask that may touch regulated data (should hit `guarded-field` and ask,
   never set the value)
+- a draft whose Context restates In plain terms and whose criteria list
+  steps (should hit `earns-its-place` and `how-in-criteria`, and leave the
+  AI prompt and every guardrail untouched)
 
 Real tickets that informed the ranking are kept privately and are not
 fixtures.

@@ -222,7 +222,7 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   and closing stays the final merge's job; `work_core.py stage-status` holds
   the rules so no run drifts. Rejected: one ticket per stage (deferred), and
   asking before each comment (unattended could never post). Revisit: if
-  per-stage ticket creation lands. Source: PR_PLACEHOLDER
+  per-stage ticket creation lands. Source: #292
 
 ## Tickets
 

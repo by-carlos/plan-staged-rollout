@@ -103,9 +103,14 @@ Work through these steps **in order**:
    stage to its issue* defines the format) — before step 4 can delete them —
    and print one list, `Linked issues:`, one row per stage that has one
    (`S<N> — <ref>`). A plan whose stages carry none prints nothing. Never
-   comment on an issue or change its status from here: the one effect is the
-   closing keyword step 3 writes into the final PR body, which closes the
-   issue only when a person merges that PR.
+   comment on an issue or change its status from here (`/stage-run` already
+   moved each one while its stage ran): the one effect is the line step 3
+   writes into the final PR body. For a GitHub issue that is a closing
+   keyword, which closes the issue only when a person merges that PR. When
+   the list holds a Jira issue (an Atlassian `/browse/KEY-N` URL), add one
+   line under it: *Jira issues are referenced, not closed: only GitHub closes
+   an issue from a pull request, so move these tickets to done by hand after
+   the merge.*
 
 3. **Distill the story — dispatch a subagent.** `.plan/PLAN.md` and the full
    `.plan/LEDGER.md` are the largest material this command touches, and
@@ -138,8 +143,11 @@ Work through these steps **in order**:
      notes carry no such list (a plan scaffolded before the decision triage
      existed), write the section as one line saying no decision triage ran;
    - the distinct linked issues from step 2, and the rule for closing them:
-     one `Closes <ref>` line per issue, near the top of the body, with an
-     issue URL rewritten as `owner/repo#N`. GitHub closes an issue only from
+     one `Closes <ref>` line per GitHub issue, near the top of the body, with
+     an issue URL rewritten as `owner/repo#N`. A Jira issue always gets
+     `Refs <url>`, its URL kept as it is: a pull request cannot close a Jira
+     ticket, so `Closes` would promise something the merge does not do.
+     GitHub closes an issue only from
      a PR into the default branch, which this final PR always targets, and
      only on a closing keyword such as `Closes` — "Implements #N" or a bare
      reference leaves the issue open after the merge. An issue gets
@@ -148,8 +156,9 @@ Work through these steps **in order**:
      `PROGRAMME.md` still lists a plan other than this one: a programme's
      issue closes with its last plan. Open the lines with one
      sentence: *merging this PR closes these issues; change a line to
-     `Refs` first if one is not fully delivered.* No linked issues means no
-     such lines;
+     `Refs` first if one is not fully delivered.* When any line is a Jira
+     `Refs`, add: *Jira tickets are not closed by this merge; move them to
+     done by hand.* No linked issues means no such lines;
    - a **`## Lessons`** section, built by the `staged-rollout` skill's
      *Lessons at close* — its fixed layout, its evidence (the scaffold's
      `PLAN.md` against the final one, the `Added by` lines and their referee
@@ -233,7 +242,9 @@ Work through these steps **in order**:
    were removed, which `.plan/` decision was applied, the usage report's
    three totals (estimate, actual, tokens) from step 3, the linked issues from
    step 2 (when any), and that there is
-   nothing left to run **except the merge, which is the user's**.
+   nothing left to run **except the merge, which is the user's** — plus, when
+   a linked issue is on Jira, moving each such ticket to done after the merge,
+   because the PR's `Refs` line does not close it.
 
    **Lessons.** Print the `## Lessons` section from step 3's body in the chat,
    exactly as it stands in the PR body, after the announcement and set apart

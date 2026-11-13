@@ -11,3 +11,4 @@ site and person is a placeholder.
 | `jira-act.json` | A Jira ticket whose AI prompt names the repository and base branch on labelled lines. `assess` returns `act` with both read from the prompt. |
 | `jira-ask.json` | A Jira ticket whose AI prompt names neither. `assess` returns `ask` with `needs_user` listing both; the skill asks before branching. |
 | `status-routed.toml` | A GitHub template with a routed board, a Status field, `[work].status` and a stricter merge command, for `status` and `merge-command`. |
+| `status-jira.toml` | A Jira template with `[work].status` and no routing, for `stage-status` (a staged-rollout stage's linked ticket). |

@@ -69,8 +69,9 @@ Work through these steps **in order**:
    `staged-rollout` skill's *Linking a stage to its issue* defines the
    format). When it names an issue, print one line — `Linked issue: <ref>` —
    before anything else about the stage, so it shows even when a later check
-   stops the run. When it is absent, print nothing. Never comment on the
-   issue or change its status.
+   stops the run. When it is absent, print nothing. Nothing is written to the
+   issue here: its status moves only at the two moments step 5's **Ticket
+   status sync** names, once the stage has really started.
 
 2. **Defer to the project protocol.** Read `.plan/PLAN.md` and follow its
    **Operating protocol** verbatim for this stage — starting with its
@@ -227,6 +228,56 @@ Work through these steps **in order**:
    a redo and not a resume: go straight to the end announcement. That holds
    under `--unattended` too, where it is not a hard stop. Otherwise run it
    fresh.
+
+   **Ticket status sync (ergonomic add).** A stage whose `Issue:` line names
+   a ticket moves that ticket at two moments: to the template's
+   `[work].status.on_start` when the stage **starts fresh** (the row was
+   `todo`, every check above passed, before the first of the stage's Steps),
+   and to `[work].status.on_pr` right after `PLAN.md`'s finish protocol
+   **opens the stage PR** (finish step 4). A resume or a redo writes nothing
+   at start, and a stage stopping `blocked` writes nothing at its PR, which
+   holds a block, not work to review. The rules are the `staged-rollout`
+   skill's *Linking a stage to its issue*; this is how to apply them. At
+   each moment, in a scratch folder (never the worktree), run:
+
+   ```
+   python3 "${CLAUDE_PLUGIN_ROOT}/tickets/scripts/work_core.py" stage-status \
+     --stage-file .plan/stage-<N>-<slug>.md --when <on_start|on_pr> \
+     --plan plan-<slug> --origin <owner/repo> --project-dir <clone root> \
+     --out-dir <scratch folder> [--pr-url <stage PR URL>] [--unattended]
+   ```
+
+   `--pr-url` goes with `on_pr`; `--unattended` goes with this run's token.
+   Act on its `action`:
+
+   - `none` — no linked issue, or the template sets no status for this
+     moment: say nothing and carry on, exactly as a plan without the line.
+   - `report` — show its `line` once and carry on. A done status, an
+     unrecognized URL, and (unattended) a write that would need a question
+     all land here.
+   - `ask` — attended only: ask its `question` once, then run the same
+     command again with `--board <N>`.
+   - `write` — make the status write, then post the comment, with
+     `work-issue`'s adapter calls (`gh-adapter` and `jira-adapter` are
+     `github_adapter.py` and `jira_adapter.py` next to `work_core.py`):
+     - GitHub: `gh-adapter set-fields --payload <status_file> --number <number> --confirm`,
+       then `gh-adapter comment --repo <repo> --number <number> --body-file <comment_file> --confirm`.
+     - Jira: `jira-adapter detect --tools <tool list file> > env.json` once
+       per session, then, each in a fresh run folder,
+       `jira-adapter transition --run <dir> --key <key> --site <site> --env env.json --status "<status>" --refuse-done --confirm`
+       and `jira-adapter comment --run <dir> --key <key> --site <site> --env env.json --body <comment_file> --confirm`,
+       relaying each `status: RELAY` call exactly as `work-issue` does.
+       `--refuse-done` makes the adapter fail, changing nothing, when the
+       status sits in Jira's done category under any name; skip the comment
+       then.
+
+   A result that is not `VERIFIED` is one line, and the stage carries on: a
+   ticket that did not move never stops a stage, attended or not. An adapter
+   exit `3` (the write was denied) is shown as it is and that write stops;
+   there is no fallback to another tool. A `notice` in the output (the
+   configured template could not be used) is shown once. The template
+   declaring the status is the authority for the write and its comment, so
+   `--unattended` makes them without asking.
 
 6. **Spend breaker (ergonomic add).** A stage can stop making progress and
    keep spending, and an unattended run has nobody to notice. Between phases

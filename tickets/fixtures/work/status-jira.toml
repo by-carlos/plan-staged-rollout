@@ -1,0 +1,12 @@
+# Example Jira template on placeholder values for a staged-rollout stage's
+# status sync: the claim and review statuses, no board routing (a Jira ticket
+# moves in its own workflow).
+
+schema = 1
+name = "work-jira-status"
+tracker = "jira"
+extends = "default"
+description = "Fixture: [work].status for Jira, read by work_core.py stage-status."
+
+[work]
+status = { on_start = "In Progress", on_pr = "In Review" }

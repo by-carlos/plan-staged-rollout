@@ -720,6 +720,21 @@ class TransitionTests(AdapterCase):
         self.assertEqual(body["reachable"], ["Dev Done", "In Review", "Work in progress"])
         self.assertFalse((self.run_dir / "results" / "transition.json").exists())
 
+    def test_refuse_done_stops_before_moving_to_a_done_category_status(self):
+        _code, body = self.move("Dev Done", "--refuse-done")
+        self.answer(body, {"transition-before": status_read("In Review", "indeterminate"),
+                           "transition-options": TRANSITIONS})
+        code, body = self.move("Dev Done", "--refuse-done", "--confirm")
+        self.assertEqual((code, body["status"]), (ja.EXIT_TRACKER, "FAILED"))
+        self.assertIn("done status", body["message"])
+        self.assertFalse((self.run_dir / "results" / "transition.json").exists())
+
+    def test_refuse_done_still_moves_to_an_open_status(self):
+        _code, body = self.move("In review", "--refuse-done")
+        self.answer(body, {"transition-before": status_read("Backlog"), "transition-options": TRANSITIONS})
+        _code, body = self.move("In review", "--refuse-done", "--confirm")
+        self.assertEqual(body["calls"][0]["arguments"]["transitionId"], "171")
+
     def test_denied_transition_is_exit_3(self):
         _code, body = self.move()
         self.answer(body, {"transition-before": status_read("Backlog"), "transition-options": TRANSITIONS})

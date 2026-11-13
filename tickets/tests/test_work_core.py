@@ -255,6 +255,131 @@ class StatusTests(unittest.TestCase):
         self.assertEqual(wc.status_payload(ROUTED, "github", "example-org/unknown", "on_pr", board=7)["board"]["number"], 7)
 
 
+JIRA_STATUS = str(FIX / "status-jira.toml")
+ROUTED_REF = str(FIX / "status-routed.toml")
+JIRA_ISSUE = "https://example.atlassian.net/browse/DT-42"
+PR_URL = "https://github.com/example-org/widgets/pull/31"
+
+
+class StageStatusTests(unittest.TestCase):
+    """`/stage-run`'s ticket status sync for a stage whose file carries an `Issue:` line."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.dir = Path(self.tmp.name)
+        self.out = self.dir / "scratch"
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def stage(self, issue_line: str | None, name: str = "stage-2-status-page.md") -> str:
+        lines = ["# S2 — Status page", ""]
+        if issue_line is not None:
+            lines += [issue_line, ""]
+        lines += ["> First read `.plan/PLAN.md`.", "", "## Steps", "", "Issue: #999", ""]
+        path = self.dir / name
+        path.write_text("\n".join(lines), encoding="utf-8")
+        return str(path)
+
+    def sync(self, issue_line, when="on_start", template=JIRA_STATUS, **kw):
+        kw.setdefault("out_dir", str(self.out))
+        return wc.stage_status(self.stage(issue_line), when, "plan-data-tagging", "example-org/widgets",
+                               project_dir=str(self.dir), template_ref=template, **kw)
+
+    def test_start_moves_a_jira_ticket_and_names_the_stage_and_plan(self):
+        r = self.sync(f"Issue: {JIRA_ISSUE}")
+        self.assertEqual((r["action"], r["tracker"], r["key"], r["site"], r["status"]),
+                         ("write", "jira", "DT-42", "example.atlassian.net", "In Progress"))
+        comment = Path(r["comment_file"]).read_text(encoding="utf-8")
+        self.assertIn("S2 — Status page", comment)
+        self.assertIn("`plan-data-tagging`", comment)
+        self.assertNotIn("status_file", r)  # Jira takes the status name, not a payload
+
+    def test_start_on_github_writes_a_set_fields_payload(self):
+        r = self.sync("Issue: #12", template=ROUTED_REF)
+        self.assertEqual((r["action"], r["repo"], r["number"], r["status"]),
+                         ("write", "example-org/widgets", 12, "In progress"))
+        payload = json.loads(Path(r["status_file"]).read_text(encoding="utf-8"))
+        self.assertEqual(payload["board"]["values"], {"Status": "In progress"})
+        import github_adapter as ga
+        self.assertEqual(ga.load_payload(r["status_file"])["board"]["number"], 7)
+
+    def test_pull_request_moves_to_on_pr_and_links_the_pr(self):
+        r = self.sync(f"Issue: {JIRA_ISSUE}", when="on_pr", pr_url=PR_URL)
+        self.assertEqual((r["action"], r["status"]), ("write", "In Review"))
+        self.assertIn(PR_URL, Path(r["comment_file"]).read_text(encoding="utf-8"))
+
+    def test_pull_request_without_its_url_is_refused(self):
+        with self.assertRaises(wc.Invalid):
+            self.sync(f"Issue: {JIRA_ISSUE}", when="on_pr")
+
+    def test_unattended_runs_a_declared_write(self):
+        r = self.sync(f"Issue: {JIRA_ISSUE}", unattended=True)
+        self.assertEqual((r["action"], r["status"]), ("write", "In Progress"))
+
+    def test_unattended_skips_and_reports_what_would_need_a_question(self):
+        issue = "Issue: example-org/unknown#5"  # unrouted repo, the template says to stop and ask
+        attended = self.sync(issue, template=ROUTED_REF)
+        self.assertEqual((attended["action"], attended["needs_user"]), ("ask", "board"))
+        r = self.sync(issue, template=ROUTED_REF, unattended=True)
+        self.assertEqual(r["action"], "report")
+        self.assertIn("unattended", r["line"])
+        self.assertFalse(self.out.exists())  # nothing to post
+
+    def test_no_linked_issue_is_silent(self):
+        for line in (None, "Issue:", "Issue: <#N, owner/repo#N or an issue URL — or delete this line>"):
+            with self.subTest(line=line):
+                r = self.sync(line)
+                self.assertEqual(r["action"], "none")
+                self.assertNotIn("line", r)
+        self.assertFalse(self.out.exists())
+
+    def test_an_issue_line_below_the_first_section_is_not_read(self):
+        self.assertEqual(self.sync(None)["action"], "none")  # the stage body's "Issue: #999" is ignored
+
+    def test_template_without_work_status_is_silent(self):
+        for when, kw in (("on_start", {}), ("on_pr", {"pr_url": PR_URL})):
+            with self.subTest(when=when):
+                r = self.sync(f"Issue: {JIRA_ISSUE}", when=when, template="default", **kw)
+                self.assertEqual(r["action"], "none")
+                self.assertNotIn("line", r)
+        self.assertFalse(self.out.exists())
+
+    def test_a_done_status_is_never_written(self):
+        done = self.dir / "done.toml"
+        done.write_text('schema = 1\nname = "x"\ntracker = "jira"\nextends = "default"\n'
+                        'description = "x"\n[work]\nstatus = { on_start = "Done" }\n', encoding="utf-8")
+        r = self.sync(f"Issue: {JIRA_ISSUE}", template=str(done))
+        self.assertEqual(r["action"], "report")
+        self.assertIn("done status", r["line"])
+        self.assertFalse(self.out.exists())
+
+    def test_an_unknown_url_is_reported_not_guessed(self):
+        r = self.sync("Issue: https://tracker.example.com/items/7")
+        self.assertEqual(r["action"], "report")
+        self.assertIn("neither a GitHub issue nor a Jira", r["line"])
+
+    def test_issue_url_and_short_forms_parse(self):
+        self.assertEqual(wc.parse_issue_ref("https://github.com/o/r/issues/3", "x/y")["repo"], "o/r")
+        self.assertEqual(wc.parse_issue_ref("o/r#3", "x/y")["number"], 3)
+        self.assertEqual(wc.parse_issue_ref("#3", "x/y")["repo"], "x/y")
+        self.assertIsNone(wc.parse_issue_ref("https://github.com/o/r/pull/3", "x/y"))
+
+    def test_review_stage_label(self):
+        path = self.dir / "stage-f-review.md"
+        self.assertEqual(wc.stage_label(path, "# Final review\n"), "SF — Final review")
+
+    def test_cli_round_trip(self):
+        code, out = run(["stage-status", "--stage-file", self.stage(f"Issue: {JIRA_ISSUE}"),
+                         "--when", "on_start", "--plan", "plan-data-tagging", "--origin", "example-org/widgets",
+                         "--project-dir", str(self.dir), "--template", JIRA_STATUS,
+                         "--unattended", "--out-dir", str(self.out)])
+        self.assertEqual((code, out["action"], out["key"]), (0, "write", "DT-42"))
+        code, out = run(["stage-status", "--stage-file", self.stage(f"Issue: {JIRA_ISSUE}"),
+                         "--when", "on_pr", "--plan", "p", "--origin", "o/r", "--template", JIRA_STATUS])
+        self.assertEqual((code, out["status"]), (1, "INVALID"))
+
+
 def prompted(text: str) -> dict:
     """A GitHub ticket with no board field, so the AI prompt is the only tier source."""
     t = ticket("github-act.json")

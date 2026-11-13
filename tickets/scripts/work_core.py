@@ -13,6 +13,9 @@ that must not drift between runs:
   merge-command  the template's merge command, released only with --confirm
   status         a `github_adapter.py set-fields` payload for a [work].status
                  flip on a GitHub board
+  stage-status   for `/stage-run`: a stage file's `Issue:` line plus the
+                 template -> nothing, a line to report, one question, or the
+                 status write and comment to make (never a done status)
   weight-check   the ticket's model/effort tier against this session's model
                  and effort -> match | mismatch | ask, with the one-line stop
   unblocked      after a merge: the tickets it blocked whose blockers are all
@@ -537,6 +540,135 @@ def status_payload(template: dict, tracker: str, repo: str, when: str,
 
 
 # --------------------------------------------------------------------------
+# stage-status: a staged-rollout stage's `Issue:` line -> one status flip
+# --------------------------------------------------------------------------
+
+ISSUE_LINE = re.compile(r"^Issue:\s*(.*?)\s*$")
+GH_SHORT = re.compile(r"^(?:([A-Za-z0-9][\w.-]*/[A-Za-z0-9][\w.-]*))?#(\d+)$")
+GH_URL = re.compile(r"^https?://github\.com/([A-Za-z0-9][\w.-]*/[A-Za-z0-9][\w.-]*)/issues/(\d+)/?(?:[?#].*)?$",
+                    re.IGNORECASE)
+JIRA_URL = re.compile(r"^https?://([^/\s]+)/browse/([A-Z][A-Z0-9_]*-\d+)/?(?:[?#].*)?$")
+ANY_URL = re.compile(r"^https?://\S+$", re.IGNORECASE)
+STAGE_FILE = re.compile(r"^stage-([0-9]+[a-z]?|f)-", re.IGNORECASE)
+
+
+def stage_issue(text: str) -> str | None:
+    """The stage file's linked issue, read as the staged-rollout skill defines it:
+    the first line above the first `##` heading that starts with `Issue:` and
+    whose value is `#N`, `owner/repo#N` or an issue URL. Anything else, a blank
+    value or the template's `<...>` placeholder included, is no linked issue."""
+    for line in text.splitlines():
+        if line.startswith("## "):
+            return None
+        m = ISSUE_LINE.match(line)
+        if not m:
+            continue
+        value = m.group(1)
+        if GH_SHORT.match(value) or ANY_URL.match(value):
+            return value
+    return None
+
+
+def parse_issue_ref(ref: str, origin: str) -> dict | None:
+    """Tracker and coordinates of an `Issue:` value; None when it is a URL of
+    neither a GitHub issue nor a Jira issue (`/browse/KEY-N`)."""
+    m = GH_SHORT.match(ref)
+    if m:
+        repo = m.group(1) or origin
+        return {"tracker": "github", "repo": repo, "number": int(m.group(2)),
+                "url": f"https://github.com/{repo}/issues/{m.group(2)}"}
+    m = GH_URL.match(ref)
+    if m:
+        return {"tracker": "github", "repo": m.group(1), "number": int(m.group(2)),
+                "url": f"https://github.com/{m.group(1)}/issues/{m.group(2)}"}
+    m = JIRA_URL.match(ref)
+    if m:
+        return {"tracker": "jira", "site": m.group(1), "key": m.group(2),
+                "url": f"https://{m.group(1)}/browse/{m.group(2)}"}
+    return None
+
+
+def stage_label(stage_path: Path, text: str) -> str:
+    """`S2 — Status page`, from the file name's stage token and the `#` title."""
+    m = STAGE_FILE.match(stage_path.name)
+    sid = "S" + (m.group(1).upper() if m and m.group(1).lower() == "f" else (m.group(1) if m else "?"))
+    title = next((ln[2:].strip() for ln in text.splitlines() if ln.startswith("# ")), "")
+    if not title:
+        return sid
+    return title if re.match(rf"^{re.escape(sid)}\b", title, re.IGNORECASE) else f"{sid} — {title}"
+
+
+def stage_comment(label: str, plan: str, when: str, pr_url: str | None) -> str:
+    if when == "on_start":
+        return (f"Work on this ticket started as stage {label} of the staged-rollout plan "
+                f"`{plan}`.\n")
+    return (f"Stage {label} of the staged-rollout plan `{plan}` opened its pull request for "
+            f"review: {pr_url}\n")
+
+
+def stage_status(stage_file: str, when: str, plan: str, origin: str, *,
+                 project_dir: str = ".", template_ref: str | None = None,
+                 pr_url: str | None = None, board: int | None = None,
+                 unattended: bool = False, out_dir: str | None = None) -> dict:
+    """What `/stage-run` does to a stage's linked ticket at one moment.
+
+    action `none`   say nothing: no linked issue, or the template sets no
+                    status for this moment (the stage behaves as before).
+    action `report` one line to show, then the stage carries on.
+    action `ask`    one question (attended only; unattended it is a `report`).
+    action `write`  the status to write through the adapter, and the comment
+                    file to post after it.
+    A done status is never written: `report` instead.
+    """
+    path = Path(stage_file)
+    text = path.read_text(encoding="utf-8")
+    ref = stage_issue(text)
+    if ref is None:
+        return {"action": "none", "reason": "the stage file links no issue"}
+    issue = parse_issue_ref(ref, origin)
+    if issue is None:
+        return {"action": "report", "ref": ref,
+                "line": f"Ticket status not synced: {ref} is neither a GitHub issue nor a Jira "
+                        f"issue URL."}
+    import ticket_template  # local: only this op layers the configured template
+    resolved = ticket_template.resolve(issue["tracker"], Path(project_dir).resolve(), None, template_ref)
+    template = resolved["template"]
+    base = {"ref": ref, "url": issue["url"], "tracker": issue["tracker"], "when": when}
+    if resolved.get("notice"):
+        base["notice"] = resolved["notice"]
+    payload = status_payload(template, issue["tracker"], issue.get("repo", origin), when, board)
+    if "skip" in payload and "needs_user" not in payload:
+        if payload["skip"].startswith("the template sets no status"):
+            return {**base, "action": "none", "reason": payload["skip"]}
+        return {**base, "action": "report",
+                "line": f"Ticket status not changed for {ref}: {payload['skip']}."}
+    if payload.get("needs_user"):
+        if unattended:
+            return {**base, "action": "report",
+                    "line": f"Ticket status not changed for {ref}: it needs the board number, a "
+                            f"question an unattended run cannot ask, so it was skipped."}
+        return {**base, "action": "ask", "needs_user": payload["needs_user"],
+                "question": f"Which project board number should {ref}'s status be set on?"}
+    status = payload["status"]
+    if status.strip().lower() in CLOSED_STATES:
+        return {**base, "action": "report",
+                "line": f"Ticket status not changed for {ref}: '{status}' is a done status, and "
+                        f"a stage never moves its ticket there."}
+    if when == "on_pr" and not pr_url:
+        raise Invalid("--pr-url is required with --when on_pr")
+    out = Path(out_dir) if out_dir else path.parent
+    out.mkdir(parents=True, exist_ok=True)
+    comment_file = out / f"stage-ticket-{when}-comment.md"
+    comment_file.write_text(stage_comment(stage_label(path, text), plan, when, pr_url), encoding="utf-8")
+    result = {**base, "action": "write", "status": status, "comment_file": str(comment_file)}
+    if issue["tracker"] == "jira":
+        return {**result, "key": issue["key"], "site": issue["site"]}
+    status_file = out / f"stage-ticket-{when}-status.json"
+    status_file.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    return {**result, "repo": issue["repo"], "number": issue["number"], "status_file": str(status_file)}
+
+
+# --------------------------------------------------------------------------
 # CLI
 # --------------------------------------------------------------------------
 
@@ -587,6 +719,18 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--board", type=int)
     p.add_argument("--out", help="write the payload here (default: stdout only)")
 
+    p = sub.add_parser("stage-status", help="a staged-rollout stage's Issue: line -> one status flip")
+    p.add_argument("--stage-file", required=True, help="the .plan/stage-<N>-<slug>.md file")
+    p.add_argument("--when", required=True, choices=("on_start", "on_pr"))
+    p.add_argument("--plan", required=True, help="the plan branch, plan-<slug>")
+    p.add_argument("--origin", required=True, help="the clone's origin (owner/name), for a bare #N")
+    p.add_argument("--project-dir", default=".", help="where the ticket template is resolved from")
+    p.add_argument("--template", dest="template_ref", help="use this template file instead")
+    p.add_argument("--pr-url", help="the stage pull request (required with --when on_pr)")
+    p.add_argument("--board", type=int, help="the board number the user gave")
+    p.add_argument("--unattended", action="store_true", help="a question becomes a reported skip")
+    p.add_argument("--out-dir", help="where the status and comment files go (a scratch folder)")
+
     p = sub.add_parser("weight-check", help="the ticket's tier against this session's model and effort")
     p.add_argument("--tier", default="", help="the assess output's `effort` value")
     p.add_argument("--model-id", default="", help="this session's model ID or name, from the system prompt")
@@ -602,6 +746,12 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.op == "weight-check":
             emit(weight_check(args.tier, args.model_id, args.effort))
+            return EXIT_OK
+        if args.op == "stage-status":
+            emit(stage_status(args.stage_file, args.when, args.plan, args.origin,
+                              project_dir=args.project_dir, template_ref=args.template_ref,
+                              pr_url=args.pr_url, board=args.board, unattended=args.unattended,
+                              out_dir=args.out_dir))
             return EXIT_OK
         template = core.load_template(args.template)
         if args.op == "unblocked":

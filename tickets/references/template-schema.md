@@ -421,6 +421,13 @@ Jira the ticket is moved to the status of that name through the Jira
 adapter's `transition` op, so each name must match a status in the
 project's workflow that a transition can reach from the one before.
 
+`status` is read in one more place: `/stage-run` moves a staged-rollout
+stage's linked ticket (its stage file's `Issue:` line) to `on_start` when
+the stage starts and to `on_pr` when its pull request opens, through
+`work_core.py stage-status` and the same adapter calls. That path never
+writes a done status: a done name is refused, and on Jira `transition
+--refuse-done` refuses a status in the done category under any name.
+
 ## Validation
 
 `scripts/` validates a resolved template and reports every error at once:

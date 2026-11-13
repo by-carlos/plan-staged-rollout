@@ -1116,7 +1116,8 @@ def transition(run: Path, confirm: bool) -> dict:
     Reads the current status and the transitions this user can take now,
     picks the one whose target status has that name (case-insensitive; a
     transition's own name often differs), makes it after --confirm, and
-    reads the status again. An issue already there is not moved.
+    reads the status again. An issue already there is not moved. With
+    --refuse-done, a target in the done status category fails instead.
     """
     payload, state = load_run(run)
     key, target = payload["key"], payload["target_status"]
@@ -1138,6 +1139,10 @@ def transition(run: Path, confirm: bool) -> dict:
                           changed=False, from_status=current)
         options = parse_transitions(read_result(run, "transition-options", payload))
         match = [o for o in options if (o["to"] or "").lower() == target.lower()]
+        if match and payload.get("refuse_done") and match[0].get("category") == "done":
+            raise Stop(EXIT_TRACKER, answer(
+                "FAILED", f"'{match[0]['to']}' is a done status, and this caller never moves an "
+                          f"issue there. Nothing was changed.", from_status=current))
         if not match:
             reachable = sorted({o["to"] for o in options if o["to"]})
             raise Stop(EXIT_TRACKER, answer(
@@ -1354,7 +1359,8 @@ def cmd_transition(args) -> tuple[int, dict]:
             return EXIT_INVALID, {"status": "INVALID", "message": "--status is empty"}
         write_payload(run, {"tracker": "jira", "env": load_json(args.env), "cloudId": args.site,
                             "site_url": site_url(args.site), "key": args.key,
-                            "target_status": args.status.strip()})
+                            "target_status": args.status.strip(),
+                            "refuse_done": bool(args.refuse_done)})
     return EXIT_OK, transition(run, args.confirm)
 
 
@@ -1453,6 +1459,8 @@ def parser() -> argparse.ArgumentParser:
     s.add_argument("--site", required=True)
     s.add_argument("--env", required=True)
     s.add_argument("--status", required=True, help="the target status name, as the board shows it")
+    s.add_argument("--refuse-done", action="store_true",
+                   help="fail, changing nothing, when the target status is in the done category")
     s.add_argument("--confirm", action="store_true")
     s.set_defaults(func=cmd_transition)
 

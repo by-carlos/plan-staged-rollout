@@ -5,8 +5,10 @@ Issue: <#N, owner/repo#N or an issue URL — or delete this line>
 <!-- This stage's flags (depends / mode / exec / model / effort / gate /
 estimate) live ONLY in the PLAN.md stage index — the single authoritative home. Do not restate them
 here; a copy is what drifts. The `Issue:` line above is not a flag — it only
-records which issue this stage came from. `/stage-run` prints it, and
-`/plan-close` writes `Closes <ref>` (or `Refs`) for it into the final PR body. It is
+records which issue this stage came from (a Jira ticket by its URL). `/stage-run`
+prints it and, when the ticket template sets `[work].status`, moves the ticket
+when the stage starts and when its PR opens. `/plan-close` writes `Closes <ref>`
+(or `Refs`, always `Refs` for Jira) for it into the final PR body. It is
 optional; a stage without it runs unchanged. -->
 
 > First read `.plan/PLAN.md` (Requirements › Outcome and Out of scope, Frozen

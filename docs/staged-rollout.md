@@ -230,8 +230,16 @@ What the picture leaves out:
   `CLAUDE_EFFORT` is reported, not treated as one. Why it can't switch for
   you: [Reference](reference.md#why-model-and-effort-are-hints-not-automation).
 - **A linked issue is printed first.** If the stage file has an `Issue:`
-  line, the session names that issue before anything else. It never posts
-  to it or changes its status.
+  line, the session names that issue before anything else.
+- **The linked ticket's status follows the stage.** When your ticket
+  template sets `[work].status` (the `on_start` and `on_pr` statuses
+  `work-issue` uses), the session moves the ticket to `on_start` when the
+  stage starts fresh and to `on_pr` when the stage PR opens, with a short
+  comment naming the stage and the plan. It never moves a ticket to a done
+  status, and a write that fails is one line in the session, never a stop.
+  Unattended runs make these writes too, and skip and report any that would
+  need a question. No `Issue:` line, or no `[work].status`: nothing happens.
+  A cloud session never touches the ticket.
 - **The brief stamp is checked.** If `.plan/BRIEF.md` exists and its stamp no
   longer matches `PLAN.md`, the session regenerates it and commits that on the
   plan branch before going on. No brief, or a matching stamp: nothing happens.
@@ -474,10 +482,11 @@ alone. Then it:
    the as-built story survive on `main`. The body includes a **Kept
    decisions** section copied from the review stage's list; if that list was
    applied unattended, the section says that merging the PR approves it.
-   Each issue the stages link to gets a `Closes` line, so merging the PR
-   closes it. One the review stage found only partly delivered gets `Refs`
+   Each GitHub issue the stages link to gets a `Closes` line, so merging the
+   PR closes it. One the review stage found only partly delivered gets `Refs`
    instead, and so does every issue while the programme index still lists
-   another plan;
+   another plan. A Jira ticket always gets `Refs`, because only GitHub closes
+   an issue from a pull request: you move it to done after the merge;
 2. offers to remove the stage worktrees that are finished (branch merged,
    nothing unpushed), and stops on any that still holds work git cannot
    recover. It also lists the issues the stages link to, if any, without

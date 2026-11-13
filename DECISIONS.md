@@ -79,9 +79,10 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   designed sample can separate stage types, or count only unprompted
   interventions. Source: #227
 - **A stage's `Issue:` line is closed only by the final PR's merge: `/plan-close`
-  writes `Closes <ref>` for each linked issue (`Refs` for one `SF` records as
-  not fully delivered, or while `PROGRAMME.md` lists another plan), and no
-  command posts to an issue or changes its status.** — a person merging the PR is the approval, as it is for kept
+  writes `Closes <ref>` for each linked GitHub issue (`Refs` for one `SF`
+  records as not fully delivered, or while `PROGRAMME.md` lists another
+  plan), and always `Refs <url>` for a Jira ticket, which a pull request
+  cannot close.** — a person merging the PR is the approval, as it is for kept
   decisions, and a reference without the keyword left #227 open after its
   plan merged. Revisit: if a plan's final PR ever targets a branch other than
   the default. Source: #250
@@ -213,6 +214,15 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   `estimates.py`, never by hand.** — no size column to fill and drift, and
   `effort` measures reasoning depth, not work. Revisit: once the log is large
   enough to replace the anchors by stage kind. Source: #228
+- **While a stage runs, `/stage-run` moves its linked ticket only to the
+  template's `[work].status` names (`on_start` at a fresh start, `on_pr` when
+  the stage PR opens), with one fixed-text comment each, never to a done
+  status; the declared status authorizes it unattended, and a failed write
+  never stops the stage.** — the board tracks the plan without hand moves,
+  and closing stays the final merge's job; `work_core.py stage-status` holds
+  the rules so no run drifts. Rejected: one ticket per stage (deferred), and
+  asking before each comment (unattended could never post). Revisit: if
+  per-stage ticket creation lands. Source: PR_PLACEHOLDER
 
 ## Tickets
 

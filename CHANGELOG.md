@@ -8,6 +8,33 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Added
+
+- **A stage's linked ticket now follows the stage.** When a stage file's
+  `Issue:` line names a ticket and the ticket template sets `[work].status`,
+  `/stage-run` moves the ticket to `on_start` when the stage starts fresh and
+  to `on_pr` when the stage PR opens, each time with a short comment naming
+  the stage and the plan (the second links the PR). It reuses `work-issue`'s
+  adapter calls and read-back (Jira `transition` and `comment`, GitHub
+  `set-fields` and `comment`), never moves a ticket to a done status, and
+  reports a write that did not verify in one line without stopping the stage.
+  Unattended runs make the declared writes and skip and report anything that
+  would need a question. A stage with no `Issue:` line, or a template with no
+  `[work].status`, behaves exactly as before. The rules live in a new
+  `work_core.py stage-status` subcommand, and the Jira adapter's `transition`
+  gains `--refuse-done`, which refuses a status in Jira's done category under
+  any name.
+
+### Changed
+
+- **`/plan-close` writes `Refs <url>` for a Jira ticket, never `Closes`.**
+  Only GitHub closes an issue from a pull request, so a `Closes` line for a
+  Jira ticket promised a close that never happened. The closeout now says the
+  Jira tickets are referenced, not closed, and lists moving them to done as
+  the one thing left after the merge.
+
 ## [0.17.0] - 2026-11-11
 
 ### Changed

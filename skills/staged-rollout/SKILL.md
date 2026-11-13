@@ -181,17 +181,40 @@ those are sized to finish the stage, not to be minimised (see below).
 **Linking a stage to its issue.** A stage file may carry one optional
 `Issue:` line directly under its title, naming the issue the stage came from:
 `#123`, `owner/repo#123` or an issue URL. It is a pointer, not a flag — it
-changes nothing about how the stage runs, which is why it lives in the stage
-file and not in the stage index. Commands read it as follows: the first line
+changes nothing about how the stage's work runs, which is why it lives in the
+stage file and not in the stage index. Commands read it as follows: the first line
 of the stage file that starts with `Issue:`, above the first `##` heading,
 whose value is one of those three forms. No such line, a blank value or an
 unfilled template placeholder all read as "no linked issue", silently, so a
-plan without the field behaves exactly as before. No command posts to the
-issue or changes its status because of it. Its one effect is at closeout:
-`/plan-close` writes a `Closes <ref>` line for each linked issue into the
-final PR body, so the issue closes when a person merges that PR (`Refs`
-instead when the plan only partly delivers it; `/plan-close` step 3 has the
-rule).
+plan without the field behaves exactly as before. A Jira issue is linked by
+its URL (`https://<site>/browse/KEY-123`), which carries the site.
+
+It has two effects, a status sync and a closing line.
+
+**Status sync while the stage runs.** When the ticket template resolved for
+the issue's tracker sets `[work].status` (the same keys `work-issue` uses),
+`/stage-run` moves the ticket to `on_start` when the stage starts fresh and
+to `on_pr` when its pull request opens, each with one short comment naming
+the stage and the plan (the second also links the pull request). It reuses
+`work-issue`'s adapter calls and their read-back: Jira `transition` and
+`comment`, GitHub `set-fields` and `comment`. `tickets/scripts/work_core.py
+stage-status` decides what to do, so the rules below hold in every run. A
+ticket is **never moved to a done status**: a done name, or a Jira status in
+the done category, is refused and reported. A result that is not
+`VERIFIED` is one line and the stage carries on; a status write never stops
+a stage. The template declaring the status is the authority for the write
+and its fixed-text comment, so an `--unattended` run makes them too; a
+write that would need a question (a GitHub board number for an unrouted
+repo) is skipped and reported instead. A template with no `[work].status`,
+or no linked issue, means no write, no comment and no output. A cloud
+session following `RUNNER.md` never touches issues, so it does not sync.
+
+**The closing line at closeout.** `/plan-close` writes a `Closes <ref>`
+line for each linked GitHub issue into the final PR body, so the issue
+closes when a person merges that PR (`Refs` instead when the plan only
+partly delivers it; `/plan-close` step 3 has the rule). A Jira issue always
+gets `Refs <url>`, because only GitHub closes an issue from a pull request:
+a person moves the Jira ticket to done.
 
 - `mode: direct` by default (state a one-line plan, implement). Use `brainstorm`
   only where the stage has real open design choices. A full brainstorm on a

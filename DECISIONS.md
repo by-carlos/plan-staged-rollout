@@ -142,6 +142,14 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   by judgement is the same gap moved. The tier (Sonnet-class, medium) is a
   starting point, not measured. Revisit: if a real closeout needs a heavier
   model (a conflicted plan→main merge, a large usage report). Source: #296
+- **Stage size is never capped by line count.** — the 46 measured stage
+  sessions tracked interventions by active time, and line count was not shown
+  to matter. Revisit: if a measurement shows a size measure that predicts
+  interventions better than active time. Source: #301
+- **No context-fill warnings inside a stage.** — none of the 46 measured
+  sessions compacted, fill level made no difference to interventions, and a
+  fresh session per stage already bounds context. Revisit: if stage sessions
+  begin to compact. Source: #301
 
 ## Running stages
 
@@ -251,6 +259,19 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   the rules so no run drifts. Rejected: one ticket per stage (deferred), and
   asking before each comment (unattended could never post). Revisit: if
   per-stage ticket creation lands. Source: #292
+- **No hook switches model or effort per prompt.** — `model`/`effort` are
+  launch hints, checked by a weight check that hard-stops, with one
+  authoritative home; a router would silently override the declared flag and
+  tie the plugin to a minimum Claude Code version, while `RUNNER.md` works
+  with no plugin installed. Revisit: if Claude Code offers a documented,
+  session-scoped model setter that a plan can honor. Source: #301
+- **No path-limited commits of "only the files this session wrote".** — a
+  worktree and a branch per stage already isolate each stage's changes.
+  Revisit: if stages are ever run in a shared working tree. Source: #301
+- **No separate reviewer role inside a stage.** — every stage is a fresh
+  session, so the implementer and the final review are different sessions by
+  construction. Revisit: if a stage starts doing its own review pass.
+  Source: #301
 
 ## Tickets
 

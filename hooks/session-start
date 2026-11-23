@@ -263,6 +263,29 @@ describe_stage() {
         "$id" "${name:+ — $name}" "$cmd" "$num" "${weight:+ ($weight)}" "$gate_note"
 }
 
+# The closeout launch hint (model and effort) is defined once, in
+# commands/plan-close.md, as its first `> **model ...**` line. Read it from
+# there so the hook never carries a second copy; REPLY is the text between the
+# `**` marks, or empty when the file or the line is missing (fail silent).
+closeout_hint() {
+    REPLY=""
+    # run-hook.cmd starts this script by a backslash path on Windows.
+    local here="${BASH_SOURCE[0]//\\//}" line
+    local file="${here%/*}/../commands/plan-close.md"
+    [ -r "$file" ] || file="${CLAUDE_PLUGIN_ROOT:-}/commands/plan-close.md"
+    [ -r "$file" ] || return 0
+    while IFS= read -r line || [ -n "$line" ]; do
+        case "$line" in
+            '> **model '*)
+                line="${line#> \*\*}"
+                REPLY="${line%%\*\**}"
+                return 0
+                ;;
+        esac
+    done < "$file"
+    return 0
+}
+
 main() {
     local root
     root="$(git rev-parse --show-toplevel 2>/dev/null)"
@@ -327,7 +350,10 @@ To run every remaining stage from this one session instead, offer \`/plan-staged
             esac
         done
         if [ "$open" -eq 0 ]; then
-            context="**Active staged rollout in this repo** (\`.plan/\` present) — every stage is \`done\` or \`skipped\`, so the plan is ready for closeout. Offer to close it out via \`/plan-staged-rollout:plan-close\`, but do NOT auto-run it: surface this to the user and wait for their go-ahead."
+            closeout_hint
+            local hint=""
+            [ -z "$REPLY" ] || hint=" (recommended: $REPLY)"
+            context="**Active staged rollout in this repo** (\`.plan/\` present) — every stage is \`done\` or \`skipped\`, so the plan is ready for closeout. Offer to close it out via \`/plan-staged-rollout:plan-close\`$hint, but do NOT auto-run it: surface this to the user and wait for their go-ahead."
         else
             # A dependency this hook could not read (unknown id format, or an id
             # with no ledger row) means "not runnable" is a guess: say nothing.

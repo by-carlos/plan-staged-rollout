@@ -23,6 +23,20 @@ gate and offer below works exactly as it always has. **In neither mode does
 this command merge the plan→main PR**; that gate survives every mode and has
 no flag.
 
+## Launch hint
+
+Closeout is not a stage, so it has no row in any stage index. Its recommended
+launch is defined **here, once**, and every message that sends the user to
+closeout quotes it:
+
+> **model `sonnet`, effort `medium`** — Sonnet-class at medium effort.
+
+Closeout is gates, a subagent digest, cleanup and a PR proposal, with no
+design work. A conflicted plan→main merge or an unusually large usage report
+may call for an Opus-class model: that is the user's call, not a different
+default. The weight check in `PLAN.md` governs stages only and does not apply
+to this command.
+
 Work through these steps **in order**:
 
 1. **Locate `.plan/`.** Find the `.plan/` directory at the repo root. If it

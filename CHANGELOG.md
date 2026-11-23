@@ -8,6 +8,20 @@ Entries before 0.4.0 were made while this repository was the `carlos-plugins`
 marketplace and therefore also cover the standalone skills that have since moved
 elsewhere. See 0.4.0 for the split.
 
+## [Unreleased]
+
+### Changed
+
+- **Every message that sends you to closeout now names a recommended model and
+  effort for `/plan-close`.** Closeout was the one step with no launch hint:
+  stages carry one in the stage index, but closeout has no row there, so after
+  the final review you had to ask. The hint (model `sonnet`, effort `medium`)
+  is defined once, in `commands/plan-close.md`; the session-start hook reads it
+  from there for its all-done message, and `PLAN.md`'s finish step 6,
+  `/stage-run`, `/plan-run-local` and `/plan-run-cloud` point at it. Closeout
+  stays out of every stage index, and stages are weight-checked exactly as
+  before. A new test pins that the hook's all-done output carries the hint.
+
 ## [0.18.0] - 2026-11-13
 
 ### Added

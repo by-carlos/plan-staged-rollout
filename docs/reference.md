@@ -109,6 +109,17 @@ needed. It needs Claude Code 2.1.268 or later and Python 3.
 | `CLAUDE_STAGE_PERMISSION_MODE` | `auto` | The stage sessions' permission mode: `auto`, `manual`, `acceptEdits` or `dontAsk`. Nobody answers a prompt, so anything that would prompt is denied. |
 | `CLAUDE_STAGE_IDLE_MINUTES` | `15` | Minutes without output before a stage session is stopped and reported dead. |
 | `CLAUDE_STAGE_MAX_BUDGET_USD` | unset | Passed to each stage session as `--max-budget-usd`. Unset means no cap. |
+| `CLAUDE_STAGE_MAX_WAIT_HOURS` | `6` | The longest the driver waits on its own for a usage reset; a reset further off stops the run for you. |
+
+**The usage gate.** Before each stage the driver reads the share of the
+5-hour usage limit used so far and holds the stage until the limit resets
+when the share is 90% or more and no stage has been measured yet, or when
+the share plus the largest jump one stage caused so far this run would pass
+95%. The share comes from the stage sessions' own output; the desktop app's
+usage card seeds it for the first stage (`run --usage-percent P
+--usage-resets-at T`). A stage cut off by the limit anyway is waited out the
+same way and run again, which picks up where it stopped. Where no reading
+exists the gate is skipped and the final `STATUS:` line says so once.
 
 The status file and one log per stage live in the clone's git directory,
 under `plan-run-local/<plan slug>/`, so nothing is committed.
@@ -123,6 +134,8 @@ under `plan-run-local/<plan slug>/`, so nothing is committed.
 | `stage-blocked` | A stage recorded a block and a runbook. When the block is a merge the stage could not make, the orchestrator offers it, as for `stage-stopped`. |
 | `stage-stopped` | A stage ended short of `done` with no block, its row `doing` or its stage branch pushed (a stage's `doing` row rides its branch until the merge), most often a `merge: auto` merge that was refused. The orchestrator offers that merge in its own session, where your permission rules ask you, and resumes. |
 | `stage-dead` | A stage ended with its row unmoved and nothing pushed, or went quiet past the idle limit. |
+| `stage-limited` | A stage ended on the usage limit and the driver could not wait it out: no reset time could be read, the reset is past `CLAUDE_STAGE_MAX_WAIT_HOURS` (a weekly limit), or the stage hit the limit again right after a reset. Carry on after the reset with `--resume S<N>`. |
+| `usage-held` | The usage gate held the next stage, and the reset was unknown or past `CLAUDE_STAGE_MAX_WAIT_HOURS`. |
 | `launch-mismatch` | A stage session started in another permission mode, model or effort than asked, such as Manual because auto mode is turned off or `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is set, and was stopped before any work. |
 | `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running` | Nothing more was run; the message names the fix. |
 

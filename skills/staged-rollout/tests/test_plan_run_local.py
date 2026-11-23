@@ -157,8 +157,9 @@ class Flags(unittest.TestCase):
 
     def test_settings_defaults(self):
         conf = prl.settings({})
-        self.assertEqual(conf, {"launcher": "claude", "mode": "auto",
-                                "idle_seconds": 900.0, "budget": "", "scrub": False})
+        self.assertEqual(conf, {"launcher": "claude", "mode": "auto", "idle_seconds": 900.0,
+                                "max_wait_seconds": 21600.0, "budget": "", "scrub": False})
+        self.assertEqual(prl.settings({"CLAUDE_STAGE_MAX_WAIT_HOURS": "0"})["max_wait_seconds"], 0)
         self.assertTrue(prl.settings({"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"})["scrub"])
         self.assertFalse(prl.settings({"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "0"})["scrub"])
 
@@ -166,6 +167,7 @@ class Flags(unittest.TestCase):
         for env in ({"CLAUDE_STAGE_PERMISSION_MODE": "bypassPermissions"},
                     {"CLAUDE_STAGE_PERMISSION_MODE": "plan"},
                     {"CLAUDE_STAGE_IDLE_MINUTES": "0"},
+                    {"CLAUDE_STAGE_MAX_WAIT_HOURS": "-1"},
                     {"CLAUDE_STAGE_MAX_BUDGET_USD": "lots"}):
             with self.assertRaises(prl.PlanError, msg=env):
                 prl.settings(env)
@@ -235,9 +237,134 @@ class Outcome(unittest.TestCase):
             (("doing", "done", False, False), "done"),
             (("todo", "todo", False, False, True), "stage-stopped"),
             (("todo", "todo", False, True, True), "stage-dead"),
+            # ended on the usage limit: whatever the row, unless it finished or blocked
+            (("todo", "todo", False, False, False, True), "stage-limited"),
+            (("todo", "doing", False, False, True, True), "stage-limited"),
+            (("todo", "todo", False, True, False, True), "stage-limited"),
+            (("todo", "done", False, False, False, True), "done"),
+            (("todo", "doing", True, False, False, True), "stage-blocked"),
         ]
         for args, want in cases:
             self.assertEqual(prl.outcome(*args), want, args)
+
+
+# The line a real `claude -p` (2.1.302) printed while the weekly limit was at 91%.
+PROBE = {"type": "rate_limit_event", "rate_limit_info": {
+    "status": "allowed_warning", "resetsAt": 1795518000, "rateLimitType": "seven_day", "utilization": 0.91,
+    "overageStatus": "rejected", "isUsingOverage": False, "surpassedThreshold": 0.75,
+    "unifiedWindows": {"five_hour": {"utilization": 0.64, "resetsAt": 1795449600},
+                       "seven_day": {"utilization": 0.91, "resetsAt": 1795518000}}},
+    "session_id": "a7ee2f2b"}
+# The limit message an SDK session (2.1.302) wrote to its transcript.
+HIT = {"type": "assistant", "error": "rate_limit", "isApiErrorMessage": True, "apiErrorStatus": 429,
+       "apiError": "usage_limit_reached",
+       "apiErrorParams": {"rate_limit_info": {"status": "rejected", "resetsAt": 1794228600,
+                                              "rateLimitType": "five_hour", "isUsingOverage": False}},
+       "message": {"content": [{"type": "text", "text": "You've hit your session limit · resets 1:50am"}]}}
+
+
+class UsageReadings(unittest.TestCase):
+    def test_five_hour_window_from_a_real_line(self):
+        self.assertEqual(prl.five_hour(PROBE), {"percent": 64.0, "resets_at": 1795449600.0})
+
+    def test_five_hour_window_at_the_top_level(self):
+        event = {"type": "rate_limit_event", "rate_limit_info": {
+            "status": "allowed", "rateLimitType": "five_hour", "utilization": 0.2, "resetsAt": 100}}
+        self.assertEqual(prl.five_hour(event), {"percent": 20.0, "resets_at": 100.0})
+
+    def test_no_five_hour_window(self):
+        weekly = {"type": "rate_limit_event", "rate_limit_info": {
+            "status": "allowed", "rateLimitType": "seven_day", "utilization": 0.2, "resetsAt": 100}}
+        for event in (weekly, {"type": "result"}, {"type": "rate_limit_event"}, "text"):
+            self.assertIsNone(prl.five_hour(event), event)
+
+    def test_limit_hit_signs(self):
+        rejected = {"type": "rate_limit_event", "rate_limit_info": {
+            "status": "rejected", "resetsAt": 500, "rateLimitType": "five_hour", "isUsingOverage": False}}
+        self.assertEqual(prl.limit_hit(rejected), {"resets_at": 500.0, "type": "five_hour"})
+        self.assertEqual(prl.limit_hit(HIT), {"resets_at": 1794228600.0, "type": "five_hour"})
+        bare = {"type": "assistant", "error": "rate_limit", "message": {"content": []}}
+        self.assertEqual(prl.limit_hit(bare), {"resets_at": None, "type": None})
+
+    def test_not_a_limit_hit(self):
+        overage = {"type": "rate_limit_event", "rate_limit_info": {"status": "rejected", "isUsingOverage": True}}
+        for event in (PROBE, overage, {"type": "assistant", "message": {}},
+                      {"type": "assistant", "error": "overloaded"}):
+            self.assertIsNone(prl.limit_hit(event), event)
+
+    def test_transcript_limit(self):
+        with tempfile.TemporaryDirectory() as config:
+            folder = Path(config) / "projects" / "C--repo"
+            folder.mkdir(parents=True)
+            (folder / "abc-123.jsonl").write_text(
+                json.dumps({"type": "user"}) + "\n" + json.dumps(HIT) + "\n", encoding="utf-8")
+            env = {"CLAUDE_CONFIG_DIR": config}
+            self.assertEqual(prl.transcript_limit("abc-123", env)["resets_at"], 1794228600.0)
+            self.assertIsNone(prl.transcript_limit("other", env))
+            self.assertIsNone(prl.transcript_limit("../x", env))
+            self.assertIsNone(prl.transcript_limit(None, env))
+
+
+class UsageGate(unittest.TestCase):
+    def test_cutoff_before_any_jump(self):
+        self.assertFalse(prl.gate_holds(None, None))
+        self.assertFalse(prl.gate_holds(89.9, None))
+        self.assertTrue(prl.gate_holds(90, None))
+
+    def test_ceiling_with_a_measured_jump(self):
+        self.assertFalse(prl.gate_holds(80, 15))   # lands on 95: does not pass it
+        self.assertTrue(prl.gate_holds(80.1, 15))
+        self.assertFalse(prl.gate_holds(93, 2))    # past the cutoff, but the jump fits
+        self.assertTrue(prl.gate_holds(10, 90))
+        self.assertFalse(prl.gate_holds(None, 90))
+
+    def test_jump(self):
+        a = {"percent": 40.0, "resets_at": 1000.0}
+        self.assertEqual(prl.stage_jump(a, {"percent": 52.5, "resets_at": 1000.0}), 12.5)
+        # the desktop app's reset carries milliseconds
+        self.assertEqual(prl.stage_jump({"percent": 40.0, "resets_at": 1000.885},
+                                        {"percent": 41.0, "resets_at": 1000.0}), 1.0)
+
+    def test_jump_across_a_reset_is_discarded(self):
+        a = {"percent": 80.0, "resets_at": 1000.0}
+        self.assertIsNone(prl.stage_jump(a, {"percent": 5.0, "resets_at": 19000.0}))
+        self.assertIsNone(prl.stage_jump(a, {"percent": 85.0, "resets_at": 19000.0}))
+        self.assertIsNone(prl.stage_jump(None, a))
+        self.assertIsNone(prl.stage_jump({"percent": 0.0, "resets_at": None}, a))
+        self.assertIsNone(prl.stage_jump(a, {"percent": 70.0, "resets_at": 1000.0}))
+
+    def test_seed_reading(self):
+        self.assertIsNone(prl.seed_reading(None, None))
+        seeded = prl.seed_reading(62, "2026-11-23T16:00:00.885Z")
+        self.assertEqual(seeded["percent"], 62.0)
+        self.assertAlmostEqual(seeded["resets_at"], 1795449600.885, places=3)
+        self.assertEqual(prl.seed_reading(5, "1795449600")["resets_at"], 1795449600.0)
+        for args in ((62, None), (None, "1"), (101, "1"), (5, "tomorrow")):
+            with self.assertRaises(prl.PlanError, msg=args):
+                prl.seed_reading(*args)
+
+    def test_gate_line(self):
+        reading = {"percent": 62.0, "resets_at": 1795449600.0}
+        line = prl.gate_line("S1", reading, None, False)
+        self.assertIn("62% of the 5-hour limit used, resets 2026-11-23 16:00 UTC", line)
+        self.assertIn("holding at 90%", line)
+        self.assertTrue(line.endswith("S1 starts"))
+        self.assertIn("waits for the reset", prl.gate_line("S1", reading, 40.0, True))
+        self.assertIn("no 5-hour reading yet", prl.gate_line("S0", None, None, False))
+
+
+class FakeClock:
+    """The driver's clock and sleep: sleeping moves time on at once."""
+
+    def __init__(self, start=1_800_000_000.0):
+        self.now, self.slept = start, []
+
+    def time(self):
+        return self.now
+
+    def sleep(self, seconds):
+        self.slept.append(seconds)
+        self.now += seconds
 
 
 FAKE = textwrap.dedent('''\
@@ -253,6 +380,37 @@ FAKE = textwrap.dedent('''\
                       "permissionMode": reported, "model": "claude-" + model + "-5-5"}), flush=True)
     if mode == "idle":
         time.sleep(60)
+    reset = os.environ.get("FAKE_RESET")
+    def window(util):  # a rate_limit_event line as Claude Code 2.1.302 prints it
+        print(json.dumps({"type": "rate_limit_event", "session_id": "fake-" + stage, "rate_limit_info": {
+            "status": "allowed_warning", "rateLimitType": "seven_day", "utilization": 0.5,
+            "unifiedWindows": {"five_hour": {"utilization": util, "resetsAt": int(reset)},
+                               "seven_day": {"utilization": 0.5, "resetsAt": int(reset) + 86400}}}}), flush=True)
+    windows = json.loads(os.environ.get("FAKE_WINDOWS", "{}"))
+    if stage in windows:
+        window(windows[stage][0])
+    if mode.startswith("limit"):
+        counter = os.environ["FAKE_COUNTER"]
+        hits = int(open(counter).read()) if os.path.exists(counter) else 0
+        if stage == os.environ.get("FAKE_STAGE", stage) and hits < int(os.environ.get("FAKE_LIMIT_TIMES", "1")):
+            open(counter, "w").write(str(hits + 1))
+            info = {"status": "rejected", "rateLimitType": "five_hour", "isUsingOverage": False}
+            if reset and mode == "limit":
+                info["resetsAt"] = int(reset)
+                print(json.dumps({"type": "rate_limit_event", "rate_limit_info": info}), flush=True)
+            print(json.dumps({"type": "assistant", "error": "rate_limit", "session_id": "fake-" + stage,
+                              "message": {"content": [{"type": "text", "text": "You've hit your session limit"}]}}),
+                  flush=True)
+            if mode == "limit-transcript":  # the reset only in the session's own transcript
+                folder = os.path.join(os.environ["CLAUDE_CONFIG_DIR"], "projects", "demo")
+                os.makedirs(folder, exist_ok=True)
+                with open(os.path.join(folder, "fake-" + stage + ".jsonl"), "w") as fh:
+                    fh.write(json.dumps({"type": "assistant", "error": "rate_limit", "apiError": "usage_limit_reached",
+                                         "apiErrorParams": {"rate_limit_info": {**info, "resetsAt": int(reset)}}}) + "\\n")
+            print(json.dumps({"type": "result", "subtype": "success", "is_error": True,
+                              "result": "You've hit your session limit", "session_id": "fake-" + stage}), flush=True)
+            sys.exit(1)
+        mode = "done"
     ledger = os.path.join(".plan", "LEDGER.md")
     text = open(ledger, encoding="utf-8").read()
     row = "done" if mode == "done" or stage != os.environ.get("FAKE_STAGE", stage) else "doing"
@@ -265,6 +423,8 @@ FAKE = textwrap.dedent('''\
     if mode == "pr":  # pushes its stage branch, then its merge is refused: the row never moves
         import subprocess
         subprocess.run(["git", "branch", "plan-demo-s" + stage[1:].lower()], check=True)
+    if stage in windows:
+        window(windows[stage][1])
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False,
                       "result": "stage " + stage + " " + mode, "session_id": "fake-" + stage}), flush=True)
 ''')
@@ -292,11 +452,17 @@ class DriverLoop(unittest.TestCase):
     def git(self, *args):
         subprocess.run(["git", "-C", str(self.repo), *args], check=True, capture_output=True)
 
-    def drive(self, env=None, resume=None):
-        env = {"FAKE_MODE": "done", "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "", **(env or {})}
+    def drive(self, env=None, resume=None, usage=None, clock=None):
+        config = Path(self.tmp.name).parent / f"fake_config_{os.getpid()}_{id(self)}"
+        self.addCleanup(lambda: __import__("shutil").rmtree(config, ignore_errors=True))
+        env = {"FAKE_MODE": "done", "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "",
+               "CLAUDE_CONFIG_DIR": str(config), "FAKE_COUNTER": str(config / "hits"), **(env or {})}
+        config.mkdir(exist_ok=True)
         with mock.patch.dict(os.environ, env):
-            driver = prl.Driver(self.repo, dict(os.environ),
+            driver = prl.Driver(self.repo, dict(os.environ), usage=usage,
                                 launcher_argv=[sys.executable, str(self.fake)], grace_seconds=0)
+            if clock:
+                driver.clock, driver.sleep = clock.time, clock.sleep
             line = driver.run(resume=resume)
         return line, prl.read_json(driver.status_path)
 
@@ -405,6 +571,97 @@ class DriverLoop(unittest.TestCase):
         path.write_text(json.dumps({**state, "updated": prl.now()}), encoding="utf-8")
         line, _ = self.drive()
         self.assertTrue(line.startswith("STATUS: already-running"), line)
+
+    # --- the usage limit ---
+
+    def outcomes(self, state):
+        return [(s["id"], s["outcome"]) for s in state["stages"]]
+
+    def test_a_limit_hit_waits_for_the_reset_and_resumes_the_stage(self):
+        clock = FakeClock()
+        reset = clock.now + 3600
+        line, state = self.drive({"FAKE_MODE": "limit", "FAKE_STAGE": "S0", "FAKE_RESET": str(int(reset))},
+                                 clock=clock)
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+        self.assertEqual(self.outcomes(state), [("S0", "stage-limited"), ("S0", "done"), ("S1", "done")])
+        self.assertEqual(state["stages"][0]["limit"], {"resets_at": reset, "type": "five_hour"})
+        self.assertEqual([w["why"] for w in state["waits"]], ["limit"])
+        self.assertGreaterEqual(clock.now, reset + prl.RESET_MARGIN_SECONDS)
+        self.assertTrue(all(s <= prl.HEARTBEAT_SECONDS for s in clock.slept))
+        self.assertEqual(self.ledger_now()["S0"]["status"], "done")
+
+    def test_a_reset_read_from_the_transcript(self):
+        clock = FakeClock()
+        reset = clock.now + 600
+        line, state = self.drive({"FAKE_MODE": "limit-transcript", "FAKE_STAGE": "S0",
+                                  "FAKE_RESET": str(int(reset))}, clock=clock)
+        self.assertEqual(self.outcomes(state)[:2], [("S0", "stage-limited"), ("S0", "done")])
+        self.assertEqual(state["stages"][0]["limit"]["resets_at"], reset)
+
+    def test_a_limit_hit_with_no_reset_stops_for_a_person(self):
+        line, state = self.drive({"FAKE_MODE": "limit-noreset", "FAKE_STAGE": "S0"}, clock=FakeClock())
+        self.assertTrue(line.startswith("STATUS: stage-limited"), line)
+        self.assertIn("no reset time could be read", line)
+        self.assertIn("--resume S0", line)
+        self.assertNotIn("waits", state)
+
+    def test_a_reset_past_the_longest_wait_stops(self):
+        clock = FakeClock()
+        line, state = self.drive({"FAKE_MODE": "limit", "FAKE_STAGE": "S0",
+                                  "FAKE_RESET": str(int(clock.now + 3 * 86400))}, clock=clock)
+        self.assertTrue(line.startswith("STATUS: stage-limited"), line)
+        self.assertIn("CLAUDE_STAGE_MAX_WAIT_HOURS", line)
+        self.assertEqual(clock.slept, [])
+
+    def test_a_second_hit_straight_after_the_reset_stops(self):
+        clock = FakeClock()
+        line, state = self.drive({"FAKE_MODE": "limit", "FAKE_STAGE": "S0", "FAKE_LIMIT_TIMES": "2",
+                                  "FAKE_RESET": str(int(clock.now + 60))}, clock=clock)
+        self.assertTrue(line.startswith("STATUS: stage-limited"), line)
+        self.assertIn("again straight after", line)
+        self.assertEqual(self.outcomes(state), [("S0", "stage-limited"), ("S0", "stage-limited")])
+
+    def test_the_gate_holds_the_first_stage_on_the_seeded_share(self):
+        clock = FakeClock()
+        reset = clock.now + 1800
+        line, state = self.drive(usage={"percent": 92.0, "resets_at": reset}, clock=clock)
+        self.assertEqual(state["waits"][0]["why"], "gate")
+        self.assertEqual(state["waits"][0]["id"], "S0")
+        self.assertGreaterEqual(clock.now, reset + prl.RESET_MARGIN_SECONDS)
+        self.assertEqual(self.outcomes(state), [("S0", "done"), ("S1", "done")])
+
+    def test_a_low_seeded_share_holds_nothing(self):
+        clock = FakeClock()
+        line, state = self.drive(usage={"percent": 50.0, "resets_at": clock.now + 1800}, clock=clock)
+        self.assertNotIn("waits", state)
+        self.assertEqual(clock.slept, [])
+
+    def test_the_gate_holds_on_the_largest_measured_jump(self):
+        clock = FakeClock()
+        reset = clock.now + 7200
+        line, state = self.drive({"FAKE_WINDOWS": json.dumps({"S0": [0.40, 0.70]}),
+                                  "FAKE_RESET": str(int(reset))}, clock=clock)
+        self.assertEqual(state["stages"][0]["usage_window"]["jump"], 30.0)
+        self.assertEqual(state["usage"]["max_jump"], 30.0)
+        # 70% + 30 points would pass 95%: S1 waits for the reset, then runs
+        self.assertEqual([(w["id"], w["why"]) for w in state["waits"]], [("S1", "gate")])
+        self.assertEqual(self.outcomes(state), [("S0", "done"), ("S1", "done")])
+        self.assertNotIn("usage gate skipped", line)
+
+    def test_no_reading_says_once_the_gate_was_skipped(self):
+        line, state = self.drive()
+        self.assertEqual(line.count("usage gate skipped"), 1)
+        self.assertIn("no 5-hour reading yet", state["usage"]["gate"])
+
+    def test_next_reports_the_gate(self):
+        out = Path(self.tmp.name).parent / f"next_{os.getpid()}_{id(self)}.json"
+        self.addCleanup(lambda: out.unlink(missing_ok=True))
+        with open(out, "w", encoding="utf-8") as fh, mock.patch.object(sys, "stdout", fh):
+            prl.main(["next", "--repo", str(self.repo), "--usage-percent", "91",
+                      "--usage-resets-at", str(int(prl.time.time()) + 3600)])
+        gate = json.loads(out.read_text(encoding="utf-8"))["usage_gate"]
+        self.assertTrue(gate["hold"])
+        self.assertIn("S0 waits for the reset", gate["line"])
 
 
 if __name__ == "__main__":

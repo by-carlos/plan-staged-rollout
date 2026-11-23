@@ -20,6 +20,26 @@ own push is the only completion signal), fire a stage whose `gate` is
 `human`, `live` or unknown, run two stages at once, open or merge a pull
 request, or read a secret. Logging in is the launcher's job.
 
+The usage gate. Every stage session's stream carries `rate_limit_event`
+lines with the account's 5-hour window: the share used and the reset time.
+The driver keeps the latest one, and `run --usage-percent P
+--usage-resets-at T` seeds it for the first stage (the orchestrator reads
+the desktop app's usage card). Before each stage it holds when the share is
+at GATE_CUTOFF or more and no stage has been measured yet, or when the share
+plus the largest per-stage jump measured this run would pass GATE_CEILING.
+A held stage waits until the reset, then starts without a second check. A
+jump is the change in the account's share across one stage, so other
+sessions' use counts in it and it is an upper bound; one measured across a
+reset is discarded. With no reading at all the stage runs, and the final
+STATUS line says once that the gate was skipped. Nothing estimates tokens
+or turns them into a share.
+
+A stage session that ends on the usage limit (`stage-limited`) is waited out
+the same way and the stage is run again, which `/stage-run` treats as a
+resume. The run stops instead when no reset time can be read, when the
+reset is more than CLAUDE_STAGE_MAX_WAIT_HOURS away (a weekly limit), or
+when the same stage hits the limit again right after a reset.
+
 Settings, from the environment:
 
   CLAUDE_STAGE_LAUNCHER         One executable, no arguments, run in place of
@@ -30,6 +50,8 @@ Settings, from the environment:
   CLAUDE_STAGE_IDLE_MINUTES     Minutes without a stream-json line before a
                                 stage session is stopped. Default 15.
   CLAUDE_STAGE_MAX_BUDGET_USD   Passed as `--max-budget-usd`. Unset: no cap.
+  CLAUDE_STAGE_MAX_WAIT_HOURS   The longest the driver waits for a usage
+                                reset before stopping for a person. Default 6.
 
 The status file and the logs live outside `.plan/`, in the clone's git
 directory: `<git common dir>/plan-run-local/<plan slug>/`.
@@ -74,6 +96,14 @@ INTERRUPT_SECONDS = 30  # SIGINT, then terminate (POSIX)
 HEARTBEAT_SECONDS = 60  # status file refresh while a stage runs
 STALE_SECONDS = 300     # an older heartbeat means the driver that wrote it is gone
 PLAN_DIR = ".plan"
+# The usage gate, in percent of the 5-hour limit. Starting values: 95 leaves
+# room for the measurement being a step behind; 90 covers a first stage of
+# unknown size.
+GATE_CEILING = 95       # hold when the share plus the largest stage jump would pass this
+GATE_CUTOFF = 90        # hold at this share before any stage has a measured jump
+RESET_MARGIN_SECONDS = 60  # start this long after the reset, not on its second
+MAX_WAIT_HOURS = 6
+LIMIT_RETRIES = 1       # runs of one stage straight after a limit reset before stopping
 
 
 class PlanError(Exception):
@@ -208,19 +238,23 @@ def select(stages: list[dict], ledger: dict, blocked: dict | None = None) -> dic
     return {"stage": chosen, "gated": gated, "waiting": waiting, "complete": complete}
 
 
-def outcome(before: str, after: str, blocked: bool, killed: bool, pushed: bool = False) -> str:
+def outcome(before: str, after: str, blocked: bool, killed: bool, pushed: bool = False,
+            limited: bool = False) -> str:
     """Classify a finished stage session by its ledger row and stage branch.
 
     `done`/`skipped` carry on; `blocked`, or `doing` with a BLOCKED.md
-    section, is a block; `doing` with none is a stop (a refused merge, the
-    breaker). A row that never moved is a stop too when the session pushed its
-    stage branch, since the `doing` flip rides that branch until it merges;
-    with no push it is a dead run, as in remote-driver.md.
+    section, is a block; a session that ended on the usage limit is
+    `stage-limited`, whatever its row says; `doing` with none is a stop (a
+    refused merge, the breaker). A row that never moved is a stop too when the
+    session pushed its stage branch, since the `doing` flip rides that branch
+    until it merges; with no push it is a dead run, as in remote-driver.md.
     """
     if after in CLOSED:
         return "done"
     if after == "blocked" or (after == "doing" and blocked):
         return "stage-blocked"
+    if limited:
+        return "stage-limited"
     if killed:
         return "stage-dead"
     if after == before:
@@ -228,6 +262,149 @@ def outcome(before: str, after: str, blocked: bool, killed: bool, pushed: bool =
     if after == "doing":
         return "stage-stopped"
     return "stage-dead"
+
+
+# --- the usage limit ------------------------------------------------------------
+
+def _number(value) -> float | None:
+    return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def five_hour(event: dict) -> dict | None:
+    """The 5-hour window in a `rate_limit_event` line: {"percent", "resets_at"}.
+
+    `utilization` is a fraction and `resetsAt` epoch seconds. The window sits
+    under `unifiedWindows.five_hour`; an older line carries it at the top
+    level with `rateLimitType: five_hour`.
+    """
+    if not isinstance(event, dict) or event.get("type") != "rate_limit_event":
+        return None
+    info = event.get("rate_limit_info")
+    if not isinstance(info, dict):
+        return None
+    window = (info.get("unifiedWindows") or {}).get("five_hour") if isinstance(info.get("unifiedWindows"), dict) else None
+    if not isinstance(window, dict):
+        window = info if info.get("rateLimitType") == "five_hour" else None
+    if window is None or _number(window.get("utilization")) is None:
+        return None
+    return {"percent": round(_number(window["utilization"]) * 100, 1),
+            "resets_at": _number(window.get("resetsAt"))}
+
+
+def limit_hit(event: dict) -> dict | None:
+    """{"resets_at", "type"} when a stream-json line says the session hit its limit.
+
+    Two signs: a `rate_limit_event` whose status is `rejected` while no extra
+    usage is being drawn, and an assistant line whose `error` is `rate_limit`
+    (the CLI's own "You've hit your limit" message). Either may carry the
+    reset; the prose is never parsed.
+    """
+    if not isinstance(event, dict):
+        return None
+    if event.get("type") == "rate_limit_event":
+        info = event.get("rate_limit_info")
+        if isinstance(info, dict) and info.get("status") == "rejected" and not info.get("isUsingOverage"):
+            return {"resets_at": _number(info.get("resetsAt")), "type": info.get("rateLimitType")}
+        return None
+    if event.get("type") == "assistant" and event.get("error") == "rate_limit":
+        for holder in (event, event.get("message")):
+            params = holder.get("apiErrorParams") if isinstance(holder, dict) else None
+            info = params.get("rate_limit_info") if isinstance(params, dict) else None
+            if isinstance(info, dict):
+                return {"resets_at": _number(info.get("resetsAt")), "type": info.get("rateLimitType")}
+        return {"resets_at": None, "type": None}
+    return None
+
+
+def transcript_limit(session_id: str | None, env: dict) -> dict | None:
+    """The limit hit recorded in a stage session's own transcript, if any.
+
+    The transcript keeps the CLI's limit message with `apiErrorParams`
+    (`usage_limit_reached`, the reset in epoch seconds) even when the
+    stream-json line did not carry it. Only the last hit counts.
+    """
+    if not session_id or not re.fullmatch(r"[A-Za-z0-9-]+", session_id):
+        return None
+    base = Path(env.get("CLAUDE_CONFIG_DIR") or Path.home() / ".claude") / "projects"
+    found = None
+    for path in base.glob(f"*/{session_id}.jsonl"):
+        try:
+            with path.open(encoding="utf-8", errors="replace") as fh:
+                for line in fh:
+                    if '"rate_limit"' not in line:
+                        continue
+                    try:
+                        hit = limit_hit(json.loads(line))
+                    except ValueError:
+                        continue
+                    if hit:
+                        found = hit
+        except OSError:
+            continue
+    return found
+
+
+def stage_jump(start: dict | None, end: dict | None) -> float | None:
+    """Points of the 5-hour share one stage moved, or None when unmeasurable:
+    a reading missing, or the two in different windows (a reset between)."""
+    if not start or not end or start.get("resets_at") is None or end.get("resets_at") is None:
+        return None
+    # Same window: the desktop app's reset carries milliseconds, the stream's does not.
+    if abs(start["resets_at"] - end["resets_at"]) > 60 or end["percent"] < start["percent"]:
+        return None
+    return round(end["percent"] - start["percent"], 1)
+
+
+def gate_holds(percent: float | None, jump: float | None) -> bool:
+    """Hold the next stage? No reading never holds."""
+    if percent is None:
+        return False
+    if jump is None:
+        return percent >= GATE_CUTOFF
+    return percent + jump > GATE_CEILING
+
+
+def clock_text(epoch: float | None) -> str:
+    if epoch is None:
+        return "an unknown time"
+    return datetime.fromtimestamp(epoch, timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def gate_line(stage_id: str, reading: dict | None, jump: float | None, hold: bool) -> str:
+    """The gate's one-line verdict, as the status file and `next` give it."""
+    if reading is None:
+        return f"usage gate: no 5-hour reading yet; {stage_id} starts unchecked"
+    used = f"{reading['percent']:g}% of the 5-hour limit used, resets {clock_text(reading['resets_at'])}"
+    rule = (f"largest stage jump so far {jump:g} points, holding above {GATE_CEILING}%" if jump is not None
+            else f"no stage measured yet, holding at {GATE_CUTOFF}%")
+    verdict = f"{stage_id} waits for the reset" if hold else f"{stage_id} starts"
+    return f"usage gate: {used}; {rule}: {verdict}"
+
+
+def parse_reset(text: str) -> float:
+    """`--usage-resets-at`: epoch seconds, or an ISO 8601 time such as the
+    desktop app's `resetsAt` (`2026-11-23T16:00:00.885Z`)."""
+    try:
+        return float(text)
+    except ValueError:
+        pass
+    try:
+        when = datetime.fromisoformat(text.strip().replace("Z", "+00:00"))
+    except ValueError:
+        raise PlanError(f"--usage-resets-at {text!r}: give epoch seconds or an ISO 8601 time") from None
+    if when.tzinfo is None:
+        when = when.replace(tzinfo=timezone.utc)
+    return when.timestamp()
+
+
+def seed_reading(percent: float | None, resets_at: str | None) -> dict | None:
+    if percent is None and resets_at is None:
+        return None
+    if percent is None or resets_at is None:
+        raise PlanError("--usage-percent and --usage-resets-at go together")
+    if not 0 <= percent <= 100:
+        raise PlanError(f"--usage-percent {percent:g}: give 0 to 100")
+    return {"percent": float(percent), "resets_at": parse_reset(resets_at)}
 
 
 # --- the launcher -------------------------------------------------------------
@@ -244,19 +421,23 @@ def settings(env: dict) -> dict:
                         f"{', '.join(sorted(PERMISSION_MODES))}")
     idle = env.get("CLAUDE_STAGE_IDLE_MINUTES", "").strip() or str(IDLE_MINUTES)
     budget = env.get("CLAUDE_STAGE_MAX_BUDGET_USD", "").strip()
+    wait = env.get("CLAUDE_STAGE_MAX_WAIT_HOURS", "").strip() or str(MAX_WAIT_HOURS)
     try:
         idle_min = float(idle)
-        if idle_min <= 0:
+        wait_hours = float(wait)
+        if idle_min <= 0 or wait_hours < 0:
             raise ValueError
         if budget:
             float(budget)
     except ValueError:
-        raise PlanError("CLAUDE_STAGE_IDLE_MINUTES must be a positive number and "
+        raise PlanError("CLAUDE_STAGE_IDLE_MINUTES must be a positive number, "
+                        "CLAUDE_STAGE_MAX_WAIT_HOURS zero or more and "
                         "CLAUDE_STAGE_MAX_BUDGET_USD a number") from None
     return {
         "launcher": env.get("CLAUDE_STAGE_LAUNCHER", "").strip() or "claude",
         "mode": mode,
         "idle_seconds": idle_min * 60,
+        "max_wait_seconds": wait_hours * 3600,
         "budget": budget,
         "scrub": env.get("CLAUDE_CODE_SUBPROCESS_ENV_SCRUB", "").strip().lower() not in ("", "0", "false"),
     }
@@ -440,7 +621,8 @@ def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
     reader = threading.Thread(target=pump, daemon=True)
     reader.start()
     result = {"killed": None, "mismatch": [], "session_id": None, "result": None,
-              "is_error": None, "usage": None}
+              "is_error": None, "usage": None, "window_first": None, "window_last": None,
+              "limit": None}
     last = time.monotonic()
     with log.open("w", encoding="utf-8") as out:
         while True:
@@ -464,6 +646,14 @@ def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
                 continue
             if not isinstance(event, dict):
                 continue
+            window = five_hour(event)
+            if window:
+                result["window_first"] = result["window_first"] or window
+                result["window_last"] = window
+            hit = limit_hit(event)
+            if hit:
+                seen = result["limit"] or {}
+                result["limit"] = {k: seen.get(k) if seen.get(k) is not None else hit[k] for k in hit}
             if event.get("type") == "system" and event.get("subtype") == "init":
                 result["session_id"] = event.get("session_id")
                 result["init"] = {k: event.get(k) for k in
@@ -491,7 +681,7 @@ def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
 
 class Driver:
     def __init__(self, repo: Path, env: dict, launcher_argv: list[str] | None = None,
-                 grace_seconds: float = GRACE_SECONDS):
+                 grace_seconds: float = GRACE_SECONDS, usage: dict | None = None):
         self.repo = repo
         self.env = env
         self.launcher_argv = launcher_argv
@@ -500,6 +690,10 @@ class Driver:
         self.dir = state_dir(repo, self.branch)
         self.status_path = self.dir / "status.json"
         self.state: dict = {}
+        self.reading = usage      # the latest 5-hour reading: {"percent", "resets_at"}
+        self.max_jump: float | None = None
+        self.clock = time.time    # replaced in tests, with `sleep`
+        self.sleep = time.sleep
 
     # status file
     def save(self) -> None:
@@ -507,6 +701,9 @@ class Driver:
         write_json(self.status_path, self.state)
 
     def finish(self, status: str, message: str, **extra) -> str:
+        usage = self.state.get("usage") or {}
+        if self.state.get("stages") and not usage.get("seen"):
+            message += " · usage gate skipped: no stage session reported a 5-hour reading"
         line = f"STATUS: {status} · {message}"
         self.state.update({"state": "exited", "status": status, "message": message,
                            "line": line, "current": None, **extra})
@@ -557,6 +754,71 @@ class Driver:
             return False
         return (datetime.now(timezone.utc) - seen).total_seconds() < STALE_SECONDS
 
+    # the usage limit
+    def current_reading(self) -> dict | None:
+        """The latest reading, or a fresh window once its reset has passed."""
+        r = self.reading
+        if r and r.get("resets_at") is not None and r["resets_at"] <= self.clock():
+            return {"percent": 0.0, "resets_at": None}
+        return r
+
+    def note_usage(self, **fields) -> None:
+        usage = self.state.setdefault("usage", {})
+        usage.update(fields)
+        usage["reading"], usage["max_jump"] = self.reading, self.max_jump
+
+    def wait_until(self, until: float, stage_id: str, why: str) -> None:
+        """Sleep to `until`, keeping the heartbeat so no second driver starts."""
+        wait = {"id": stage_id, "why": why, "from": now(), "until": clock_text(until)}
+        self.state.setdefault("waits", []).append(wait)
+        self.state["current"] = {"id": stage_id, "waiting": why, "until": wait["until"]}
+        self.save()
+        while (left := until - self.clock()) > 0:
+            self.sleep(min(HEARTBEAT_SECONDS, left))
+            self.save()
+        wait["ended"] = now()
+        self.state["current"] = None
+        # The window just reset: no reading until a stage reports one.
+        self.reading = None
+        self.note_usage()
+        self.save()
+
+    def gate(self, stage: dict, conf: dict) -> str | None:
+        """Hold `stage` until the reset when the share says so; a STATUS line
+        when the hold cannot be waited out, else None once it may start."""
+        reading = self.current_reading()
+        hold = gate_holds(reading and reading["percent"], self.max_jump)
+        # A window that has just reset has nothing left to wait for: the stage starts.
+        fresh = hold and reading["resets_at"] is None
+        line = gate_line(stage["id"], reading, self.max_jump, hold and not fresh)
+        if fresh:
+            line += " (the window has just reset, so there is no later reset to wait for)"
+        self.note_usage(gate=line)
+        self.save()
+        if not hold or fresh:
+            return None
+        until = reading["resets_at"] + RESET_MARGIN_SECONDS
+        if until - self.clock() > conf["max_wait_seconds"]:
+            return self.finish("usage-held", f"{line}, more than CLAUDE_STAGE_MAX_WAIT_HOURS away; "
+                               "run /plan-run-local again then", stage=stage["id"])
+        self.wait_until(until, stage["id"], "gate")
+        return None
+
+    def measure(self, record: dict, start: dict | None, ran: dict) -> None:
+        """Fold a finished stage's readings into the gate's state."""
+        first, last = ran.get("window_first"), ran.get("window_last")
+        if last:
+            self.state.setdefault("usage", {})["seen"] = True
+        jump = stage_jump(start, last)
+        if jump is None:  # no reading before the stage, or a reset between: its own first line
+            jump = stage_jump(first, last)
+        record["usage_window"] = {"start": start, "first": first, "last": last, "jump": jump}
+        if jump is not None:
+            self.max_jump = jump if self.max_jump is None else max(self.max_jump, jump)
+        if last:
+            self.reading = last
+        self.note_usage()
+
     def run(self, resume: str | None = None) -> str:
         if self.branch in PROTECTED or self.branch == default_branch(self.repo):
             return f"STATUS: protected-branch · {self.branch} is protected; check out the plan branch"
@@ -568,14 +830,20 @@ class Driver:
             conf = settings(self.env)
         except PlanError as e:
             return self.finish("bad-setting", str(e))
-        self.state["settings"] = {k: v for k, v in conf.items() if k != "idle_seconds"}
+        self.state["settings"] = {k: v for k, v in conf.items()
+                                  if k not in ("idle_seconds", "max_wait_seconds")}
         self.state["settings"]["idle_minutes"] = conf["idle_seconds"] / 60
+        self.state["settings"]["max_wait_hours"] = conf["max_wait_seconds"] / 3600
+        self.state["usage"] = {"seeded": self.reading, "seen": False}
+        self.note_usage()
         self.save()
         stopped = self.preflight(conf)
         if stopped:
             return self.finish(*stopped)
         source = PlanSource(self.repo, self.branch)
         first = resume
+        after_reset = False   # the stage about to run waited out a reset: no second check
+        limit_runs: dict[str, int] = {}
         while True:
             if current_branch(self.repo) != self.branch:
                 return self.finish("branch-changed",
@@ -604,6 +872,13 @@ class Driver:
                 cmd = stage_command(self.cmd_prefix, stage, conf)
             except PlanError as e:
                 return self.finish("bad-index", f"{stage['id']}: {e}")
+            if after_reset:
+                after_reset = False
+            else:
+                held = self.gate(stage, conf)
+                if held:
+                    return held
+            start = self.current_reading()
             before = ledger.get(stage["id"], {}).get("status", "todo")
             record = {"id": stage["id"], "model": stage["model"] or "session default",
                       "effort": effort_flag(stage["effort"]) or "session default",
@@ -614,8 +889,15 @@ class Driver:
             heads = stage_heads(self.repo, self.branch, stage["id"])
             ran = run_stage(cmd, self.repo, Path(record["log"]), stage, conf, self.save)
             record.update({k: ran.get(k) for k in
-                           ("session_id", "exit_code", "killed", "mismatch", "is_error", "result", "usage", "init")})
+                           ("session_id", "exit_code", "killed", "mismatch", "is_error", "result", "usage",
+                            "init", "limit")})
             record["finished"] = now()
+            self.measure(record, start, ran)
+            if ran["limit"] is None or ran["limit"].get("resets_at") is None:
+                logged = transcript_limit(ran.get("session_id"), self.env)
+                if logged:
+                    ran["limit"] = {k: (ran["limit"] or {}).get(k) or logged[k] for k in logged}
+                    record["limit"] = ran["limit"]
             if ran["killed"] == "mismatch":
                 record["outcome"] = "launch-mismatch"
                 self.state["stages"].append(record)
@@ -624,13 +906,14 @@ class Driver:
             source.refresh()
             after, now_blocked = self.read_row(source, stage["id"])
             pushed = stage_heads(self.repo, self.branch, stage["id"]) not in ({}, heads)
-            result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed)
+            limited = ran["limit"] is not None
+            result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed, limited)
             if result not in ("done", "stage-blocked") and self.grace:
                 time.sleep(self.grace)
                 source.refresh()
                 after, now_blocked = self.read_row(source, stage["id"])
                 pushed = stage_heads(self.repo, self.branch, stage["id"]) not in ({}, heads)
-                result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed)
+                result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed, limited)
             record["outcome"] = result
             record["pushed"] = pushed
             record["row"] = after
@@ -638,6 +921,13 @@ class Driver:
             self.state["current"] = None
             self.save()
             if result == "done":
+                limit_runs.pop(stage["id"], None)
+                continue
+            if result == "stage-limited":
+                held = self.limited(stage, ran["limit"], conf, limit_runs)
+                if held:
+                    return held
+                first, after_reset = stage["id"], True
                 continue
             _, ledger, blocked = source.load()
             reason = blocked.get(stage["id"]) or ledger.get(stage["id"], {}).get("result", "")
@@ -652,6 +942,28 @@ class Driver:
                               + "; nothing was written on its behalf",
             }[result]
             return self.finish(result, msg, stage=stage["id"])
+
+    def limited(self, stage: dict, limit: dict, conf: dict, runs: dict[str, int]) -> str | None:
+        """A stage ended on the usage limit: wait out its reset (None, run it
+        again) or say why a person is needed (a STATUS line)."""
+        sid = stage["id"]
+        kind = f"the {limit['type'].replace('_', '-')} limit" if limit.get("type") else "the usage limit"
+        resume = f"`driver run --resume {sid}` (from /plan-run-local) to pick the stage up"
+        if limit.get("resets_at") is None:
+            return self.finish("stage-limited", f"{sid} hit {kind} and no reset time could be read; "
+                               f"once it resets, run {resume}", stage=sid)
+        if runs.get(sid, 0) >= LIMIT_RETRIES:
+            return self.finish("stage-limited", f"{sid} hit {kind} again straight after waiting for "
+                               f"its reset; the limit reads {clock_text(limit['resets_at'])} now. "
+                               f"Run {resume} when it has reset", stage=sid)
+        until = max(limit["resets_at"], self.clock()) + RESET_MARGIN_SECONDS
+        if until - self.clock() > conf["max_wait_seconds"]:
+            return self.finish("stage-limited", f"{sid} hit {kind}, which resets "
+                               f"{clock_text(limit['resets_at'])}, more than "
+                               f"CLAUDE_STAGE_MAX_WAIT_HOURS away; then run {resume}", stage=sid)
+        runs[sid] = runs.get(sid, 0) + 1
+        self.wait_until(until, sid, "limit")
+        return None
 
     def read_row(self, source: PlanSource, stage_id: str) -> tuple[str, bool]:
         try:
@@ -676,7 +988,8 @@ class Driver:
 # --- commands -----------------------------------------------------------------
 
 def cmd_run(args: argparse.Namespace) -> int:
-    driver = Driver(Path(args.repo).resolve(), dict(os.environ))
+    usage = seed_reading(args.usage_percent, args.usage_resets_at)
+    driver = Driver(Path(args.repo).resolve(), dict(os.environ), usage=usage)
     print(driver.run(resume=args.resume))
     return 0
 
@@ -687,11 +1000,16 @@ def cmd_next(args: argparse.Namespace) -> int:
     stages, ledger, blocked = PlanSource(repo, branch).load()
     pick = select(stages, ledger, blocked)
     conf = settings(dict(os.environ))
+    usage = seed_reading(args.usage_percent, args.usage_resets_at)
+    if usage and usage["resets_at"] <= time.time():
+        usage = {"percent": 0.0, "resets_at": None}
     out = {"plan_branch": branch, "gated": pick["gated"], "waiting": pick["waiting"],
-           "complete": pick["complete"], "stage": None, "command": None}
+           "complete": pick["complete"], "stage": None, "command": None, "usage_gate": None}
     if pick["stage"]:
         out["stage"] = pick["stage"]
         out["command"] = stage_command([conf["launcher"]], pick["stage"], conf)
+        hold = gate_holds(usage and usage["percent"], None)
+        out["usage_gate"] = {"hold": hold, "line": gate_line(pick["stage"]["id"], usage, None, hold)}
     print(json.dumps(out, indent=2, ensure_ascii=False))
     return 0
 
@@ -708,8 +1026,14 @@ def cmd_status(args: argparse.Namespace) -> int:
         lines.append(f"  {s['id']}: {s.get('outcome')} · model {s['model']}, effort {s['effort']} · "
                      f"{s['started']} → {s.get('finished')}")
     cur = state.get("current")
-    if cur:
+    if cur and cur.get("waiting"):
+        why = "the usage gate held it" if cur["waiting"] == "gate" else "it hit the usage limit"
+        lines.append(f"  {cur['id']}: waiting until {cur['until']} ({why}); it starts then")
+    elif cur:
         lines.append(f"  {cur['id']}: running since {cur['started']} · model {cur['model']}, effort {cur['effort']}")
+    gate = (state.get("usage") or {}).get("gate")
+    if gate:
+        lines.append(f"  last {gate}")
     if state.get("line"):
         lines.append(state["line"])
     print("\n".join(lines))
@@ -725,6 +1049,11 @@ def build_parser() -> argparse.ArgumentParser:
         sp = sub.add_parser(name, help=help_)
         sp.add_argument("--repo", default=".", help="the clone, on the plan branch")
         sp.set_defaults(fn=fn)
+        if name in ("run", "next"):
+            sp.add_argument("--usage-percent", type=float, metavar="P",
+                            help="the 5-hour limit's share used now, 0-100 (the desktop app's usage card)")
+            sp.add_argument("--usage-resets-at", metavar="TIME",
+                            help="when that window resets: ISO 8601 or epoch seconds")
         if name == "run":
             sp.add_argument("--resume", metavar="S<N>",
                             help="run this stage first: a `doing` row whose PR was merged outside "

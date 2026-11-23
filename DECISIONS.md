@@ -189,12 +189,29 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   start pushing `doing` to the plan branch. Source: #268
 - **The local runner's settings are environment variables
   (`CLAUDE_STAGE_LAUNCHER`, `CLAUDE_STAGE_PERMISSION_MODE`,
-  `CLAUDE_STAGE_IDLE_MINUTES`, `CLAUDE_STAGE_MAX_BUDGET_USD`); the launcher is
+  `CLAUDE_STAGE_IDLE_MINUTES`, `CLAUDE_STAGE_MAX_BUDGET_USD`,
+  `CLAUDE_STAGE_MAX_WAIT_HOURS`); the launcher is
   one executable with no arguments, and the plugin never reads a secret.** —
   no shell-quoting rules that differ between PowerShell and POSIX, and a login
   wrapper stays the user's. No dollar cap by default, in line with the
   tokens-only usage rule. Revisit: if the plugin gains a settings file.
-  Source: #266
+  Source: #266, #305
+- **The local runner's usage gate reads the 5-hour share from each stage
+  session's own stream-json `rate_limit_event` lines, seeded for the first
+  stage by the orchestrator from the desktop app's `get_usage`; it holds a
+  stage at 90% before any stage is measured, or when the share plus the
+  largest per-stage jump this run would pass 95%, and waits out the reset.
+  A stage that ends on the limit (`stage-limited`) is waited out and run
+  again, up to `CLAUDE_STAGE_MAX_WAIT_HOURS` and once per reset.** — the
+  driver runs in the background and wakes nobody between stages, and the
+  stream is a source it already reads, with no secret and no extra session.
+  Rejected: waking the orchestrator before every stage to call `get_usage`
+  (a turn per stage, and no such tool in a terminal); calling the usage
+  endpoint with the login's token (the plugin never reads a secret); a
+  probe `claude -p` before each stage (a session's cost for one number).
+  The thresholds are starting values. Revisit: if a stage still runs past
+  the limit with the gate on, or if Claude Code gives scripts a usage
+  command. Source: #305
 - **The local runner keeps its status file and logs in the clone's git
   directory (`plan-run-local/<slug>/`), never in `.plan/`, and stops at plan
   completion instead of running closeout.** — nothing to commit or ignore,
@@ -210,12 +227,15 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   "different plan" verdict needs a person to choose. Revisit: if the referee
   gains a declared default. Source: #229
 - **Stage actuals come from the session's own transcript, and usage is
-  reported in tokens only — no dollar cost, no share of a usage limit.** —
-  the transcript is the one source in the CLI, the desktop app and cloud
-  sessions alike; a price table goes stale and means nothing on a
-  subscription, and a usage limit is shared with other sessions. Revisit: if
-  Claude Code exposes a per-session cost or limit share everywhere.
-  Source: #228
+  reported in tokens only — no dollar cost, no share of a usage limit. One
+  exception: a runner may read the account's limit share, as Claude Code
+  reports it, to gate or wait out the limit, never to report a stage's
+  usage and never estimated from tokens.** — the transcript is the one
+  source in the CLI, the desktop app and cloud sessions alike; a price table
+  goes stale and means nothing on a subscription, and a usage limit is
+  shared with other sessions, which is why a gate may read the account's
+  share but a report may not split it by stage. Revisit: if Claude Code
+  exposes a per-session cost or limit share everywhere. Source: #228, #305
 - **Estimates are ranges in hours, judged against written anchors and scaled
   by the median actual-to-estimate ratio of past `stage-run` rows (three or
   more) in the effort log; the plan total is computed by

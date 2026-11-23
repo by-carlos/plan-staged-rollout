@@ -10,6 +10,28 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **`/plan-run-local` now waits out the usage limit instead of failing a
+  stage.** Before each stage the driver reads the share of the 5-hour limit
+  used so far and holds the stage until the limit resets when the share is
+  90% or more and no stage has been measured yet, or when the share plus the
+  largest jump one stage caused so far this run would pass 95%. A stage that
+  is cut off by the limit anyway now ends as its own outcome,
+  `stage-limited`, instead of `stage-stopped` or `stage-dead`. The driver
+  waits for the reset and runs the stage again, and its fresh session picks
+  up where the cut-off one stopped. The share comes from the stage sessions'
+  own output (`rate_limit_event` lines), and the desktop app's usage card
+  seeds it for the first stage through new `--usage-percent` and
+  `--usage-resets-at` flags on `driver run` and `driver next`. The run stops
+  for you only when no reset time can be read, when the reset is more than
+  `CLAUDE_STAGE_MAX_WAIT_HOURS` away (new, default 6, which covers a weekly
+  limit), or when a stage hits the limit again straight after a reset; it
+  then ends on `stage-limited` or the new `usage-held`. Where no reading
+  exists, the final status line says once that the gate was skipped.
+  Nothing estimates tokens or turns them into a share. `/plan-run-cloud` is
+  unchanged.
+
 ### Changed
 
 - **Every message that sends you to closeout now names a recommended model and

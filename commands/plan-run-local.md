@@ -120,5 +120,5 @@ only. Work through these steps **in order**:
    say so and point at closeout — **"close out the plan"** or
    **`/plan-staged-rollout:plan-close`** — with the launch hint `plan-close.md`
    defines (*Launch hint*: recommended model and effort); this command does
-   not run closeout itself. It never opens or merges the plan→main pull request: that stays
-   a person's action, always.
+   not run closeout itself. It never opens or merges the plan→main pull
+   request: that stays a person's action, always.

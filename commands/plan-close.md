@@ -27,7 +27,8 @@ no flag.
 
 Closeout is not a stage, so it has no row in any stage index. Its recommended
 launch is defined **here, once**, and every message that sends the user to
-closeout quotes it:
+closeout names the model and effort from it (read this section; do not
+substitute a tier of your own):
 
 > **model `sonnet`, effort `medium`** — Sonnet-class at medium effort.
 

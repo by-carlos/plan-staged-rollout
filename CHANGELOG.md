@@ -12,6 +12,13 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **A plan that deletes its folder now gets a decision-carry stage.** When
+  `/plan-stages` writes `plan-dir: delete`, it also scaffolds a stage just
+  before the final review that maps each frozen decision to a drop, a doc entry
+  or an ADR with a target path and writes them, so the decisions are not lost
+  when closeout deletes the folder. Plans with `plan-dir: keep`, closeout and
+  the review stage's triage are unchanged.
+
 - **`/plan-run-local` now waits out the usage limit instead of failing a
   stage.** Before each stage the driver reads the share of the 5-hour limit
   used so far and holds the stage until the limit resets when the share is

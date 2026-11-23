@@ -12,7 +12,8 @@ don't share it; the plan can't drift because every decision lives in exactly one
 place; progress is a glanceable ledger, not a transcript.
 
 The file formats are in `references/templates/` (`PLAN.md`, `LEDGER.md`,
-`stage-N.md`, `stage-f-review.md`, `README.md`, `RUNNER.md`, `BRIEF.md`) — copy those
+`stage-N.md`, `stage-f-review.md`, `stage-decision-carry.md`, `README.md`, `RUNNER.md`,
+`BRIEF.md`) — copy those
 verbatim for structure, then fill every `<placeholder>` when scaffolding.
 `RUNNER.md` is the stage-runner contract scaffolded into each plan so any
 session — cloud included, where this plugin does not load — can run a stage
@@ -160,6 +161,14 @@ the review lenses' triggers — never by how many stages it has.
 - **Standing final review stage.** Always append `SF: plan review` as the last
   stage (see below), scaffolded from `stage-f-review.md`. Bootstrap adds it;
   it's not optional.
+- **Decision-carry stage when `plan-dir: delete`.** A plan whose flags line says
+  `plan-dir: delete` loses its frozen decisions with the folder, so bootstrap
+  also adds one stage, scaffolded from `stage-decision-carry.md`, numbered just
+  below `SF` and `depends` on every other stage. It maps each frozen decision
+  to a drop, a `DECISIONS.md` entry or an ADR with a target path, and writes
+  them. A plan with `plan-dir: keep` gets no such stage. It changes neither
+  closeout nor the review stage's triage: decisions amended after it ran are
+  still `SF`'s to catch.
 
 ## Flag heuristics
 

@@ -788,14 +788,15 @@ class Driver:
         when the hold cannot be waited out, else None once it may start."""
         reading = self.current_reading()
         hold = gate_holds(reading and reading["percent"], self.max_jump)
-        line = gate_line(stage["id"], reading, self.max_jump, hold)
+        # A window that has just reset has nothing left to wait for: the stage starts.
+        fresh = hold and reading["resets_at"] is None
+        line = gate_line(stage["id"], reading, self.max_jump, hold and not fresh)
+        if fresh:
+            line += " (the window has just reset, so there is no later reset to wait for)"
         self.note_usage(gate=line)
         self.save()
-        if not hold:
+        if not hold or fresh:
             return None
-        if reading["resets_at"] is None:
-            return self.finish("usage-held", f"{line}, but no reset time is known; run "
-                               "/plan-run-local again once the 5-hour limit resets", stage=stage["id"])
         until = reading["resets_at"] + RESET_MARGIN_SECONDS
         if until - self.clock() > conf["max_wait_seconds"]:
             return self.finish("usage-held", f"{line}, more than CLAUDE_STAGE_MAX_WAIT_HOURS away; "
@@ -947,7 +948,7 @@ class Driver:
         again) or say why a person is needed (a STATUS line)."""
         sid = stage["id"]
         kind = f"the {limit['type'].replace('_', '-')} limit" if limit.get("type") else "the usage limit"
-        resume = f"/plan-run-local again (it resumes {sid}, or `driver run --resume {sid}`)"
+        resume = f"`driver run --resume {sid}` (from /plan-run-local) to pick the stage up"
         if limit.get("resets_at") is None:
             return self.finish("stage-limited", f"{sid} hit {kind} and no reset time could be read; "
                                f"once it resets, run {resume}", stage=sid)

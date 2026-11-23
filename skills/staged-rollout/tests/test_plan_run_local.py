@@ -648,6 +648,23 @@ class DriverLoop(unittest.TestCase):
         self.assertEqual(self.outcomes(state), [("S0", "done"), ("S1", "done")])
         self.assertNotIn("usage gate skipped", line)
 
+    def test_a_hold_past_the_longest_wait_stops_before_the_stage(self):
+        clock = FakeClock()
+        line, state = self.drive(usage={"percent": 92.0, "resets_at": clock.now + 10 * 3600}, clock=clock)
+        self.assertTrue(line.startswith("STATUS: usage-held"), line)
+        self.assertIn("S0 waits for the reset", line)
+        self.assertEqual(state["stages"], [])
+        self.assertEqual(clock.slept, [])
+
+    def test_a_window_that_just_reset_is_not_held(self):
+        clock = FakeClock()
+        # S0 moves the share by 97 points in a window that has already reset by S1
+        line, state = self.drive({"FAKE_WINDOWS": json.dumps({"S0": [0.0, 0.97]}),
+                                  "FAKE_RESET": str(int(clock.now - 10))}, clock=clock)
+        self.assertEqual(self.outcomes(state), [("S0", "done"), ("S1", "done")])
+        self.assertNotIn("waits", state)
+        self.assertIn("just reset", state["usage"]["gate"])
+
     def test_no_reading_says_once_the_gate_was_skipped(self):
         line, state = self.drive()
         self.assertEqual(line.count("usage gate skipped"), 1)

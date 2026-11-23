@@ -135,7 +135,7 @@ under `plan-run-local/<plan slug>/`, so nothing is committed.
 | `stage-stopped` | A stage ended short of `done` with no block, its row `doing` or its stage branch pushed (a stage's `doing` row rides its branch until the merge), most often a `merge: auto` merge that was refused. The orchestrator offers that merge in its own session, where your permission rules ask you, and resumes. |
 | `stage-dead` | A stage ended with its row unmoved and nothing pushed, or went quiet past the idle limit. |
 | `stage-limited` | A stage ended on the usage limit and the driver could not wait it out: no reset time could be read, the reset is past `CLAUDE_STAGE_MAX_WAIT_HOURS` (a weekly limit), or the stage hit the limit again right after a reset. Carry on after the reset with `--resume S<N>`. |
-| `usage-held` | The usage gate held the next stage, and the reset was unknown or past `CLAUDE_STAGE_MAX_WAIT_HOURS`. |
+| `usage-held` | The usage gate held the next stage, and its reset is past `CLAUDE_STAGE_MAX_WAIT_HOURS`. The stage never started; run again after the reset. |
 | `launch-mismatch` | A stage session started in another permission mode, model or effort than asked, such as Manual because auto mode is turned off or `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is set, and was stopped before any work. |
 | `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running` | Nothing more was run; the message names the fix. |
 

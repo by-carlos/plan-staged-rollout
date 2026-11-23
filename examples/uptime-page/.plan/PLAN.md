@@ -511,7 +511,9 @@ structural fact and four rules about timing.
       plainly: they are independent and can be launched **concurrently, one
       per fresh session**. If it is empty, say which it is — every stage
       `done`/`skipped` (ready for closeout) or stalled on `blocked` rows and
-      unmet dependencies. Then stop.
+      unmet dependencies. For closeout, give the command and the launch hint
+      `/plan-close` defines (`commands/plan-close.md`, *Launch hint*) — closeout
+      has no row in the stage index. Then stop.
 
 ### Recording a block (wherever it happens)
 

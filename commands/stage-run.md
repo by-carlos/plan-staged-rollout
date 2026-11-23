@@ -406,7 +406,8 @@ Work through these steps **in order**:
 
    - If no stages remain runnable (all `done`/`skipped`), point the user at
      closeout — **"close out the plan"** or **`/plan-staged-rollout:plan-close`**
-     — instead. Under `--unattended`, name it as
+     — instead, with the launch hint `plan-close.md` defines (*Launch hint*:
+     recommended model and effort). Under `--unattended`, name it as
      **`/plan-staged-rollout:plan-close --unattended`**: closeout runs
      headless too, and an unattended runner picks it up from here.
 

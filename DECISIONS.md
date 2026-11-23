@@ -134,6 +134,14 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   through, and the review should help the plan move, stay quiet when nothing
   matters, and flag bluntly only what is broken. Revisit: if real plans show
   a genuine risk dropped for lack of a stated actor. Source: #276
+- **Closeout's recommended model and effort live once, in `commands/plan-close.md`
+  (*Launch hint*), never as a row in a stage index; every message that sends
+  the user to closeout names it from that section, and the session-start hook
+  reads it from that file.** — closeout is not a stage, and the runners launch whatever rows the
+  index holds, so a row would be run as one; letting each message pick a tier
+  by judgement is the same gap moved. The tier (Sonnet-class, medium) is a
+  starting point, not measured. Revisit: if a real closeout needs a heavier
+  model (a conflicted plan→main merge, a large usage report). Source: #296
 
 ## Running stages
 

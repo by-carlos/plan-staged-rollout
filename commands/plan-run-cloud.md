@@ -171,7 +171,9 @@ Work through these steps **in order**, after the notice above is confirmed:
      `auto` (`human`, `local`, `live` or an unknown value, named as written),
      each with the `/stage-run <N>` a person needs to run.
    - If every stage is now `done` or `skipped`, say so and point at closeout —
-     **"close out the plan"** or **`/plan-staged-rollout:plan-close`**.
+     **"close out the plan"** or **`/plan-staged-rollout:plan-close`** — with
+     the launch hint `plan-close.md` defines (*Launch hint*: recommended model
+     and effort).
    - Otherwise, exactly what is left runnable, blocked, or gated, so a rerun of
      `/plan-run-cloud` — or a person picking one stage up with `/stage-run <N>` — has
      something concrete to act on.

@@ -118,6 +118,7 @@ only. Work through these steps **in order**:
    the exact command for each: `/stage-run <N>` for one stage, a fresh
    `/plan-run-local` to carry on. When every stage is `done` or `skipped`,
    say so and point at closeout — **"close out the plan"** or
-   **`/plan-staged-rollout:plan-close`**; this command does not run closeout
-   itself. It never opens or merges the plan→main pull request: that stays
-   a person's action, always.
+   **`/plan-staged-rollout:plan-close`** — with the launch hint `plan-close.md`
+   defines (*Launch hint*: recommended model and effort); this command does
+   not run closeout itself. It never opens or merges the plan→main pull
+   request: that stays a person's action, always.

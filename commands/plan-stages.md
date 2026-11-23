@@ -26,7 +26,8 @@ First, load the method: invoke the **`staged-rollout`** skill (via the Skill
 tool) and follow its decomposition guidance, flag heuristics, and git model.
 The templates to copy live at
 `${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/references/templates/`
-(`PLAN.md`, `LEDGER.md`, `stage-N.md`, `stage-f-review.md`, `README.md`,
+(`PLAN.md`, `LEDGER.md`, `stage-N.md`, `stage-f-review.md`,
+`stage-decision-carry.md`, `README.md`,
 `RUNNER.md`, `BRIEF.md`). Two more references govern steps below:
 `references/plan-review.md` (the lenses, digest and outcomes) and
 `references/decisions-format.md` (*Where it lives* — which existing decision
@@ -189,6 +190,14 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    last row (it catalogs loose ends and never implements), scaffolded from
    `stage-f-review.md` — not a copy of `stage-N.md` — since it already bakes
    in the three-outcome checklist and acceptance check.
+
+   **When the plan flags line will read `plan-dir: delete`** (the default, per
+   step 5), also add the **decision-carry stage** `S<N>: carry decisions out of
+   .plan/` as the row just before `SF`: `depends` on every other stage
+   except `SF`, `SF` then `depends` on it, `gate: auto`, scaffolded from
+   `stage-decision-carry.md` — not a copy of `stage-N.md`. Its Goal and
+   Acceptance are already in the template; the scaffold fills only the
+   placeholders. Skip it entirely when the plan will carry `plan-dir: keep`.
 
    **A wait measured in days is not a stage.** A soak period, a quarter-end,
    a vendor's reply — anything the plan would sit idle on for days — is
@@ -369,7 +378,10 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    written as `stage-<N>-<slug>.md`, then the `.plan/stage-N.md` copy
    removed; and `stage-f-review.md` **once**, filled in place under the same
    name (no slug — it's the standing final stage; state this explicitly
-   rather than trusting it to infer from the template name). Every stage
+   rather than trusting it to infer from the template name). For
+   `plan-dir: delete`, `stage-decision-carry.md` is filled once and written as
+   `stage-<N>-carry-decisions.md`, then the copy removed; for `plan-dir: keep`,
+   remove the unused copy without filling it. Every stage
    file's `## Artifacts` lists the paths the stage writes — step 7 reads them
    for lens triggers, and the close-time decision triage reads them for paths.
    `RUNNER.md` is kept **whole with its placeholders filled and its header

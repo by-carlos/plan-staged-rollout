@@ -10,6 +10,16 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **The plan review now checks that risky stages have targeted evidence.** The
+  final review stage lists each stage whose `## Artifacts` name a risk path
+  (defined once in `references/risk-paths.md`) and looks in its ledger notes
+  for a command and output that exercises the risky change. A stage without
+  one becomes a loose end, resolved like any other; nothing blocks a merge and
+  the ledger columns are unchanged. A worked example is in
+  `examples/risk-evidence/`.
+
 ### Fixed
 
 - **The session-start announcement now reads the plan from the plan branch.**

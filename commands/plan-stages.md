@@ -170,9 +170,10 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    with no checks. On **yes**, also list the check commands the repo already
    runs, read from its CI workflow, its task or test scripts and its README,
    so the user can correct the list in the same reply; this plugin never adds
-   a check of its own. The answer lands under Frozen decisions as **Decided**
-   (or **Needs you — answered** when the user changed the recommendation),
-   with the command list on yes. On **yes**, step 4 gives S0 a starting-state
+   a check of its own. The answer lands under Frozen decisions as a decision
+   titled **Starting state**, tagged **Decided** (or **Needs you —
+   answered** when the user changed the recommendation), with the command
+   list on yes. On **yes**, step 4 gives S0 a starting-state
    step; on **no**, nothing below changes. The record is never taken here:
    bootstrap works on an uncommitted scaffold, and the record belongs to the
    commit S0 starts from. It is called the **starting state**, never a
@@ -218,7 +219,7 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    **When step 3's starting-state answer is yes**, S0's first step, before
    any change, records the starting state, worded in the stage file as:
    `- [ ] Record the starting state: before changing anything, run each
-   command in Frozen decisions › starting state on the commit this stage
+   command in Frozen decisions › Starting state on the commit this stage
    branch starts from, and fill LEDGER.md › S0 › Starting state with the
    commit, each command's result (pass, fail or skip) and the real output
    tail. Fix nothing that fails here.` A failure found there is recorded, not

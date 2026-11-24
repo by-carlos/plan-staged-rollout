@@ -16,7 +16,7 @@ one `ExportRow` per invoice, with amounts kept exact until they are written.
 ## Steps
 
 - [x] Record the starting state: before changing anything, run each command in
-  Frozen decisions › starting state on the commit this stage branch starts
+  Frozen decisions › Starting state on the commit this stage branch starts
   from, and fill LEDGER.md › S0 › Starting state with the commit, each
   command's result (pass, fail or skip) and the real output tail. Fix nothing
   that fails here.
@@ -28,7 +28,7 @@ one `ExportRow` per invoice, with amounts kept exact until they are written.
 ## Acceptance
 
 - The *Starting state* block in `LEDGER.md` lists every command in Frozen
-  decisions › starting state with a result.
+  decisions › Starting state with a result.
 - `python -m pytest -q` shows no failure beyond the starting state's, and the
   new tests in `tests/test_export_model.py` pass.
 - `ruff check .` passes.

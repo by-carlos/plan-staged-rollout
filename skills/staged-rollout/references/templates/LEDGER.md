@@ -43,8 +43,8 @@ _(empty)_
   artifacts — the finish protocol adds one `Artifacts check:` line
               (`scripts/artifacts_check.py`, its line as is); a record, never
               a gate — the final review judges each `outside` line.
-  starting  — only in a plan that changes existing code (Frozen decisions,
-              starting state): S0's block holds a `#### Starting state`
+  starting  — only in a plan that changes existing code (Frozen decisions ›
+              Starting state): S0's block holds a `#### Starting state`
               heading, filled before S0's first change, never in the status
               table. One `Commit: <sha>` line, then one bullet per check
               command, `` `<command>` — pass | fail | skip ``, each followed

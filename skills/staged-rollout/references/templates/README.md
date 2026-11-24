@@ -133,8 +133,10 @@ only**, so the session squash-merges its own stage PR once checks are green —
 the plan→main PR is yours in every mode. A stage cannot be marked `done` until
 its PR is merged into the plan branch. Stage PRs are squash-merged into the
 plan branch; the final PR from the plan branch into `main` is a normal
-(non-squash) merge, so each stage keeps its own commit on `main`. This needs
-the GitHub repo to allow both squash merging and merge commits (recommended:
+(non-squash) merge, so each stage keeps its own commit on `main` — or a squash
+merge where the repository allows no merge commit, as the `final-merge` flag on
+`PLAN.md`'s plan flags line records. A normal merge needs the GitHub repo to
+allow both squash merging and merge commits (recommended:
 squash message = "Pull request title and commit details", merge-commit
 message = "Pull request title and description").
 

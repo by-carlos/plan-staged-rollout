@@ -63,15 +63,16 @@ don't skimp on the hard parts:
 
 ## Plan flags
 
-Two flags apply to the plan as a whole, on the **plan flags** line under the
+Three flags apply to the plan as a whole, on the **plan flags** line under the
 stage index:
 
 | Flag | Values | Meaning |
 |---|---|---|
 | `merge` | `manual` \| `auto` | Under `auto`, the session squash-merges its own stage PR into the plan branch once checks are green, instead of offering it. Stage PRs only: the PR into `main` is manual whatever the plan flags. |
 | `plan-dir` | `delete` \| `keep` | What `plan-close` does with `.plan/`: remove it as the last commit on the plan branch, or leave it in place for a plan that doubles as documentation. |
+| `final-merge` | `merge` \| `squash` \| `unchecked` | How the final PR into the default branch is merged. `/plan-stages` reads the repository's allowed merge methods (settings and branch rules) and writes `merge` when a merge commit is allowed, `squash` when it is not (the stage history then stays in the merged stage PRs), or `unchecked` when the lookup failed. `plan-close` words the final PR's merge line from it; absent reads as `unchecked`, the normal merge with a note that the methods were not checked. If only rebase merges are allowed, bootstrap asks you. Never affects stage PRs. |
 
-These two are the plan's **declared defaults**: the answers a session applies
+`merge` and `plan-dir` are the plan's **declared defaults**: the answers a session applies
 when there is nobody to ask. `merge: auto` is your OK given in advance, so a
 stage merges its own PR without asking. `plan-dir` is still asked in an
 interactive `plan-close`, with the flag as the recommendation;

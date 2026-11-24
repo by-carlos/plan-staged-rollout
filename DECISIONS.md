@@ -7,7 +7,7 @@ future work must respect.
 
 ## Planning flow
 
-Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollout/SKILL.md`, `skills/staged-rollout/references/plan-review.md`, `skills/staged-rollout/references/programme-format.md`, `skills/staged-rollout/references/templates/`, `skills/staged-rollout/scripts/renumber_stages.py`
+Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollout/SKILL.md`, `skills/staged-rollout/references/plan-review.md`, `skills/staged-rollout/references/programme-format.md`, `skills/staged-rollout/references/templates/`, `skills/staged-rollout/scripts/renumber_stages.py`, `skills/staged-rollout/scripts/final_merge.py`
 
 - **The plan review runs inside `/plan-stages`, on the uncommitted scaffold,
   never as a standing stage before S1; the close-time decision triage runs in
@@ -142,6 +142,18 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   by judgement is the same gap moved. The tier (Sonnet-class, medium) is a
   starting point, not measured. Revisit: if a real closeout needs a heavier
   model (a conflicted plan→main merge, a large usage report). Source: #296
+- **The final plan PR's merge method is looked up once at bootstrap and
+  recorded as the `final-merge` plan flag; closeout words the PR body from
+  the record and never from a fixed rule.** — `merge` when the default
+  branch allows a merge commit, else `squash` (the stage history then stays
+  in the merged stage PRs), `unchecked` (today's wording, said to be
+  unchecked) when a lookup failed or the flag is absent, and a stop-and-ask
+  when only rebase is allowed. Stage PRs stay squash and `merge: auto` stays
+  stage-only. Rejected: a note in the docs (every squash-only repository
+  would still hand-write an override), and re-reading the settings at
+  closeout (the recorded value is the plan's decision, and a second answer
+  could differ from the one the plan was reviewed with). Revisit: if a
+  repository's rules often change between bootstrap and closeout. Source: #294
 - **Stage size is never capped by line count.** — the 46 measured stage
   sessions tracked interventions by active time, and line count was not shown
   to matter. Revisit: if a measurement shows a size measure that predicts

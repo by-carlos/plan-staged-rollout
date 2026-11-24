@@ -22,6 +22,10 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **A stage can carry an optional quick check beside its full check.** The stage
+  template's `## Acceptance` may add a `Quick check:` line (fast, run after each
+  step, never recorded) above the checks labeled `Full check:`, which stay the
+  only evidence. A stage without a quick check is unchanged.
 - **A plan that deletes its folder now gets a decision-carry stage.** When
   `/plan-stages` writes `plan-dir: delete`, it also scaffolds a stage just
   before the final review that maps each frozen decision to a drop, a doc entry

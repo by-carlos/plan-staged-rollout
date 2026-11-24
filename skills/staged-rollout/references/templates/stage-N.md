@@ -43,6 +43,21 @@ the ledger notes — "done" means the check ran, not that the model said so.>
 - <Check 2.>
 - <A pass threshold (a count, a percentage, a time limit) says why that number and whether the check can detect the difference.>
 
+<!-- Optional — a stage that has a cheap check worth running between steps may
+add a `Quick check:` line above these checks and label them `Full check:`:
+
+Quick check: `<fast command>` — run after each step; seconds, not minutes.
+
+Full check:
+
+- <The checks above, unchanged.>
+
+Only the Full check is evidence: its output is what lands in the ledger and
+what the stage's Acceptance means. A Quick check is a working aid — run it as
+often as useful, never paste it into the ledger, never count it as passing the
+stage. Delete this comment when the stage has no quick check: the checks stay
+unlabeled and the stage behaves exactly as before. -->
+
 ## Artifacts
 
 <The files/config/state this stage creates or changes. Note any secrets that

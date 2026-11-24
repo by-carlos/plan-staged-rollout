@@ -151,6 +151,14 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   fresh session per stage already bounds context. Revisit: if stage sessions
   begin to compact. Source: #301
 
+- **A stage's Acceptance may carry an optional `Quick check:` line above checks
+  labeled `Full check:`; only the full check is evidence, and a stage without a
+  quick check keeps its checks unlabeled.** — a second, weaker definition of
+  done is the risk, so the ledger, the finish protocol and the final review
+  read the full check alone; keeping the old form unlabeled leaves plans in
+  flight untouched. Revisit: if real plans show quick checks passed off as
+  evidence. Source: #299
+
 ## Running stages
 
 Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run-local.md`, `skills/staged-rollout/scripts/plan_run_local.py`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`

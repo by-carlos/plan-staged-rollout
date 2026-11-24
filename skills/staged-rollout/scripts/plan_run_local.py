@@ -15,6 +15,17 @@ Subcommands:
   next    Say which stage `run` would start, and the exact command. Runs nothing.
   status  Print the status file: the stages run so far and the one in flight.
 
+A dead or hung driver. Every status-file write is the main loop's
+heartbeat, refreshed at least every HEARTBEAT_SECONDS during a stage or a
+wait. A watchdog thread reads it: when it is older than STALE_SECONDS, the
+watchdog prints `STATUS: driver-hung` naming the step the loop was on,
+stops the stage session in flight, records it and exits the process. Each
+git command is stopped after GIT_TIMEOUT_SECONDS (`git-timeout`). `status`
+reports a `running` file with a stale heartbeat as a driver that is gone.
+Each stage session's process id is recorded; `run` refuses to start while
+the session an earlier driver recorded is still running
+(`stage-session-alive`), and reports it rather than stopping it.
+
 What it never does: write `.plan/LEDGER.md` or `.plan/BLOCKED.md` (a stage's
 own push is the only completion signal), fire a stage whose `gate` is
 `human`, `live` or unknown, run two stages at once, open or merge a pull
@@ -95,6 +106,8 @@ GRACE_SECONDS = 120     # a finished session's push settling before the dead-run
 INTERRUPT_SECONDS = 30  # SIGINT, then terminate (POSIX)
 HEARTBEAT_SECONDS = 60  # status file refresh while a stage runs
 STALE_SECONDS = 300     # an older heartbeat means the driver that wrote it is gone
+WATCH_SECONDS = 15      # how often the watchdog reads the main loop's heartbeat
+GIT_TIMEOUT_SECONDS = 120  # one git command; kept under STALE_SECONDS so a stuck fetch is named
 PLAN_DIR = ".plan"
 # The usage gate, in percent of the 5-hour limit. Starting values: 95 leaves
 # room for the measurement being a step behind; 90 covers a first stage of
@@ -108,6 +121,14 @@ LIMIT_RETRIES = 1       # runs of one stage straight after a limit reset before 
 
 class PlanError(Exception):
     pass
+
+
+class GitTimeout(PlanError):
+    """A git command gave no answer within GIT_TIMEOUT_SECONDS."""
+
+
+class Hung(Exception):
+    """The watchdog has reported the driver hung; the main loop stops here."""
 
 
 # --- reading the plan --------------------------------------------------------
@@ -479,8 +500,18 @@ def check_init(init: dict, stage: dict, conf: dict) -> list[str]:
 # --- git and files ------------------------------------------------------------
 
 def git(repo: Path, *args: str) -> subprocess.CompletedProcess:
-    return subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
-                          text=True, encoding="utf-8", errors="replace")
+    """One git command, stopped after GIT_TIMEOUT_SECONDS (raises GitTimeout).
+
+    A child that keeps git's output pipe open after git is stopped (an ssh
+    transport, on Windows) can still block the wait; the watchdog is the
+    backstop for that.
+    """
+    try:
+        return subprocess.run(["git", "-C", str(repo), *args], capture_output=True,
+                              text=True, encoding="utf-8", errors="replace",
+                              timeout=GIT_TIMEOUT_SECONDS)
+    except subprocess.TimeoutExpired:
+        raise GitTimeout(f"`git {' '.join(args)}` gave no answer in {GIT_TIMEOUT_SECONDS:g} s") from None
 
 
 def stage_heads(repo: Path, plan_branch: str, stage_id: str) -> dict[str, str]:
@@ -566,6 +597,57 @@ def read_json(path: Path) -> dict | None:
         return None
 
 
+def heartbeat_age(state: dict) -> float | None:
+    """Seconds since a status file's `updated`, or None when unreadable."""
+    try:
+        seen = datetime.strptime(state["updated"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+    except (KeyError, TypeError, ValueError):
+        return None
+    return (datetime.now(timezone.utc) - seen).total_seconds()
+
+
+def pid_alive(pid) -> bool:
+    """Whether a process with this id is running. It may be another process
+    that reused the id; the caller says so rather than acting on it."""
+    if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+        return False
+    if os.name == "nt":
+        # os.kill(pid, 0) terminates the process on Windows: ask the kernel instead.
+        import ctypes
+        from ctypes import wintypes
+        kernel = ctypes.WinDLL("kernel32", use_last_error=True)
+        kernel.OpenProcess.restype = wintypes.HANDLE
+        kernel.OpenProcess.argtypes = (wintypes.DWORD, wintypes.BOOL, wintypes.DWORD)
+        kernel.GetExitCodeProcess.argtypes = (wintypes.HANDLE, ctypes.POINTER(wintypes.DWORD))
+        kernel.CloseHandle.argtypes = (wintypes.HANDLE,)
+        handle = kernel.OpenProcess(0x1000, False, pid)  # PROCESS_QUERY_LIMITED_INFORMATION
+        if not handle:
+            return False
+        try:
+            code = wintypes.DWORD()
+            return bool(kernel.GetExitCodeProcess(handle, ctypes.byref(code))) and code.value == 259  # STILL_ACTIVE
+        finally:
+            kernel.CloseHandle(handle)
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+    return True
+
+
+def live_stage_session(state: dict | None) -> dict | None:
+    """The stage session an earlier driver recorded as in flight, when its
+    process is still running; None otherwise."""
+    cur = (state or {}).get("current")
+    if not isinstance(cur, dict) or cur.get("waiting") or cur.get("finished"):
+        return None
+    return cur if pid_alive(cur.get("pid")) else None
+
+
 # --- running one stage --------------------------------------------------------
 
 def stop(proc: subprocess.Popen) -> None:
@@ -592,12 +674,13 @@ def stop(proc: subprocess.Popen) -> None:
 
 
 def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
-              beat) -> dict:
+              beat, started=None) -> dict:
     """Run one stage session to its end; never reads past what it needs.
 
     Every stream-json line goes to `log`. The opening `system/init` line is
     checked against what was asked and the session is stopped before any
     work on a mismatch. No line for the idle threshold stops it too.
+    `started(proc)` is called once the session's process exists.
     """
     kwargs = {}
     if os.name == "nt":
@@ -608,6 +691,8 @@ def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
     proc = subprocess.Popen(cmd, cwd=str(cwd), stdin=subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, encoding="utf-8", errors="replace", **kwargs)
+    if started:
+        started(proc)
     lines: queue.Queue = queue.Queue()
 
     def pump():
@@ -694,11 +779,63 @@ class Driver:
         self.max_jump: float | None = None
         self.clock = time.time    # replaced in tests, with `sleep`
         self.sleep = time.sleep
+        # The watchdog: the main loop's heartbeat, what it is doing, and the
+        # stage session in flight. `emit` and `exit` are replaced in tests.
+        self.lock = threading.RLock()
+        self.beat_at = time.monotonic()
+        self.doing = "starting"
+        self.proc: subprocess.Popen | None = None
+        self.hung: str | None = None    # the driver-hung STATUS line, once reported
+        self.done = threading.Event()
+        self.stale = STALE_SECONDS
+        self.watch_every = WATCH_SECONDS
+        self.emit = lambda line: print(line, flush=True)
+        self.exit = os._exit
 
     # status file
     def save(self) -> None:
-        self.state["updated"] = now()
-        write_json(self.status_path, self.state)
+        """Write the status file; every write is also the main loop's heartbeat."""
+        with self.lock:
+            if self.hung:
+                raise Hung()
+            self.beat_at = time.monotonic()
+            self.state["updated"] = now()
+            write_json(self.status_path, self.state)
+
+    def step(self, doing: str) -> None:
+        """Name what the main loop does next, for the watchdog's report."""
+        self.doing = doing
+        self.save()
+
+    def watch(self) -> None:
+        """The watchdog thread: when the main loop has not beaten for
+        `stale` seconds, report the driver hung, stop the stage session in
+        flight, record it and exit the process, which wakes the orchestrator."""
+        while not self.done.wait(self.watch_every):
+            with self.lock:
+                if self.done.is_set():
+                    return
+                quiet = time.monotonic() - self.beat_at
+                if quiet < self.stale:
+                    continue
+                message = (f"the driver made no progress for {quiet / 60:.0f} min "
+                           f"(the limit is {self.stale / 60:g}) while {self.doing}")
+                cur = self.state.get("current") or {}
+                proc = self.proc  # the main loop drops its own reference once the session ends
+                if proc is not None and proc.poll() is None:
+                    stop(proc)
+                    message += f"; stopped {cur.get('id', 'the stage')}'s session (process {proc.pid})"
+                message += ("; nothing was written to the ledger. `driver status` and the stage's log "
+                            "show where it stood")
+                line = f"STATUS: driver-hung · {message}"
+                self.hung = line
+                # `current` stays: a session that would not stop is found by the next run.
+                self.state.update({"state": "exited", "status": "driver-hung", "message": message,
+                                   "line": line, "updated": now()})
+                write_json(self.status_path, self.state)
+                self.emit(line)
+                self.exit(0)
+                return
 
     def finish(self, status: str, message: str, **extra) -> str:
         usage = self.state.get("usage") or {}
@@ -748,11 +885,8 @@ class Driver:
         old = read_json(self.status_path)
         if not old or old.get("state") != "running":
             return False
-        try:
-            seen = datetime.strptime(old["updated"], "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
-        except (KeyError, ValueError):
-            return False
-        return (datetime.now(timezone.utc) - seen).total_seconds() < STALE_SECONDS
+        age = heartbeat_age(old)
+        return age is not None and age < STALE_SECONDS
 
     # the usage limit
     def current_reading(self) -> dict | None:
@@ -772,7 +906,7 @@ class Driver:
         wait = {"id": stage_id, "why": why, "from": now(), "until": clock_text(until)}
         self.state.setdefault("waits", []).append(wait)
         self.state["current"] = {"id": stage_id, "waiting": why, "until": wait["until"]}
-        self.save()
+        self.step(f"waiting until {wait['until']} for the usage limit to reset before {stage_id}")
         while (left := until - self.clock()) > 0:
             self.sleep(min(HEARTBEAT_SECONDS, left))
             self.save()
@@ -820,12 +954,37 @@ class Driver:
         self.note_usage()
 
     def run(self, resume: str | None = None) -> str:
+        """Run until a person is needed; the one STATUS line. A hang ends in
+        the watchdog's own line and exit instead (`driver-hung`)."""
+        try:
+            return self.loop(resume)
+        except GitTimeout as e:
+            message = f"{e} while {self.doing}; check the network and the remote, then run /plan-run-local again"
+            if self.state.get("state") != "running":  # before this run owned the status file
+                return f"STATUS: git-timeout · {message}"
+            return self.finish("git-timeout", message, stage=(self.state.get("current") or {}).get("id"))
+        except Hung:
+            return self.hung or "STATUS: driver-hung"
+        finally:
+            self.done.set()
+
+    def loop(self, resume: str | None) -> str:
         if self.branch in PROTECTED or self.branch == default_branch(self.repo):
             return f"STATUS: protected-branch · {self.branch} is protected; check out the plan branch"
         if self.running_elsewhere():
             return f"STATUS: already-running · a driver for {self.branch} updated {self.status_path} within {STALE_SECONDS // 60} min"
+        alive = live_stage_session(read_json(self.status_path))
+        if alive:
+            # The status file is left as it is, so the next run finds the session too.
+            return (f"STATUS: stage-session-alive · {alive['id']}'s session from an earlier driver "
+                    f"(process {alive['pid']}) is still running, so no second session was started; "
+                    f"its log is {alive.get('log')}. Let it end or stop it yourself, then run "
+                    "/plan-run-local again. If that log has stopped growing, the process id may "
+                    "have been reused by another program")
         self.state = {"state": "running", "plan_branch": self.branch, "started": now(),
                       "status_file": str(self.status_path), "stages": [], "current": None}
+        self.save()
+        threading.Thread(target=self.watch, name="watchdog", daemon=True).start()
         try:
             conf = settings(self.env)
         except PlanError as e:
@@ -836,7 +995,7 @@ class Driver:
         self.state["settings"]["max_wait_hours"] = conf["max_wait_seconds"] / 3600
         self.state["usage"] = {"seeded": self.reading, "seen": False}
         self.note_usage()
-        self.save()
+        self.step("checking the launcher's version and login")
         stopped = self.preflight(conf)
         if stopped:
             return self.finish(*stopped)
@@ -845,6 +1004,7 @@ class Driver:
         after_reset = False   # the stage about to run waited out a reset: no second check
         limit_runs: dict[str, int] = {}
         while True:
+            self.step(f"fetching origin/{self.branch} and reading the plan")
             if current_branch(self.repo) != self.branch:
                 return self.finish("branch-changed",
                                    f"the clone left {self.branch}; nothing more was run")
@@ -885,9 +1045,20 @@ class Driver:
                       "gate": stage["gate"], "started": now(),
                       "log": str(self.dir / f"{stage['id']}.jsonl")}
             self.state["current"] = record
-            self.save()
+            self.step(f"listing {stage['id']}'s stage branches before it starts")
             heads = stage_heads(self.repo, self.branch, stage["id"])
-            ran = run_stage(cmd, self.repo, Path(record["log"]), stage, conf, self.save)
+
+            def started(proc, record=record, sid=stage["id"]):
+                self.proc = proc
+                record["pid"] = proc.pid
+                self.step(f"running {sid}'s session (process {proc.pid})")
+
+            self.doing = f"starting {stage['id']}'s session"
+            try:
+                ran = run_stage(cmd, self.repo, Path(record["log"]), stage, conf, self.save, started)
+            finally:
+                self.proc = None
+            self.step(f"reading {stage['id']}'s result from the pushed plan")
             record.update({k: ran.get(k) for k in
                            ("session_id", "exit_code", "killed", "mismatch", "is_error", "result", "usage",
                             "init", "limit")})
@@ -909,7 +1080,9 @@ class Driver:
             limited = ran["limit"] is not None
             result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed, limited)
             if result not in ("done", "stage-blocked") and self.grace:
+                self.step(f"waiting {self.grace:g} s for {stage['id']}'s push to settle")
                 time.sleep(self.grace)
+                self.step(f"reading {stage['id']}'s result from the pushed plan again")
                 source.refresh()
                 after, now_blocked = self.read_row(source, stage["id"])
                 pushed = stage_heads(self.repo, self.branch, stage["id"]) not in ({}, heads)
@@ -1021,16 +1194,31 @@ def cmd_status(args: argparse.Namespace) -> int:
     if state is None:
         print(f"No run recorded for this plan ({path}).")
         return 0
-    lines = [f"Driver {state.get('state')} · started {state.get('started')} · updated {state.get('updated')}"]
+    age = heartbeat_age(state)
+    gone = state.get("state") == "running" and (age is None or age >= STALE_SECONDS)
+    if gone:
+        since = f"{age / 60:.0f} min ago" if age is not None else "at an unreadable time"
+        lines = [f"Driver gone · the status file still reads running, but it was last updated "
+                 f"{state.get('updated')} ({since}): the driver crashed or was stopped without a "
+                 f"STATUS line, so nothing is running these stages · started {state.get('started')}"]
+    else:
+        lines = [f"Driver {state.get('state')} · started {state.get('started')} · updated {state.get('updated')}"]
     for s in state.get("stages", []):
         lines.append(f"  {s['id']}: {s.get('outcome')} · model {s['model']}, effort {s['effort']} · "
                      f"{s['started']} → {s.get('finished')}")
     cur = state.get("current")
     if cur and cur.get("waiting"):
         why = "the usage gate held it" if cur["waiting"] == "gate" else "it hit the usage limit"
-        lines.append(f"  {cur['id']}: waiting until {cur['until']} ({why}); it starts then")
+        then = "; it starts then" if state.get("state") == "running" and not gone else ", when the driver stopped"
+        lines.append(f"  {cur['id']}: waiting until {cur['until']} ({why}){then}")
     elif cur:
-        lines.append(f"  {cur['id']}: running since {cur['started']} · model {cur['model']}, effort {cur['effort']}")
+        lines.append(f"  {cur['id']}: {'running' if not gone else 'was running'} since {cur['started']} · "
+                     f"model {cur['model']}, effort {cur['effort']}")
+        if cur.get("pid"):
+            alive = pid_alive(cur["pid"])
+            lines.append(f"  {cur['id']}'s session, process {cur['pid']}: "
+                         + ("still running" if alive else "no longer running")
+                         + f" · log {cur.get('log')}")
     gate = (state.get("usage") or {}).get("gate")
     if gate:
         lines.append(f"  last {gate}")

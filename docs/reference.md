@@ -139,6 +139,9 @@ under `plan-run-local/<plan slug>/`, so nothing is committed.
 | `stage-limited` | A stage ended on the usage limit and the driver could not wait it out: no reset time could be read, the reset is past `CLAUDE_STAGE_MAX_WAIT_HOURS` (a weekly limit), or the stage hit the limit again right after a reset. Carry on after the reset with `--resume S<N>`. |
 | `usage-held` | The usage gate held the next stage, and its reset is past `CLAUDE_STAGE_MAX_WAIT_HOURS`. The stage never started; run again after the reset. |
 | `launch-mismatch` | A stage session started in another permission mode, model or effort than asked, such as Manual because auto mode is turned off or `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is set, and was stopped before any work. |
+| `driver-hung` | The driver's main loop made no progress for 5 minutes. Its watchdog stopped the stage session in flight and exited, naming the step it was on. |
+| `git-timeout` | A git command, most often the fetch before each stage, gave no answer within its time limit. |
+| `stage-session-alive` | A stage session started by an earlier driver is still running. Nothing was started; the message names the stage and its log. |
 | `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running` | Nothing more was run; the message names the fix. |
 
 ## Naming

@@ -10,14 +10,18 @@ Run from the repo root:
     python -m unittest discover -s skills/staged-rollout/tests -v
 """
 
+import contextlib
 import importlib.util
+import io
 import json
 import os
 import subprocess
 import sys
 import tempfile
 import textwrap
+import threading
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest import mock
 
@@ -679,6 +683,134 @@ class DriverLoop(unittest.TestCase):
         gate = json.loads(out.read_text(encoding="utf-8"))["usage_gate"]
         self.assertTrue(gate["hold"])
         self.assertIn("S0 waits for the reset", gate["line"])
+
+    # --- a dead or hung driver, and orphaned stage sessions ---
+
+    def status_path(self):
+        return prl.state_dir(self.repo, "plan-demo") / "status.json"
+
+    def status_text(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            prl.main(["status", "--repo", str(self.repo)])
+        return out.getvalue()
+
+    def sleeper(self):
+        """A live process standing in for a stage session an earlier driver left."""
+        proc = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(120)"])
+        self.addCleanup(proc.wait)
+        self.addCleanup(proc.kill)
+        return proc
+
+    def dead_pid(self):
+        proc = subprocess.Popen([sys.executable, "-c", "pass"])
+        proc.wait()
+        return proc.pid
+
+    def recorded(self, pid, state="running", minutes_ago=10):
+        stamp = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
+        log = str(self.status_path().parent / "S0.jsonl")
+        data = {"state": state, "plan_branch": "plan-demo", "started": "2026-11-25T08:00:00Z",
+                "updated": stamp.strftime("%Y-%m-%dT%H:%M:%SZ"), "stages": [],
+                "current": {"id": "S0", "model": "opus", "effort": "high", "gate": "auto",
+                            "started": "2026-11-25T08:01:00Z", "log": log, "pid": pid}}
+        prl.write_json(self.status_path(), data)
+        return data
+
+    def test_each_stage_session_records_its_process_id(self):
+        _, state = self.drive()
+        self.assertTrue(all(isinstance(s.get("pid"), int) for s in state["stages"]), state["stages"])
+
+    def test_status_reports_a_stale_heartbeat_as_gone(self):
+        data = self.recorded(self.dead_pid())
+        text = self.status_text()
+        self.assertTrue(text.startswith("Driver gone"), text)
+        self.assertIn(data["updated"], text)
+        self.assertIn("S0: was running", text)
+        self.assertIn("no longer running", text)
+
+    def test_status_reads_a_fresh_heartbeat_as_running(self):
+        self.recorded(self.sleeper().pid, minutes_ago=0)
+        text = self.status_text()
+        self.assertTrue(text.startswith("Driver running"), text)
+        self.assertIn("still running", text)
+
+    def test_a_live_recorded_session_refuses_a_second_start(self):
+        proc = self.sleeper()
+        self.recorded(proc.pid)
+        before = self.status_path().read_bytes()
+        for resume in (None, "S0"):
+            line, _ = self.drive(resume=resume)
+            self.assertTrue(line.startswith("STATUS: stage-session-alive"), line)
+            self.assertIn(f"S0's session from an earlier driver (process {proc.pid})", line)
+            self.assertIn("S0.jsonl", line)
+        self.assertEqual(self.status_path().read_bytes(), before)
+        self.assertFalse((self.status_path().parent / "S0.jsonl").exists())
+        self.assertEqual(self.ledger_now()["S0"]["status"], "todo")
+        proc.kill()
+        proc.wait()
+        line, _ = self.drive()
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+
+    def test_git_timeout_is_a_named_status(self):
+        real = subprocess.run
+
+        def run(cmd, *args, **kwargs):
+            if "fetch" in cmd:
+                raise subprocess.TimeoutExpired(cmd, kwargs.get("timeout"))
+            return real(cmd, *args, **kwargs)
+
+        with mock.patch.object(prl.subprocess, "run", side_effect=run):
+            line, state = self.drive()
+        self.assertTrue(line.startswith("STATUS: git-timeout"), line)
+        self.assertIn("`git fetch --quiet origin plan-demo` gave no answer", line)
+        self.assertIn("while fetching origin/plan-demo", line)
+        self.assertEqual((state["state"], state["status"]), ("exited", "git-timeout"))
+
+    def watched(self, env=None, block_fetch=False):
+        """Run a driver with a short stale limit in a thread; return what the
+        watchdog emitted and whether it asked the process to exit."""
+        release = threading.Event()
+        self.addCleanup(release.set)
+        emitted, exited = [], threading.Event()
+        env = {"FAKE_MODE": "done", "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "", **(env or {})}
+        refresh = prl.PlanSource.refresh
+        patches = [mock.patch.dict(os.environ, env)]
+        if block_fetch:  # a fetch from a remote that never answers
+            patches.append(mock.patch.object(prl.PlanSource, "refresh",
+                                             lambda source: release.wait(30) or refresh(source)))
+        for p in patches:
+            p.start()
+            self.addCleanup(p.stop)
+        driver = prl.Driver(self.repo, dict(os.environ),
+                            launcher_argv=[sys.executable, str(self.fake)], grace_seconds=0)
+        driver.stale, driver.watch_every = 1.0, 0.05
+        driver.emit = emitted.append
+        driver.exit = lambda code: exited.set()
+        result = []
+        runner = threading.Thread(target=lambda: result.append(driver.run()), daemon=True)
+        runner.start()
+        self.assertTrue(exited.wait(20), "the watchdog never fired")
+        release.set()
+        runner.join(30)
+        return emitted, prl.read_json(driver.status_path), result
+
+    def test_watchdog_reports_a_stalled_main_loop(self):
+        emitted, state, result = self.watched(block_fetch=True)
+        self.assertEqual(len(emitted), 1, emitted)
+        self.assertTrue(emitted[0].startswith("STATUS: driver-hung"), emitted[0])
+        self.assertIn("while fetching origin/plan-demo", emitted[0])
+        self.assertEqual((state["state"], state["status"], state["line"]),
+                         ("exited", "driver-hung", emitted[0]))
+        self.assertEqual(result, emitted)  # the main loop stops at its next step, writing nothing
+        self.assertEqual(self.ledger_now()["S0"]["status"], "todo")
+
+    def test_watchdog_stops_the_stage_session_in_flight(self):
+        # The fake goes quiet for 60 s and the loop beats once a minute: past a 1 s limit.
+        emitted, state, _ = self.watched({"FAKE_MODE": "idle"})
+        self.assertIn("while running S0's session", emitted[0])
+        self.assertIn("stopped S0's session (process", emitted[0])
+        self.assertFalse(prl.pid_alive(state["current"]["pid"]))
 
 
 if __name__ == "__main__":

@@ -278,6 +278,30 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   completion instead of running closeout.** — nothing to commit or ignore,
   and closeout opens the PR into `main`, a moment the user should be present
   for. Revisit: if users ask for a hands-off closeout. Source: #266
+- **A hung local driver is caught by a watchdog thread inside the driver,
+  never by a second background command or a scheduled wake-up.** Every
+  status-file write is the main loop's heartbeat. When it is older than
+  `STALE_SECONDS`, the watchdog prints `STATUS: driver-hung`, stops the stage
+  session in flight and exits, and that exit wakes the orchestrator. Each git
+  command has a timeout shorter than that limit (`git-timeout`), and
+  `driver status` reports a `running` file with a stale heartbeat as gone. —
+  a hang costs one wake-up and a healthy run none. Rejected: a separate
+  watcher command (a normal finish would wake the orchestrator twice, and
+  there would be a second command to track); a scheduled ping (a turn each
+  time, the cost #305 weighed, and a terminal has no scheduler); relying on
+  the exit wake-up alone (it misses a hang). Revisit: if Claude Code gives
+  background commands a liveness signal. Source: #319
+- **The local driver records each stage session's process id and refuses
+  to start, with or without `--resume`, while the session an earlier driver
+  recorded is still running (`stage-session-alive`). It reports that
+  session and never stops it.** — two sessions on one stage race on its
+  branch and ledger row. Stopping the session is left to a person for two
+  reasons: the driver cannot tell whether the session is mid-push or
+  mid-merge, and a reused process id would make the driver kill an
+  unrelated program. The whole run is refused, not only that stage, because
+  starting another stage would run two at once (#306). Revisit: if the
+  driver can prove a process is the session it started (a start time or a
+  handle), or when stages may run in parallel. Source: #319
 - **Never two `live` stages at once: `/stage-run` refuses at start when
   another `live` stage has a branch or worktree open; the session-start hook
   only notes it.** — `live` changes a running system, and the refusal reuses

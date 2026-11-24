@@ -31,6 +31,19 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **`/plan-run-local` now ends a crashed or hung driver with a status it acts
+  on.** A watchdog inside the driver reports `driver-hung` when the driver's
+  main loop stops making progress for 5 minutes. It also stops the stage
+  session in flight and exits, which wakes the orchestrator; before this, a
+  hang woke nobody. A git command that gives no answer now ends the run as
+  `git-timeout` instead of hanging it. `driver status` says a driver is gone
+  when its status file still reads `running` but has not been updated, and
+  the orchestrator has instructions for an exit with no `STATUS:` line. Each
+  stage session's process id is recorded, and a new run refuses to start
+  while an earlier driver's stage session is still running
+  (`stage-session-alive`), so a restart no longer starts a second session on
+  the same stage.
+
 - **Renumbering stages now rewrites stage-numbered paths too.** A path built from
   a stage's number, such as `logs/<slug>-s6/`, used to keep the old number when
   `renumber_stages.py` moved the stage, so a stage could point at another

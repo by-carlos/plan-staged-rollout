@@ -132,6 +132,10 @@ only. Work through these steps **in order**:
    | `stage-limited` | A stage session ended on the usage limit and the driver could not wait it out on its own: no reset time could be read, the reset is more than `CLAUDE_STAGE_MAX_WAIT_HOURS` away (a weekly limit), or the stage hit the limit again right after a reset. A limit hit with a readable reset nearer than that never reaches you: the driver waits and runs the stage again. Give the reset time the message names. When the user says to carry on after the reset, go back to step 4 and start the driver with `--resume S<N>`: the stage's fresh session picks up where the cut-off one stopped. Otherwise step 8. |
    | `usage-held` | The usage gate held the next stage and its reset is more than `CLAUDE_STAGE_MAX_WAIT_HOURS` away, too long to wait for on its own. Report the gate's line from the message; a fresh `/plan-run-local` after the reset carries on, since the held stage never started. Step 8. |
    | `launch-mismatch` | The stage session started with a different permission mode, model or effort than asked, and was stopped before any work. For auto mode turned off by managed settings, give the two ways on: allow the stage's commands in the project's settings and set `CLAUDE_STAGE_PERMISSION_MODE=manual` (or `dontAsk`), or run the stages yourself with `/stage-run <N>`. When the message names `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`, say it is set in the environment this session started from and forces every stage into Manual; whether to change it is the user's call. Never try to get around the setting. Step 8. |
+   | `driver-hung` | The driver's own watchdog found its main loop stuck past the stale limit (5 minutes with no heartbeat), stopped the stage session in flight and exited. Report the step the message names it was on. Never write the ledger or guess how a stopped stage ended: `driver status` shows each stage's state and log path. A fresh `/plan-run-local` carries on; it refuses with `stage-session-alive` if that session would not stop. Step 8. |
+   | `git-timeout` | A git command (most often the fetch before each stage) gave no answer within its time limit. Report the command and the step it names; usually the network or the remote is down. A fresh `/plan-run-local` carries on once git answers again. Step 8. |
+   | `stage-session-alive` | A stage session started by an earlier driver is still running, so no second session was started on its stage and nothing ran. Name the stage and its log path from the message. The driver reports that session and leaves it running. Letting it end or stopping it is the user's call, then a fresh `/plan-run-local`. If its log has stopped growing, the process id may belong to another program now: say so, and never stop a process on that guess. Step 8. |
+   | no `STATUS:` line | The driver exited without a status: a crash, or the process was stopped. Report that it ended without a status, with the last lines of its output, and point at `driver status` and the stage's log. Never guess the outcome or write the ledger. `driver status` may read `running` for up to 5 minutes after the exit; its background command has ended, so nothing is running these stages. Step 8. |
    | anything else | `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running`: report the message as it is, with the fix it names. Step 8. |
 
    **A merge the stage could not make.** Look for the stage's open pull
@@ -151,7 +155,12 @@ only. Work through these steps **in order**:
 7. **While the driver runs,** answer a progress question from `driver status`
    alone: the stages finished with their outcome, model and effort, the one
    in flight, and the gate's last line. A stage waiting for a usage reset
-   shows as waiting until a named time, and starts then on its own.
+   shows as waiting until a named time, and starts then on its own. When
+   `driver status` opens with **Driver gone**, the driver crashed or was
+   stopped without a `STATUS:` line. Say so with the last-update time it
+   names and whether the stage session it lists is still running, and handle
+   it as the no-`STATUS:` row in step 6. Never tell the user the run is
+   still going.
 
 8. **End announcement.** State every stage this run finished and its outcome,
    every stage left and why (gated, blocked, waiting, or not reached), and

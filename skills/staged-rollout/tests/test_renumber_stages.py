@@ -175,6 +175,29 @@ class Renumbering(RenumberBase):
             "### S1\nWaiting on S4 to be reviewed.\n",
         )
 
+    def test_stage_numbered_paths_follow_their_stage_but_branch_names_stay(self):
+        plan = build_plan(self.root)
+        # In the fixture the stage that is S2 before the run becomes S3.
+        body = (
+            "# S2 Parser\n\n"
+            "Write logs to `logs/demo-s2/` and a summary to `out/demo-s2.txt`.\n"
+            "Also `demo-s2-notes`, and S6's folder `logs/demo-s6/`.\n"
+            "Branch `plan-demo-s2` and worktree `../plan-demo-s2` keep their names.\n"
+            "A longer name `my-demo-s2/`, another slug `other-s2/` and "
+            "`logs/demo-s2x/` are not stage paths.\n"
+        )
+        (plan / "stage-2-parser.md").write_text(body, encoding="utf-8")
+        self.run_renumber(plan)
+        self.assertEqual(
+            (plan / "stage-3-parser.md").read_text(encoding="utf-8"),
+            "# S3 Parser\n\n"
+            "Write logs to `logs/demo-s3/` and a summary to `out/demo-s3.txt`.\n"
+            "Also `demo-s3-notes`, and S2's folder `logs/demo-s2/`.\n"
+            "Branch `plan-demo-s2` and worktree `../plan-demo-s2` keep their names.\n"
+            "A longer name `my-demo-s2/`, another slug `other-s2/` and "
+            "`logs/demo-s2x/` are not stage paths.\n",
+        )
+
     def test_swap_of_two_numbers_does_not_collide(self):
         index = [
             ("S0 Keystone", "stage-0-keystone.md", "—"),

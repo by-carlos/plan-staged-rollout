@@ -367,7 +367,7 @@ graph looks — `/stage-run` preflight refuses the second at start):
   drift. Stage IDs are plain numbers in running order, so stages that can run
   side by side carry consecutive numbers; a suffixed ID is read but never
   created.
-- **Report the set; only the local runner launches it.** The deliverable is
+- **Report the set; only a runner launches it.** The deliverable is
   telling the operator what *can* overlap — every `todo` stage whose
   `depends` are all `done` or `skipped`, each
   with its command, recommended model/effort and `gate`. Starting them is the

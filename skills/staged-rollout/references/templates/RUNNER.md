@@ -150,8 +150,9 @@ no `gh` binary — GitHub is reached through the GitHub MCP server:
 `mcp__github__merge_pull_request` where §7 allows the merge
 (`mcp__github__merge_pull_request` does not delete the merged branch, so
 delete the stage branch as a separate step). This is an explicit override §3
-allows: wherever `.plan/PLAN.md` writes `gh pr create --base plan-<plan-slug>`
-or `gh pr merge --squash --delete-branch`, run the MCP equivalent instead —
+allows: wherever `.plan/PLAN.md` writes the adapter's `pr-create --base
+plan-<plan-slug>` (or `gh pr create`) or `gh pr merge --squash --delete-branch`,
+run the MCP equivalent instead —
 the base is still pinned to the plan branch, the merge is still a **squash**
 merge, and the merged stage branch is still deleted. In a local session `gh`
 works as written. A stage whose PR could not be opened is a block, recorded

@@ -18,7 +18,8 @@ neither is used here:
     github_adapter.py set-fields --payload P.json --number N --confirm
     github_adapter.py link       --payload P.json --number N --confirm
     github_adapter.py comment    --repo OWNER/NAME --number N --body-file F --confirm
-    github_adapter.py fetch      --repo OWNER/NAME --number N [--template T.json] [--with-board]
+    github_adapter.py pr-create  --repo OWNER/NAME --base B --head H --title T --body-file F --confirm
+    github_adapter.py fetch     --repo OWNER/NAME --number N [--template T.json] [--with-board]
     github_adapter.py readback   --payload P.json --number N
     github_adapter.py diff       --payload P.json --actual A.json
     github_adapter.py repair     --payload P.json --number N --confirm
@@ -33,6 +34,11 @@ sent), 2 tracker error or FAILED after the one repair, 3 write denied,
 Labels are never created: GitHub creates an unknown label silently when an
 issue is posted with it, so `create` checks every label against the repo
 first and stops if one is missing.
+
+`pr-create` opens a pull request the same body-safe way: the adapter reads the
+body file as UTF-8, posts ASCII-escaped JSON, then reads the pull request back
+and compares title, base, head and body. Without `--confirm` it prints the
+payload it would send and posts nothing (exit 0).
 """
 
 from __future__ import annotations
@@ -723,6 +729,55 @@ def op_comment(args) -> int:
                          else failed_message(fields)))
 
 
+def actual_from_pull(resp: dict) -> dict:
+    return {"number": resp.get("number"), "url": resp.get("html_url"),
+            "title": resp.get("title"), "body": resp.get("body"),
+            "base": (resp.get("base") or {}).get("ref"),
+            "head": (resp.get("head") or {}).get("ref")}
+
+
+def op_pr_create(args) -> int:
+    """Open a pull request without `gh pr create`. The body file is read here,
+    as UTF-8, and goes out as ASCII-escaped JSON; the result is read back with
+    a separate GET, never taken from the POST response alone."""
+    try:
+        body = Path(args.body_file).read_text(encoding="utf-8")
+    except (OSError, UnicodeDecodeError) as exc:
+        raise fail(EXIT_INVALID, f"{args.body_file}: cannot read as UTF-8 ({exc})")
+    missing = [name for name in ("base", "head", "title") if not str(getattr(args, name)).strip()]
+    if missing:
+        raise fail(EXIT_INVALID, f"--{', --'.join(missing)} must not be empty.")
+    endpoint = f"repos/{args.repo}/pulls"
+    payload = {"title": args.title, "head": args.head, "base": args.base, "body": body}
+    if not args.confirm:
+        emit({"status": "DRY-RUN", "posted": False, "endpoint": endpoint,
+              "message": "Nothing was posted. Pass --confirm to open it, once the caller's own gate is passed.",
+              "payload": payload})
+        return EXIT_OK
+    # A head given as `owner:branch` reads back as the bare branch name.
+    expected_head = args.head.split(":", 1)[-1]
+    try:
+        created = gh_api(endpoint, method="POST", payload=payload)
+        number = created["number"]
+        actual = actual_from_pull(gh_api(f"{endpoint}/{number}"))
+    except GhError as exc:
+        if is_denied(exc):
+            raise denied(exc, args.body_file)
+        raise fail(EXIT_TRACKER, f"Opening the pull request failed: {exc.stderr.strip()[:300]} "
+                                 f"The outcome is unknown: run `gh pr list --repo {args.repo} --head "
+                                 f"{expected_head} --state open` before posting again.")
+    fields = [field_result("title", args.title, actual["title"]),
+              field_result("base", args.base, actual["base"]),
+              field_result("head", expected_head, actual["head"]),
+              field_result("body", body, actual["body"])]
+    status = verdict(fields, False)
+    url = actual["url"] or created.get("html_url")
+    differ = ", ".join(f["name"] for f in fields if not f["ok"])
+    message = (f"Opened #{number} and the read-back matches." if status == "VERIFIED"
+               else f"Opened #{number} ({url}), but the read-back differs on: {differ}.")
+    return finish(result(status, number, url, fields, message, number=number))
+
+
 # --------------------------------------------------------------------------
 # reads
 # --------------------------------------------------------------------------
@@ -903,6 +958,11 @@ def build_parser() -> argparse.ArgumentParser:
     add("set-fields", op_set_fields, payload=True, number=True, confirm=True)
     add("link", op_link, payload=True, number=True, confirm=True)
     p = add("comment", op_comment, repo=True, number=True, confirm=True)
+    p.add_argument("--body-file", required=True, help="UTF-8 text file; the adapter reads it, not gh")
+    p = add("pr-create", op_pr_create, repo=True, confirm=True)
+    p.add_argument("--base", required=True, help="branch the pull request merges into")
+    p.add_argument("--head", required=True, help="branch carrying the change")
+    p.add_argument("--title", required=True)
     p.add_argument("--body-file", required=True, help="UTF-8 text file; the adapter reads it, not gh")
     p = add("fetch", op_fetch, repo=True, number=True)
     p.add_argument("--template")

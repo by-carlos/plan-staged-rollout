@@ -225,7 +225,9 @@ Work through these steps **in order**:
    says, and unattended it needs no OK: it is bookkeeping, not a choice.
 
 5. **Propose the final PR.** Push the plan branch, then propose the PR from it
-   to `main` using the distilled body from step 3. Unlike the per-stage PRs
+   to `main` using the distilled body from step 3 (opened, once the user
+   agrees, the way the unattended paragraph below names: the adapter's
+   `pr-create`). Unlike the per-stage PRs
    (which are squash-merged), this final PR is merged by the method recorded
    in the **`final-merge`** entry on `PLAN.md`'s plan flags line: `merge` (a
    **normal, non-squash merge**, so each stage's squashed commit lands on
@@ -256,8 +258,15 @@ Work through these steps **in order**:
 
    **Unattended:** open the PR rather than offering to — an open PR is what
    the operator is coming back to, and opening it changes nothing on `main`.
-   Pin the base explicitly (`gh pr create --base main`, or the repo's actual
-   default branch) rather than relying on `gh`'s default. Then **stop**:
+   Pin the base explicitly (`--base main`, or the repo's actual default
+   branch) rather than relying on `gh`'s default, and open it with the
+   adapter's `pr-create` — `python "${CLAUDE_PLUGIN_ROOT}/tickets/scripts/github_adapter.py"
+   pr-create --repo <owner/name> --base main --head plan-<slug> --title
+   "<title>" --body-file <file> --confirm` — not `gh pr create --body-file`,
+   which corrupts non-ASCII text on native Windows and which the
+   `gh-body-guard` hook denies. It posts the body as ASCII-escaped JSON and
+   reads the title, base, head and body back (`VERIFIED` or `FAILED`). Run it
+   without `--confirm` first to see the payload. Then **stop**:
    merging it is the human gate that survives every mode, and no flag,
    argument or runner may take it. Print the PR URL in the end announcement
    so an unattended runner's notification carries it.

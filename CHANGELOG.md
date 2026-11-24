@@ -32,6 +32,21 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Stage and final pull requests now have a body-safe way to open.** The
+  GitHub adapter gains `pr-create` (`--repo`, `--base`, `--head`, `--title`,
+  `--body-file`, `--confirm`): it reads the body file as UTF-8, posts it as
+  ASCII-escaped JSON through `gh api`, then reads the pull request back and
+  checks title, base, head and body, ending `VERIFIED` or `FAILED`. Without
+  `--confirm` it prints the payload and posts nothing. Until now the
+  `gh-body-guard` hook denied `gh pr create --body-file` and the adapter only
+  built issues, so each session improvised a payload. A plan's finish step 4
+  (the scaffold template) and `/plan-close` step 5 now name `pr-create` and
+  keep the explicit base, the cloud runner template's MCP override covers it,
+  and the guard's denial message names it, with the full command for
+  `gh pr create`. The guard is not loosened and the issue `create` path is
+  unchanged. Plans already scaffolded keep their old finish-step text until
+  regenerated; the guard's message points their sessions at `pr-create`.
+
 - **The final plan PR's merge method now comes from what the repository
   allows.** `/plan-stages` reads the default branch's allowed merge methods
   (repository settings and any `pull_request` branch rule) with the new

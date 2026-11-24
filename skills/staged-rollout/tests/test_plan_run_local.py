@@ -547,15 +547,26 @@ FAKE = textwrap.dedent('''\
             break
         except FileExistsError:
             time.sleep(0.05)
+    def put(path, text):  # whole or not at all: the driver may read the file meanwhile
+        tmp = path + "." + stage + ".tmp"
+        open(tmp, "w", encoding="utf-8").write(text)
+        for _ in range(200):
+            try:
+                os.replace(tmp, path)
+                return
+            except PermissionError:  # Windows: the driver has it open for a moment
+                time.sleep(0.02)
+        os.replace(tmp, path)
     ledger = os.path.join(".plan", "LEDGER.md")
     text = open(ledger, encoding="utf-8").read()
     row = "done" if mode == "done" or not target else "doing"
     if mode in ("done", "block", "stop"):
         text = re.sub(r"^(\\| " + stage + r" [^|]*\\| )\\w+", r"\\g<1>" + row, text, flags=re.M)
-        open(ledger, "w", encoding="utf-8").write(text)
+        put(ledger, text)
         if mode == "block" and row == "doing":
-            open(os.path.join(".plan", "BLOCKED.md"), "a", encoding="utf-8").write(
-                "\\n### " + stage + "\\n\\nThe staging host is unreachable.\\n")
+            blocked = os.path.join(".plan", "BLOCKED.md")
+            old = open(blocked, encoding="utf-8").read() if os.path.exists(blocked) else ""
+            put(blocked, old + "\\n### " + stage + "\\n\\nThe staging host is unreachable.\\n")
     if lock:
         os.remove(lock)
     if mode == "pr":  # pushes its stage branch, then its merge is refused: the row never moves
@@ -1026,7 +1037,8 @@ class ParallelLoop(LoopBase):
         self.assertFalse({"S6", "S7"} & {s[0] for s in self.spans()}, "a live stage was started")
 
     def test_a_stage_never_starts_beside_the_one_it_depends_on(self):
-        self.drive({"FAKE_SLEEP": json.dumps({"S1": 2, "S2": 2})})
+        line, state = self.drive({"FAKE_SLEEP": json.dumps({"S1": 2, "S2": 2})})
+        self.assertTrue(line.startswith("STATUS: gated"), (line, self.outcomes(state)))
         self.assertGreaterEqual(self.span("S5")[1], self.span("S1")[2])
 
     def test_a_measured_jump_lets_more_than_the_starting_count_run(self):

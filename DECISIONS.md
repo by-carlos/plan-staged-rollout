@@ -150,6 +150,18 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   sessions compacted, fill level made no difference to interventions, and a
   fresh session per stage already bounds context. Revisit: if stage sessions
   begin to compact. Source: #301
+- **A plan that changes existing code records its starting state in S0,
+  before S0's first change, as a `#### Starting state` block in S0's ledger
+  notes; bootstrap only asks the yes/no question and lists the repo's own
+  check commands. It is never called a baseline, and nothing in it is fixed
+  by the plan unless a stage is added for it.** — bootstrap works on an
+  uncommitted scaffold, so the record belongs to the commit S0 starts from;
+  the notes block keeps the status table to one line per row; "baseline"
+  already names the gitleaks baseline file here. Rejected: recording during
+  bootstrap (no commit to record against), and a test runner in the plugin
+  (the repo's own commands are the checks). Revisit: if real plans show the
+  comparison too loose, such as a pre-existing failure hiding a new one in
+  the same test. Source: #300
 
 ## Running stages
 

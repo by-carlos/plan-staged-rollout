@@ -12,6 +12,14 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **A plan that changes existing code can record what already failed.**
+  `/plan-stages` now asks, in its one batch of questions, whether the plan
+  changes existing code. On yes, the first stage records the project's own
+  checks before its first change: the commit, each check's pass, fail or skip,
+  and the real output. Later stages compare against that record, so a failure
+  that was already there is noted and does not count against them. New plans
+  only; new projects and plans already in flight are unchanged.
+
 - **A plan that deletes its folder now gets a decision-carry stage.** When
   `/plan-stages` writes `plan-dir: delete`, it also scaffolds a stage just
   before the final review that maps each frozen decision to a drop, a doc entry

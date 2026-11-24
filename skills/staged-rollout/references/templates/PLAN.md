@@ -542,7 +542,11 @@ one never does, so most sessions never meet it.
    passes too.
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
-      stage's notes block in `LEDGER.md`. Then add this session's
+      stage's notes block in `LEDGER.md`. When S0's notes block holds a
+      *Starting state*, compare every failing check against it: one that
+      failed the same way there is noted `pre-existing (starting state)` and
+      does not count against this stage, and any other failure does. Then
+      add this session's
       **`Actuals:` line** to the same block: run the skill's
       `scripts/effortlog.py usage` and paste its `line` as is. Every session
       that worked on the stage adds one, including one that stops `doing` or

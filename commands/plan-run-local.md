@@ -13,6 +13,23 @@ is woken when the driver needs a person, and acts. To run one stage yourself,
 in this session, use **`/stage-run <N>`**; to run them in the cloud instead,
 **`/plan-run-cloud`**.
 
+## Launch hint
+
+The orchestrator's recommended launch is defined **here, once**; the notice
+below and every message that sends the user to this command name the model and
+effort from this section (read it; do not substitute a tier of your own):
+
+> **model `sonnet`, effort `low`** — Sonnet-class at low effort.
+
+The orchestrator starts a script, waits, reads one status line when woken and
+asks about merges, so it needs no more than that. Haiku was tried and is not
+recommended: in an attended trial on a real plan it skipped the usage-limit
+step without saying so (the driver started with no usage flags and the user
+was not told the first stage ran unchecked), and the trial did not reach the
+end announcement, so that step is untested on Haiku. See `DECISIONS.md`
+(*Running stages*). This is a launch hint like a stage's: the session cannot
+switch its own model, and nothing here checks it.
+
 Before doing anything else, show this notice and stop for a yes/no answer:
 
 > **This runs all remaining stages of the plan on this machine, one fresh
@@ -36,8 +53,10 @@ Before doing anything else, show this notice and stop for a yes/no answer:
 >   nobody to answer a prompt. If your organisation has turned auto mode
 >   off, the driver stops each stage before it does any work and says so.
 > - **Usage.** Every stage is a full session on your plan's usage; this
->   session costs little, so Sonnet at low effort is enough for it. Before
->   each stage the driver checks the 5-hour usage limit and holds a stage
+>   session costs little, so Sonnet at low effort is enough for it (the
+>   *Launch hint* above names it). If this session is on something else,
+>   switch before you answer yes (the model picker in the desktop app, `/model` in a terminal).
+>   Before each stage the driver checks the 5-hour usage limit and holds a stage
 >   that would likely run past it until the limit resets; a stage cut off by
 >   the limit anyway is run again after the reset. Waits of up to 6 hours
 >   happen on their own, so they need the machine awake too.

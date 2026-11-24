@@ -10,6 +10,15 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Changed
+
+- **`/plan-run-local` now has a tested launch hint for its orchestrator
+  session: Sonnet at low effort.** The opening notice used to say this inline
+  as an untested guess; it now points to a `## Launch hint` section (the one
+  home for the advice) and tells the user to switch model before answering
+  yes. Haiku was tried in an attended run and is not recommended: it skipped
+  the usage-limit step without saying so. Nothing switches the model for you.
+
 ### Added
 
 - **The plan review now checks that risky stages have targeted evidence.** The

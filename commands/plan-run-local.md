@@ -16,8 +16,8 @@ in this session, use **`/stage-run <N>`**; to run them in the cloud instead,
 ## Launch hint
 
 The orchestrator's recommended launch is defined **here, once**; the notice
-below and every message that sends the user to this command name the model and
-effort from this section (read it; do not substitute a tier of your own):
+below names the model and effort from this section (read it; do not
+substitute a tier of your own):
 
 > **model `sonnet`, effort `low`** — Sonnet-class at low effort.
 

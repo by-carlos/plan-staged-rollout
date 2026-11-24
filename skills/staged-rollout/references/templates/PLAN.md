@@ -572,9 +572,19 @@ one never does, so most sessions never meet it.
       secret changes" still lands its ledger evidence and any frozen-decision
       amendment as a commit. Push the branch
       and **open the PR** into `plan-<slug>` (compulsory, not offered),
-      pinning the base explicitly — `gh pr create --base plan-<slug>` — never
-      relying on the default, which falls back to the repo's default branch
-      (`main`). Then **offer** to merge it once reviewed — never merge on
+      pinning the base explicitly — `--base plan-<slug>` — never relying on
+      the default, which falls back to the repo's default branch (`main`).
+      Open it with the plugin's GitHub adapter, not `gh pr create`:
+      `python <plugin>/tickets/scripts/github_adapter.py pr-create --repo
+      <owner/name> --base plan-<slug> --head <stage-branch> --title "<title>"
+      --body-file <file> --confirm` (`<plugin>` is the plugin's root; the
+      `gh-body-guard` denial message prints the adapter's full path). It reads
+      the body file as UTF-8, posts it as ASCII-escaped JSON — `gh pr create
+      --body-file` corrupts non-ASCII text on native Windows and the guard
+      denies it — and reads the title, base, head and body back: `VERIFIED`
+      means the PR is open as written, `FAILED` names what differs. Run it
+      without `--confirm` first to see the payload; nothing is posted. Then
+      **offer** to merge it once reviewed — never merge on
       your own. Stage PRs are **squash-merged** (one commit per stage on the
       plan branch), and the merged stage branch is deleted. The stage cannot
       be marked `done` until this PR is merged.

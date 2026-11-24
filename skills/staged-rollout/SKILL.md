@@ -766,7 +766,11 @@ outcomes, the notes of the `Fix:` stages added since, and any stage whose notes
 are missing from the first pass's coverage record or changed since the commit
 it records (`git diff` of the ledger against it). Crucially, **it
 catalogs; it never implements, and it never adds a stage** — bar one capped
-exception below. Each finding becomes exactly one outcome:
+exception below. It also lists every stage whose `## Artifacts` name a risk
+path ([`risk-paths.md`](references/risk-paths.md)) and checks that its ledger
+evidence includes a command and output aimed at that risk; a stage with none is
+a loose end, read on a redo by the same rule as above. Each finding becomes
+exactly one outcome:
 
 - **An issue** — work that belongs in its own ticket. A wait measured in days
   (never a stage) is a **dated follow-up**, also an issue: its body states the

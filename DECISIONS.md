@@ -211,6 +211,17 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   and a script keeps the session's context flat. The cloud runner stays
   model-driven (`remote-driver.md`). Revisit: if Claude Code gives headless
   runs long-lived background commands. Source: #266
+- **The `/plan-run-local` orchestrator's recommended launch is `sonnet` at
+  `low` effort, defined once in the command's *Launch hint*; the opening
+  notice points to it and says to switch model before answering yes.** — one
+  attended trial of the orchestrator on Haiku (a real multi-stage plan, one
+  merge ask, 2026-11-24) was not clean: it skipped the usage-limit step with
+  no flags and no word to the user, and never reached the end announcement,
+  while the notice wait, background start, merge ask and merge-after-yes were
+  right. Rejected: Haiku (the miss above), and a hook or code that switches
+  the model (see the no-hook-switches decision further down this section). Revisit: a
+  new attended Haiku trial that passes the usage step and reaches the end
+  announcement. Source: #320
 - **The local runner checks each stage session's opening line for the
   permission mode, model and effort it asked for, and stops a mismatch before
   any work; it never works around a managed setting.** — auto mode turned off

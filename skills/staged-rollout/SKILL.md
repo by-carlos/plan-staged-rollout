@@ -702,6 +702,13 @@ unlisted file is routine, and a proof of concept can become production inside
 its declared files. Both live in the templates, so a plan scaffolded before
 them carries neither.
 
+**Only the full check is evidence.** A stage's `## Acceptance` may carry an
+optional `Quick check:` line — a fast command to run after each step — above
+its checks labeled `Full check:`. The ledger records the full check's output
+alone, a quick check never counts as passing the stage, and the final review
+ignores quick checks. A stage with no quick check keeps its checks unlabeled
+and behaves exactly as before.
+
 The cheapest drift is the one prevented at bootstrap: an idea too vague to
 state its Done checks, whose checks name nothing observable, or whose
 Outcome has no edge ("exhaustive", "etc." with no list of what is in) is

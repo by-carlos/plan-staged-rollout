@@ -15,6 +15,11 @@
 # Nothing this script could write to stderr is worth risking a session over.
 exec 2>/dev/null
 
+# Git Bash on Windows rewrites an argument shaped like a path list into
+# Windows paths before a native program sees it, which turns the `ref:path`
+# that `git show` and `git cat-file` take into garbage. Switch it off.
+export MSYS2_ARG_CONV_EXCL='*'
+
 # Performance: helpers return their result in the global REPLY, never through
 # `$(...)` or a pipe. Every command substitution forks a subshell, and on
 # Windows (Git Bash) each fork costs tens of milliseconds — per table cell,
@@ -286,18 +291,106 @@ closeout_hint() {
     return 0
 }
 
+# Find the plan branches of the repo at $1: every `plan-*` branch, local or
+# `origin/plan-*`, that carries both `.plan/LEDGER.md` and `.plan/PLAN.md` (a
+# branch that merely starts with `plan-` is not a rollout). A branch present
+# both locally and on origin counts once, the local copy winning. Sets the
+# parallel arrays plan_names (`plan-x`) and plan_refs (the ref to read from).
+plan_names=()
+plan_refs=()
+find_plan_branches() {
+    local root="$1" ref name j seen refs
+    refs="$(git -C "$root" for-each-ref --format='%(refname)' \
+        'refs/heads/plan-*' 'refs/remotes/origin/plan-*' 2>/dev/null)" || return 0
+    # Local refs first (refs/heads sorts before refs/remotes), so a local
+    # copy is seen before its origin twin.
+    while IFS= read -r ref; do
+        [ -n "$ref" ] || continue
+        case "$ref" in
+            refs/heads/*) name="${ref#refs/heads/}" ;;
+            refs/remotes/origin/*) name="${ref#refs/remotes/origin/}" ;;
+            *) continue ;;
+        esac
+        seen=0
+        for j in "${!plan_names[@]}"; do
+            [ "${plan_names[$j]}" = "$name" ] && { seen=1; break; }
+        done
+        [ "$seen" -eq 0 ] || continue
+        git -C "$root" cat-file -e "$ref:.plan/LEDGER.md" 2>/dev/null || continue
+        git -C "$root" cat-file -e "$ref:.plan/PLAN.md" 2>/dev/null || continue
+        plan_names+=("$name")
+        plan_refs+=("$ref")
+    done <<< "$refs"
+}
+
+# Emit the hook's JSON for the context text in $1.
+emit_context() {
+    local escaped
+    escaped="$(escape_for_json "$1")"
+
+    # Output context injection as JSON.
+    # Cursor hooks expect additional_context (snake_case).
+    # Claude Code hooks expect hookSpecificOutput.additionalContext (nested).
+    # Copilot CLI (v1.0.11+) and others expect additionalContext (top-level,
+    # SDK standard). Claude Code reads BOTH additional_context and
+    # hookSpecificOutput without deduplication, so emit only the field the
+    # current platform consumes.
+    if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
+        printf '{\n  "additional_context": "%s"\n}\n' "$escaped"
+    elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
+        printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$escaped"
+    else
+        printf '{\n  "additionalContext": "%s"\n}\n' "$escaped"
+    fi
+}
+
 main() {
     local root
     root="$(git rev-parse --show-toplevel 2>/dev/null)"
-    [ -n "$root" ] || root="$PWD"
+    local in_repo=1
+    [ -n "$root" ] || { root="$PWD"; in_repo=0; }
     local plan_dir="$root/.plan"
-    # No .plan/ — the common case in every non-rollout repo: emit nothing.
-    [ -d "$plan_dir" ] || return 0
-    [ -f "$plan_dir/LEDGER.md" ] || return 0
-    [ -f "$plan_dir/PLAN.md" ] || return 0
 
-    parse_ledger "$plan_dir/LEDGER.md" || return 0
-    parse_index "$plan_dir/PLAN.md" || return 0
+    # Where the plan is read from. The plan branch is the plan's home: a copy of
+    # .plan/ on any other branch (main after an old merge, a stage branch) can
+    # be stale, and announcing from it names stages that are long done. So with
+    # exactly one plan branch, read it from there; with none, from the working
+    # tree, as before; with several, name them and announce no stage. On the
+    # plan branch itself the working tree IS that copy, so it is read directly.
+    local plan_ref="" plan_name="" blocked_present=0
+    if [ "$in_repo" -eq 1 ]; then
+        find_plan_branches "$root"
+        if [ "${#plan_names[@]}" -gt 1 ]; then
+            local names="" n
+            for n in "${plan_names[@]}"; do
+                names="${names:+$names, }\`$n\`"
+            done
+            emit_context "**Several plan branches exist in this repo** ($names), so this hook cannot tell which plan this session belongs to and names no stage. Ask the user which plan they mean, then read \`.plan/LEDGER.md\` on that plan branch (\`git show <branch>:.plan/LEDGER.md\`) — a \`.plan/\` copy on any other branch may be stale."
+            return 0
+        elif [ "${#plan_names[@]}" -eq 1 ]; then
+            local head
+            head="$(git -C "$root" symbolic-ref -q --short HEAD 2>/dev/null)"
+            if [ "$head" != "${plan_names[0]}" ]; then
+                plan_ref="${plan_refs[0]}"
+                plan_name="${plan_names[0]}"
+            fi
+        fi
+    fi
+
+    if [ -n "$plan_ref" ]; then
+        parse_ledger <(git -C "$root" show "$plan_ref:.plan/LEDGER.md") || return 0
+        parse_index <(git -C "$root" show "$plan_ref:.plan/PLAN.md") || return 0
+        git -C "$root" cat-file -e "$plan_ref:.plan/BLOCKED.md" 2>/dev/null && blocked_present=1
+    else
+        # No .plan/ — the common case in every non-rollout repo: emit nothing.
+        [ -d "$plan_dir" ] || return 0
+        [ -f "$plan_dir/LEDGER.md" ] || return 0
+        [ -f "$plan_dir/PLAN.md" ] || return 0
+
+        parse_ledger "$plan_dir/LEDGER.md" || return 0
+        parse_index "$plan_dir/PLAN.md" || return 0
+        [ -f "$plan_dir/BLOCKED.md" ] && blocked_present=1
+    fi
     [ "${#ledger_ids[@]}" -gt 0 ] || return 0
 
     # Runnable set: every `doing` stage (resumable) plus every `todo` stage
@@ -395,29 +488,23 @@ Adding a stage to this plan — including when the user asks for one by hand in 
     # block is announced on the plan branch (PLAN.md, "Recording a block"), so
     # say it exists rather than letting a stage be offered as an ordinary
     # resume.
-    if [ -f "$plan_dir/BLOCKED.md" ]; then
+    if [ "$blocked_present" -eq 1 ]; then
         context="$context
 
 \`.plan/BLOCKED.md\` exists: read it before offering anything above. A \`### S<N>\` section there means that stage is blocked even where \`LEDGER.md\` still reads \`todo\` or \`doing\` — say what it is waiting on, and do not present it as an ordinary resume. The section is deleted by the user once the stage is resolved, never automatically."
     fi
 
-    local escaped
-    escaped="$(escape_for_json "$context")"
+    # Say where the plan was read from, so a reader knows the checked-out
+    # branch's own .plan/ copy (if any) was deliberately not used.
+    if [ -n "$plan_ref" ] && [ -n "${context:-}" ]; then
+        local show_ref="${plan_ref#refs/heads/}"
+        show_ref="${show_ref#refs/remotes/}"
+        context="$context
 
-    # Output context injection as JSON.
-    # Cursor hooks expect additional_context (snake_case).
-    # Claude Code hooks expect hookSpecificOutput.additionalContext (nested).
-    # Copilot CLI (v1.0.11+) and others expect additionalContext (top-level,
-    # SDK standard). Claude Code reads BOTH additional_context and
-    # hookSpecificOutput without deduplication, so emit only the field the
-    # current platform consumes.
-    if [ -n "${CURSOR_PLUGIN_ROOT:-}" ]; then
-        printf '{\n  "additional_context": "%s"\n}\n' "$escaped"
-    elif [ -n "${CLAUDE_PLUGIN_ROOT:-}" ] && [ -z "${COPILOT_CLI:-}" ]; then
-        printf '{\n  "hookSpecificOutput": {\n    "hookEventName": "SessionStart",\n    "additionalContext": "%s"\n  }\n}\n' "$escaped"
-    else
-        printf '{\n  "additionalContext": "%s"\n}\n' "$escaped"
+This announcement was read from the plan branch \`$plan_name\`, not from the checked-out branch: a \`.plan/\` copy here may be stale, so read \`.plan/\` files with \`git show $show_ref:.plan/<file>\`."
     fi
+
+    emit_context "$context"
 }
 
 main

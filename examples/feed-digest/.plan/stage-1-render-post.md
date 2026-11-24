@@ -24,6 +24,10 @@ a real run delivers to the team channel. S2 schedules it.
 
 ## Acceptance
 
+Quick check: `pytest -x -q -k render` — run after each step; seconds.
+
+Full check:
+
 - `pytest` passes.
 - `feed-digest run --dry-run --feeds tests/fixtures/feeds.toml` prints one
   digest; a second run prints "no new entries".

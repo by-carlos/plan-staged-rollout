@@ -22,6 +22,19 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **The final plan PR's merge method now comes from what the repository
+  allows.** `/plan-stages` reads the default branch's allowed merge methods
+  (repository settings and any `pull_request` branch rule) with the new
+  `scripts/final_merge.py` and records `final-merge: merge`, `squash` or
+  `unchecked` on the plan flags line; `/plan-close` words the final PR body's
+  merge line from it. A repository that allows no merge commit gets a squash
+  line (the stage history stays in the merged stage PRs) instead of an
+  instruction it cannot follow; a failed lookup keeps the normal-merge wording
+  and says the methods were not checked; a repository allowing only rebase
+  merges makes bootstrap ask. Existing plans have no entry and read as
+  `unchecked`, so they need no edit. Stage PRs and `merge: auto` are
+  unchanged.
+
 - **Stages now get their model and effort from a written tier rubric.** The
   old rule said to take the higher tier when two were arguable but never said
   what made them arguable. `/plan-stages` now moves a stage up one tier when

@@ -319,7 +319,9 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    is fixed by position —
    stage PRs are **squash-merged** into the plan branch (merged branch
    deleted), and the final PR from the plan branch into `main` is a **normal
-   (non-squash) merge** so each stage keeps its own commit on `main`. Do
+   (non-squash) merge** so each stage keeps its own commit on `main` — or a
+   **squash merge** when the repository does not allow a merge commit (the
+   **`final-merge` flag**, written below). Do
    **not** create any *stage* branch
    here — stage branches (`plan-<slug>-s<N>`) are proposed and created at
    stage time by `/plan-staged-rollout:stage-run`, never at bootstrap.
@@ -344,9 +346,38 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    documentation, in which case write `keep`. Don't ask: `delete` is what
    `/plan-close` already recommends, an interactive closeout still puts the
    choice to the user with this value as its recommendation, and one more
-   bootstrap question buys nothing. So the finished line reads
-   ``Plan flags: `merge: auto` · `plan-dir: delete``` (with whichever values
-   this plan chose).
+   bootstrap question buys nothing.
+
+   **The `final-merge` flag — looked up, not asked.** The same line carries
+   `final-merge: merge` \| `squash` \| `unchecked`, the method the final PR
+   into the default branch will be merged with, read from what the repository
+   allows so closeout never words it from a fixed rule. Look it up once, with
+   `gh` and the `staged-rollout` skill's `scripts/final_merge.py` (temp files
+   in the session scratchpad, never the repository):
+
+   1. `gh api repos/<owner>/<repo>` → a file; its `default_branch` names the
+      branch, and `allow_merge_commit`, `allow_squash_merge` and
+      `allow_rebase_merge` are the settings.
+   2. `gh api repos/<owner>/<repo>/rules/branches/<default>` → a second file;
+      a `pull_request` rule's `allowed_merge_methods` narrows the settings.
+   3. `final_merge.py decide --repo-json <file> --rules-json <file>` prints
+      the word to record: `merge` when a merge commit is allowed (each stage
+      keeps its own commit on the default branch), `squash` when it is not
+      (the stage history then stays in the merged stage PRs, and the Git
+      strategy entry says so), `unchecked` when either call failed or the
+      answer could not be read (today's wording stands, and the Git strategy
+      entry says the method was not checked), or `ask`.
+   4. On **`ask`** — only rebase merges, or none, are allowed — **stop and
+      ask the user** how the final PR will be merged, naming what the
+      repository allows. Record `merge` or `squash` once they say, or
+      `unchecked` if they would rather settle it at closeout. Never pick one.
+
+   Say the recorded value in the end announcement. The flag never touches how
+   stage PRs merge (they stay squash) and is unrelated to `merge: auto`.
+
+   So the finished line reads
+   ``Plan flags: `merge: auto` · `plan-dir: delete` · `final-merge: merge```
+   (with whichever values this plan chose).
 
    **Worktree model (also fixed, also not a question).** Record it alongside
    the git model: the clone is parked on `plan-<slug>` for the life of the
@@ -386,7 +417,7 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    - the completed stage index from step 4, including the standing `SF: plan
      review` row and every stage's `gate` and `estimate`;
    - the frozen git model and worktree model from step 5, and the complete
-     plan flags line it decided (both `merge` and `plan-dir`);
+     plan flags line it decided (`merge`, `plan-dir` and `final-merge`);
    - on a starting-state **yes**, the S0 step and Acceptance check from
      step 4, and the instruction to write, in `LEDGER.md`'s S0 notes block,
      a `#### Starting state` heading over the line

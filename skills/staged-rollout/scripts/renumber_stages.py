@@ -28,6 +28,11 @@ What it does, in place and in one pass:
     `PLAN.md` (the index, `depends` cells, prose), `LEDGER.md`, `BLOCKED.md`
     and the stage files, all from one mapping, so a swap of two numbers cannot
     collide.
+  * The same mapping rewrites lowercase stage-numbered path tokens, so
+    `logs/<slug>-s6/` follows its stage to `logs/<slug>-s7/`. A branch or
+    worktree name (`plan-<slug>-s<N>`) is left as written: a live branch keeps
+    its name, and text that named a new one could point at a branch that does
+    not exist.
 
 What it does not do. It does not touch `.plan/BRIEF.md`: the caller
 regenerates the brief in the same commit. It does not reorder ledger rows or
@@ -267,9 +272,25 @@ def assign_numbers(stages, ledger, blocked, branch_ids):
                 )
 
 
-def rewrite(text, id_map, file_map):
+def path_token_re(slug):
+    """A stage-numbered path token: `<slug>-s<N>` such as `logs/<slug>-s6/`.
+
+    Not glued to a word or a hyphen on the left, so `plan-<slug>-s<N>` (a branch
+    or worktree name, which keeps its old number) and a longer name that merely
+    ends in the slug never match. On the right it ends at a non-word character
+    (`/`, `.`, `-`, a space) or the end of the text, so `-s6x` never matches.
+    """
+    return re.compile(
+        rf"(?<![A-Za-z0-9_-])({re.escape(slug)})-s(\d+[a-z]?)(?![A-Za-z0-9_])"
+    )
+
+
+def rewrite(text, id_map, file_map, slug):
     text = FILENAME_RE.sub(lambda m: file_map.get(m.group(0), m.group(0)), text)
-    return TOKEN_RE.sub(lambda m: "S" + id_map.get(m.group(1), m.group(1)), text)
+    text = TOKEN_RE.sub(lambda m: "S" + id_map.get(m.group(1), m.group(1)), text)
+    return path_token_re(slug).sub(
+        lambda m: f"{m.group(1)}-s{id_map.get(m.group(2), m.group(2)).lower()}", text
+    )
 
 
 def write_atomic(path, data):
@@ -318,7 +339,7 @@ def renumber(plan_dir, slug, branch_ids=None):
     pending = {}
     for dest, src in contents.items():
         old = read_text(src)
-        new = rewrite(old, id_map, file_map)
+        new = rewrite(old, id_map, file_map, slug)
         if new != old:
             pending[dest] = new.encode("utf-8")
 

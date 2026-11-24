@@ -22,6 +22,13 @@ elsewhere. See 0.4.0 for the split.
 
 ### Fixed
 
+- **Renumbering stages now rewrites stage-numbered paths too.** A path built from
+  a stage's number, such as `logs/<slug>-s6/`, used to keep the old number when
+  `renumber_stages.py` moved the stage, so a stage could point at another
+  stage's folder. Those `<slug>-s<N>` tokens now follow the same old-to-new map
+  as the stage ids. Branch and worktree names (`plan-<slug>-s<N>`) are left as
+  written, and ids, file names and every other rewrite behave as before.
+
 - **The session-start announcement now reads the plan from the plan branch.**
   A stale copy of the plan folder left on `main` (or any non-plan branch) made
   the announcement name a stage that was long done. With exactly one `plan-*`

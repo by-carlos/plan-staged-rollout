@@ -751,7 +751,7 @@ def op_pr_create(args) -> int:
     payload = {"title": args.title, "head": args.head, "base": args.base, "body": body}
     if not args.confirm:
         emit({"status": "DRY-RUN", "posted": False, "endpoint": endpoint,
-              "message": "Nothing was posted. Pass --confirm, only after the user's yes, to open it.",
+              "message": "Nothing was posted. Pass --confirm to open it, once the caller's own gate is passed.",
               "payload": payload})
         return EXIT_OK
     # A head given as `owner:branch` reads back as the bare branch name.

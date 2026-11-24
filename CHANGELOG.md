@@ -10,6 +10,16 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **The plan review now checks that risky stages have targeted evidence.** The
+  final review stage lists each stage whose `## Artifacts` name a risk path
+  (defined once in `references/risk-paths.md`) and looks in its ledger notes
+  for a command and output that exercises the risky change. A stage without
+  one becomes a loose end, resolved like any other; nothing blocks a merge and
+  the ledger columns are unchanged. A worked example is in
+  `examples/risk-evidence/`.
+
 ### Fixed
 
 - **Renumbering stages now rewrites stage-numbered paths too.** A path built from
@@ -28,6 +38,57 @@ elsewhere. See 0.4.0 for the split.
   stage commands are unchanged.
 
 ### Added
+
+- **Stage and final pull requests now have a body-safe way to open.** The
+  GitHub adapter gains `pr-create` (`--repo`, `--base`, `--head`, `--title`,
+  `--body-file`, `--confirm`): it reads the body file as UTF-8, posts it as
+  ASCII-escaped JSON through `gh api`, then reads the pull request back and
+  checks title, base, head and body, ending `VERIFIED` or `FAILED`. Without
+  `--confirm` it prints the payload and posts nothing. Until now the
+  `gh-body-guard` hook denied `gh pr create --body-file` and the adapter only
+  built issues, so each session improvised a payload. A plan's finish step 4
+  (the scaffold template) and `/plan-close` step 5 now name `pr-create` and
+  keep the explicit base, the cloud runner template's MCP override covers it,
+  and the guard's denial message names it, with the full command for
+  `gh pr create`. The guard is not loosened and the issue `create` path is
+  unchanged. Plans already scaffolded keep their old finish-step text until
+  regenerated; the guard's message points their sessions at `pr-create`.
+
+- **The final plan PR's merge method now comes from what the repository
+  allows.** `/plan-stages` reads the default branch's allowed merge methods
+  (repository settings and any `pull_request` branch rule) with the new
+  `scripts/final_merge.py` and records `final-merge: merge`, `squash` or
+  `unchecked` on the plan flags line; `/plan-close` words the final PR body's
+  merge line from it. A repository that allows no merge commit gets a squash
+  line (the stage history stays in the merged stage PRs) instead of an
+  instruction it cannot follow; a failed lookup keeps the normal-merge wording
+  and says the methods were not checked; a repository allowing only rebase
+  merges makes bootstrap ask. Existing plans have no entry and read as
+  `unchecked`, so they need no edit. Stage PRs and `merge: auto` are
+  unchanged.
+
+- **Stages now get their model and effort from a written tier rubric.** The
+  old rule said to take the higher tier when two were arguable but never said
+  what made them arguable. `/plan-stages` now moves a stage up one tier when
+  it spans several modules, its cause or design is unknown, it changes a
+  shared contract, a wrong result is costly to reverse, or its Artifacts name
+  a risk path; the risk paths are defined once in the skill's new
+  `references/risk-paths.md`, and each move is named on a `Tier raised:` line
+  under the stage index. Nothing ever moves a stage down, and existing plans
+  are unchanged.
+
+- **A plan that changes existing code can record what already failed.**
+  `/plan-stages` now asks, in its one batch of questions, whether the plan
+  changes existing code. On yes, the first stage records the project's own
+  checks before its first change: the commit, each check's pass, fail or skip,
+  and the real output. Later stages compare against that record, so a failure
+  that was already there is noted and does not count against them. New plans
+  only; new projects and plans already in flight are unchanged.
+
+- **A stage can carry an optional quick check beside its full check.** The stage
+  template's `## Acceptance` may add a `Quick check:` line (fast, run after each
+  step, never recorded) above the checks labeled `Full check:`, which stay the
+  only evidence. A stage without a quick check is unchanged.
 
 - **A plan that deletes its folder now gets a decision-carry stage.** When
   `/plan-stages` writes `plan-dir: delete`, it also scaffolds a stage just

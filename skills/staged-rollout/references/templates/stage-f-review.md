@@ -57,6 +57,19 @@ and it never adds a stage — the one exception is a capped, user-approved
   touch (a shared helper, a fixture) is **accepted, won't fix** with its
   one-line reason; work of a different kind than the stage was for is drift,
   and goes to an issue or a later plan like any other loose end.
+- [ ] **Risk evidence.** List each stage whose `## Artifacts` backticked paths
+  match a risk path, as `references/risk-paths.md` defines it (the plugin's
+  `skills/staged-rollout/references/risk-paths.md`, plus any `Risk paths:` line
+  in `PLAN.md`; the list is not restated here). For each, read its ledger
+  notes for **targeted evidence**: a command and its pasted output that
+  exercises the risky change — a test of the changed contract, a migration dry
+  run, a scan. A passing generic suite that never touches the change is not
+  targeted. A stage with none is a **loose end** (name the stage, the risk path
+  and the missing check); a stage with some needs no entry. Same read scope as
+  the first step: on a redo, recheck only the stages whose notes blocks are
+  missing from the `Coverage` list or changed since it was written. A missing
+  check is resolved like any loose end; it becomes a `Fix:` stage only under
+  the fix rule below.
 - [ ] For each loose end, resolve it into exactly one outcome:
   - **Issue** — work that belongs in its own ticket, including a **dated
     follow-up** for a wait measured in days. A dated follow-up's body states

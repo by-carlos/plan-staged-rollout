@@ -167,12 +167,16 @@ outcomes are defined in the `staged-rollout` skill's
 |---|---|---|---|---|---|---|---|---|
 | S0 Fetch and state (keystone) | `stage-0-fetch-and-state.md` | — | direct | inline | opus | high | auto | 1.5–3h |
 | S1 Render and post | `stage-1-render-post.md` | S0 | direct | inline | sonnet | medium | auto | 1–2h |
-| S2 Scheduler and runbook | `stage-2-scheduler.md` | S0 | direct | inline | sonnet | medium | local | 1–2h |
+| S2 Scheduler and runbook | `stage-2-scheduler.md` | S0 | direct | inline | opus | medium | local | 1–2h |
 | SF Plan review | `stage-f-review.md` | S1, S2 | direct | inline | opus | high | auto | 0.5–1h |
 
 Plan flags: `merge: manual` · `plan-dir: delete`
 
 Plan estimate: summed 4–8h · elapsed 3–6h
+
+Tier raised: S2 sonnet → opus — tier rubric trigger 5: its `## Artifacts`
+name `deploy/feed-digest.service` and `deploy/feed-digest.timer`, a deploy and
+infrastructure risk path, and a scheduler (concurrency) besides.
 
 This table is the **single authoritative home** for every stage's `depends` /
 `mode` / `exec` / `model` / `effort` / `gate` / `estimate`, and the **plan
@@ -541,9 +545,19 @@ structural fact and four rules about timing.
       secret changes" still lands its ledger evidence and any frozen-decision
       amendment as a commit. Push the branch
       and **open the PR** into `plan-feed-digest` (compulsory, not offered),
-      pinning the base explicitly — `gh pr create --base plan-feed-digest` — never
-      relying on the default, which falls back to the repo's default branch
-      (`main`). Then **offer** to merge it once reviewed — never merge on
+      pinning the base explicitly — `--base plan-feed-digest` — never relying
+      on the default, which falls back to the repo's default branch (`main`).
+      Open it with the plugin's GitHub adapter, not `gh pr create`:
+      `python <plugin>/tickets/scripts/github_adapter.py pr-create --repo
+      <owner/name> --base plan-feed-digest --head <stage-branch> --title
+      "<title>" --body-file <file> --confirm` (`<plugin>` is the plugin's root;
+      the `gh-body-guard` denial message prints the adapter's full path). It
+      reads the body file as UTF-8, posts it as ASCII-escaped JSON — `gh pr
+      create --body-file` corrupts non-ASCII text on native Windows and the
+      guard denies it — and reads the title, base, head and body back:
+      `VERIFIED` means the PR is open as written, `FAILED` names what differs.
+      Run it without `--confirm` first to see the payload; nothing is posted.
+      Then **offer** to merge it once reviewed — never merge on
       your own. Stage PRs are **squash-merged** (one commit per stage on the
       plan branch), and the merged stage branch is deleted. The stage cannot
       be marked `done` until this PR is merged.

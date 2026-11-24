@@ -166,8 +166,18 @@ def is_issue_create(seg: str) -> bool:
 # the hook but not in the Bash tool the model runs the suggestion from.
 ADAPTER = (Path(__file__).resolve().parent / "github_adapter.py").as_posix()
 REPLACEMENT = ('Use the plan-staged-rollout GitHub adapter instead: python '
-               f'"{ADAPTER}" create|comment|repair ... -- it posts '
+               f'"{ADAPTER}" create|comment|pr-create|repair ... -- it posts '
                "ASCII-escaped JSON through gh api --input and verifies the body that actually landed.")
+PR_REPLACEMENT = ('Open the pull request with the plan-staged-rollout GitHub adapter instead: python '
+                  f'"{ADAPTER}" pr-create --repo <owner/name> --base <base> --head <branch> '
+                  '--title "<title>" --body-file <file> --confirm -- run it without --confirm first to '
+                  "see the payload. It posts ASCII-escaped JSON through gh api --input and reads the "
+                  "title, base, head and body back. Keep the explicit --base.")
+
+
+def is_pr_create(seg: str) -> bool:
+    w = words(seg)
+    return len(w) >= 3 and w[0] == "gh" and w[1] == "pr" and w[2] == "create"
 
 
 def deny(reason: str) -> None:
@@ -187,7 +197,7 @@ def gh_body_guard() -> int:
     for seg in segments(cmd):
         problem = gh_body_problem(seg)
         if problem:
-            deny(f"{problem} {REPLACEMENT}")
+            deny(f"{problem} {PR_REPLACEMENT if is_pr_create(seg) else REPLACEMENT}")
             break
     return 0
 

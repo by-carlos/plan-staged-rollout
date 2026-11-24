@@ -57,8 +57,13 @@ same commit; feedback on the brief is applied here, never to the brief.
   per stage `plan-<slug>-s<N>` (flat names — git refs can't nest a branch
   under an existing branch), each landing as a **squash-merged** PR into
   `plan-<slug>`; final PR `plan-<slug>` → `main` at closeout is a **normal
-  (non-squash) merge** so each stage keeps its own commit on `main`. Commits on
-  a stage branch are compulsory
+  (non-squash) merge** so each stage keeps its own commit on `main` —
+  <or, when bootstrap found no merge commit allowed on the default branch,
+  replace this clause with: a **squash merge**, so the stage history stays in
+  the merged stage PRs; or, when the lookup failed: a normal merge, **not
+  checked** against the repository's allowed methods>. The recorded method is
+  the `final-merge` entry on the plan flags line; closeout words the final PR
+  from it. Commits on a stage branch are compulsory
   and incremental (logical units as the stage progresses, not one commit at
   the end). The agent creates and pushes stage and plan branches without
   asking, and **opens** the stage PR as a compulsory part of finishing a
@@ -114,20 +119,21 @@ outcomes are defined in the `staged-rollout` skill's
 | ... | ... | ... | ... | ... | ... | ... | ... | ... |
 | SF Plan review | `stage-f-review.md` | <last impl stage> | direct | inline | <model> | <effort> | auto | 0.5–1h |
 
-Plan flags: `merge: manual` · `plan-dir: delete`
+Plan flags: `merge: manual` · `plan-dir: delete` · `final-merge: <merge | squash | unchecked>`
 
 Plan estimate: summed <lo>–<hi>h · elapsed <lo>–<hi>h
 
 This table is the **single authoritative home** for every stage's `depends` /
 `mode` / `exec` / `model` / `effort` / `gate` / `estimate`, and the **plan
-flags** line under it is the home of the plan-level `merge` and `plan-dir`
-flags. The **plan estimate** line is computed from the `estimate` column by
+flags** line under it is the home of the plan-level `merge`, `plan-dir` and
+`final-merge` flags. The **plan estimate** line is computed from the `estimate` column by
 the `staged-rollout` skill's `scripts/estimates.py plan`, never added up by
 hand, and recomputed whenever a row's estimate or `depends` changes. Stage
 files never restate them (a copy is what drifts), and the tooling reads them
 from here: `/stage-run`'s weight check reads `model`/`effort` from this index,
 the runnable-set logic (below) reads `depends` from it, an unattended runner
-reads `gate` and `merge`, and `/plan-close` reads `plan-dir`. A stage that
+reads `gate` and `merge`, and `/plan-close` reads `plan-dir` and
+`final-merge`. A stage that
 isn't in this table is invisible to all of them — so adding a new stage
 (including one the final review spawns) means passing the scope referee
 (*Adding a stage*, below), then adding its row here first, in
@@ -136,14 +142,19 @@ running order, then running the `staged-rollout` skill's
 stages (index, file names, ledger, `depends`, `BLOCKED.md`, `S<N>` references);
 regenerate `.plan/BRIEF.md` in the same commit.
 
-The two plan flags are this plan's **declared defaults**: the answers a
-session applies when there is nobody to ask (`--unattended`). An interactive
+`merge` and `plan-dir` are this plan's **declared defaults**: the answers a
+session applies when there is nobody to ask (`--unattended`). `final-merge`
+is not a default but a lookup bootstrap made. An interactive
 session still asks, taking the declared value as its recommendation. See the
 `staged-rollout` skill, *Unattended mode*, for the full classification of
 which questions have a default and which are hard stops in every mode.
 
 Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
-`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
+`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked),
+filled by the skill's tier rubric (*Flag heuristics*), whose risk paths are
+defined only in the skill's `references/risk-paths.md` — each rubric move is
+named on a `Tier raised:` line under the index, and a plan's own extra risk
+paths on a `Risk paths:` line there, both prose and both left out when empty;
 `gate` = `auto` \| `human` \| `local` \| `live` (may the stage be launched with
 nobody watching? `human` means never — a person's judgment or presence is part
 of the stage itself; `local` means never *by a driver that could be running
@@ -166,7 +177,11 @@ is the skill's `references/estimates.md`);
 `merge` = `manual` \| `auto` (does the session merge its own stage PR into the plan
 branch once checks are green, or offer it for your OK?); `plan-dir` =
 `delete` \| `keep` (at closeout, is `.plan/` removed as the last commit on the
-plan branch, or left in place because the plan doubles as documentation?).
+plan branch, or left in place because the plan doubles as documentation?);
+`final-merge` = `merge` \| `squash` \| `unchecked` (how the final plan→main PR
+is merged: a normal merge so each stage keeps its commit, a squash where the
+repository allows no merge commit, or a normal merge whose allowed methods
+bootstrap could not check; absent reads as `unchecked`).
 Defaults stay cheap where cheap is safe, and preserve the fully-manual flow — `direct`,
 `inline`, a model sized to finish the stage, `gate: auto`, `merge: manual`,
 `plan-dir: delete`; a missing `gate` column, a missing plan-flags line, or a
@@ -542,7 +557,11 @@ one never does, so most sessions never meet it.
    passes too.
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
-      stage's notes block in `LEDGER.md`. Then add this session's
+      stage's notes block in `LEDGER.md`. When S0's notes block holds a
+      *Starting state*, compare every failing check against it: one that
+      failed the same way there is noted `pre-existing (starting state)` and
+      does not count against this stage, and any other failure does. Then
+      add this session's
       **`Actuals:` line** to the same block: run the skill's
       `scripts/effortlog.py usage` and paste its `line` as is. Every session
       that worked on the stage adds one, including one that stops `doing` or
@@ -572,9 +591,19 @@ one never does, so most sessions never meet it.
       secret changes" still lands its ledger evidence and any frozen-decision
       amendment as a commit. Push the branch
       and **open the PR** into `plan-<slug>` (compulsory, not offered),
-      pinning the base explicitly — `gh pr create --base plan-<slug>` — never
-      relying on the default, which falls back to the repo's default branch
-      (`main`). Then **offer** to merge it once reviewed — never merge on
+      pinning the base explicitly — `--base plan-<slug>` — never relying on
+      the default, which falls back to the repo's default branch (`main`).
+      Open it with the plugin's GitHub adapter, not `gh pr create`:
+      `python <plugin>/tickets/scripts/github_adapter.py pr-create --repo
+      <owner/name> --base plan-<slug> --head <stage-branch> --title "<title>"
+      --body-file <file> --confirm` (`<plugin>` is the plugin's root; the
+      `gh-body-guard` denial message prints the adapter's full path). It reads
+      the body file as UTF-8, posts it as ASCII-escaped JSON — `gh pr create
+      --body-file` corrupts non-ASCII text on native Windows and the guard
+      denies it — and reads the title, base, head and body back: `VERIFIED`
+      means the PR is open as written, `FAILED` names what differs. Run it
+      without `--confirm` first to see the payload; nothing is posted. Then
+      **offer** to merge it once reviewed — never merge on
       your own. Stage PRs are **squash-merged** (one commit per stage on the
       plan branch), and the merged stage branch is deleted. The stage cannot
       be marked `done` until this PR is merged.

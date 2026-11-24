@@ -225,17 +225,30 @@ Work through these steps **in order**:
    says, and unattended it needs no OK: it is bookkeeping, not a choice.
 
 5. **Propose the final PR.** Push the plan branch, then propose the PR from it
-   to `main` using the distilled body from step 3. Unlike the per-stage PRs
-   (which are squash-merged), this final PR is a **normal (non-squash) merge**,
-   so each stage's squashed commit lands on `main` as its own distinct commit
-   and the as-built history survives. **Say so in the PR body, in its own line
-   near the top** — the merge is performed by a person using whatever the
-   repo's default merge button offers, and a default of "Squash and merge"
-   silently discards the per-stage history while still producing a merged PR
-   that looks correct. The body is the last place that can warn them. Wait for
+   to `main` using the distilled body from step 3 (opened, once the user
+   agrees, the way the unattended paragraph below names: the adapter's
+   `pr-create`). Unlike the per-stage PRs
+   (which are squash-merged), this final PR is merged by the method recorded
+   in the **`final-merge`** entry on `PLAN.md`'s plan flags line: `merge` (a
+   **normal, non-squash merge**, so each stage's squashed commit lands on
+   `main` as its own distinct commit and the as-built history survives),
+   `squash` (the repository does not allow a merge commit, so the PR lands as
+   one commit and the stage history stays in the merged stage PRs), or
+   `unchecked`. An absent entry, or an absent flags line, reads as `unchecked`,
+   which is the normal merge with a note that the repository's allowed methods
+   were not checked. **Say the method in the PR body, in its own line near the
+   top**, using the sentence `scripts/final_merge.py line --method <value>`
+   (in the `staged-rollout` skill) prints for the recorded value — never worded
+   by hand. The merge is performed by a person using whatever the repo's
+   default merge button offers, and under `merge` a default of "Squash and
+   merge" silently discards the per-stage history while still producing a
+   merged PR that looks correct. The body is the last place that can warn them.
+   Do not re-read the repository's settings here: the recorded value is the
+   plan's decision, and a settings change since bootstrap is the person's to
+   weigh at merge. Wait for
    the user to review and merge — never merge into `main` unilaterally. The plan's `merge` flag does not
    apply here: it governs stage PRs only, and closeout never reads it —
-   `plan-dir` is the only plan flag closeout does read.
+   `plan-dir` and `final-merge` are the only plan flags closeout does read.
 
    **A PR from this branch may already be open** — closeout run twice, or a
    stop part-way through a previous pass. Check first (`gh pr list --head
@@ -245,8 +258,15 @@ Work through these steps **in order**:
 
    **Unattended:** open the PR rather than offering to — an open PR is what
    the operator is coming back to, and opening it changes nothing on `main`.
-   Pin the base explicitly (`gh pr create --base main`, or the repo's actual
-   default branch) rather than relying on `gh`'s default. Then **stop**:
+   Pin the base explicitly (`--base main`, or the repo's actual default
+   branch) rather than relying on `gh`'s default, and open it with the
+   adapter's `pr-create` — `python "${CLAUDE_PLUGIN_ROOT}/tickets/scripts/github_adapter.py"
+   pr-create --repo <owner/name> --base main --head plan-<slug> --title
+   "<title>" --body-file <file> --confirm` — not `gh pr create --body-file`,
+   which corrupts non-ASCII text on native Windows and which the
+   `gh-body-guard` hook denies. It posts the body as ASCII-escaped JSON and
+   reads the title, base, head and body back (`VERIFIED` or `FAILED`). Run it
+   without `--confirm` first to see the payload. Then **stop**:
    merging it is the human gate that survives every mode, and no flag,
    argument or runner may take it. Print the PR URL in the end announcement
    so an unattended runner's notification carries it.

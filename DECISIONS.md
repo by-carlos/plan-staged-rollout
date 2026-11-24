@@ -7,7 +7,7 @@ future work must respect.
 
 ## Planning flow
 
-Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollout/SKILL.md`, `skills/staged-rollout/references/plan-review.md`, `skills/staged-rollout/references/programme-format.md`, `skills/staged-rollout/references/templates/`, `skills/staged-rollout/scripts/renumber_stages.py`
+Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollout/SKILL.md`, `skills/staged-rollout/references/plan-review.md`, `skills/staged-rollout/references/programme-format.md`, `skills/staged-rollout/references/risk-paths.md`, `skills/staged-rollout/references/templates/`, `skills/staged-rollout/scripts/renumber_stages.py`, `skills/staged-rollout/scripts/final_merge.py`
 
 - **The plan review runs inside `/plan-stages`, on the uncommitted scaffold,
   never as a standing stage before S1; the close-time decision triage runs in
@@ -142,6 +142,18 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   by judgement is the same gap moved. The tier (Sonnet-class, medium) is a
   starting point, not measured. Revisit: if a real closeout needs a heavier
   model (a conflicted plan→main merge, a large usage report). Source: #296
+- **The final plan PR's merge method is looked up once at bootstrap and
+  recorded as the `final-merge` plan flag; closeout words the PR body from
+  the record and never from a fixed rule.** — `merge` when the default
+  branch allows a merge commit, else `squash` (the stage history then stays
+  in the merged stage PRs), `unchecked` (today's wording, said to be
+  unchecked) when a lookup failed or the flag is absent, and a stop-and-ask
+  when only rebase is allowed. Stage PRs stay squash and `merge: auto` stays
+  stage-only. Rejected: a note in the docs (every squash-only repository
+  would still hand-write an override), and re-reading the settings at
+  closeout (the recorded value is the plan's decision, and a second answer
+  could differ from the one the plan was reviewed with). Revisit: if a
+  repository's rules often change between bootstrap and closeout. Source: #294
 - **Stage size is never capped by line count.** — the 46 measured stage
   sessions tracked interventions by active time, and line count was not shown
   to matter. Revisit: if a measurement shows a size measure that predicts
@@ -150,6 +162,36 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   sessions compacted, fill level made no difference to interventions, and a
   fresh session per stage already bounds context. Revisit: if stage sessions
   begin to compact. Source: #301
+- **A stage's `model`/`effort` moves only up, one tier, when any of five
+  written triggers holds; the risk paths are defined only in
+  `references/risk-paths.md`; and the move is named on a prose `Tier raised:`
+  line under the stage index, never in a new flag column.** — "take the
+  higher tier where two are arguable" left "arguable" to judgement, and a
+  matching move-down rule for lookups would bring back the stall-and-rerun
+  cost the higher-tier rule exists to avoid. The drift was expected from how
+  the rule was written, not measured. Revisit: if effort-log data shows
+  rubric-raised stages finishing well under their tier. Source: #297
+
+- **A plan that changes existing code records its starting state in S0,
+  before S0's first change, as a `#### Starting state` block in S0's ledger
+  notes; bootstrap only asks the yes/no question and lists the repo's own
+  check commands. It is never called a baseline, and nothing in it is fixed
+  by the plan unless a stage is added for it.** — bootstrap works on an
+  uncommitted scaffold, so the record belongs to the commit S0 starts from;
+  the notes block keeps the status table to one line per row; "baseline"
+  already names the gitleaks baseline file here. Rejected: recording during
+  bootstrap (no commit to record against), and a test runner in the plugin
+  (the repo's own commands are the checks). Revisit: if real plans show the
+  comparison too loose, such as a pre-existing failure hiding a new one in
+  the same test. Source: #300
+
+- **A stage's Acceptance may carry an optional `Quick check:` line above checks
+  labeled `Full check:`; only the full check is evidence, and a stage without a
+  quick check keeps its checks unlabeled.** — a second, weaker definition of
+  done is the risk, so the ledger, the finish protocol and the final review
+  read the full check alone; keeping the old form unlabeled leaves plans in
+  flight untouched. Revisit: if real plans show quick checks passed off as
+  evidence. Source: #299
 
 ## Running stages
 

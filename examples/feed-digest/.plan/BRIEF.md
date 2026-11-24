@@ -1,4 +1,4 @@
-Generated from PLAN.md @ 93a8b7e4f1b9 — do not edit
+Generated from PLAN.md @ 3ef9a14b79b7 — do not edit
 # feed-digest — plan brief
 
 > One page to check this plan against what you expect. Feedback goes in chat

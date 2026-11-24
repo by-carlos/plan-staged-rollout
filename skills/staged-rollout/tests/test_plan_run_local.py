@@ -509,6 +509,12 @@ FAKE = textwrap.dedent('''\
     windows = json.loads(os.environ.get("FAKE_WINDOWS", "{}"))
     if stage in windows:
         window(windows[stage][0])
+    sibling = json.loads(os.environ.get("FAKE_AWAIT", "{}")).get(stage)
+    if sibling and trace:  # stay in flight until that stage has started too (30 s at most)
+        import glob
+        until = time.time() + 30
+        while time.time() < until and not glob.glob(os.environ["FAKE_TRACE"] + "-" + sibling + "-*"):
+            time.sleep(0.05)
     time.sleep(json.loads(os.environ.get("FAKE_SLEEP", "{}")).get(stage, 0))
     if mode.startswith("limit"):
         counter = os.environ["FAKE_COUNTER"]
@@ -1007,7 +1013,7 @@ class ParallelLoop(LoopBase):
         return [s for s in self.spans() if s[0] == sid][nth]
 
     def test_two_start_together_and_a_third_only_after_one_ends(self):
-        line, state = self.drive({"FAKE_SLEEP": json.dumps({"S1": 3, "S2": 6})})
+        line, state = self.drive({"FAKE_AWAIT": json.dumps({"S1": "S2"}), "FAKE_SLEEP": json.dumps({"S2": 3})})
         self.assertTrue(line.startswith("STATUS: gated"), line)
         self.assertIn("S6 (gate live), S7 (gate live)", line)
         self.assertEqual(sorted(sid for sid, out in self.outcomes(state)),
@@ -1027,7 +1033,7 @@ class ParallelLoop(LoopBase):
         reset = int(prl.time.time()) + 3600
         windows = {sid: [0.10, 0.15] for sid in ("S1", "S2", "S3", "S4", "S5")}
         line, state = self.drive({"FAKE_WINDOWS": json.dumps(windows), "FAKE_RESET": str(reset),
-                                  "FAKE_SLEEP": json.dumps({"S1": 2, "S2": 8, "S3": 4, "S4": 4})})
+                                  "FAKE_AWAIT": json.dumps({"S1": "S2", "S2": "S4", "S3": "S4"})})
         self.assertTrue(line.startswith("STATUS: gated"), line)
         self.assertGreaterEqual(self.span("S3")[1], self.span("S1")[2])
         self.assertGreater(self.most_at_once(), prl.START_AT_ONCE)
@@ -1048,7 +1054,7 @@ class ParallelLoop(LoopBase):
         self.assertEqual(len(state["stages"]), 5)
 
     def test_a_stop_lets_the_stages_in_flight_finish_and_starts_nothing(self):
-        line, state = self.drive({"FAKE_MODES": json.dumps({"S1": "block"}),
+        line, state = self.drive({"FAKE_MODES": json.dumps({"S1": "block"}), "FAKE_AWAIT": json.dumps({"S1": "S2"}),
                                   "FAKE_SLEEP": json.dumps({"S2": 3})})
         self.assertTrue(line.startswith("STATUS: stage-blocked · S1 is blocked"), line)
         self.assertEqual(sorted(self.outcomes(state)), [("S1", "stage-blocked"), ("S2", "done")])
@@ -1058,7 +1064,7 @@ class ParallelLoop(LoopBase):
 
     def test_every_stop_is_named_on_the_one_line(self):
         line, state = self.drive({"FAKE_MODES": json.dumps({"S1": "block", "S2": "stop"}),
-                                  "FAKE_SLEEP": json.dumps({"S2": 2})})
+                                  "FAKE_AWAIT": json.dumps({"S1": "S2"}), "FAKE_SLEEP": json.dumps({"S2": 2})})
         self.assertTrue(line.startswith("STATUS: stage-blocked · S1 is blocked"), line)
         self.assertIn(" · also stage-stopped: S2 stopped short of `done`", line)
         self.assertEqual([s["status"] for s in state["stops"]], ["stage-blocked", "stage-stopped"])
@@ -1067,7 +1073,7 @@ class ParallelLoop(LoopBase):
         clock = FakeClock()
         reset = clock.now + 3600
         line, state = self.drive({"FAKE_MODES": json.dumps({"S1": "limit"}), "FAKE_RESET": str(int(reset)),
-                                  "FAKE_SLEEP": json.dumps({"S2": 3})}, clock=clock)
+                                  "FAKE_AWAIT": json.dumps({"S1": "S2"}), "FAKE_SLEEP": json.dumps({"S2": 3})}, clock=clock)
         self.assertTrue(line.startswith("STATUS: gated"), line)
         self.assertEqual([(w["id"], w["why"]) for w in state["waits"]], [("S1", "limit")])
         self.assertEqual(self.outcomes(state)[:2], [("S1", "stage-limited"), ("S2", "done")])
@@ -1087,7 +1093,8 @@ class ParallelLoop(LoopBase):
             return real(source)
 
         with mock.patch.object(prl.PlanSource, "refresh", refresh):
-            line, state = self.drive({"FAKE_SLEEP": json.dumps({"S1": 3, "S2": 6})})
+            line, state = self.drive({"FAKE_AWAIT": json.dumps({"S1": "S2"}),
+                                      "FAKE_SLEEP": json.dumps({"S1": 3, "S2": 8})})
         self.assertTrue(line.startswith("STATUS: git-timeout"), line)
         self.assertIn("S2 ran on to its end unread", line)
         self.assertEqual(sorted(self.outcomes(state)), [("S1", "unread"), ("S2", "unread")])
@@ -1097,7 +1104,7 @@ class ParallelLoop(LoopBase):
     def test_resume_takes_several_stages(self):
         (self.repo / ".plan" / "LEDGER.md").write_text(wide_ledger(S1="doing", S2="doing"), encoding="utf-8")
         self.git("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-am", "doing")
-        line, state = self.drive(resume="S1,S2", env={"FAKE_SLEEP": json.dumps({"S1": 2, "S2": 2})})
+        line, state = self.drive(resume="S1,S2", env={"FAKE_AWAIT": json.dumps({"S1": "S2"})})
         self.assertEqual([s[0] for s in self.spans()[:2]], ["S1", "S2"])
         self.assertLess(self.span("S2")[1], self.span("S1")[2])
         self.assertIn(("S1", "done"), self.outcomes(state))
@@ -1105,7 +1112,7 @@ class ParallelLoop(LoopBase):
 
     def test_starts_are_staggered(self):
         clock = FakeClock()
-        line, state = self.drive({"FAKE_SLEEP": json.dumps({"S1": 6})}, clock=clock, stagger=60)
+        line, state = self.drive({"FAKE_AWAIT": json.dumps({"S1": "S2"})}, clock=clock, stagger=60)
         self.assertIn(60, clock.slept)
         self.assertLess(self.span("S2")[1], self.span("S1")[2])
 
@@ -1114,7 +1121,8 @@ class ParallelLoop(LoopBase):
         with contextlib.redirect_stdout(out):
             prl.main(["next", "--repo", str(self.repo)])
         data = json.loads(out.getvalue())
-        self.assertEqual(data["runnable"], ["S1", "S2", "S3", "S4"])
+        self.assertEqual([s["id"] for s in data["runnable"]], ["S1", "S2", "S3", "S4"])
+        self.assertEqual((data["runnable"][2]["model"], data["runnable"][2]["gate"]), ("sonnet", "local"))
         self.assertEqual(data["start_together"], ["S1", "S2"])
         self.assertEqual(data["stage"]["id"], "S1")
         with contextlib.redirect_stdout(out := io.StringIO()):

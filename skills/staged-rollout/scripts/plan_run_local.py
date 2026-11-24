@@ -1158,12 +1158,13 @@ class Driver:
         while self.running:
             self.step(self.running_text() + " to their end; git is not answering")
             sid, ran = self.wait_any()
-            entry = self.running.pop(sid)
-            record = entry["record"]
-            record.update({k: ran.get(k) for k in ("session_id", "exit_code", "killed", "result")})
-            record.update({"finished": now(), "outcome": "unread"})
-            self.state["in_flight"].remove(record)
-            self.state["stages"].append(record)
+            with self.lock:
+                entry = self.running.pop(sid)
+                record = entry["record"]
+                record.update({k: ran.get(k) for k in ("session_id", "exit_code", "killed", "result")})
+                record.update({"finished": now(), "outcome": "unread"})
+                self.state["in_flight"].remove(record)
+                self.state["stages"].append(record)
             unread.append(sid)
         self.save()
         return unread
@@ -1455,7 +1456,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     if usage and usage["resets_at"] <= time.time():
         usage = {"percent": 0.0, "resets_at": None}
     out = {"plan_branch": branch, "gated": pick["gated"], "waiting": pick["waiting"],
-           "complete": pick["complete"], "runnable": [s["id"] for s in pick["runnable"]],
+           "complete": pick["complete"], "runnable": pick["runnable"],
            "start_together": [], "stage": None, "command": None, "usage_gate": None}
     if pick["stage"]:
         out["stage"] = pick["stage"]

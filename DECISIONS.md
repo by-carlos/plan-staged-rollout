@@ -259,6 +259,15 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   the rules so no run drifts. Rejected: one ticket per stage (deferred), and
   asking before each comment (unattended could never post). Revisit: if
   per-stage ticket creation lands. Source: #292
+- **The session-start hook announces from the plan branch, not from the
+  checked-out branch's `.plan/` copy: exactly one `plan-*` branch (local or
+  `origin/plan-*`, carrying both ledger and plan file) is read with `git show`;
+  none falls back to the working tree; several are named and no stage is
+  announced.** — a copy left on `main` goes stale and named stages long done.
+  Rejected: only warning when the copies differ (the wrong stage stays in the
+  announcement), and telling users never to leave a plan folder on `main` (not
+  enforceable). Revisit: if one repo legitimately runs several plans at once.
+  Source: #304
 - **No hook switches model or effort per prompt.** — `model`/`effort` are
   launch hints, checked by a weight check that hard-stops, with one
   authoritative home; a router would silently override the declared flag and

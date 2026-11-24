@@ -22,6 +22,16 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Stages now get their model and effort from a written tier rubric.** The
+  old rule said to take the higher tier when two were arguable but never said
+  what made them arguable. `/plan-stages` now moves a stage up one tier when
+  it spans several modules, its cause or design is unknown, it changes a
+  shared contract, a wrong result is costly to reverse, or its Artifacts name
+  a risk path; the risk paths are defined once in the skill's new
+  `references/risk-paths.md`, and each move is named on a `Tier raised:` line
+  under the stage index. Nothing ever moves a stage down, and existing plans
+  are unchanged.
+
 - **A plan that changes existing code can record what already failed.**
   `/plan-stages` now asks, in its one batch of questions, whether the plan
   changes existing code. On yes, the first stage records the project's own

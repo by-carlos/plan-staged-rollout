@@ -7,7 +7,7 @@ future work must respect.
 
 ## Planning flow
 
-Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollout/SKILL.md`, `skills/staged-rollout/references/plan-review.md`, `skills/staged-rollout/references/programme-format.md`, `skills/staged-rollout/references/templates/`, `skills/staged-rollout/scripts/renumber_stages.py`
+Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollout/SKILL.md`, `skills/staged-rollout/references/plan-review.md`, `skills/staged-rollout/references/programme-format.md`, `skills/staged-rollout/references/risk-paths.md`, `skills/staged-rollout/references/templates/`, `skills/staged-rollout/scripts/renumber_stages.py`
 
 - **The plan review runs inside `/plan-stages`, on the uncommitted scaffold,
   never as a standing stage before S1; the close-time decision triage runs in
@@ -150,6 +150,16 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   sessions compacted, fill level made no difference to interventions, and a
   fresh session per stage already bounds context. Revisit: if stage sessions
   begin to compact. Source: #301
+- **A stage's `model`/`effort` moves only up, one tier, when any of five
+  written triggers holds; the risk paths are defined only in
+  `references/risk-paths.md`; and the move is named on a prose `Tier raised:`
+  line under the stage index, never in a new flag column.** — "take the
+  higher tier where two are arguable" left "arguable" to judgement, and a
+  matching move-down rule for lookups would bring back the stall-and-rerun
+  cost the higher-tier rule exists to avoid. The drift was expected from how
+  the rule was written, not measured. Revisit: if effort-log data shows
+  rubric-raised stages finishing well under their tier. Source: #297
+
 - **A plan that changes existing code records its starting state in S0,
   before S0's first change, as a `#### Starting state` block in S0's ledger
   notes; bootstrap only asks the yes/no question and lists the repo's own

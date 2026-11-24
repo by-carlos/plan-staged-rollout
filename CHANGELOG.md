@@ -10,6 +10,16 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The session-start announcement now reads the plan from the plan branch.**
+  A stale copy of the plan folder left on `main` (or any non-plan branch) made
+  the announcement name a stage that was long done. With exactly one `plan-*`
+  branch (local or `origin/plan-*`) the hook reads the ledger and stage index
+  from it with `git show`; with none it reads the working-tree folder as
+  before; with several it names them and announces no stage. Closeout and the
+  stage commands are unchanged.
+
 ### Added
 
 - **Stages now get their model and effort from a written tier rubric.** The
@@ -21,6 +31,19 @@ elsewhere. See 0.4.0 for the split.
   `references/risk-paths.md`, and each move is named on a `Tier raised:` line
   under the stage index. Nothing ever moves a stage down, and existing plans
   are unchanged.
+
+- **A plan that changes existing code can record what already failed.**
+  `/plan-stages` now asks, in its one batch of questions, whether the plan
+  changes existing code. On yes, the first stage records the project's own
+  checks before its first change: the commit, each check's pass, fail or skip,
+  and the real output. Later stages compare against that record, so a failure
+  that was already there is noted and does not count against them. New plans
+  only; new projects and plans already in flight are unchanged.
+
+- **A stage can carry an optional quick check beside its full check.** The stage
+  template's `## Acceptance` may add a `Quick check:` line (fast, run after each
+  step, never recorded) above the checks labeled `Full check:`, which stay the
+  only evidence. A stage without a quick check is unchanged.
 
 - **A plan that deletes its folder now gets a decision-carry stage.** When
   `/plan-stages` writes `plan-dir: delete`, it also scaffolds a stage just

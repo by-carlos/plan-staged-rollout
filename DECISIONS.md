@@ -160,6 +160,27 @@ Paths: `commands/plan-stages.md`, `commands/plan-close.md`, `skills/staged-rollo
   the rule was written, not measured. Revisit: if effort-log data shows
   rubric-raised stages finishing well under their tier. Source: #297
 
+- **A plan that changes existing code records its starting state in S0,
+  before S0's first change, as a `#### Starting state` block in S0's ledger
+  notes; bootstrap only asks the yes/no question and lists the repo's own
+  check commands. It is never called a baseline, and nothing in it is fixed
+  by the plan unless a stage is added for it.** — bootstrap works on an
+  uncommitted scaffold, so the record belongs to the commit S0 starts from;
+  the notes block keeps the status table to one line per row; "baseline"
+  already names the gitleaks baseline file here. Rejected: recording during
+  bootstrap (no commit to record against), and a test runner in the plugin
+  (the repo's own commands are the checks). Revisit: if real plans show the
+  comparison too loose, such as a pre-existing failure hiding a new one in
+  the same test. Source: #300
+
+- **A stage's Acceptance may carry an optional `Quick check:` line above checks
+  labeled `Full check:`; only the full check is evidence, and a stage without a
+  quick check keeps its checks unlabeled.** — a second, weaker definition of
+  done is the risk, so the ledger, the finish protocol and the final review
+  read the full check alone; keeping the old form unlabeled leaves plans in
+  flight untouched. Revisit: if real plans show quick checks passed off as
+  evidence. Source: #299
+
 ## Running stages
 
 Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run-local.md`, `skills/staged-rollout/scripts/plan_run_local.py`, `hooks/session-start`, `skills/staged-rollout/references/remote-driver.md`, `skills/staged-rollout/references/templates/RUNNER.md`, `skills/staged-rollout/references/estimates.md`, `skills/staged-rollout/scripts/estimates.py`, `skills/staged-rollout/scripts/effortlog.py`
@@ -268,6 +289,15 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   the rules so no run drifts. Rejected: one ticket per stage (deferred), and
   asking before each comment (unattended could never post). Revisit: if
   per-stage ticket creation lands. Source: #292
+- **The session-start hook announces from the plan branch, not from the
+  checked-out branch's `.plan/` copy: exactly one `plan-*` branch (local or
+  `origin/plan-*`, carrying both ledger and plan file) is read with `git show`;
+  none falls back to the working tree; several are named and no stage is
+  announced.** — a copy left on `main` goes stale and named stages long done.
+  Rejected: only warning when the copies differ (the wrong stage stays in the
+  announcement), and telling users never to leave a plan folder on `main` (not
+  enforceable). Revisit: if one repo legitimately runs several plans at once.
+  Source: #304
 - **No hook switches model or effort per prompt.** — `model`/`effort` are
   launch hints, checked by a weight check that hard-stops, with one
   authoritative home; a router would silently override the declared flag and

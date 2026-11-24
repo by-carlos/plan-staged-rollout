@@ -150,7 +150,11 @@ session still asks, taking the declared value as its recommendation. See the
 which questions have a default and which are hard stops in every mode.
 
 Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
-`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
+`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked),
+filled by the skill's tier rubric (*Flag heuristics*), whose risk paths are
+defined only in the skill's `references/risk-paths.md` — each rubric move is
+named on a `Tier raised:` line under the index, and a plan's own extra risk
+paths on a `Risk paths:` line there, both prose and both left out when empty;
 `gate` = `auto` \| `human` \| `local` \| `live` (may the stage be launched with
 nobody watching? `human` means never — a person's judgment or presence is part
 of the stage itself; `local` means never *by a driver that could be running
@@ -553,7 +557,11 @@ one never does, so most sessions never meet it.
    passes too.
 7. **Finish protocol (required):**
    1. Run the stage's **Acceptance** checks; paste the real output into the
-      stage's notes block in `LEDGER.md`. Then add this session's
+      stage's notes block in `LEDGER.md`. When S0's notes block holds a
+      *Starting state*, compare every failing check against it: one that
+      failed the same way there is noted `pre-existing (starting state)` and
+      does not count against this stage, and any other failure does. Then
+      add this session's
       **`Actuals:` line** to the same block: run the skill's
       `scripts/effortlog.py usage` and paste its `line` as is. Every session
       that worked on the stage adds one, including one that stops `doing` or

@@ -247,6 +247,33 @@ a person moves the Jira ticket to done.
   top model for the keystone and the one or two design-heavy stages; much
   staged work still lands at `low`/`med` effort, but that is an observation
   about past plans, not a target this one should hit.
+
+  **The tier rubric: what makes two tiers arguable.** First pick the tier the
+  stage would get on its own. Then move it **up one tier** when any one of
+  these holds (one is enough, and several still move it only one tier):
+
+  1. it spans several modules or systems;
+  2. the root cause or the design is not known yet;
+  3. it changes a shared contract: authentication, a data schema, a public
+     API, shared configuration;
+  4. a wrong result is costly or hard to reverse: data, migrations, security;
+  5. its `## Artifacts` name a **risk path**, as defined once in
+     [`references/risk-paths.md`](references/risk-paths.md) (plus any the
+     plan adds on its own `Risk paths:` line).
+
+  One tier up means the next model tier in *Model weight tiers* (Haiku-class
+  to Sonnet-class, Sonnet-class to Opus-class), with the same effort. When the
+  model is already top tier, raise `effort` one level instead (`low`,
+  `medium`, `high`, `xhigh`, `max`, in that order). At the top model and maximum effort, nothing
+  changes. The rubric only ever moves a stage up: there is no matching rule
+  that moves a lookup down to the lightest tier, because that brings back the
+  stall-and-rerun cost this rule exists to avoid. The result is written in the
+  stage index's `model`/`effort` cells, as any other value, and the trigger is
+  named on one `Tier raised:` line under the index (for example
+  `Tier raised: S2 sonnet → opus — trigger 5, deploy/ in its Artifacts`), so
+  a reader can tell a rubric move from a judgement call. That line is prose,
+  not a flag: no tool reads it, and stage files still never restate the
+  flags.
 - `gate: auto` by default. `gate` says whether a stage may be **launched
   unattended** — by an orchestrator session that fires stages back-to-back
   with nobody watching them run (see `references/remote-driver.md`); this flag
@@ -712,6 +739,13 @@ review judges each `outside` line. It is a record, never a gate: touching an
 unlisted file is routine, and a proof of concept can become production inside
 its declared files. Both live in the templates, so a plan scaffolded before
 them carries neither.
+
+**Only the full check is evidence.** A stage's `## Acceptance` may carry an
+optional `Quick check:` line — a fast command to run after each step — above
+its checks labeled `Full check:`. The ledger records the full check's output
+alone, a quick check never counts as passing the stage, and the final review
+ignores quick checks. A stage with no quick check keeps its checks unlabeled
+and behaves exactly as before.
 
 The cheapest drift is the one prevented at bootstrap: an idea too vague to
 state its Done checks, whose checks name nothing observable, or whose

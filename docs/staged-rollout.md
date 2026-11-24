@@ -328,8 +328,13 @@ session and say yes".
 
 It is deliberately narrow:
 
-- **Silent elsewhere.** No `.plan/` at the repo root → the hook prints
-  nothing.
+- **Silent elsewhere.** No `.plan/` at the repo root and no plan branch → the
+  hook prints nothing.
+- **It reads the plan branch.** With exactly one `plan-*` branch (local or
+  `origin/plan-*`), the hook reads the ledger and stage index from that
+  branch, so a stale `.plan/` copy on `main` is never announced. With none it
+  reads the working-tree folder; with several it names them and announces no
+  stage.
 - **It offers, never runs.** Running still goes through the weight check, the
   dependency check and your go-ahead.
 - **Fails silent.** A malformed ledger, missing bash or an ambiguous parse

@@ -163,6 +163,23 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    `main` and its first line names this plan, the programme is already
    accepted: scaffold that plan, propose nothing, and ask nothing.
 
+   **Starting state — a yes/no question in the batch.** Ask whether the plan
+   changes existing code. Recommend the answer the repo shows: **yes** when
+   the plan edits code that is already there and that has checks of its own
+   (tests, linters, type checks, a build), **no** for a new project or a repo
+   with no checks. On **yes**, also list the check commands the repo already
+   runs, read from its CI workflow, its task or test scripts and its README,
+   so the user can correct the list in the same reply; this plugin never adds
+   a check of its own. The answer lands under Frozen decisions as a decision
+   titled **Starting state**, tagged **Decided** (or **Needs you —
+   answered** when the user changed the recommendation), with the command
+   list on yes. On **yes**, step 4 gives S0 a starting-state
+   step; on **no**, nothing below changes. The record is never taken here:
+   bootstrap works on an uncommitted scaffold, and the record belongs to the
+   commit S0 starts from. It is called the **starting state**, never a
+   baseline, so it is not confused with a tool's own baseline file (a secret
+   scanner's, for one).
+
    Then evaluate the plan-review lens triggers (`plan-review.md` › *The four
    lenses*) against the confirmed requirements, and add the resulting lens
    list to the batch: Simplicity always, each other lens with the trigger that
@@ -186,7 +203,11 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    `depends`, the keystone as **S0**, deliberately cheap process flags
    (`direct`, `inline` — escalate only where a stage genuinely warrants it),
    and a `model`/`effort` sized to finish the stage rather than minimised.
-   Then **append the standing `SF: plan review` stage** as the
+   Fill `model`/`effort` by the skill's **tier rubric** (*Flag heuristics*):
+   the tier the stage gets on its own, moved up one tier when any of its five
+   triggers holds, the risk paths among them read from
+   `references/risk-paths.md`; name each move on the index's `Tier raised:`
+   line. Then **append the standing `SF: plan review` stage** as the
    last row (it catalogs loose ends and never implements), scaffolded from
    `stage-f-review.md` — not a copy of `stage-N.md` — since it already bakes
    in the three-outcome checklist and acceptance check.
@@ -198,6 +219,18 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    `stage-decision-carry.md` — not a copy of `stage-N.md`. Its Goal and
    Acceptance are already in the template; the scaffold fills only the
    placeholders. Skip it entirely when the plan will carry `plan-dir: keep`.
+
+   **When step 3's starting-state answer is yes**, S0's first step, before
+   any change, records the starting state, worded in the stage file as:
+   `- [ ] Record the starting state: before changing anything, run each
+   command in Frozen decisions › Starting state on the commit this stage
+   branch starts from, and fill LEDGER.md › S0 › Starting state with the
+   commit, each command's result (pass, fail or skip) and the real output
+   tail. Fix nothing that fails here.` A failure found there is recorded, not
+   repaired: repairing it is a stage of its own, added through the scope
+   referee (`PLAN.md`, *Adding a stage*), or a follow-up. S0's Acceptance
+   gains one check: the *Starting state* block lists every command with a
+   result. On **no**, S0 is scaffolded as before.
 
    **A wait measured in days is not a stage.** A soak period, a quarter-end,
    a vendor's reply — anything the plan would sit idle on for days — is
@@ -385,6 +418,10 @@ ask with the brief (step 8) — plus the commit OK (step 9).
      review` row and every stage's `gate` and `estimate`;
    - the frozen git model and worktree model from step 5, and the complete
      plan flags line it decided (`merge`, `plan-dir` and `final-merge`);
+   - on a starting-state **yes**, the S0 step and Acceptance check from
+     step 4, and the instruction to write, in `LEDGER.md`'s S0 notes block,
+     a `#### Starting state` heading over the line
+     `_(recorded by S0 before its first change)_`; on **no**, neither;
    - the plugin version from `.claude-plugin/plugin.json`, for `RUNNER.md`'s
      scaffold marker.
 

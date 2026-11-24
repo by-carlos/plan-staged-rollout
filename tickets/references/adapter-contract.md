@@ -124,6 +124,7 @@ Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 | `set-fields` | **yes** | Sets fields that the create call cannot carry: GitHub Projects board fields, or Jira fields that are not on the create screen. |
 | `link` | **yes** | Creates links and the parent. It creates the first link, reads it back to confirm the direction, and only then creates the rest. |
 | `comment` | **yes** | Adds a comment, such as the estimate attribution comment, then finds it on the ticket again and compares its text. |
+| `pr-create` | **yes** | GitHub only. Opens a pull request from `--repo`, `--base`, `--head`, `--title` and a `--body-file` the adapter reads as UTF-8, then reads the pull request back and compares title, base, head and body (`VERIFIED` or `FAILED`, with `number` and `url`). Without `--confirm` it prints the payload and posts nothing. It is the body-safe replacement for `gh pr create --body-file`, which `gh-body-guard` denies. |
 | `fetch` | no | Reads one ticket into a Ticket, sections parsed, with its comments as `thread`, for `work-issue`. Sections are parsed only outside `untrusted-evidence` marker blocks; GitHub also returns `author` and `author_is_bot` on the ticket and on each comment. It also returns the AI prompt as `has_ai_prompt`, `ai_prompt` and `ai_prompt_section`. |
 | `transition` | **yes** | Jira only. Moves a ticket to a named status through a workflow transition that leads there, then reads the status back. GitHub's status lives on the board and goes through `set-fields`. |
 | `wait` | no | Jira only. One check of whether a blocking ticket is done, for `work-issue --after`; the session calls it again on each tick. GitHub's wait is a background `gh` loop in the skill. |
@@ -272,7 +273,12 @@ Implemented in `scripts/github_adapter.py`; tests in `tests/`.
   custom fields and would report a correctly set field as empty.
 - **Body guard.** `hooks/gh-body-guard` denies `gh issue|pr create|comment|edit`
   with `--body-file`, `-F` or `--body "@path"`. It fails open: anything it
-  cannot parse is allowed. `gh api` is never touched.
+  cannot parse is allowed. `gh api` is never touched. Its denial names the
+  adapter, and for `gh pr create` the exact `pr-create` command.
+- **`pr-create`** has no repair step: the read-back is a separate GET, and a
+  difference is `FAILED` (exit 2) naming the fields, with the pull request's
+  `number` and `url` so the user can fix it by hand. A failed POST of unknown
+  outcome points at `gh pr list --head <branch> --state open` before posting again.
 - **Board fields** come from the template: `[routing]` picks the board per
   repo and `board_fields` maps each board field name to `priority`, `size` or
   a `[fields]` key. The adapter sets single-select fields only. Where a value

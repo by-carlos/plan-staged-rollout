@@ -548,6 +548,102 @@ class LinkCommentDetectTests(AdapterCase):
         self.assertEqual((code, out["status"]), (4, "not-configured"))
 
 
+PR_BODY = ("## Qu\u00e9 cambia\n\nUses `gh api` \u2014 not \"gh pr create\"; it's body-safe: "
+           "caf\u00e9, \u65e5\u672c\u8a9e, \u2713.\n\n```sh\necho 'quoted' \"double\"\n```\n")
+
+
+class PrCreateTests(AdapterCase):
+    """`pr-create`: the body-safe way to open a stage or final pull request."""
+
+    def setUp(self):
+        super().setUp()
+        self.body = self.tmp / "pr.md"
+        self.body.write_text(PR_BODY, encoding="utf-8")
+
+    def pull(self, **over) -> dict:
+        resp = {"number": 7, "html_url": f"https://github.com/{REPO}/pull/7",
+                "title": "feat: stage 3 \u2014 caf\u00e9", "body": PR_BODY.replace("\n", "\r\n"),
+                "base": {"ref": "plan-demo"}, "head": {"ref": "stage-3-demo"}}
+        resp.update(over)
+        return resp
+
+    def route(self, created=None, read=None):
+        self.fake.on("pulls --method POST", created or self.pull())
+        self.fake.on("repos/example-org/widgets/pulls/7", read or self.pull())
+
+    def run_pr(self, *extra, **over):
+        argv = {"--repo": REPO, "--base": "plan-demo", "--head": "stage-3-demo",
+                "--title": "feat: stage 3 \u2014 caf\u00e9", "--body-file": self.body}
+        argv.update(over)
+        flat = [x for pair in argv.items() for x in pair]
+        return self.run_op("pr-create", *flat, *extra)
+
+    def test_dry_run_prints_the_payload_and_posts_nothing(self):
+        code, out = self.run_pr()
+        self.assertEqual((code, out["status"], out["posted"]), (0, "DRY-RUN", False), out)
+        self.assertEqual(out["payload"], {"title": "feat: stage 3 \u2014 caf\u00e9", "head": "stage-3-demo",
+                                          "base": "plan-demo", "body": PR_BODY})
+        self.assertEqual(self.fake.calls, [])
+
+    def test_roundtrip_with_non_ascii_backticks_and_quotes_is_verified(self):
+        self.route()
+        code, out = self.run_pr("--confirm")
+        self.assertEqual((code, out["status"], out["number"], out["url"]),
+                         (0, "VERIFIED", 7, f"https://github.com/{REPO}/pull/7"), out)
+        self.assertEqual([f["name"] for f in out["fields"]], ["title", "base", "head", "body"])
+        post = self.fake.seen("--method POST")
+        self.assertEqual(len(post), 1)
+        self.assertIn("repos/example-org/widgets/pulls --method POST --input -", " ".join(post[0][0]))
+        sent = post[0][1]
+        sent.encode("ascii")  # what crosses the process boundary is pure ASCII
+        self.assertEqual(json.loads(sent), {"title": "feat: stage 3 \u2014 caf\u00e9", "head": "stage-3-demo",
+                                            "base": "plan-demo", "body": PR_BODY})
+        for banned in ("--body-file", "-F ", "--body @", "pr create"):
+            self.assertFalse(any(banned in " ".join(c[0]) for c in self.fake.calls), banned)
+
+    def test_the_pull_request_is_read_back_with_a_separate_get(self):
+        self.route()
+        self.run_pr("--confirm")
+        self.assertEqual(len(self.fake.seen("repos/example-org/widgets/pulls/7")), 1)
+
+    def test_a_mangled_body_is_failed_not_repaired(self):
+        self.route(read=self.pull(body="@C:/scratch/pr.md"))
+        code, out = self.run_pr("--confirm")
+        self.assertEqual((code, out["status"], out["number"]), (2, "FAILED", 7), out)
+        self.assertIn("body", out["message"])
+        self.assertEqual(self.fake.seen("--method PATCH"), [])
+
+    def test_a_wrong_base_is_failed(self):
+        self.route(read=self.pull(base={"ref": "main"}))
+        code, out = self.run_pr("--confirm")
+        self.assertEqual((code, out["status"]), (2, "FAILED"), out)
+        self.assertIn("base", out["message"])
+
+    def test_denied_write_exits_3_with_the_body_path(self):
+        self.fake.on("pulls --method POST", rc=1, err="gh: Resource not accessible by integration (HTTP 403)")
+        code, out = self.run_pr("--confirm")
+        self.assertEqual(code, 3)
+        self.assertIn(str(self.body), out["message"])
+
+    def test_unknown_outcome_points_at_the_open_pull_request_list(self):
+        self.fake.on("pulls --method POST", rc=1, err="connection reset")
+        code, out = self.run_pr("--confirm")
+        self.assertEqual(code, 2)
+        self.assertIn("gh pr list", out["error"])
+        self.assertIn("stage-3-demo", out["error"])
+
+    def test_unreadable_body_file_posts_nothing(self):
+        code, out = self.run_pr("--confirm", **{"--body-file": self.tmp / "missing.md"})
+        self.assertEqual(code, 1)
+        self.assertIn("cannot read as UTF-8", out["error"])
+        self.assertEqual(self.fake.calls, [])
+
+    def test_a_blank_base_is_refused(self):
+        code, out = self.run_pr("--confirm", **{"--base": " "})
+        self.assertEqual(code, 1)
+        self.assertEqual(self.fake.calls, [])
+
+
 def find_bash() -> str | None:
     for candidate in ("C:/Program Files/Git/bin/bash.exe", "C:/Program Files (x86)/Git/bin/bash.exe"):
         if Path(candidate).exists():
@@ -588,6 +684,24 @@ class HookTests(unittest.TestCase):
         self.assertNotIn("CLAUDE_PLUGIN_ROOT", reason)
         path = re.search(r'python "([^"]+)"', reason).group(1)
         self.assertTrue(Path(path).is_file(), path)
+
+    def reason(self, command: str) -> str:
+        proc = subprocess.run([find_bash(), str(HOOKS / "gh-body-guard")],
+                              input=json.dumps({"tool_input": {"command": command}}),
+                              capture_output=True, text=True, encoding="utf-8", check=False)
+        return json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+
+    def test_pr_create_denial_names_pr_create_with_its_arguments(self):
+        reason = self.reason("gh pr create --base plan-x --title t --body-file b.md")
+        self.assertIn(" pr-create --repo ", reason)
+        for part in ("--base", "--head", "--title", "--body-file", "--confirm"):
+            self.assertIn(part, reason)
+        path = re.search(r'python "([^"]+)"', reason).group(1)
+        self.assertTrue(Path(path).is_file(), path)
+
+    def test_other_pr_denials_name_the_adapter_and_pr_create(self):
+        reason = self.reason("gh pr comment 3 -F b.md")
+        self.assertIn("create|comment|pr-create|repair", reason)
 
     def test_allows_everything_else(self):
         for cmd in ("gh api repos/o/r/issues --input -",

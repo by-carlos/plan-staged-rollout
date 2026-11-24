@@ -186,7 +186,11 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    `depends`, the keystone as **S0**, deliberately cheap process flags
    (`direct`, `inline` — escalate only where a stage genuinely warrants it),
    and a `model`/`effort` sized to finish the stage rather than minimised.
-   Then **append the standing `SF: plan review` stage** as the
+   Fill `model`/`effort` by the skill's **tier rubric** (*Flag heuristics*):
+   the tier the stage gets on its own, moved up one tier when any of its five
+   triggers holds, the risk paths among them read from
+   `references/risk-paths.md`; name each move on the index's `Tier raised:`
+   line. Then **append the standing `SF: plan review` stage** as the
    last row (it catalogs loose ends and never implements), scaffolded from
    `stage-f-review.md` — not a copy of `stage-N.md` — since it already bakes
    in the three-outcome checklist and acceptance check.

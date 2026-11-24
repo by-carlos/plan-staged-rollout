@@ -143,7 +143,11 @@ session still asks, taking the declared value as its recommendation. See the
 which questions have a default and which are hard stops in every mode.
 
 Flag values: `mode` = `direct` \| `brainstorm`; `exec` = `inline` \|
-`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked);
+`subagent(<model>)`; `model`/`effort` = launch hints (checked, not faked),
+filled by the skill's tier rubric (*Flag heuristics*), whose risk paths are
+defined only in the skill's `references/risk-paths.md` — each rubric move is
+named on a `Tier raised:` line under the index, and a plan's own extra risk
+paths on a `Risk paths:` line there, both prose and both left out when empty;
 `gate` = `auto` \| `human` \| `local` \| `live` (may the stage be launched with
 nobody watching? `human` means never — a person's judgment or presence is part
 of the stage itself; `local` means never *by a driver that could be running

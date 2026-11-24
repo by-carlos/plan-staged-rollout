@@ -12,6 +12,16 @@ elsewhere. See 0.4.0 for the split.
 
 ### Added
 
+- **Stages now get their model and effort from a written tier rubric.** The
+  old rule said to take the higher tier when two were arguable but never said
+  what made them arguable. `/plan-stages` now moves a stage up one tier when
+  it spans several modules, its cause or design is unknown, it changes a
+  shared contract, a wrong result is costly to reverse, or its Artifacts name
+  a risk path; the risk paths are defined once in the skill's new
+  `references/risk-paths.md`, and each move is named on a `Tier raised:` line
+  under the stage index. Nothing ever moves a stage down, and existing plans
+  are unchanged.
+
 - **A plan that deletes its folder now gets a decision-carry stage.** When
   `/plan-stages` writes `plan-dir: delete`, it also scaffolds a stage just
   before the final review that maps each frozen decision to a drop, a doc entry

@@ -167,12 +167,16 @@ outcomes are defined in the `staged-rollout` skill's
 |---|---|---|---|---|---|---|---|---|
 | S0 Fetch and state (keystone) | `stage-0-fetch-and-state.md` | — | direct | inline | opus | high | auto | 1.5–3h |
 | S1 Render and post | `stage-1-render-post.md` | S0 | direct | inline | sonnet | medium | auto | 1–2h |
-| S2 Scheduler and runbook | `stage-2-scheduler.md` | S0 | direct | inline | sonnet | medium | local | 1–2h |
+| S2 Scheduler and runbook | `stage-2-scheduler.md` | S0 | direct | inline | opus | medium | local | 1–2h |
 | SF Plan review | `stage-f-review.md` | S1, S2 | direct | inline | opus | high | auto | 0.5–1h |
 
 Plan flags: `merge: manual` · `plan-dir: delete`
 
 Plan estimate: summed 4–8h · elapsed 3–6h
+
+Tier raised: S2 sonnet → opus — tier rubric trigger 5: its `## Artifacts`
+name `deploy/feed-digest.service` and `deploy/feed-digest.timer`, a deploy and
+infrastructure risk path, and a scheduler (concurrency) besides.
 
 This table is the **single authoritative home** for every stage's `depends` /
 `mode` / `exec` / `model` / `effort` / `gate` / `estimate`, and the **plan

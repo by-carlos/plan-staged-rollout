@@ -179,10 +179,12 @@ logic both commands share. `estimate` is a range in hours, judged at
 bootstrap and measured against at finish; the method, including how later
 plans calibrate from earlier actuals, is
 [`references/estimates.md`](references/estimates.md). The plan as
-a whole declares two more, `merge` and `plan-dir`, on the **plan flags** line
-directly under that index — those two are the plan's *declared defaults*, the
-answers an unattended session applies where an interactive one would ask (see
-*Unattended mode*). Stage files never restate any of them. The **process**
+a whole declares three more, `merge`, `plan-dir` and `final-merge`, on the
+**plan flags** line directly under that index — `merge` and `plan-dir` are the
+plan's *declared defaults*, the answers an unattended session applies where an
+interactive one would ask (see *Unattended mode*); `final-merge` is a fact
+bootstrap looked up (how the final PR into the default branch is merged), not a
+default. Stage files never restate any of them. The **process**
 defaults are deliberately cheap — escalate `mode`, `exec` and `gate` only
 where a stage genuinely warrants it. `model`/`effort` are not among them:
 those are sized to finish the stage, not to be minimised (see below).
@@ -245,6 +247,33 @@ a person moves the Jira ticket to done.
   top model for the keystone and the one or two design-heavy stages; much
   staged work still lands at `low`/`med` effort, but that is an observation
   about past plans, not a target this one should hit.
+
+  **The tier rubric: what makes two tiers arguable.** First pick the tier the
+  stage would get on its own. Then move it **up one tier** when any one of
+  these holds (one is enough, and several still move it only one tier):
+
+  1. it spans several modules or systems;
+  2. the root cause or the design is not known yet;
+  3. it changes a shared contract: authentication, a data schema, a public
+     API, shared configuration;
+  4. a wrong result is costly or hard to reverse: data, migrations, security;
+  5. its `## Artifacts` name a **risk path**, as defined once in
+     [`references/risk-paths.md`](references/risk-paths.md) (plus any the
+     plan adds on its own `Risk paths:` line).
+
+  One tier up means the next model tier in *Model weight tiers* (Haiku-class
+  to Sonnet-class, Sonnet-class to Opus-class), with the same effort. When the
+  model is already top tier, raise `effort` one level instead (`low`,
+  `medium`, `high`, `xhigh`, `max`, in that order). At the top model and maximum effort, nothing
+  changes. The rubric only ever moves a stage up: there is no matching rule
+  that moves a lookup down to the lightest tier, because that brings back the
+  stall-and-rerun cost this rule exists to avoid. The result is written in the
+  stage index's `model`/`effort` cells, as any other value, and the trigger is
+  named on one `Tier raised:` line under the index (for example
+  `Tier raised: S2 sonnet → opus — trigger 5, deploy/ in its Artifacts`), so
+  a reader can tell a rubric move from a judgement call. That line is prose,
+  not a flag: no tool reads it, and stage files still never restate the
+  flags.
 - `gate: auto` by default. `gate` says whether a stage may be **launched
   unattended** — by an orchestrator session that fires stages back-to-back
   with nobody watching them run (see `references/remote-driver.md`); this flag
@@ -526,7 +555,7 @@ main
       ├── plan-<slug>-s0 → PR → plan-<slug>   (squash merge)
       ├── plan-<slug>-s1 → PR → plan-<slug>   (squash merge)
       └── ...
-plan-<slug> → final PR → main         ← at closeout (normal merge)
+plan-<slug> → final PR → main         ← at closeout (normal merge; squash if the repo allows no merge commit)
 ```
 
 **`.plan/` must be tracked, and the plan branch must have an upstream.** Both
@@ -565,7 +594,16 @@ Seven frozen semantics:
    the plan branch (one clean commit per stage, no intra-stage churn on the plan
    branch); the final PR from the plan branch into `main` is a **normal
    (non-squash) merge**, so every stage lands on `main` as its own distinct
-   commit and the as-built history survives. **This is the one rule the plan
+   commit and the as-built history survives — **when the repository allows a
+   merge commit**. Bootstrap reads that from the repository's settings and
+   branch rules (`scripts/final_merge.py`) and records it as the plan flag
+   `final-merge: merge` \| `squash` \| `unchecked`: `squash` where no merge
+   commit is allowed (the stage history then stays in the merged stage PRs),
+   `unchecked` where the lookup failed (today's wording, with a note that the
+   method was not checked). A repository allowing only rebase merges, or none,
+   is a stop: bootstrap asks the person rather than guessing. Closeout words
+   the final PR body's merge line from the recorded flag and never from a fixed
+   rule. **Under `merge`, this is the one rule the plan
    cannot enforce**, because it is the one merge no session performs: the
    person merging gets the repo's default merge button, and a default of
    "Squash and merge" collapses every stage into one commit on `main` while
@@ -701,6 +739,13 @@ review judges each `outside` line. It is a record, never a gate: touching an
 unlisted file is routine, and a proof of concept can become production inside
 its declared files. Both live in the templates, so a plan scaffolded before
 them carries neither.
+
+**Only the full check is evidence.** A stage's `## Acceptance` may carry an
+optional `Quick check:` line — a fast command to run after each step — above
+its checks labeled `Full check:`. The ledger records the full check's output
+alone, a quick check never counts as passing the stage, and the final review
+ignores quick checks. A stage with no quick check keeps its checks unlabeled
+and behaves exactly as before.
 
 The cheapest drift is the one prevented at bootstrap: an idea too vague to
 state its Done checks, whose checks name nothing observable, or whose

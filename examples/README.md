@@ -106,6 +106,39 @@ job's code and its own README are not.
 
 All numbers (#3, #5, #41) and hosts are invented.
 
+## [`starting-state/`](starting-state/) — a check that was failing before the plan began
+
+A third toy project — an existing invoice tool getting a CSV export — where
+one test already failed before the plan touched anything. Bootstrap answered
+yes to "does this plan change existing code?", so its Frozen decisions carry
+one line, shown here because `PLAN.md` itself is left out:
+
+> **Starting state** (Decided): the plan changes existing code; S0 records
+> `python -m pytest -q`, `ruff check .` and `python -m pytest -m integration -q`
+> before its first change.
+
+Only the two files that show the record are included:
+[`stage-0-export-model.md`](starting-state/.plan/stage-0-export-model.md)
+(the step that takes it) and [`LEDGER.md`](starting-state/.plan/LEDGER.md)
+(the record, and the stages that read it).
+
+### What to notice
+
+- **The record sits in S0's notes block, never in the table.** The status
+  rows stay one line; the commit, each command's pass, fail or skip, and the
+  real output tail live under S0 › *Starting state*.
+- **A failure found there is recorded, not fixed.** The daylight-saving test
+  fails in code this plan does not touch; S0 names it and moves it to a
+  follow-up instead of repairing it.
+- **Later stages compare, they do not inherit blame.** S0, S1 and S2 each see
+  the same failure, note it `pre-existing (starting state)` and finish. S2's
+  first run also broke a test that had passed in the starting state; that one
+  counted against S2 and was fixed before the stage finished.
+- **A skip says why.** The integration tests need a database the environment
+  does not have, so they are recorded as a skip with the reason, not as a pass.
+
+All numbers (#9, #12–#14), hosts and commits are invented.
+
 ## [`on-the-run/`](on-the-run/) — driving a plan on the cloud
 
 The current design fires each stage as a Claude Code cloud session straight

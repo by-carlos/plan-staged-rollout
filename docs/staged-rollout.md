@@ -328,8 +328,13 @@ session and say yes".
 
 It is deliberately narrow:
 
-- **Silent elsewhere.** No `.plan/` at the repo root → the hook prints
-  nothing.
+- **Silent elsewhere.** No `.plan/` at the repo root and no plan branch → the
+  hook prints nothing.
+- **It reads the plan branch.** With exactly one `plan-*` branch (local or
+  `origin/plan-*`), the hook reads the ledger and stage index from that
+  branch, so a stale `.plan/` copy on `main` is never announced. With none it
+  reads the working-tree folder; with several it names them and announces no
+  stage.
 - **It offers, never runs.** Running still goes through the weight check, the
   dependency check and your go-ahead.
 - **Fails silent.** A malformed ledger, missing bash or an ambiguous parse
@@ -583,7 +588,7 @@ Locally, that means your clone plus one sibling folder per running stage:
 
 | Setting | Value | Why |
 |---|---|---|
-| Allowed merge types | Both squash merging and merge commits | Stage PRs are squashed; the final PR is a merge commit. |
+| Allowed merge types | Both squash merging and merge commits | Stage PRs are squashed; the final PR is a merge commit. A repository that allows only squash merging still works: `/plan-stages` records `final-merge: squash`, and the stage history then stays in the merged stage PRs. |
 | **Default merge button** | **"Create a merge commit"** | No session performs the final merge, so nothing else stops a default "Squash and merge" from collapsing every stage into one commit on `main`. Easiest to hit from a phone, where the dropdown is never opened. |
 | Squash message | "Pull request title and commit details" | |
 | Merge-commit message | "Pull request title and description" | The final PR body lands in the merge commit on `main`. |

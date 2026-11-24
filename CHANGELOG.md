@@ -10,6 +10,16 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Fixed
+
+- **The session-start announcement now reads the plan from the plan branch.**
+  A stale copy of the plan folder left on `main` (or any non-plan branch) made
+  the announcement name a stage that was long done. With exactly one `plan-*`
+  branch (local or `origin/plan-*`) the hook reads the ledger and stage index
+  from it with `git show`; with none it reads the working-tree folder as
+  before; with several it names them and announces no stage. Closeout and the
+  stage commands are unchanged.
+
 ### Added
 
 - **A plan that deletes its folder now gets a decision-carry stage.** When

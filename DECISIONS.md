@@ -281,8 +281,8 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
 - **A hung local driver is caught by a watchdog thread inside the driver,
   never by a second background command or a scheduled wake-up.** Every
   status-file write is the main loop's heartbeat. When it is older than
-  `STALE_SECONDS`, the watchdog prints `STATUS: driver-hung`, stops the stage
-  session in flight and exits, and that exit wakes the orchestrator. Each git
+  `STALE_SECONDS`, the watchdog prints `STATUS: driver-hung`, stops every
+  stage session in flight and exits, and that exit wakes the orchestrator. Each git
   command has a timeout shorter than that limit (`git-timeout`), and
   `driver status` reports a `running` file with a stale heartbeat as gone. —
   a hang costs one wake-up and a healthy run none. Rejected: a separate
@@ -298,10 +298,35 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   branch and ledger row. Stopping the session is left to a person for two
   reasons: the driver cannot tell whether the session is mid-push or
   mid-merge, and a reused process id would make the driver kill an
-  unrelated program. The whole run is refused, not only that stage, because
-  starting another stage would run two at once (#306). Revisit: if the
-  driver can prove a process is the session it started (a start time or a
-  handle), or when stages may run in parallel. Source: #319
+  unrelated program. The whole run is refused, not only that stage, even
+  now that stages run side by side: the driver cannot watch a session it did
+  not start, so it could neither count that session's usage in the ramp-up
+  nor read how it ended. Revisit: if the driver can prove a process is the
+  session it started (a start time or a handle). Source: #319, #306
+- **The local runner launches the runnable set side by side, one fresh
+  session per stage, ramping up by measured usage: at most two before any
+  stage is measured, then one more only while the 5-hour share plus the
+  largest measured jump, once for each stage in flight and once for the
+  next, stays within the gate's 95% ceiling. Starts are a minute apart.
+  When a stage needs a person nothing more starts, the stages in flight run
+  to their end, and the `STATUS:` line names every stop.** — a plan's
+  independent stages took as long one after another as the whole plan, and
+  starting all of them at once would spend the window together and fail
+  together. The jump is measured, never assumed, so an unmeasured stage is
+  never taken as cheap; it counts stages running beside it, so the ramp
+  errs towards fewer. Each session keeps its own worktree, `depends` still
+  orders the runnable set, the driver fires no `live` stage, and each
+  session merges its own PR, so the merges stay one at a time. With several
+  stages stopped at a merge, the orchestrator offers one merge per wake and
+  resumes the rest, so each re-syncs before it merges. Rejected: running
+  the wave as subagents of one session (collapses stages into one, see
+  `SKILL.md` *Parallel stages*); a fixed count with no usage check (fails
+  together); a floor cost for an unmeasured stage (a guess standing in for
+  a measurement); stopping the sessions in flight when one stage stops
+  (their work is real and nearly done). The two-at-once start, the
+  one-minute stagger and the ceiling are starting values. The cloud runner
+  is unchanged. Revisit: if two stage preflights in the shared clone still
+  collide on git, or if the usage stream gives a per-session cost. Source: #306
 - **Never two `live` stages at once: `/stage-run` refuses at start when
   another `live` stage has a branch or worktree open; the session-start hook
   only notes it.** — `live` changes a running system, and the refusal reuses

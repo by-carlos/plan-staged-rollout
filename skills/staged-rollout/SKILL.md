@@ -367,12 +367,17 @@ graph looks — `/stage-run` preflight refuses the second at start):
   drift. Stage IDs are plain numbers in running order, so stages that can run
   side by side carry consecutive numbers; a suffixed ID is read but never
   created.
-- **Report the set; don't launch it.** The deliverable is telling the operator
-  what *can* overlap — every `todo` stage whose `depends` are all `done` or
-  `skipped`, each
+- **Report the set; only the local runner launches it.** The deliverable is
+  telling the operator what *can* overlap — every `todo` stage whose
+  `depends` are all `done` or `skipped`, each
   with its command, recommended model/effort and `gate`. Starting them is the
-  operator's action, one session per stage — or an orchestrator's, firing
-  cloud stages and honouring `gate`. In the desktop app a stage can *offer*
+  operator's action, one session per stage — or an orchestrator's, honouring
+  `gate`: the cloud runner fires the set one stage at a time, and the local
+  runner (`/plan-run-local`) is the one that launches it side by side, one
+  fresh session per stage on this machine. It starts two before anything is
+  measured and adds more only while the usage limit's measured headroom
+  allows (its driver's docstring defines the arithmetic); every rule below
+  still binds it. A stage never launches the set itself. In the desktop app a stage can *offer*
   each one as a suggestion chip, but the click is still the operator's: the
   chip cannot pick its launch mode and can set model and effort only downward
   (if at all, depending on which chip tool the session has), and it exists nowhere

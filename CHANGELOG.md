@@ -12,6 +12,17 @@ elsewhere. See 0.4.0 for the split.
 
 ### Changed
 
+- **`/plan-run-local` now runs independent stages side by side, ramping up
+  by usage.** Stages that don't depend on each other used to run one after
+  another. The driver now starts two at once, a minute apart, and adds more
+  only once the stages it has run show how much of the 5-hour usage limit
+  one stage takes and there is room for another; when usage runs short it
+  starts nothing new and waits for the reset. Each stage still runs in its
+  own worktree, a stage never starts beside one it depends on, and stage PRs
+  still merge into the plan branch one at a time. When one stage needs you,
+  the stages already running finish and the status line names every stage
+  that stopped. `--resume` now takes several stages (`--resume S2,S3`). The
+  cloud runner is unchanged.
 - **`/plan-run-local` now has a tested launch hint for its orchestrator
   session: Sonnet at low effort.** The opening notice used to say this inline
   as an untested guess; it now points to a `## Launch hint` section (the one

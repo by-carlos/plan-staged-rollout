@@ -6,8 +6,9 @@ argument-hint: (no arguments — drives the plan's runnable stages until a perso
 # /plan-run-local — drive the whole plan on this machine
 
 **This is not the single-stage command.** `/plan-run-local` runs **every
-remaining stage** of the plan, one after another, each as its own fresh
-headless Claude Code session on this machine — not in this session. This
+remaining stage** of the plan, several side by side where `depends` allows,
+each as its own fresh headless Claude Code session on this machine — not in
+this session. This
 session is the **orchestrator**: it starts a driver script in the background,
 is woken when the driver needs a person, and acts. To run one stage yourself,
 in this session, use **`/stage-run <N>`**; to run them in the cloud instead,
@@ -42,6 +43,11 @@ Before doing anything else, show this notice and stop for a yes/no answer:
 >   `live` and unknown gates and names them for you. A plan with
 >   `merge: manual` stops at every stage's merge; `merge: auto` runs
 >   hands-off.
+> - **Side by side.** Stages that do not depend on each other run at the
+>   same time, each in its own worktree: two at first, and more only once
+>   the stages already run show there is room in the usage limit. When one
+>   stage needs you, nothing more starts, and the stages already running
+>   finish before the run stops.
 > - **Keep this session open and the machine awake.** The driver is a
 >   background command of this session. You can ask how the plan is going at
 >   any time, here or from your phone through Remote Control.
@@ -56,10 +62,11 @@ Before doing anything else, show this notice and stop for a yes/no answer:
 >   session costs little, so Sonnet at low effort is enough for it (the
 >   *Launch hint* above names it). If this session is on something else,
 >   switch before you answer yes (the model picker in the desktop app, `/model` in a terminal).
->   Before each stage the driver checks the 5-hour usage limit and holds a stage
->   that would likely run past it until the limit resets; a stage cut off by
->   the limit anyway is run again after the reset. Waits of up to 6 hours
->   happen on their own, so they need the machine awake too.
+>   Stages side by side spend the usage limit faster. Before each stage the
+>   driver checks the 5-hour usage limit and holds a stage that would likely
+>   run past it until the limit resets; a stage cut off by the limit anyway
+>   is run again after the reset. Waits of up to 6 hours happen on their
+>   own, so they need the machine awake too.
 >
 > Continue?
 
@@ -104,14 +111,16 @@ only. Work through these steps **in order**:
    each time this command starts the driver.
 
    **Show what will run first:** `driver next` (with the usage flags). Name
-   the stage it would start with its model, effort and gate, any gated
-   stages it lists, and its `usage_gate.line` as it is: the share, the reset
-   and whether the stage starts now or waits for the reset. If it reports
+   the stages in its `start_together` (the ones `run` starts side by side
+   first), each with its model, effort and gate from its `runnable` row,
+   the rest of `runnable` as starting once there is room, any gated stages
+   it lists, and its `usage_gate.line` as it is: the share, the reset and
+   whether the first stage starts now or waits for the reset. If it reports
    `complete`, skip to step 8.
 
 5. **Start the driver** with the Bash tool, `run_in_background: true`:
    `driver run` with the usage flags from step 4 (or `driver run --resume
-   S<N>`, step 6, with the usage read afresh). Say in one line that it is running, which stage it starts on, and that the user can ask for
+   S<N>[,S<M>…]`, step 6, with the usage read afresh). Say in one line that it is running, which stages it starts with, and that the user can ask for
    progress at any time. Then end the turn: the session is woken when the
    driver exits. A wait for a usage reset happens inside the driver and
    wakes nobody. Never start a second driver while one runs; the driver
@@ -119,7 +128,11 @@ only. Work through these steps **in order**:
 
 6. **When woken, read only the driver's last line,** `STATUS: <status> · <message>`.
    Never open a stage's log or transcript: this session's context stays
-   flat for the whole plan. Act on the status:
+   flat for the whole plan. With stages side by side, more than one may
+   need a person: the line's status is the first one found, and each
+   further one follows as ` · also <status>: <message>`. Handle each by its
+   row below, in that order, and tell the user about all of them. Act on
+   the status:
 
    | Status | What to do |
    |---|---|
@@ -129,12 +142,12 @@ only. Work through these steps **in order**:
    | `stage-blocked` | Tell the user which stage blocked and the first line of its runbook (in the message); the full runbook is the stage's `.plan/BLOCKED.md` section or its ledger notes. **If the block is a merge the stage could not make** (a permission ask rule on `gh pr merge` denies it in a headless session), handle it as a merge below. A blocked `SF` describing a fix is the final review asking: the user runs `/stage-run SF` attended. Otherwise step 8. |
    | `stage-stopped` | The stage stopped short of `done` with no block, its row `doing` or its stage branch pushed: most often a `merge: auto` merge that GitHub or a permission rule refused. Handle it as a merge below; with no open PR, report the message and step 8. |
    | `stage-dead` | Report it as the message says, with the stage's session id and log path from `driver status`. Never write the ledger or guess the outcome. Step 8. |
-   | `stage-limited` | A stage session ended on the usage limit and the driver could not wait it out on its own: no reset time could be read, the reset is more than `CLAUDE_STAGE_MAX_WAIT_HOURS` away (a weekly limit), or the stage hit the limit again right after a reset. A limit hit with a readable reset nearer than that never reaches you: the driver waits and runs the stage again. Give the reset time the message names. When the user says to carry on after the reset, go back to step 4 and start the driver with `--resume S<N>`: the stage's fresh session picks up where the cut-off one stopped. Otherwise step 8. |
+   | `stage-limited` | A stage session ended on the usage limit and the driver could not wait it out on its own: no reset time could be read, the reset is more than `CLAUDE_STAGE_MAX_WAIT_HOURS` away (a weekly limit), or the stage hit the limit again right after a reset. A limit hit with a readable reset nearer than that never reaches you: the driver waits and runs the stage again, unless another stage has already stopped the run, which the message then says. Give the reset time the message names. When the user says to carry on after the reset, go back to step 4 and start the driver with `--resume`, naming every stage the line reports limited (`--resume S3,S4`): each stage's fresh session picks up where the cut-off one stopped. Otherwise step 8. |
    | `usage-held` | The usage gate held the next stage and its reset is more than `CLAUDE_STAGE_MAX_WAIT_HOURS` away, too long to wait for on its own. Report the gate's line from the message; a fresh `/plan-run-local` after the reset carries on, since the held stage never started. Step 8. |
    | `launch-mismatch` | The stage session started with a different permission mode, model or effort than asked, and was stopped before any work. For auto mode turned off by managed settings, give the two ways on: allow the stage's commands in the project's settings and set `CLAUDE_STAGE_PERMISSION_MODE=manual` (or `dontAsk`), or run the stages yourself with `/stage-run <N>`. When the message names `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB`, say it is set in the environment this session started from and forces every stage into Manual; whether to change it is the user's call. Never try to get around the setting. Step 8. |
-   | `driver-hung` | The driver's own watchdog found its main loop stuck past the stale limit (5 minutes with no heartbeat), stopped the stage session in flight and exited. Report the step the message names it was on. Never write the ledger or guess how a stopped stage ended: `driver status` shows each stage's state and log path. A fresh `/plan-run-local` carries on; it refuses with `stage-session-alive` if that session would not stop. Step 8. |
-   | `git-timeout` | A git command (most often the fetch before each stage) gave no answer within its time limit. Report the command and the step it names; usually the network or the remote is down. A fresh `/plan-run-local` carries on once git answers again. Step 8. |
-   | `stage-session-alive` | A stage session started by an earlier driver is still running, so no second session was started on its stage and nothing ran. Name the stage and its log path from the message. The driver reports that session and leaves it running. Letting it end or stopping it is the user's call, then a fresh `/plan-run-local`. If its log has stopped growing, the process id may belong to another program now: say so, and never stop a process on that guess. Step 8. |
+   | `driver-hung` | The driver's own watchdog found its main loop stuck past the stale limit (5 minutes with no heartbeat), stopped every stage session in flight and exited. Report the step the message names it was on. Never write the ledger or guess how a stopped stage ended: `driver status` shows each stage's state and log path. A fresh `/plan-run-local` carries on; it refuses with `stage-session-alive` if that session would not stop. Step 8. |
+   | `git-timeout` | A git command (most often the fetch before each stage) gave no answer within its time limit. Report the command and the step it names; usually the network or the remote is down. Stages that were in flight ran to their end without the driver reading their result, and the message names them: never guess how they ended; `driver status` shows each one's log. A fresh `/plan-run-local` carries on once git answers again. Step 8. |
+   | `stage-session-alive` | One or more stage sessions started by an earlier driver are still running, so nothing was started. Name each stage and its log path from the message. The driver reports those sessions and leaves them running. Letting them end or stopping them is the user's call, then a fresh `/plan-run-local`. If a log has stopped growing, the process id may belong to another program now: say so, and never stop a process on that guess. Step 8. |
    | no `STATUS:` line | The driver exited without a status: a crash, or the process was stopped. Report that it ended without a status, with the last lines of its output, and point at `driver status` and the stage's log. Never guess the outcome or write the ledger. `driver status` may read `running` for up to 5 minutes after the exit; its background command has ended, so nothing is running these stages. Step 8. |
    | anything else | `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running`: report the message as it is, with the fix it names. Step 8. |
 
@@ -149,16 +162,29 @@ only. Work through these steps **in order**:
    writes that file, and `plan-close` refuses while it is there. On no,
    report and go to step 8.
 
+   **Several stages stopped at a merge.** Stage PRs merge into the plan
+   branch one at a time (the `staged-rollout` skill's *Parallel stages*):
+   whoever merges second first syncs the plan branch into its stage branch
+   and runs its acceptance check again, and only that stage's session can do
+   that. So offer **one** merge per wake, the oldest open PR, and never merge
+   a second PR straight after it. Then go back to step 5 with `--resume`
+   naming the merged stage **and** every other stage that stopped at its
+   merge (`--resume S2,S3`): the merged one's preflight records `done`, and
+   each of the others re-syncs and re-checks in a fresh session, merging
+   under `merge: auto` or stopping at its merge again for the next wake.
+
    Every status reaches the user's phone through Remote Control's push when
    that is on; write the message so it stands on its own there.
 
 7. **While the driver runs,** answer a progress question from `driver status`
-   alone: the stages finished with their outcome, model and effort, the one
-   in flight, and the gate's last line. A stage waiting for a usage reset
-   shows as waiting until a named time, and starts then on its own. When
-   `driver status` opens with **Driver gone**, the driver crashed or was
-   stopped without a `STATUS:` line. Say so with the last-update time it
-   names and whether the stage session it lists is still running, and handle
+   alone: the stages finished with their outcome, model and effort, every
+   stage in flight, and the gate's last line (beside stages in flight it
+   says whether the next one starts or waits for one to end). A stage
+   waiting for a usage reset shows as waiting until a named time, and starts
+   then on its own. When `driver status` opens with **Driver gone**, the
+   driver crashed or was stopped without a `STATUS:` line. Say so with the
+   last-update time it names and whether each stage session it lists is
+   still running, and handle
    it as the no-`STATUS:` row in step 6. Never tell the user the run is
    still going.
 

@@ -207,7 +207,8 @@ Yes, when neither depends on the other. Each stage works in its own worktree
 on its own branch, so the sessions don't collide. If two touch the same
 files, the second to merge pulls in the first and runs its acceptance check
 again. Open one session per stage; the nudge and every finished stage list
-what can run side by side. See
+what can run side by side. `plan-run-local` does this for you, starting a
+few at once and adding more while your usage limit has room. See
 [Running stages in parallel](staged-rollout.md#running-stages-in-parallel).
 
 ### Can stages run without me at the keyboard?

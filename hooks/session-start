@@ -433,7 +433,7 @@ Offer it to the user but do NOT auto-run it: surface this and wait for their go-
         context="**Active staged rollout in this repo** (\`.plan/\` present). **${#runnable[@]} stages are runnable right now** — their \`depends\` are all satisfied and none of them depends on another, so they can be run **concurrently, one per fresh session**:
 $list
 
-To run every remaining stage from this one session instead, offer \`/plan-staged-rollout:plan-run-local\` (fresh local sessions) or \`/plan-staged-rollout:plan-run-cloud\` (cloud sessions, may use additional credits). Surface all of them to the user and wait for their go-ahead — do NOT auto-run any. Running more than one at a time is the user's action, one session per stage; you cannot launch independent sessions from here. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
+To run every remaining stage from this one session instead, offer \`/plan-staged-rollout:plan-run-local\` (fresh local sessions) or \`/plan-staged-rollout:plan-run-cloud\` (cloud sessions, may use additional credits). Surface all of them to the user and wait for their go-ahead — do NOT auto-run any. Apart from plan-run-local, which runs independent stages side by side, running more than one at a time is the user's action, one session per stage; you cannot launch independent sessions from here. The weight check, dependency gate, and operating protocol in \`.plan/PLAN.md\` still govern execution."
     else
         local open=0 st
         for st in "${ledger_statuses[@]}"; do

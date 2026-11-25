@@ -227,9 +227,11 @@ class Flags(unittest.TestCase):
             prl.effort_flag("extreme")
 
     def test_settings_defaults(self):
-        conf = prl.settings({})
+        with mock.patch.object(prl.os, "cpu_count", lambda: 4):
+            conf = prl.settings({})
         self.assertEqual(conf, {"launcher": "claude", "mode": "auto", "idle_seconds": 900.0,
-                                "max_wait_seconds": 21600.0, "budget": "", "scrub": False})
+                                "max_wait_seconds": 21600.0, "budget": "", "scrub": False,
+                                "max_parallel": 2, "max_parallel_from": "half of 4 cores"})
         self.assertEqual(prl.settings({"CLAUDE_STAGE_MAX_WAIT_HOURS": "0"})["max_wait_seconds"], 0)
         self.assertTrue(prl.settings({"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"})["scrub"])
         self.assertFalse(prl.settings({"CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "0"})["scrub"])
@@ -467,6 +469,74 @@ class RampUp(unittest.TestCase):
                                                        None, ["S1"], False))
 
 
+class RoomCheck(unittest.TestCase):
+    need = prl.STAGE_SESSION_MB * prl.MEMORY_MARGIN
+
+    def test_the_first_stage_is_never_held(self):
+        self.assertTrue(prl.room_allows(0.0, 0, 1))
+        self.assertTrue(prl.room_allows(None, 0, 1))
+
+    def test_hold_arithmetic(self):
+        self.assertTrue(prl.room_allows(self.need, 1, 4))         # exactly enough
+        self.assertFalse(prl.room_allows(self.need - 1, 1, 4))
+        self.assertTrue(prl.room_allows(self.need * 10, 3, 4))
+
+    def test_the_cap(self):
+        self.assertFalse(prl.room_allows(1e9, 4, 4))
+        self.assertFalse(prl.room_allows(1e9, 1, 1))
+        self.assertTrue(prl.room_allows(1e9, 3, 4))
+
+    def test_unreadable_memory_leaves_the_cap_alone(self):
+        self.assertTrue(prl.room_allows(None, 1, 2))
+        self.assertFalse(prl.room_allows(None, 2, 2))
+
+    def test_default_cap_is_half_the_cores(self):
+        self.assertEqual([prl.default_parallel(n) for n in (None, 1, 2, 3, 4, 16)], [1, 1, 1, 1, 2, 8])
+
+    def test_room_line(self):
+        line = prl.room_line("S3", 5000.0, ["S1", "S2"], 4, "half of 8 cores", True)
+        self.assertIn("2 in flight (S1, S2); at most 4 at once (half of 8 cores); 5,000 MB free against", line)
+        self.assertTrue(line.endswith("S3 starts beside them"))
+        line = prl.room_line("S3", None, ["S1", "S2"], 2, "CLAUDE_STAGE_MAX_PARALLEL", False)
+        self.assertIn("free memory could not be read, so the cap alone decides", line)
+        self.assertIn("S3 is held for resources (the cap is reached)", line)
+        self.assertIn("never held", prl.room_line("S1", 10.0, [], 1, "x", True))
+
+    def test_meminfo(self):
+        text = "MemTotal:       16303428 kB\nMemFree:         1042384 kB\nMemAvailable:    8388608 kB\n"
+        self.assertEqual(prl.parse_meminfo(text), 8192.0)
+        self.assertIsNone(prl.parse_meminfo("MemTotal: 1 kB\nMemFree: 1 kB\n"))
+
+    def test_vm_stat(self):
+        text = ("Mach Virtual Memory Statistics: (page size of 16384 bytes)\n"
+                "Pages free:                               32768.\n"
+                "Pages active:                            500000.\n"
+                "Pages inactive:                           16384.\n"
+                "Pages speculative:                        16384.\n")
+        self.assertEqual(prl.parse_vm_stat(text), 1024.0)
+        self.assertIsNone(prl.parse_vm_stat("no statistics"))
+
+    def test_an_unreadable_platform_reads_none(self):
+        with mock.patch.object(prl.sys, "platform", "sunos5"):
+            self.assertIsNone(prl.free_memory_mb())
+        with mock.patch.object(prl.sys, "platform", "linux"), \
+                mock.patch.object(prl.Path, "read_text", side_effect=OSError("no /proc")):
+            self.assertIsNone(prl.free_memory_mb())
+
+    def test_this_machine_reads_a_number_or_none(self):
+        free = prl.free_memory_mb()
+        self.assertTrue(free is None or free > 0, free)
+
+    def test_the_setting(self):
+        self.assertEqual(prl.settings({"CLAUDE_STAGE_MAX_PARALLEL": "3"})["max_parallel"], 3)
+        with mock.patch.object(prl.os, "cpu_count", lambda: 6):
+            conf = prl.settings({})
+        self.assertEqual((conf["max_parallel"], conf["max_parallel_from"]), (3, "half of 6 cores"))
+        for bad in ("0", "-2", "x", "2.5", "²"):
+            with self.assertRaises(prl.PlanError, msg=bad):
+                prl.settings({"CLAUDE_STAGE_MAX_PARALLEL": bad})
+
+
 class FakeClock:
     """The driver's clock and sleep: sleeping moves time on at once."""
 
@@ -607,17 +677,20 @@ class LoopBase(unittest.TestCase):
     def git(self, *args):
         subprocess.run(["git", "-C", str(self.repo), *args], check=True, capture_output=True)
 
-    def drive(self, env=None, resume=None, usage=None, clock=None, stagger=0):
+    def drive(self, env=None, resume=None, usage=None, clock=None, stagger=0, free=64_000.0):
+        """`free` is the free memory the driver reads, in MB (None: unreadable);
+        the cap defaults high so the machine running the tests decides nothing."""
         config = Path(self.tmp.name).parent / f"fake_config_{os.getpid()}_{id(self)}"
         self.addCleanup(lambda: __import__("shutil").rmtree(config, ignore_errors=True))
         env = {"FAKE_MODE": "done", "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "",
                "CLAUDE_CONFIG_DIR": str(config), "FAKE_COUNTER": str(config / "hits"),
-               "FAKE_TRACE": str(config / "trace"), **(env or {})}
+               "FAKE_TRACE": str(config / "trace"), "CLAUDE_STAGE_MAX_PARALLEL": "8", **(env or {})}
         config.mkdir(exist_ok=True)
         with mock.patch.dict(os.environ, env):
             driver = prl.Driver(self.repo, dict(os.environ), usage=usage,
                                 launcher_argv=[sys.executable, str(self.fake)], grace_seconds=0)
             driver.stagger = stagger
+            driver.free_memory = lambda: free
             if clock:
                 driver.clock, driver.sleep = clock.time, clock.sleep
             line = driver.run(resume=resume)
@@ -1128,19 +1201,67 @@ class ParallelLoop(LoopBase):
         self.assertIn(60, clock.slept)
         self.assertLess(self.span("S2")[1], self.span("S1")[2])
 
+    def next_out(self, *args, cap="8", free=64_000.0):
+        with mock.patch.dict(os.environ, {"CLAUDE_STAGE_MAX_PARALLEL": cap}), \
+                mock.patch.object(prl, "free_memory_mb", lambda: free), \
+                contextlib.redirect_stdout(out := io.StringIO()):
+            prl.main(["next", "--repo", str(self.repo), *args])
+        return json.loads(out.getvalue())
+
     def test_next_names_the_stages_that_start_together(self):
-        out = io.StringIO()
-        with contextlib.redirect_stdout(out):
-            prl.main(["next", "--repo", str(self.repo)])
-        data = json.loads(out.getvalue())
+        data = self.next_out()
         self.assertEqual([s["id"] for s in data["runnable"]], ["S1", "S2", "S3", "S4"])
         self.assertEqual((data["runnable"][2]["model"], data["runnable"][2]["gate"]), ("sonnet", "local"))
         self.assertEqual(data["start_together"], ["S1", "S2"])
         self.assertEqual(data["stage"]["id"], "S1")
+        data = self.next_out("--usage-percent", "92", "--usage-resets-at", str(int(prl.time.time()) + 3600))
+        self.assertEqual(data["start_together"], [])
+
+    def test_next_keeps_to_the_cap_and_the_memory(self):
+        data = self.next_out(cap="1")
+        self.assertEqual(data["start_together"], ["S1"])
+        self.assertEqual(data["resources"], {"free_mb": 64000, "max_parallel": 1,
+                                             "from": "CLAUDE_STAGE_MAX_PARALLEL"})
+        self.assertEqual(self.next_out(free=100.0)["start_together"], ["S1"])
+        self.assertEqual(self.next_out(free=None)["start_together"], ["S1", "S2"])
+
+    def test_the_cap_runs_stages_one_at_a_time(self):
+        line, state = self.drive({"CLAUDE_STAGE_MAX_PARALLEL": "1", "FAKE_SLEEP": json.dumps({"S1": 1})})
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+        self.assertEqual(self.most_at_once(), 1)
+        self.assertEqual(len(state["stages"]), 5)
+        self.assertEqual(state["settings"]["max_parallel"], 1)
+        self.assertIn("at most 1 at once (CLAUDE_STAGE_MAX_PARALLEL)", state["resources"]["line"])
+
+    def test_short_memory_holds_a_start_until_a_stage_ends(self):
+        line, state = self.drive({"FAKE_SLEEP": json.dumps({"S1": 1})}, free=500.0)
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+        self.assertEqual(self.most_at_once(), 1)
+        self.assertGreaterEqual(self.span("S2")[1], self.span("S1")[2])
+
+    def test_unreadable_memory_leaves_the_cap_to_decide(self):
+        line, state = self.drive({"CLAUDE_STAGE_MAX_PARALLEL": "2", "FAKE_AWAIT": json.dumps({"S1": "S2"}),
+                                  "FAKE_SLEEP": json.dumps({"S2": 3})}, free=None)
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+        self.assertLess(self.span("S2")[1], self.span("S1")[2], "S1 and S2 did not run side by side")
+        self.assertEqual(self.most_at_once(), 2)
+        self.assertIsNone(state["resources"]["free_mb"])
+
+    def test_status_names_a_start_held_for_resources(self):
+        self.drive({"CLAUDE_STAGE_MAX_PARALLEL": "1"})
+        state = prl.read_json(prl.state_dir(self.repo, "plan-demo") / "status.json")
+        state["resources"] = {"line": prl.room_line("S2", 500.0, ["S1"], 2, "half of 4 cores", False)}
+        prl.write_json(prl.state_dir(self.repo, "plan-demo") / "status.json", state)
         with contextlib.redirect_stdout(out := io.StringIO()):
-            prl.main(["next", "--repo", str(self.repo), "--usage-percent", "92",
-                      "--usage-resets-at", str(int(prl.time.time()) + 3600)])
-        self.assertEqual(json.loads(out.getvalue())["start_together"], [])
+            prl.main(["status", "--repo", str(self.repo)])
+        self.assertIn("last resources: 1 in flight (S1); at most 2 at once (half of 4 cores); 500 MB free",
+                      out.getvalue())
+        self.assertIn("S2 is held for resources (memory is short)", out.getvalue())
+
+    def test_a_bad_cap_stops_the_run(self):
+        for value in ("0", "two", "-1", "1.5"):
+            line, _ = self.drive({"CLAUDE_STAGE_MAX_PARALLEL": value})
+            self.assertTrue(line.startswith("STATUS: bad-setting · CLAUDE_STAGE_MAX_PARALLEL"), (value, line))
 
 
 if __name__ == "__main__":

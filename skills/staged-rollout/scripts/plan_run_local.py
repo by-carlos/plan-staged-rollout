@@ -32,6 +32,14 @@ the stages in flight run to their end and the STATUS line names each stop.
 Each session merges its own stage PR into the plan branch, so the merges
 stay one at a time as the skill's Parallel stages section says.
 
+The machine's room. Beside stages in flight, one more also starts only while
+fewer than CLAUDE_STAGE_MAX_PARALLEL are running and, when free memory can be
+read (Windows GlobalMemoryStatusEx, Linux /proc/meminfo, macOS vm_stat), at
+least STAGE_SESSION_MB × MEMORY_MARGIN is free. When it cannot be read, the
+cap alone decides. A start held for room waits for a stage to end; the first
+stage is never held, and a running stage is never stopped to make room. CPU
+load is not read: the core count only sets the cap's default.
+
 A dead or hung driver. Every status-file write is the main loop's
 heartbeat, refreshed at least every HEARTBEAT_SECONDS while stages run or
 during a wait. A watchdog thread reads it: when it is older than
@@ -87,6 +95,9 @@ Settings, from the environment:
   CLAUDE_STAGE_MAX_BUDGET_USD   Passed as `--max-budget-usd`. Unset: no cap.
   CLAUDE_STAGE_MAX_WAIT_HOURS   The longest the driver waits for a usage
                                 reset before stopping for a person. Default 6.
+  CLAUDE_STAGE_MAX_PARALLEL     The most stages in flight at once, a whole
+                                number from 1. Default half the cores, at
+                                least 1. `1` runs stages one at a time.
 
 The status file and the logs live outside `.plan/`, in the clone's git
 directory: `<git common dir>/plan-run-local/<plan slug>/`.
@@ -146,6 +157,14 @@ LIMIT_RETRIES = 1       # runs of one stage straight after a limit reset before 
 # keeps their preflights' git commands in the shared clone from overlapping.
 START_AT_ONCE = 2       # stages in flight before any stage's usage is measured
 START_STAGGER_SECONDS = 60  # between two starts while a stage is in flight
+# The room check. STAGE_SESSION_MB is one stage session's measured peak: the
+# `claude` process and every process under it. The margin covers sessions in
+# flight that have not reached their peak yet, since free memory is read as
+# they stand now. Measured on Windows over six Sonnet stage sessions
+# (#321): private bytes peaked at 529 MB, working set at 423 MB, summed
+# over the process tree; rounded up to 600.
+STAGE_SESSION_MB = 600   # one stage session's peak memory, measured
+MEMORY_MARGIN = 1.5      # free memory needed before a start: STAGE_SESSION_MB × this
 
 
 class PlanError(Exception):
@@ -471,6 +490,93 @@ def ramp_line(stage_id: str, reading: dict | None, jump: float | None,
     return f"usage gate: {used}; {flight}; {rule}: {verdict}"
 
 
+# --- the machine's room -------------------------------------------------------
+
+def parse_meminfo(text: str) -> float | None:
+    """`/proc/meminfo`'s MemAvailable, in MB."""
+    m = re.search(r"^MemAvailable:\s+(\d+)\s*kB", text, re.M)
+    return int(m.group(1)) / 1024 if m else None
+
+
+def parse_vm_stat(text: str) -> float | None:
+    """macOS `vm_stat`: free, inactive and speculative pages, in MB."""
+    size = re.search(r"page size of (\d+) bytes", text)
+    pages = [re.search(rf"^Pages {name}:\s+(\d+)", text, re.M) for name in ("free", "inactive", "speculative")]
+    if not size or not pages[0]:
+        return None
+    return sum(int(m.group(1)) for m in pages if m) * int(size.group(1)) / 2**20
+
+
+def free_memory_windows() -> float | None:
+    import ctypes
+
+    class MemoryStatus(ctypes.Structure):
+        _fields_ = [("dwLength", ctypes.c_ulong), ("dwMemoryLoad", ctypes.c_ulong),
+                    *((name, ctypes.c_ulonglong) for name in (
+                        "ullTotalPhys", "ullAvailPhys", "ullTotalPageFile", "ullAvailPageFile",
+                        "ullTotalVirtual", "ullAvailVirtual", "ullAvailExtendedVirtual"))]
+
+    status = MemoryStatus()
+    status.dwLength = ctypes.sizeof(MemoryStatus)
+    if not ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(status)):
+        return None
+    return status.ullAvailPhys / 2**20
+
+
+def free_memory_mb() -> float | None:
+    """Free physical memory in MB, read from the platform; None when it
+    cannot be read, and then the cap alone decides."""
+    try:
+        if sys.platform == "win32":
+            return free_memory_windows()
+        if sys.platform.startswith("linux"):
+            return parse_meminfo(Path("/proc/meminfo").read_text(encoding="ascii", errors="replace"))
+        if sys.platform == "darwin":
+            out = subprocess.run(["vm_stat"], capture_output=True, text=True, timeout=10)
+            return parse_vm_stat(out.stdout) if out.returncode == 0 else None
+    except (OSError, ValueError, AttributeError, subprocess.SubprocessError):
+        return None
+    return None
+
+
+def default_parallel(cores: int | None) -> int:
+    """The cap when CLAUDE_STAGE_MAX_PARALLEL is unset: half the cores, at least one."""
+    return max(1, (cores or 1) // 2)
+
+
+def room_allows(free_mb: float | None, in_flight: int, cap: int) -> bool:
+    """May one more stage start beside `in_flight` running ones, for the
+    machine? The first stage is never held: with nothing in flight the run
+    goes on as a serial run would. Beside running stages: under the cap, and
+    with STAGE_SESSION_MB × MEMORY_MARGIN free when free memory can be read."""
+    if in_flight == 0:
+        return True
+    if in_flight >= cap:
+        return False
+    return free_mb is None or free_mb >= STAGE_SESSION_MB * MEMORY_MARGIN
+
+
+def room_line(stage_id: str, free_mb: float | None, running: list[str], cap: int,
+              cap_from: str, allowed: bool) -> str:
+    """The room check's one-line verdict, as the status file gives it."""
+    flight = f"{len(running)} in flight ({', '.join(running)})" if running else "nothing in flight"
+    need = STAGE_SESSION_MB * MEMORY_MARGIN
+    if free_mb is None:
+        memory = "free memory could not be read, so the cap alone decides"
+    else:
+        memory = (f"{free_mb:,.0f} MB free against {need:,.0f} MB needed "
+                  f"({STAGE_SESSION_MB:,} MB a stage session × {MEMORY_MARGIN:g})")
+    rule = f"at most {cap} at once ({cap_from})"
+    if not running:
+        verdict = f"{stage_id} starts (the first stage is never held for room)"
+    elif allowed:
+        verdict = f"{stage_id} starts beside them"
+    else:
+        short = "the cap is reached" if len(running) >= cap else "memory is short"
+        verdict = f"{stage_id} is held for resources ({short}) and waits for a stage to end"
+    return f"resources: {flight}; {rule}; {memory}: {verdict}"
+
+
 def clock_text(epoch: float | None) -> str:
     if epoch is None:
         return "an unknown time"
@@ -540,7 +646,18 @@ def settings(env: dict) -> dict:
         raise PlanError("CLAUDE_STAGE_IDLE_MINUTES must be a positive number, "
                         "CLAUDE_STAGE_MAX_WAIT_HOURS zero or more and "
                         "CLAUDE_STAGE_MAX_BUDGET_USD a number") from None
+    parallel = env.get("CLAUDE_STAGE_MAX_PARALLEL", "").strip()
+    if parallel:
+        if not (parallel.isascii() and parallel.isdigit()) or int(parallel) < 1:
+            raise PlanError(f"CLAUDE_STAGE_MAX_PARALLEL={parallel!r}: give a whole number, 1 or more")
+        cap, cap_from = int(parallel), "CLAUDE_STAGE_MAX_PARALLEL"
+    else:
+        cores = os.cpu_count()
+        cap = default_parallel(cores)
+        cap_from = f"half of {cores} cores" if cores else "the core count could not be read"
     return {
+        "max_parallel": cap,
+        "max_parallel_from": cap_from,
         "launcher": env.get("CLAUDE_STAGE_LAUNCHER", "").strip() or "claude",
         "mode": mode,
         "idle_seconds": idle_min * 60,
@@ -896,6 +1013,7 @@ class Driver:
         self.clock = time.time    # replaced in tests, with `sleep`
         self.sleep = time.sleep
         self.stagger = START_STAGGER_SECONDS
+        self.free_memory = free_memory_mb  # replaced in tests
         # Stages in flight: id -> {"stage", "record", "proc", "heads", "before", "start"}.
         # Their sessions are watched in threads that only read the stream;
         # every git command and every decision stays on the main loop.
@@ -1114,6 +1232,20 @@ class Driver:
         self.save()
         return allowed
 
+    def room(self, stage: dict, conf: dict) -> bool:
+        """May `stage` start now, for the machine's memory and the cap?
+        Records the line. A running stage is never stopped to make room."""
+        running = list(self.running)
+        free = self.free_memory()
+        cap = conf["max_parallel"]
+        allowed = room_allows(free, len(running), cap)
+        self.state["resources"] = {
+            "free_mb": None if free is None else round(free), "max_parallel": cap,
+            "held": not allowed, "line": room_line(stage["id"], free, running, cap,
+                                                   conf["max_parallel_from"], allowed)}
+        self.save()
+        return allowed
+
     def measure(self, record: dict, start: dict | None, ran: dict) -> None:
         """Fold a finished stage's readings into the gate's state. The
         reading itself is kept current by `saw_window` as lines arrive."""
@@ -1207,6 +1339,8 @@ class Driver:
         self.state["settings"]["idle_minutes"] = conf["idle_seconds"] / 60
         self.state["settings"]["max_wait_hours"] = conf["max_wait_seconds"] / 3600
         self.state["settings"]["start_at_once"] = START_AT_ONCE
+        self.state["settings"]["stage_session_mb"] = STAGE_SESSION_MB
+        self.state["settings"]["memory_margin"] = MEMORY_MARGIN
         self.state["usage"] = {"seeded": self.reading, "seen": False}
         self.note_usage()
         self.step("checking the launcher's version and login")
@@ -1276,8 +1410,10 @@ class Driver:
             except PlanError as e:
                 self.halt("bad-index", f"{stage['id']}: {e}", stage=stage["id"])
                 continue
+            roomy = self.room(stage, conf)
             if self.running:
-                if not self.ramp(stage):
+                usable = self.ramp(stage)  # both are recorded, so `driver status` names either hold
+                if not (roomy and usable):
                     self.finished.put(self.wait_any())
                     continue
                 if self.last_start is not None and self.clock() < self.last_start + self.stagger:
@@ -1457,16 +1593,21 @@ def cmd_next(args: argparse.Namespace) -> int:
         usage = {"percent": 0.0, "resets_at": None}
     out = {"plan_branch": branch, "gated": pick["gated"], "waiting": pick["waiting"],
            "complete": pick["complete"], "runnable": pick["runnable"],
-           "start_together": [], "stage": None, "command": None, "usage_gate": None}
+           "start_together": [], "stage": None, "command": None, "usage_gate": None,
+           "resources": None}
     if pick["stage"]:
         out["stage"] = pick["stage"]
         out["command"] = stage_command([conf["launcher"]], pick["stage"], conf)
         hold = gate_holds(usage and usage["percent"], None)
         out["usage_gate"] = {"hold": hold, "line": gate_line(pick["stage"]["id"], usage, None, hold)}
+        free = free_memory_mb()
+        out["resources"] = {"free_mb": None if free is None else round(free),
+                            "max_parallel": conf["max_parallel"], "from": conf["max_parallel_from"]}
         together: list[dict] = []
         while not hold:  # nothing is measured before the run, so the ramp-up's opening step
             stage = next_to_start(pick["runnable"], together)
-            if stage is None or not ramp_allows(usage and usage["percent"], None, len(together)):
+            if (stage is None or not ramp_allows(usage and usage["percent"], None, len(together))
+                    or not room_allows(free, len(together), conf["max_parallel"])):
                 break
             together.append(stage)
         out["start_together"] = [s["id"] for s in together]
@@ -1512,6 +1653,9 @@ def cmd_status(args: argparse.Namespace) -> int:
     gate = (state.get("usage") or {}).get("gate")
     if gate:
         lines.append(f"  last {gate}")
+    room = (state.get("resources") or {}).get("line")
+    if room:
+        lines.append(f"  last {room}")
     if state.get("line"):
         lines.append(state["line"])
     print("\n".join(lines))

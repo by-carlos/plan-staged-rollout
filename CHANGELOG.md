@@ -23,6 +23,15 @@ elsewhere. See 0.4.0 for the split.
   the stages already running finish and the status line names every stage
   that stopped. `--resume` now takes several stages (`--resume S2,S3`). The
   cloud runner is unchanged.
+- **`/plan-run-local` now also checks that this machine has room before it
+  starts another stage beside running ones.** Each stage is a full session,
+  so a laptop could run short of memory before the usage limit filled. The
+  driver now starts one more only while there is free memory for another
+  stage session and fewer stages are running than a cap. The new
+  `CLAUDE_STAGE_MAX_PARALLEL` setting sets the cap (default half your
+  cores; `1` runs stages one at a time). `driver status` shows a held
+  start, the free memory it read and the cap. A running stage is never
+  stopped, and nothing new needs installing.
 - **`/plan-run-local` now has a tested launch hint for its orchestrator
   session: Sonnet at low effort.** The opening notice used to say this inline
   as an untested guess; it now points to a `## Launch hint` section (the one

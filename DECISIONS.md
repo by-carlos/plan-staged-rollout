@@ -251,12 +251,12 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
 - **The local runner's settings are environment variables
   (`CLAUDE_STAGE_LAUNCHER`, `CLAUDE_STAGE_PERMISSION_MODE`,
   `CLAUDE_STAGE_IDLE_MINUTES`, `CLAUDE_STAGE_MAX_BUDGET_USD`,
-  `CLAUDE_STAGE_MAX_WAIT_HOURS`); the launcher is
+  `CLAUDE_STAGE_MAX_WAIT_HOURS`, `CLAUDE_STAGE_MAX_PARALLEL`); the launcher is
   one executable with no arguments, and the plugin never reads a secret.** —
   no shell-quoting rules that differ between PowerShell and POSIX, and a login
   wrapper stays the user's. No dollar cap by default, in line with the
   tokens-only usage rule. Revisit: if the plugin gains a settings file.
-  Source: #266, #305
+  Source: #266, #305, #321
 - **The local runner's usage gate reads the 5-hour share from each stage
   session's own stream-json `rate_limit_event` lines, seeded for the first
   stage by the orchestrator from the desktop app's `get_usage`; it holds a
@@ -327,6 +327,25 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   one-minute stagger and the ceiling are starting values. The cloud runner
   is unchanged. Revisit: if two stage preflights in the shared clone still
   collide on git, or if the usage stream gives a per-session cost. Source: #306
+- **Beside the usage ramp-up, the local runner also holds a start for the
+  machine's room: fewer than `CLAUDE_STAGE_MAX_PARALLEL` stages in flight
+  (default half the cores, at least one), and, where free memory can be read
+  with the standard library (Windows `GlobalMemoryStatusEx`, Linux
+  `/proc/meminfo`, macOS `vm_stat`), one stage session's measured peak
+  (`STAGE_SESSION_MB`) times `MEMORY_MARGIN` free. Where it cannot be read,
+  the cap alone decides. The first stage is never held, a held start waits
+  for a stage to end, and a running stage is never stopped.** — a laptop can
+  run out of memory before the usage window fills, and the stages then fail
+  in ways that look like their own bugs. Free memory is read as sessions in
+  flight stand now, so the margin covers the ones still growing towards
+  their peak. Rejected: a fixed cap only (too many on a laptop, too few on
+  a workstation); `psutil` (reverses the standard-library rule and adds an
+  install step); reading CPU load and stopping stages that worsen it (a
+  stopped stage wastes the usage it spent, and Windows gives the standard
+  library no load reading). The peak, the margin and the half-the-cores
+  default are starting values. Revisit: if a run still runs out of memory
+  with the check on, or if stage sessions grow well past the measured peak.
+  Source: #321
 - **Never two `live` stages at once: `/stage-run` refuses at start when
   another `live` stage has a branch or worktree open; the session-start hook
   only notes it.** — `live` changes a running system, and the refusal reuses

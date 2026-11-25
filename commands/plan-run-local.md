@@ -67,6 +67,11 @@ Before doing anything else, show this notice and stop for a yes/no answer:
 >   run past it until the limit resets; a stage cut off by the limit anyway
 >   is run again after the reset. Waits of up to 6 hours happen on their
 >   own, so they need the machine awake too.
+> - **This machine's room.** Each stage is a full session with its own copy
+>   of the code. The driver starts another stage beside running ones only
+>   while there is free memory for it and fewer than half your cores' worth
+>   are running; `CLAUDE_STAGE_MAX_PARALLEL` sets that cap (`1` runs stages
+>   one at a time). A held start waits for a stage to end.
 >
 > Continue?
 

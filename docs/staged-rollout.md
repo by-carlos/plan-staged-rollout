@@ -382,7 +382,7 @@ background and then waits; it does not run any stage itself, and it never
 reads a stage's output, so it stays cheap all plan long (the command's launch
 hint names the model and effort to start it on).
 
-[![How plan-run-local runs a plan: this session starts a background driver, which runs each runnable stage as a fresh local session at its own model and effort, reads the ledger after each, and wakes the session only when a person is needed.](diagrams/plan-run-local.svg)](diagrams/plan-run-local.svg)
+[![How plan-run-local runs a plan: this session starts a background driver, which runs each runnable stage as a fresh local session at its own model and effort, reads the ledger after each, wakes the session to pass on each progress ping, and again when a person is needed.](diagrams/plan-run-local.svg)](diagrams/plan-run-local.svg)
 
 - **What it runs:** stages whose `gate` is `auto`, absent or `local`, each at
   the model and effort its stage index row books. `human`, `live` and unknown

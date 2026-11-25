@@ -10,7 +10,8 @@ remaining stage** of the plan, several side by side where `depends` allows,
 each as its own fresh headless Claude Code session on this machine — not in
 this session. This
 session is the **orchestrator**: it starts a driver script in the background,
-is woken when the driver needs a person, and acts. To run one stage yourself,
+passes on its progress pings, and acts when the driver needs a person. To run
+one stage yourself,
 in this session, use **`/stage-run <N>`**; to run them in the cloud instead,
 **`/plan-run-cloud`**.
 

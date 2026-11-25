@@ -99,11 +99,12 @@ Raise a stage above the defaults only where it needs it:
 
 `plan-run-local` starts a driver,
 [`plan_run_local.py`](../skills/staged-rollout/scripts/plan_run_local.py),
-in the background of the session you run it from. The driver runs one stage
-at a time as `claude -p "/plan-staged-rollout:stage-run <N> --unattended
+in the background of the session you run it from. The driver runs each
+stage as `claude -p "/plan-staged-rollout:stage-run <N> --unattended
 --runner local"`, at the `model` and `effort` the stage index books
-(`med` becomes `medium`), and exits with one `STATUS:` line when a person is
-needed. It needs Claude Code 2.1.268 or later and Python 3.
+(`med` becomes `medium`), several side by side where `depends` allows, and
+exits with one `STATUS:` line when a person is needed. It needs Claude Code
+2.1.268 or later and Python 3.
 
 | Setting (environment) | Default | What it does |
 |---|---|---|
@@ -123,10 +124,22 @@ usage card seeds it for the first stage (`run --usage-percent P
 same way and run again, which picks up where it stopped. Where no reading
 exists the gate is skipped and the final `STATUS:` line says so once.
 
+**Stages side by side.** Each stage session starts in your clone and makes
+its own worktree. Before any stage is measured, at most two run at once.
+After that, one more starts only while the share used plus the largest
+jump measured, counted once for each stage running and once for the new one,
+stays within 95%: at 50% used with a largest jump of 10 points and two
+running, 50 + 10 × 3 = 80%, so a third starts. A stage that has not been
+measured is never assumed cheap. Starts are a minute apart. A stage never
+starts beside one it depends on, and `live` stages never run. When a stage
+needs you, nothing more starts, the running stages finish, and the
+`STATUS:` line leads with the first stop and adds each further one as
+`· also <status>: <message>`. `run --resume S2,S3` resumes several stages.
+
 The status file and one log per stage live in the clone's git directory,
 under `plan-run-local/<plan slug>/`, so nothing is committed.
-`plan_run_local.py status` prints the run so far, and `next` names the stage
-`run` would start without starting it.
+`plan_run_local.py status` prints the run so far and every stage in flight,
+and `next` names the stages `run` would start first without starting them.
 
 | `STATUS:` | Meaning |
 |---|---|
@@ -139,9 +152,9 @@ under `plan-run-local/<plan slug>/`, so nothing is committed.
 | `stage-limited` | A stage ended on the usage limit and the driver could not wait it out: no reset time could be read, the reset is past `CLAUDE_STAGE_MAX_WAIT_HOURS` (a weekly limit), or the stage hit the limit again right after a reset. Carry on after the reset with `--resume S<N>`. |
 | `usage-held` | The usage gate held the next stage, and its reset is past `CLAUDE_STAGE_MAX_WAIT_HOURS`. The stage never started; run again after the reset. |
 | `launch-mismatch` | A stage session started in another permission mode, model or effort than asked, such as Manual because auto mode is turned off or `CLAUDE_CODE_SUBPROCESS_ENV_SCRUB` is set, and was stopped before any work. |
-| `driver-hung` | The driver's main loop made no progress for 5 minutes. Its watchdog stopped the stage session in flight and exited, naming the step it was on. |
-| `git-timeout` | A git command, most often the fetch before each stage, gave no answer within its time limit. |
-| `stage-session-alive` | A stage session started by an earlier driver is still running. Nothing was started; the message names the stage and its log. |
+| `driver-hung` | The driver's main loop made no progress for 5 minutes. Its watchdog stopped every stage session in flight and exited, naming the step it was on. |
+| `git-timeout` | A git command, most often the fetch before each stage, gave no answer within its time limit. Stages in flight ran to their end unread; the message names them. |
+| `stage-session-alive` | A stage session started by an earlier driver is still running. Nothing was started; the message names each such stage and its log. |
 | `not-logged-in`, `launcher-missing`, `version-too-old`, `bad-setting`, `bad-index`, `no-plan`, `protected-branch`, `branch-changed`, `already-running` | Nothing more was run; the message names the fix. |
 
 ## Naming

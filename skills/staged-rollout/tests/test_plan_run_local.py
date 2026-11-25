@@ -73,6 +73,38 @@ def ledger(**rows):
     return prl.parse_ledger(LEDGER.format(**statuses))
 
 
+# Four stages that can run side by side once S0 is done, one that waits on
+# S1, and two `live` stages that are runnable together but never fired.
+WIDE_IDS = ("S0", "S1", "S2", "S3", "S4", "S5", "S6", "S7", "SF")
+WIDE_PLAN = """\
+# Wide — plan
+
+## Stage index & dependencies
+
+| Stage | File | Depends | mode | exec | model | effort | gate |
+|---|---|---|---|---|---|---|---|
+| S0 Core | `stage-0-core.md` | — | direct | inline | opus | high | auto |
+| S1 Alpha | `stage-1-alpha.md` | S0 | direct | inline | sonnet | low | auto |
+| S2 Beta | `stage-2-beta.md` | S0 | direct | inline | sonnet | low | auto |
+| S3 Gamma | `stage-3-gamma.md` | S0 | direct | inline | sonnet | low | local |
+| S4 Delta | `stage-4-delta.md` | S0 | direct | inline | sonnet | low | auto |
+| S5 After alpha | `stage-5-after.md` | S1 | direct | inline | sonnet | low | auto |
+| S6 Cutover | `stage-6-cutover.md` | S0 | direct | inline | opus | high | live |
+| S7 Switch | `stage-7-switch.md` | S0 | direct | inline | opus | high | live |
+| SF Plan review | `stage-f-review.md` | S1, S2, S3, S4, S5, S6, S7 | direct | inline | opus | high | auto |
+
+Plan flags: `merge: auto` · `plan-dir: delete`
+"""
+
+
+def wide_ledger(**rows):
+    statuses = {sid: "todo" for sid in WIDE_IDS}
+    statuses.update({"S0": "done", **rows})
+    lines = "\n".join(f"| {sid} Stage | {statuses[sid]} | — | — | — |" for sid in WIDE_IDS)
+    return ("# Wide — build ledger\n\n## Status\n\n| Stage | Status | Verified | Date | Result |\n"
+            f"|---|---|---|---|---|\n{lines}\n\n## Notes\n")
+
+
 class Readings(unittest.TestCase):
     def test_index_reads_model_effort_gate_and_depends(self):
         stages = prl.parse_index(PLAN)
@@ -149,6 +181,41 @@ class Selection(unittest.TestCase):
 
     def test_missing_ledger_row_reads_as_todo(self):
         self.assertEqual(prl.select(self.stages, {})["stage"]["id"], "S0")
+
+
+class ParallelSelection(unittest.TestCase):
+    def setUp(self):
+        self.stages = {s["id"]: s for s in prl.parse_index(WIDE_PLAN)}
+        self.index = list(self.stages.values())
+
+    def pick(self, **rows):
+        return prl.select(self.index, prl.parse_ledger(wide_ledger(**rows)))
+
+    def test_the_whole_runnable_set_in_index_order(self):
+        pick = self.pick()
+        self.assertEqual([s["id"] for s in pick["runnable"]], ["S1", "S2", "S3", "S4"])
+        self.assertEqual(pick["stage"]["id"], "S1")
+        self.assertEqual([g["id"] for g in pick["gated"]], ["S6", "S7"])
+
+    def test_a_stage_joins_the_set_when_its_dependency_is_done(self):
+        self.assertNotIn("S5", [s["id"] for s in self.pick()["runnable"]])
+        self.assertEqual([s["id"] for s in self.pick(S1="done")["runnable"]], ["S2", "S3", "S4", "S5"])
+
+    def test_nothing_runnable_leaves_an_empty_set(self):
+        pick = self.pick(S0="doing")
+        self.assertEqual((pick["runnable"], pick["stage"]), ([], None))
+
+    def test_next_to_start_skips_running_stages_and_their_dependents(self):
+        s = self.stages
+        self.assertEqual(prl.next_to_start([s["S1"], s["S5"], s["S2"]], [s["S1"]])["id"], "S2")
+        self.assertIsNone(prl.next_to_start([s["S5"]], [s["S1"]]))
+        self.assertEqual(prl.next_to_start([s["S5"]], [s["S2"]])["id"], "S5")
+
+    def test_never_two_live_stages_at_once(self):
+        s = self.stages
+        self.assertIsNone(prl.next_to_start([s["S7"]], [s["S6"]]))
+        self.assertEqual(prl.next_to_start([s["S7"], s["S2"]], [s["S6"]])["id"], "S2")
+        self.assertEqual(prl.next_to_start([s["S7"]], [s["S2"]])["id"], "S7")
 
 
 class Flags(unittest.TestCase):
@@ -357,6 +424,49 @@ class UsageGate(unittest.TestCase):
         self.assertIn("no 5-hour reading yet", prl.gate_line("S0", None, None, False))
 
 
+class RampUp(unittest.TestCase):
+    def test_with_nothing_in_flight_it_is_the_gate(self):
+        for percent, jump in ((None, None), (50.0, None), (89.9, None), (90.0, None),
+                              (60.0, 30.0), (70.0, 30.0)):
+            self.assertEqual(prl.ramp_allows(percent, jump, 0), not prl.gate_holds(percent, jump),
+                             (percent, jump))
+
+    def test_unmeasured_stages_stop_at_the_starting_count(self):
+        self.assertEqual(prl.START_AT_ONCE, 2)
+        self.assertTrue(prl.ramp_allows(10.0, None, 1))
+        self.assertFalse(prl.ramp_allows(10.0, None, 2))
+        self.assertTrue(prl.ramp_allows(None, None, 1))   # no reading at all
+        self.assertFalse(prl.ramp_allows(None, None, 2))
+        self.assertTrue(prl.ramp_allows(None, 5.0, 1))    # a jump, but no share since the reset
+        self.assertFalse(prl.ramp_allows(None, 5.0, 2))
+
+    def test_unmeasured_stages_still_hold_at_the_cutoff(self):
+        self.assertFalse(prl.ramp_allows(90.0, None, 1))
+
+    def test_each_stage_in_flight_and_the_next_count_one_jump(self):
+        self.assertTrue(prl.ramp_allows(50.0, 10.0, 2))    # 50 + 10 × 3 = 80: a third starts
+        self.assertTrue(prl.ramp_allows(50.0, 10.0, 3))    # 50 + 10 × 4 = 90: past the starting count
+        self.assertFalse(prl.ramp_allows(50.0, 10.0, 4))   # 50 + 10 × 5 = 100
+        self.assertTrue(prl.ramp_allows(65.0, 10.0, 2))    # 65 + 10 × 3 = 95, at the ceiling
+        self.assertFalse(prl.ramp_allows(65.1, 10.0, 2))
+
+    def test_no_cost_is_assumed_for_a_cheap_stage(self):
+        # A measured jump of zero is taken as measured: no floor is put on it.
+        self.assertTrue(prl.ramp_allows(40.0, 0.0, 12))
+
+    def test_ramp_line(self):
+        reading = {"percent": 50.0, "resets_at": 1_800_003_600.0}
+        line = prl.ramp_line("S3", reading, 10.0, ["S1", "S2"], True)
+        self.assertIn("2 in flight (S1, S2)", line)
+        self.assertIn("50 + 10 × 3 = 80% against 95%", line)
+        self.assertTrue(line.endswith("S3 starts beside them"))
+        line = prl.ramp_line("S3", None, None, ["S1", "S2"], False)
+        self.assertIn("no stage measured yet, so at most 2 at once", line)
+        self.assertTrue(line.endswith("S3 waits for a stage to end"))
+        self.assertIn("holding at 90%", prl.ramp_line("S2", {"percent": 91.0, "resets_at": None},
+                                                       None, ["S1"], False))
+
+
 class FakeClock:
     """The driver's clock and sleep: sleeping moves time on at once."""
 
@@ -378,7 +488,13 @@ FAKE = textwrap.dedent('''\
     prompt = args[args.index("-p") + 1]
     stage = "SF" if prompt.split()[1] == "f" else "S" + prompt.split()[1]
     model = args[args.index("--model") + 1] if "--model" in args else "claude-default"
-    mode = os.environ.get("FAKE_MODE", "done")
+    modes = json.loads(os.environ.get("FAKE_MODES", "{}"))  # per stage, for stages side by side
+    mode = modes.get(stage, os.environ.get("FAKE_MODE", "done"))
+    target = stage in modes or stage == os.environ.get("FAKE_STAGE", stage)
+    trace = os.environ.get("FAKE_TRACE")
+    if trace:  # one file per session: when it started and ended, for overlap checks
+        trace = trace + "-" + stage + "-" + str(os.getpid())
+        open(trace, "w").write("start " + repr(time.time()) + "\\n")
     reported = "default" if mode == "no-auto" else args[args.index("--permission-mode") + 1]
     print(json.dumps({"type": "system", "subtype": "init", "session_id": "fake-" + stage,
                       "permissionMode": reported, "model": "claude-" + model + "-5-5"}), flush=True)
@@ -393,10 +509,17 @@ FAKE = textwrap.dedent('''\
     windows = json.loads(os.environ.get("FAKE_WINDOWS", "{}"))
     if stage in windows:
         window(windows[stage][0])
+    sibling = json.loads(os.environ.get("FAKE_AWAIT", "{}")).get(stage)
+    if sibling and trace:  # stay in flight until that stage has started too (30 s at most)
+        import glob
+        until = time.time() + 30
+        while time.time() < until and not glob.glob(os.environ["FAKE_TRACE"] + "-" + sibling + "-*"):
+            time.sleep(0.05)
+    time.sleep(json.loads(os.environ.get("FAKE_SLEEP", "{}")).get(stage, 0))
     if mode.startswith("limit"):
         counter = os.environ["FAKE_COUNTER"]
         hits = int(open(counter).read()) if os.path.exists(counter) else 0
-        if stage == os.environ.get("FAKE_STAGE", stage) and hits < int(os.environ.get("FAKE_LIMIT_TIMES", "1")):
+        if target and hits < int(os.environ.get("FAKE_LIMIT_TIMES", "1")):
             open(counter, "w").write(str(hits + 1))
             info = {"status": "rejected", "rateLimitType": "five_hour", "isUsingOverage": False}
             if reset and mode == "limit":
@@ -413,35 +536,63 @@ FAKE = textwrap.dedent('''\
                                          "apiErrorParams": {"rate_limit_info": {**info, "resetsAt": int(reset)}}}) + "\\n")
             print(json.dumps({"type": "result", "subtype": "success", "is_error": True,
                               "result": "You've hit your session limit", "session_id": "fake-" + stage}), flush=True)
+            if trace:
+                open(trace, "a").write("end " + repr(time.time()) + "\\n")
             sys.exit(1)
         mode = "done"
+    lock = os.path.join(os.path.dirname(trace), "ledger.lock") if trace else None
+    while lock:  # sessions side by side take turns at the ledger file
+        try:
+            os.close(os.open(lock, os.O_CREAT | os.O_EXCL))
+            break
+        except FileExistsError:
+            time.sleep(0.05)
+    def put(path, text):  # whole or not at all: the driver may read the file meanwhile
+        tmp = path + "." + stage + ".tmp"
+        open(tmp, "w", encoding="utf-8").write(text)
+        for _ in range(200):
+            try:
+                os.replace(tmp, path)
+                return
+            except PermissionError:  # Windows: the driver has it open for a moment
+                time.sleep(0.02)
+        os.replace(tmp, path)
     ledger = os.path.join(".plan", "LEDGER.md")
     text = open(ledger, encoding="utf-8").read()
-    row = "done" if mode == "done" or stage != os.environ.get("FAKE_STAGE", stage) else "doing"
+    row = "done" if mode == "done" or not target else "doing"
     if mode in ("done", "block", "stop"):
         text = re.sub(r"^(\\| " + stage + r" [^|]*\\| )\\w+", r"\\g<1>" + row, text, flags=re.M)
-        open(ledger, "w", encoding="utf-8").write(text)
+        put(ledger, text)
         if mode == "block" and row == "doing":
-            open(os.path.join(".plan", "BLOCKED.md"), "w", encoding="utf-8").write(
-                "# Blocked\\n\\n### " + stage + "\\n\\nThe staging host is unreachable.\\n")
+            blocked = os.path.join(".plan", "BLOCKED.md")
+            old = open(blocked, encoding="utf-8").read() if os.path.exists(blocked) else ""
+            put(blocked, old + "\\n### " + stage + "\\n\\nThe staging host is unreachable.\\n")
+    if lock:
+        os.remove(lock)
     if mode == "pr":  # pushes its stage branch, then its merge is refused: the row never moves
         import subprocess
         subprocess.run(["git", "branch", "plan-demo-s" + stage[1:].lower()], check=True)
     if stage in windows:
         window(windows[stage][1])
+    if trace:
+        open(trace, "a").write("end " + repr(time.time()) + "\\n")
     print(json.dumps({"type": "result", "subtype": "success", "is_error": False,
                       "result": "stage " + stage + " " + mode, "session_id": "fake-" + stage}), flush=True)
 ''')
 
 
-class DriverLoop(unittest.TestCase):
+class LoopBase(unittest.TestCase):
+    """A throwaway clone on `plan-demo` holding `plan` and `ledger`, and a
+    fake launcher; `drive` runs the driver against them."""
+    plan = PLAN
+    ledger = LEDGER.format(S0="todo", S1="todo", S2="todo", SF="todo")
+
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.repo = Path(self.tmp.name)
         (self.repo / ".plan").mkdir()
-        (self.repo / ".plan" / "PLAN.md").write_text(PLAN, encoding="utf-8")
-        (self.repo / ".plan" / "LEDGER.md").write_text(
-            LEDGER.format(S0="todo", S1="todo", S2="todo", SF="todo"), encoding="utf-8")
+        (self.repo / ".plan" / "PLAN.md").write_text(self.plan, encoding="utf-8")
+        (self.repo / ".plan" / "LEDGER.md").write_text(self.ledger, encoding="utf-8")
         self.fake = self.repo.parent / f"fake_claude_{os.getpid()}_{id(self)}.py"
         self.fake.write_text(FAKE, encoding="utf-8")
         self.git("init", "-q", "-b", "plan-demo")
@@ -456,23 +607,31 @@ class DriverLoop(unittest.TestCase):
     def git(self, *args):
         subprocess.run(["git", "-C", str(self.repo), *args], check=True, capture_output=True)
 
-    def drive(self, env=None, resume=None, usage=None, clock=None):
+    def drive(self, env=None, resume=None, usage=None, clock=None, stagger=0):
         config = Path(self.tmp.name).parent / f"fake_config_{os.getpid()}_{id(self)}"
         self.addCleanup(lambda: __import__("shutil").rmtree(config, ignore_errors=True))
         env = {"FAKE_MODE": "done", "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "",
-               "CLAUDE_CONFIG_DIR": str(config), "FAKE_COUNTER": str(config / "hits"), **(env or {})}
+               "CLAUDE_CONFIG_DIR": str(config), "FAKE_COUNTER": str(config / "hits"),
+               "FAKE_TRACE": str(config / "trace"), **(env or {})}
         config.mkdir(exist_ok=True)
         with mock.patch.dict(os.environ, env):
             driver = prl.Driver(self.repo, dict(os.environ), usage=usage,
                                 launcher_argv=[sys.executable, str(self.fake)], grace_seconds=0)
+            driver.stagger = stagger
             if clock:
                 driver.clock, driver.sleep = clock.time, clock.sleep
             line = driver.run(resume=resume)
+        self.trace_file = config / "trace"
         return line, prl.read_json(driver.status_path)
 
     def ledger_now(self):
         return prl.parse_ledger((self.repo / ".plan" / "LEDGER.md").read_text(encoding="utf-8"))
 
+    def outcomes(self, state):
+        return [(s["id"], s["outcome"]) for s in state["stages"]]
+
+
+class DriverLoop(LoopBase):
     def test_runs_until_a_gated_stage(self):
         line, state = self.drive()
         self.assertTrue(line.startswith("STATUS: gated"), line)
@@ -577,9 +736,6 @@ class DriverLoop(unittest.TestCase):
         self.assertTrue(line.startswith("STATUS: already-running"), line)
 
     # --- the usage limit ---
-
-    def outcomes(self, state):
-        return [(s["id"], s["outcome"]) for s in state["stages"]]
 
     def test_a_limit_hit_waits_for_the_reset_and_resumes_the_stage(self):
         clock = FakeClock()
@@ -752,6 +908,35 @@ class DriverLoop(unittest.TestCase):
         line, _ = self.drive()
         self.assertTrue(line.startswith("STATUS: gated"), line)
 
+    def recorded_side_by_side(self, pids, minutes_ago=10):
+        stamp = datetime.now(timezone.utc) - timedelta(minutes=minutes_ago)
+        records = [{"id": sid, "model": "sonnet", "effort": "low", "gate": "auto",
+                    "started": "2026-11-25T08:01:00Z", "pid": pid,
+                    "log": str(self.status_path().parent / f"{sid}.jsonl")}
+                   for sid, pid in zip(("S1", "S2"), pids)]
+        prl.write_json(self.status_path(), {
+            "state": "running", "plan_branch": "plan-demo", "started": "2026-11-25T08:00:00Z",
+            "updated": stamp.strftime("%Y-%m-%dT%H:%M:%SZ"), "stages": [], "in_flight": records})
+
+    def test_status_lists_every_stage_in_flight(self):
+        self.recorded_side_by_side([self.sleeper().pid, self.dead_pid()], minutes_ago=0)
+        text = self.status_text()
+        self.assertTrue(text.startswith("Driver running"), text)
+        self.assertIn("S1: running since", text)
+        self.assertIn("S2: running since", text)
+        self.assertIn("S1's session, process", text)
+        self.assertIn("still running", text)
+        self.assertIn("no longer running", text)
+
+    def test_every_live_recorded_session_is_named(self):
+        first, second = self.sleeper(), self.sleeper()
+        self.recorded_side_by_side([first.pid, second.pid])
+        line, _ = self.drive()
+        self.assertTrue(line.startswith("STATUS: stage-session-alive"), line)
+        self.assertIn(f"S1's session from an earlier driver (process {first.pid})", line)
+        self.assertIn(f"S2's session from an earlier driver (process {second.pid})", line)
+        self.assertIn("are still running", line)
+
     def test_git_timeout_is_a_named_status(self):
         real = subprocess.run
 
@@ -810,7 +995,152 @@ class DriverLoop(unittest.TestCase):
         emitted, state, _ = self.watched({"FAKE_MODE": "idle"})
         self.assertIn("while running S0's session", emitted[0])
         self.assertIn("stopped S0's session (process", emitted[0])
-        self.assertFalse(prl.pid_alive(state["current"]["pid"]))
+        self.assertFalse(prl.pid_alive(state["in_flight"][0]["pid"]))
+
+
+class ParallelLoop(LoopBase):
+    """The driver keeping several stage sessions in flight, on WIDE_PLAN."""
+    plan = WIDE_PLAN
+    ledger = wide_ledger()
+
+    def spans(self):
+        """Each fake session's (stage, start, end), in start order."""
+        out = []
+        for path in self.trace_file.parent.glob("trace-*"):
+            marks = dict(line.split() for line in path.read_text().splitlines())
+            out.append((path.name.split("-")[1], float(marks["start"]), float(marks.get("end", "inf"))))
+        return sorted(out, key=lambda s: s[1])
+
+    def most_at_once(self):
+        events = sorted([(s, 1) for _, s, _ in self.spans()] + [(e, -1) for _, _, e in self.spans()],
+                        key=lambda x: (x[0], x[1]))
+        most = now = 0
+        for _, d in events:
+            now += d
+            most = max(most, now)
+        return most
+
+    def span(self, sid, nth=0):
+        return [s for s in self.spans() if s[0] == sid][nth]
+
+    def test_two_start_together_and_a_third_only_after_one_ends(self):
+        line, state = self.drive({"FAKE_AWAIT": json.dumps({"S1": "S2"}), "FAKE_SLEEP": json.dumps({"S2": 3})})
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+        self.assertIn("S6 (gate live), S7 (gate live)", line)
+        self.assertEqual(sorted(sid for sid, out in self.outcomes(state)),
+                         ["S1", "S2", "S3", "S4", "S5"])
+        self.assertTrue(all(out == "done" for _, out in self.outcomes(state)))
+        s1, s2, s3 = self.span("S1"), self.span("S2"), self.span("S3")
+        self.assertLess(s2[1], s1[2], "S1 and S2 did not run side by side")
+        self.assertGreaterEqual(s3[1], s1[2], "S3 started before a stage ended, with nothing measured")
+        self.assertEqual(self.most_at_once(), prl.START_AT_ONCE)
+        self.assertFalse({"S6", "S7"} & {s[0] for s in self.spans()}, "a live stage was started")
+
+    def test_a_stage_never_starts_beside_the_one_it_depends_on(self):
+        line, state = self.drive({"FAKE_SLEEP": json.dumps({"S1": 2, "S2": 2})})
+        self.assertTrue(line.startswith("STATUS: gated"), (line, self.outcomes(state)))
+        self.assertGreaterEqual(self.span("S5")[1], self.span("S1")[2])
+
+    def test_a_measured_jump_lets_more_than_the_starting_count_run(self):
+        reset = int(prl.time.time()) + 3600
+        windows = {sid: [0.10, 0.15] for sid in ("S1", "S2", "S3", "S4", "S5")}
+        line, state = self.drive({"FAKE_WINDOWS": json.dumps(windows), "FAKE_RESET": str(reset),
+                                  "FAKE_AWAIT": json.dumps({"S1": "S2", "S2": "S4", "S3": "S4"})})
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+        self.assertGreaterEqual(self.span("S3")[1], self.span("S1")[2])
+        self.assertGreater(self.most_at_once(), prl.START_AT_ONCE)
+        self.assertEqual(state["usage"]["max_jump"], 5.0)
+        self.assertNotIn("waits", state)
+
+    def test_short_usage_starts_nothing_new_until_the_reset(self):
+        clock = FakeClock()
+        reset = clock.now + 3600
+        windows = {"S1": [0.50, 0.80], "S2": [0.50, 0.80]}
+        line, state = self.drive({"FAKE_WINDOWS": json.dumps(windows), "FAKE_RESET": str(int(reset)),
+                                  "FAKE_SLEEP": json.dumps({"S1": 1, "S2": 4})}, clock=clock)
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+        # 80% + 30 points for S2 in flight and for S3 passes 95%: S3 waits for S2, then for the reset
+        self.assertEqual([(w["id"], w["why"]) for w in state["waits"]], [("S3", "gate")])
+        self.assertGreaterEqual(self.span("S3")[1], self.span("S2")[2])
+        self.assertGreaterEqual(clock.now, reset + prl.RESET_MARGIN_SECONDS)
+        self.assertEqual(len(state["stages"]), 5)
+
+    def test_a_stop_lets_the_stages_in_flight_finish_and_starts_nothing(self):
+        line, state = self.drive({"FAKE_MODES": json.dumps({"S1": "block"}), "FAKE_AWAIT": json.dumps({"S1": "S2"}),
+                                  "FAKE_SLEEP": json.dumps({"S2": 3})})
+        self.assertTrue(line.startswith("STATUS: stage-blocked · S1 is blocked"), line)
+        self.assertEqual(sorted(self.outcomes(state)), [("S1", "stage-blocked"), ("S2", "done")])
+        self.assertEqual({s[0] for s in self.spans()}, {"S1", "S2"})
+        self.assertEqual(state["stage"], "S1")
+        self.assertEqual(state["in_flight"], [])
+
+    def test_every_stop_is_named_on_the_one_line(self):
+        line, state = self.drive({"FAKE_MODES": json.dumps({"S1": "block", "S2": "stop"}),
+                                  "FAKE_AWAIT": json.dumps({"S1": "S2"}), "FAKE_SLEEP": json.dumps({"S2": 2})})
+        self.assertTrue(line.startswith("STATUS: stage-blocked · S1 is blocked"), line)
+        self.assertIn(" · also stage-stopped: S2 stopped short of `done`", line)
+        self.assertEqual([s["status"] for s in state["stops"]], ["stage-blocked", "stage-stopped"])
+
+    def test_a_limit_hit_beside_a_running_stage_waits_for_it_then_the_reset(self):
+        clock = FakeClock()
+        reset = clock.now + 3600
+        line, state = self.drive({"FAKE_MODES": json.dumps({"S1": "limit"}), "FAKE_RESET": str(int(reset)),
+                                  "FAKE_AWAIT": json.dumps({"S1": "S2"}), "FAKE_SLEEP": json.dumps({"S2": 3})}, clock=clock)
+        self.assertTrue(line.startswith("STATUS: gated"), line)
+        self.assertEqual([(w["id"], w["why"]) for w in state["waits"]], [("S1", "limit")])
+        self.assertEqual(self.outcomes(state)[:2], [("S1", "stage-limited"), ("S2", "done")])
+        self.assertIn(("S1", "done"), self.outcomes(state))
+        self.assertGreaterEqual(self.span("S3")[1], self.span("S2")[2], "S3 started while the limit was out")
+        self.assertGreaterEqual(clock.now, reset + prl.RESET_MARGIN_SECONDS)
+
+    def test_a_git_timeout_lets_the_stages_in_flight_end_unread(self):
+        calls, real = [], prl.PlanSource.refresh
+
+        def refresh(source):
+            # Fetches: before S1, before S2, before S3 (held: two in flight), then
+            # the one reading S1's result while S2 still runs, which never answers.
+            calls.append(1)
+            if len(calls) == 4:
+                raise prl.GitTimeout("`git fetch --quiet origin plan-demo` gave no answer in 120 s")
+            return real(source)
+
+        with mock.patch.object(prl.PlanSource, "refresh", refresh):
+            line, state = self.drive({"FAKE_AWAIT": json.dumps({"S1": "S2"}),
+                                      "FAKE_SLEEP": json.dumps({"S1": 3, "S2": 8})})
+        self.assertTrue(line.startswith("STATUS: git-timeout"), line)
+        self.assertIn("S2 ran on to its end unread", line)
+        self.assertEqual(sorted(self.outcomes(state)), [("S1", "unread"), ("S2", "unread")])
+        self.assertEqual(state["in_flight"], [])
+        self.assertEqual({s[0] for s in self.spans()}, {"S1", "S2"})
+
+    def test_resume_takes_several_stages(self):
+        (self.repo / ".plan" / "LEDGER.md").write_text(wide_ledger(S1="doing", S2="doing"), encoding="utf-8")
+        self.git("-c", "user.name=t", "-c", "user.email=t@example.invalid", "commit", "-q", "-am", "doing")
+        line, state = self.drive(resume="S1,S2", env={"FAKE_AWAIT": json.dumps({"S1": "S2"})})
+        self.assertEqual([s[0] for s in self.spans()[:2]], ["S1", "S2"])
+        self.assertLess(self.span("S2")[1], self.span("S1")[2])
+        self.assertIn(("S1", "done"), self.outcomes(state))
+        self.assertIn(("S2", "done"), self.outcomes(state))
+
+    def test_starts_are_staggered(self):
+        clock = FakeClock()
+        line, state = self.drive({"FAKE_AWAIT": json.dumps({"S1": "S2"})}, clock=clock, stagger=60)
+        self.assertIn(60, clock.slept)
+        self.assertLess(self.span("S2")[1], self.span("S1")[2])
+
+    def test_next_names_the_stages_that_start_together(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            prl.main(["next", "--repo", str(self.repo)])
+        data = json.loads(out.getvalue())
+        self.assertEqual([s["id"] for s in data["runnable"]], ["S1", "S2", "S3", "S4"])
+        self.assertEqual((data["runnable"][2]["model"], data["runnable"][2]["gate"]), ("sonnet", "local"))
+        self.assertEqual(data["start_together"], ["S1", "S2"])
+        self.assertEqual(data["stage"]["id"], "S1")
+        with contextlib.redirect_stdout(out := io.StringIO()):
+            prl.main(["next", "--repo", str(self.repo), "--usage-percent", "92",
+                      "--usage-resets-at", str(int(prl.time.time()) + 3600)])
+        self.assertEqual(json.loads(out.getvalue())["start_together"], [])
 
 
 if __name__ == "__main__":

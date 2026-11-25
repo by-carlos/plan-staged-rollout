@@ -373,8 +373,9 @@ locally**:
 
 ### Running every stage on this machine
 
-`plan-run-local` runs the rest of the plan for you, one stage at a time, each
-as its own fresh session on your machine, so stages keep everything this
+`plan-run-local` runs the rest of the plan for you, each stage as its own
+fresh session on your machine, and stages that don't depend on each other
+side by side, so stages keep everything this
 machine has: local tools, files, networks and logins. The session you run it
 from becomes the **orchestrator**. It starts a small driver script in the
 background and then waits; it does not run any stage itself, and it never
@@ -386,9 +387,15 @@ hint names the model and effort to start it on).
 - **What it runs:** stages whose `gate` is `auto`, absent or `local`, each at
   the model and effort its stage index row books. `human`, `live` and unknown
   gates are skipped and named for you.
+- **Side by side, ramping up.** It starts two runnable stages at once, a
+  minute apart, and adds more only once the stages it has run show how much
+  of the 5-hour usage limit one stage takes and there is room for another.
+  When usage runs short it starts nothing new, lets the running stages
+  finish, and waits for the limit to reset.
 - **When it stops:** only when a person is needed: a stage blocked, stopped
-  or died; only gated stages are left; or the plan is done. You hear about it
-  at the desk or, with Remote Control on, on your phone.
+  or died; only gated stages are left; or the plan is done. Stages already
+  running finish first, and every stage that needs you is named. You hear
+  about it at the desk or, with Remote Control on, on your phone.
 - **A merge your permission rules ask about.** A stage session runs with
   nobody to answer, so a rule that asks before `gh pr merge` denies its
   `merge: auto` merge. The orchestrator then offers you that merge in its own
@@ -660,11 +667,13 @@ Two deliberate limits:
 - **Waves are worked out, never stored.** There is no `wave` column in the
   stage index. Waves are a view of `depends`, and a stored copy of a single
   source of truth is exactly what this method exists to prevent.
-- **Launching is yours.** One session per stage: one
+- **Launching is yours, or the local runner's.** One session per stage: one
   [chip](#from-a-chip-in-the-desktop-app) click each in the desktop app, or
   one terminal each elsewhere. The plugin tells you what *can* overlap;
-  whether to is your call. A [cloud run](ON-THE-RUN.md) runs a wave one stage
-  at a time.
+  whether to is your call.
+  [`plan-run-local`](#running-every-stage-on-this-machine) launches a wave
+  for you, side by side, as fast as your usage limit allows. A
+  [cloud run](ON-THE-RUN.md) runs a wave one stage at a time.
 
 Running side by side is safe because each session works in its own worktree
 on its own branch. Four more rules keep the branches from colliding at the

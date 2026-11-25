@@ -3,53 +3,77 @@
 
 `/plan-run-local` starts `run` in the background from an interactive session
 -- the orchestrator -- and is woken when it exits. The driver holds the loop:
-it picks the next runnable stage, runs `/plan-staged-rollout:stage-run <N>
---unattended --runner local` as its own headless session at the model and
-effort the stage index books, re-reads the ledger, and carries on while
-stages land `done`. It exits only when a person is needed, printing one
-`STATUS:` line that the orchestrator reads instead of any stage output.
+it reads the runnable set, runs `/plan-staged-rollout:stage-run <N>
+--unattended --runner local` for each stage as its own headless session at
+the model and effort the stage index books, re-reads the ledger as each one
+ends, and carries on while stages land `done`. It exits only when a person
+is needed, printing one `STATUS:` line that the orchestrator reads instead
+of any stage output.
 
 Subcommands:
 
-  run     Run runnable stages, one at a time, until a person is needed.
-  next    Say which stage `run` would start, and the exact command. Runs nothing.
-  status  Print the status file: the stages run so far and the one in flight.
+  run     Run runnable stages, several side by side, until a person is needed.
+  next    Say which stages `run` would start, and the exact command. Runs nothing.
+  status  Print the status file: the stages run so far and those in flight.
+
+Stages side by side. Every stage whose `depends` are all `done` or `skipped`
+is runnable, and the driver keeps several in flight, in index order. Each
+session starts in the clone, which stays on the plan branch, and makes its
+own stage worktree (the skill's Git model), so they never share a checkout.
+The ramp-up: before any stage's usage is measured, at most START_AT_ONCE run
+at once; after that, one more starts only while the share plus the largest
+measured jump, once for each stage in flight and once for the next, stays
+within GATE_CEILING. No cost is assumed for a stage that has not been
+measured. Starts are START_STAGGER_SECONDS apart, so two stage preflights do
+not run git in the clone together. A stage never starts beside one it
+depends on, and never two `gate: live` stages at once (the driver fires no
+`live` stage at all). When one stage needs a person, nothing more starts;
+the stages in flight run to their end and the STATUS line names each stop.
+Each session merges its own stage PR into the plan branch, so the merges
+stay one at a time as the skill's Parallel stages section says.
 
 A dead or hung driver. Every status-file write is the main loop's
-heartbeat, refreshed at least every HEARTBEAT_SECONDS during a stage or a
-wait. A watchdog thread reads it: when it is older than STALE_SECONDS, the
-watchdog prints `STATUS: driver-hung` naming the step the loop was on,
-stops the stage session in flight, records it and exits the process. Each
-git command is stopped after GIT_TIMEOUT_SECONDS (`git-timeout`). `status`
+heartbeat, refreshed at least every HEARTBEAT_SECONDS while stages run or
+during a wait. A watchdog thread reads it: when it is older than
+STALE_SECONDS, the watchdog prints `STATUS: driver-hung` naming the step the
+loop was on, stops every stage session in flight, records it and exits the
+process. Each git command is stopped after GIT_TIMEOUT_SECONDS
+(`git-timeout`); sessions in flight then run to their end, unread. `status`
 reports a `running` file with a stale heartbeat as a driver that is gone.
-Each stage session's process id is recorded; `run` refuses to start while
-the session an earlier driver recorded is still running
-(`stage-session-alive`), and reports it rather than stopping it.
+Each stage session's process id is recorded; `run` refuses to start while a
+session an earlier driver recorded is still running (`stage-session-alive`),
+and reports it rather than stopping it.
 
 What it never does: write `.plan/LEDGER.md` or `.plan/BLOCKED.md` (a stage's
 own push is the only completion signal), fire a stage whose `gate` is
-`human`, `live` or unknown, run two stages at once, open or merge a pull
-request, or read a secret. Logging in is the launcher's job.
+`human`, `live` or unknown, open or merge a pull request, or read a secret.
+Logging in is the launcher's job.
 
 The usage gate. Every stage session's stream carries `rate_limit_event`
 lines with the account's 5-hour window: the share used and the reset time.
-The driver keeps the latest one, and `run --usage-percent P
---usage-resets-at T` seeds it for the first stage (the orchestrator reads
-the desktop app's usage card). Before each stage it holds when the share is
-at GATE_CUTOFF or more and no stage has been measured yet, or when the share
-plus the largest per-stage jump measured this run would pass GATE_CEILING.
-A held stage waits until the reset, then starts without a second check. A
-jump is the change in the account's share across one stage, so other
-sessions' use counts in it and it is an upper bound; one measured across a
-reset is discarded. With no reading at all the stage runs, and the final
-STATUS line says once that the gate was skipped. Nothing estimates tokens
-or turns them into a share.
+The driver keeps the latest one from any session, and `run --usage-percent
+P --usage-resets-at T` seeds it for the first stage (the orchestrator reads
+the desktop app's usage card). With nothing in flight it holds the next
+stage when the share is at GATE_CUTOFF or more and no stage has been
+measured yet, or when the share plus the largest per-stage jump measured
+this run would pass GATE_CEILING; beside stages in flight it applies the
+ramp-up above instead, and a stage it does not start waits for one to end.
+A held stage with nothing in flight waits until the reset, then starts
+without a second check. A jump is the change in the account's share across
+one stage, so other sessions' use counts in it, stages running beside it
+included: it is an upper bound, and the ramp-up errs towards fewer at once.
+One measured across a reset is discarded. With no reading at all the gate
+does not hold, the ramp-up stays at START_AT_ONCE, and the final STATUS
+line says once that the gate was skipped. Nothing estimates tokens or turns
+them into a share.
 
 A stage session that ends on the usage limit (`stage-limited`) is waited out
 the same way and the stage is run again, which `/stage-run` treats as a
-resume. The run stops instead when no reset time can be read, when the
-reset is more than CLAUDE_STAGE_MAX_WAIT_HOURS away (a weekly limit), or
-when the same stage hits the limit again right after a reset.
+resume; nothing new starts meanwhile, and the wait begins once the stages
+in flight have ended. The run stops instead when no reset time can be
+read, when the reset is more than CLAUDE_STAGE_MAX_WAIT_HOURS away (a weekly
+limit), when the same stage hits the limit again right after a reset, or
+when another stage has already stopped the run.
 
 Settings, from the environment:
 
@@ -117,6 +141,11 @@ GATE_CUTOFF = 90        # hold at this share before any stage has a measured jum
 RESET_MARGIN_SECONDS = 60  # start this long after the reset, not on its second
 MAX_WAIT_HOURS = 6
 LIMIT_RETRIES = 1       # runs of one stage straight after a limit reset before stopping
+# The ramp-up. Starting values: two sessions at once before anything is
+# measured is the smallest step that is parallel at all, and a minute apart
+# keeps their preflights' git commands in the shared clone from overlapping.
+START_AT_ONCE = 2       # stages in flight before any stage's usage is measured
+START_STAGGER_SECONDS = 60  # between two starts while a stage is in flight
 
 
 class PlanError(Exception):
@@ -228,20 +257,21 @@ def effort_flag(value: str) -> str:
 
 
 def select(stages: list[dict], ledger: dict, blocked: dict | None = None) -> dict:
-    """The next stage to run, and why nothing else is.
+    """The runnable set, and why nothing else is.
 
-    Returns {"stage": <row or None>, "gated": [...], "waiting": [...],
-    "complete": bool}. A stage is runnable when its row reads `todo` (or is
-    missing) and every `depends` entry reads `done` or `skipped`; it is fired
-    only when its gate is `auto`, absent or `local`. Index order breaks ties.
-    A stage with a BLOCKED.md section reads `blocked` until a person deletes
-    the section, whatever its row says, as it does for the cloud runner.
+    Returns {"runnable": [<row>, ...], "stage": <the first, or None>,
+    "gated": [...], "waiting": [...], "complete": bool}. A stage is runnable
+    when its row reads `todo` (or is missing) and every `depends` entry reads
+    `done` or `skipped`; it is fired only when its gate is `auto`, absent or
+    `local`. The set is in index order. A stage with a BLOCKED.md section
+    reads `blocked` until a person deletes the section, whatever its row
+    says, as it does for the cloud runner.
     """
     status = {s["id"]: ledger.get(s["id"], {}).get("status", "todo") for s in stages}
     for sid in blocked or {}:
         if sid in status and status[sid] not in CLOSED:
             status[sid] = "blocked"
-    gated, waiting, chosen = [], [], None
+    gated, waiting, runnable = [], [], []
     for s in stages:
         if status[s["id"]] != "todo":
             if status[s["id"]] not in CLOSED:
@@ -253,10 +283,29 @@ def select(stages: list[dict], ledger: dict, blocked: dict | None = None) -> dic
             gated.append({"id": s["id"], "gate": s["gate"],
                           "known": s["gate"] in KNOWN_GATES})
             continue
-        if chosen is None:
-            chosen = s
+        runnable.append(s)
     complete = all(v in CLOSED for v in status.values())
-    return {"stage": chosen, "gated": gated, "waiting": waiting, "complete": complete}
+    return {"runnable": runnable, "stage": runnable[0] if runnable else None,
+            "gated": gated, "waiting": waiting, "complete": complete}
+
+
+def next_to_start(candidates: list[dict], running: list[dict]) -> dict | None:
+    """The first candidate that may start beside the stages in `running`.
+
+    Skipped: a stage already running, one that depends on a running stage,
+    and a second `gate: live` stage. The runnable set never holds the last
+    two (its `depends` are closed, and `live` is never fired); a stage named
+    by `--resume` or waiting out a limit is checked here all the same.
+    """
+    ids = {s["id"] for s in running}
+    live = any(s["gate"] == "live" for s in running)
+    for s in candidates:
+        if s["id"] in ids or ids & set(s["depends"]):
+            continue
+        if live and s["gate"] == "live":
+            continue
+        return s
+    return None
 
 
 def outcome(before: str, after: str, blocked: bool, killed: bool, pushed: bool = False,
@@ -383,6 +432,43 @@ def gate_holds(percent: float | None, jump: float | None) -> bool:
     if jump is None:
         return percent >= GATE_CUTOFF
     return percent + jump > GATE_CEILING
+
+
+def ramp_allows(percent: float | None, jump: float | None, in_flight: int) -> bool:
+    """May one more stage start beside `in_flight` running ones?
+
+    With none in flight this is the gate itself. Beside running stages: at
+    most START_AT_ONCE in all while no jump is measured or no share is known,
+    and once both are, only while the share plus the largest jump for each
+    stage in flight and the next stays within GATE_CEILING. No floor is put
+    on a jump: a stage nobody has measured is never assumed cheap.
+    """
+    if gate_holds(percent, jump):
+        return False
+    if in_flight == 0:
+        return True
+    if jump is None or percent is None:
+        return in_flight < START_AT_ONCE
+    return percent + jump * (in_flight + 1) <= GATE_CEILING
+
+
+def ramp_line(stage_id: str, reading: dict | None, jump: float | None,
+              running: list[str], allowed: bool) -> str:
+    """The ramp-up's one-line verdict for a stage beside stages in flight."""
+    used = ("no 5-hour reading yet" if reading is None else
+            f"{reading['percent']:g}% of the 5-hour limit used, resets {clock_text(reading['resets_at'])}")
+    flight = f"{len(running)} in flight ({', '.join(running)})"
+    if reading is not None and jump is not None:
+        total = round(reading["percent"] + jump * (len(running) + 1), 1)
+        rule = (f"largest stage jump so far {jump:g} points, so {reading['percent']:g} + {jump:g} × "
+                f"{len(running) + 1} = {total:g}% against {GATE_CEILING}%")
+    elif reading is not None and jump is None and reading["percent"] >= GATE_CUTOFF:
+        rule = f"no stage measured yet, holding at {GATE_CUTOFF}%"
+    else:
+        why = "no stage measured yet" if jump is None else "no share read since the reset"
+        rule = f"{why}, so at most {START_AT_ONCE} at once"
+    verdict = f"{stage_id} starts beside them" if allowed else f"{stage_id} waits for a stage to end"
+    return f"usage gate: {used}; {flight}; {rule}: {verdict}"
 
 
 def clock_text(epoch: float | None) -> str:
@@ -639,13 +725,22 @@ def pid_alive(pid) -> bool:
     return True
 
 
-def live_stage_session(state: dict | None) -> dict | None:
-    """The stage session an earlier driver recorded as in flight, when its
-    process is still running; None otherwise."""
-    cur = (state or {}).get("current")
-    if not isinstance(cur, dict) or cur.get("waiting") or cur.get("finished"):
-        return None
-    return cur if pid_alive(cur.get("pid")) else None
+def recorded_sessions(state: dict | None) -> list[dict]:
+    """The stage sessions a status file records as in flight: its
+    `in_flight` list, and the single `current` one a status file written
+    before stages ran side by side carries."""
+    state = state or {}
+    records = list(state.get("in_flight") or [])
+    if isinstance(state.get("current"), dict):
+        records.append(state["current"])
+    return [r for r in records if isinstance(r, dict) and r.get("id")
+            and not r.get("waiting") and not r.get("finished")]
+
+
+def live_stage_sessions(state: dict | None) -> list[dict]:
+    """The stage sessions an earlier driver recorded as in flight whose
+    process is still running."""
+    return [r for r in recorded_sessions(state) if pid_alive(r.get("pid"))]
 
 
 # --- running one stage --------------------------------------------------------
@@ -673,26 +768,47 @@ def stop(proc: subprocess.Popen) -> None:
     proc.wait()
 
 
-def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
-              beat, started=None) -> dict:
-    """Run one stage session to its end; never reads past what it needs.
+def empty_result() -> dict:
+    """What a stage session's watch returns before it has read anything."""
+    return {"killed": None, "mismatch": [], "session_id": None, "result": None,
+            "is_error": None, "usage": None, "window_first": None, "window_last": None,
+            "limit": None, "exit_code": None}
 
-    Every stream-json line goes to `log`. The opening `system/init` line is
-    checked against what was asked and the session is stopped before any
-    work on a mismatch. No line for the idle threshold stops it too.
-    `started(proc)` is called once the session's process exists.
-    """
+
+def spawn_stage(cmd: list[str], cwd: Path) -> subprocess.Popen:
+    """Start one stage session in its own process group. `cwd` is the clone,
+    on the plan branch: the session makes its own stage worktree there."""
     kwargs = {}
     if os.name == "nt":
         kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP
     else:
         kwargs["start_new_session"] = True
-    log.parent.mkdir(parents=True, exist_ok=True)
-    proc = subprocess.Popen(cmd, cwd=str(cwd), stdin=subprocess.DEVNULL,
+    return subprocess.Popen(cmd, cwd=str(cwd), stdin=subprocess.DEVNULL,
                             stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
                             text=True, encoding="utf-8", errors="replace", **kwargs)
+
+
+def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
+              beat, started=None, on_window=None) -> dict:
+    """Start one stage session and watch it to its end (`watch_stage`).
+    `started(proc)` is called once the session's process exists."""
+    log.parent.mkdir(parents=True, exist_ok=True)
+    proc = spawn_stage(cmd, cwd)
     if started:
         started(proc)
+    return watch_stage(proc, log, stage, conf, beat, on_window)
+
+
+def watch_stage(proc: subprocess.Popen, log: Path, stage: dict, conf: dict,
+                beat, on_window=None) -> dict:
+    """Watch one stage session to its end; never reads past what it needs.
+
+    Every stream-json line goes to `log`. The opening `system/init` line is
+    checked against what was asked and the session is stopped before any
+    work on a mismatch. No line for the idle threshold stops it too.
+    `on_window(window)` is called with each 5-hour reading as it arrives.
+    """
+    log.parent.mkdir(parents=True, exist_ok=True)
     lines: queue.Queue = queue.Queue()
 
     def pump():
@@ -705,9 +821,7 @@ def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
 
     reader = threading.Thread(target=pump, daemon=True)
     reader.start()
-    result = {"killed": None, "mismatch": [], "session_id": None, "result": None,
-              "is_error": None, "usage": None, "window_first": None, "window_last": None,
-              "limit": None}
+    result = empty_result()
     last = time.monotonic()
     with log.open("w", encoding="utf-8") as out:
         while True:
@@ -735,6 +849,8 @@ def run_stage(cmd: list[str], cwd: Path, log: Path, stage: dict, conf: dict,
             if window:
                 result["window_first"] = result["window_first"] or window
                 result["window_last"] = window
+                if on_window:
+                    on_window(window)
             hit = limit_hit(event)
             if hit:
                 seen = result["limit"] or {}
@@ -779,12 +895,21 @@ class Driver:
         self.max_jump: float | None = None
         self.clock = time.time    # replaced in tests, with `sleep`
         self.sleep = time.sleep
-        # The watchdog: the main loop's heartbeat, what it is doing, and the
-        # stage session in flight. `emit` and `exit` are replaced in tests.
+        self.stagger = START_STAGGER_SECONDS
+        # Stages in flight: id -> {"stage", "record", "proc", "heads", "before", "start"}.
+        # Their sessions are watched in threads that only read the stream;
+        # every git command and every decision stays on the main loop.
+        self.running: dict[str, dict] = {}
+        self.finished: queue.Queue = queue.Queue()   # (stage id, watch result)
+        self.stops: list[dict] = []     # why a person is needed, in the order found
+        self.retry: dict[str, float] = {}  # stage id -> when its limit reset is waited out
+        self.ended: set[str] = set()    # stages that ended short of `done` this run
+        self.last_start: float | None = None
+        # The watchdog: the main loop's heartbeat and what it is doing.
+        # `emit` and `exit` are replaced in tests.
         self.lock = threading.RLock()
         self.beat_at = time.monotonic()
         self.doing = "starting"
-        self.proc: subprocess.Popen | None = None
         self.hung: str | None = None    # the driver-hung STATUS line, once reported
         self.done = threading.Event()
         self.stale = STALE_SECONDS
@@ -807,9 +932,13 @@ class Driver:
         self.doing = doing
         self.save()
 
+    def running_text(self) -> str:
+        parts = [f"{sid}'s session (process {e['proc'].pid})" for sid, e in self.running.items()]
+        return "running " + " and ".join(parts) if parts else "running no stage session"
+
     def watch(self) -> None:
         """The watchdog thread: when the main loop has not beaten for
-        `stale` seconds, report the driver hung, stop the stage session in
+        `stale` seconds, report the driver hung, stop every stage session in
         flight, record it and exit the process, which wakes the orchestrator."""
         while not self.done.wait(self.watch_every):
             with self.lock:
@@ -820,16 +949,19 @@ class Driver:
                     continue
                 message = (f"the driver made no progress for {quiet / 60:.0f} min "
                            f"(the limit is {self.stale / 60:g}) while {self.doing}")
-                cur = self.state.get("current") or {}
-                proc = self.proc  # the main loop drops its own reference once the session ends
-                if proc is not None and proc.poll() is None:
-                    stop(proc)
-                    message += f"; stopped {cur.get('id', 'the stage')}'s session (process {proc.pid})"
-                message += ("; nothing was written to the ledger. `driver status` and the stage's log "
+                stopped = []
+                for sid, entry in list(self.running.items()):
+                    proc = entry["proc"]
+                    if proc.poll() is None:
+                        stop(proc)
+                        stopped.append(f"{sid}'s session (process {proc.pid})")
+                if stopped:
+                    message += "; stopped " + ", ".join(stopped)
+                message += ("; nothing was written to the ledger. `driver status` and each stage's log "
                             "show where it stood")
                 line = f"STATUS: driver-hung · {message}"
                 self.hung = line
-                # `current` stays: a session that would not stop is found by the next run.
+                # `in_flight` stays: a session that would not stop is found by the next run.
                 self.state.update({"state": "exited", "status": "driver-hung", "message": message,
                                    "line": line, "updated": now()})
                 write_json(self.status_path, self.state)
@@ -842,10 +974,31 @@ class Driver:
         if self.state.get("stages") and not usage.get("seen"):
             message += " · usage gate skipped: no stage session reported a 5-hour reading"
         line = f"STATUS: {status} · {message}"
+        with self.lock:
+            left = [e["record"] for e in self.running.values() if e["proc"].poll() is None]
         self.state.update({"state": "exited", "status": status, "message": message,
-                           "line": line, "current": None, **extra})
+                           "line": line, "in_flight": left, "waiting": None, **extra})
         self.save()
         return line
+
+    def halt(self, status: str, message: str, stage: str | None = None, **extra) -> None:
+        """Record why a person is needed: nothing more starts, and the run
+        ends once the stages in flight have ended."""
+        self.stops.append({"status": status, "message": message, "stage": stage, **extra})
+        self.state["stops"] = self.stops
+        self.save()
+
+    def finish_stops(self) -> str:
+        """End on the stops found, the first one's status leading the line."""
+        for sid, until in list(self.retry.items()):  # a wait the stopping run will not make
+            self.halt("stage-limited", f"{sid} hit the usage limit, which resets "
+                      f"{clock_text(until - RESET_MARGIN_SECONDS)}; the run stopped for another stage "
+                      f"instead of waiting, so after the reset run {resume_hint(sid)}", stage=sid)
+        self.retry.clear()
+        first, rest = self.stops[0], self.stops[1:]
+        message = first["message"] + "".join(f" · also {s['status']}: {s['message']}" for s in rest)
+        extra = {k: v for k, v in first.items() if k not in ("status", "message")}
+        return self.finish(first["status"], message, **extra)
 
     # preflight
     def launcher(self, conf: dict) -> list[str] | None:
@@ -896,30 +1049,44 @@ class Driver:
             return {"percent": 0.0, "resets_at": None}
         return r
 
+    def saw_window(self, window: dict) -> None:
+        """A stage session's stream reported the 5-hour window: the latest
+        reading from any session is the account's share now."""
+        with self.lock:
+            self.reading = window
+
     def note_usage(self, **fields) -> None:
         usage = self.state.setdefault("usage", {})
         usage.update(fields)
         usage["reading"], usage["max_jump"] = self.reading, self.max_jump
 
-    def wait_until(self, until: float, stage_id: str, why: str) -> None:
-        """Sleep to `until`, keeping the heartbeat so no second driver starts."""
-        wait = {"id": stage_id, "why": why, "from": now(), "until": clock_text(until)}
-        self.state.setdefault("waits", []).append(wait)
-        self.state["current"] = {"id": stage_id, "waiting": why, "until": wait["until"]}
-        self.step(f"waiting until {wait['until']} for the usage limit to reset before {stage_id}")
+    def pause(self, until: float) -> None:
+        """Sleep to `until` on the driver's clock, keeping the heartbeat."""
         while (left := until - self.clock()) > 0:
             self.sleep(min(HEARTBEAT_SECONDS, left))
             self.save()
+
+    def wait_until(self, until: float, stage_ids: list[str], why: str) -> None:
+        """Sleep to `until`, keeping the heartbeat so no second driver starts.
+        Only ever called with nothing in flight."""
+        wait = {"id": stage_ids[0], "ids": stage_ids, "why": why, "from": now(),
+                "until": clock_text(until)}
+        self.state.setdefault("waits", []).append(wait)
+        self.state["waiting"] = {"ids": stage_ids, "why": why, "until": wait["until"]}
+        self.step(f"waiting until {wait['until']} for the usage limit to reset before "
+                  f"{', '.join(stage_ids)}")
+        self.pause(until)
         wait["ended"] = now()
-        self.state["current"] = None
+        self.state["waiting"] = None
         # The window just reset: no reading until a stage reports one.
         self.reading = None
         self.note_usage()
         self.save()
 
-    def gate(self, stage: dict, conf: dict) -> str | None:
-        """Hold `stage` until the reset when the share says so; a STATUS line
-        when the hold cannot be waited out, else None once it may start."""
+    def gate(self, stage: dict, conf: dict) -> tuple[str | None, bool]:
+        """With nothing in flight: hold `stage` until the reset when the share
+        says so. Returns (a STATUS line when the hold cannot be waited out,
+        whether it waited); (None, False) means it may start now."""
         reading = self.current_reading()
         hold = gate_holds(reading and reading["percent"], self.max_jump)
         # A window that has just reset has nothing left to wait for: the stage starts.
@@ -930,16 +1097,26 @@ class Driver:
         self.note_usage(gate=line)
         self.save()
         if not hold or fresh:
-            return None
+            return None, False
         until = reading["resets_at"] + RESET_MARGIN_SECONDS
         if until - self.clock() > conf["max_wait_seconds"]:
             return self.finish("usage-held", f"{line}, more than CLAUDE_STAGE_MAX_WAIT_HOURS away; "
-                               "run /plan-run-local again then", stage=stage["id"])
-        self.wait_until(until, stage["id"], "gate")
-        return None
+                               "run /plan-run-local again then", stage=stage["id"]), False
+        self.wait_until(until, [stage["id"]], "gate")
+        return None, True
+
+    def ramp(self, stage: dict) -> bool:
+        """Beside stages in flight: may `stage` start now? Records the line."""
+        reading = self.current_reading()
+        running = list(self.running)
+        allowed = ramp_allows(reading and reading["percent"], self.max_jump, len(running))
+        self.note_usage(gate=ramp_line(stage["id"], reading, self.max_jump, running, allowed))
+        self.save()
+        return allowed
 
     def measure(self, record: dict, start: dict | None, ran: dict) -> None:
-        """Fold a finished stage's readings into the gate's state."""
+        """Fold a finished stage's readings into the gate's state. The
+        reading itself is kept current by `saw_window` as lines arrive."""
         first, last = ran.get("window_first"), ran.get("window_last")
         if last:
             self.state.setdefault("usage", {})["seen"] = True
@@ -949,11 +1126,9 @@ class Driver:
         record["usage_window"] = {"start": start, "first": first, "last": last, "jump": jump}
         if jump is not None:
             self.max_jump = jump if self.max_jump is None else max(self.max_jump, jump)
-        if last:
-            self.reading = last
         self.note_usage()
 
-    def run(self, resume: str | None = None) -> str:
+    def run(self, resume: str | list[str] | None = None) -> str:
         """Run until a person is needed; the one STATUS line. A hang ends in
         the watchdog's own line and exit instead (`driver-hung`)."""
         try:
@@ -962,27 +1137,65 @@ class Driver:
             message = f"{e} while {self.doing}; check the network and the remote, then run /plan-run-local again"
             if self.state.get("state") != "running":  # before this run owned the status file
                 return f"STATUS: git-timeout · {message}"
-            return self.finish("git-timeout", message, stage=(self.state.get("current") or {}).get("id"))
+            first = next(iter(self.running), None)
+            try:
+                unread = self.drain_unread()
+            except Hung:
+                return self.hung or "STATUS: driver-hung"
+            if unread:
+                message += (f"; {', '.join(unread)} ran on to {'their' if len(unread) > 1 else 'its'} end "
+                            "unread, so `driver status` and the logs show where each stood")
+            return self.finish("git-timeout", message, stage=first)
         except Hung:
             return self.hung or "STATUS: driver-hung"
         finally:
             self.done.set()
 
-    def loop(self, resume: str | None) -> str:
+    def drain_unread(self) -> list[str]:
+        """Git is not answering: let the sessions in flight end, recording
+        them unread (classifying them needs git)."""
+        unread = []
+        while self.running:
+            self.step(self.running_text() + " to their end; git is not answering")
+            sid, ran = self.wait_any()
+            with self.lock:
+                entry = self.running.pop(sid)
+                record = entry["record"]
+                record.update({k: ran.get(k) for k in ("session_id", "exit_code", "killed", "result")})
+                record.update({"finished": now(), "outcome": "unread"})
+                self.state["in_flight"].remove(record)
+                self.state["stages"].append(record)
+            unread.append(sid)
+        self.save()
+        return unread
+
+    def wait_any(self) -> tuple[str, dict]:
+        """Block until a stage in flight ends, beating the heartbeat."""
+        self.step(self.running_text())
+        while True:
+            try:
+                return self.finished.get(timeout=HEARTBEAT_SECONDS)
+            except queue.Empty:
+                self.save()
+
+    def loop(self, resume: str | list[str] | None) -> str:
         if self.branch in PROTECTED or self.branch == default_branch(self.repo):
             return f"STATUS: protected-branch · {self.branch} is protected; check out the plan branch"
         if self.running_elsewhere():
             return f"STATUS: already-running · a driver for {self.branch} updated {self.status_path} within {STALE_SECONDS // 60} min"
-        alive = live_stage_session(read_json(self.status_path))
+        alive = live_stage_sessions(read_json(self.status_path))
         if alive:
-            # The status file is left as it is, so the next run finds the session too.
-            return (f"STATUS: stage-session-alive · {alive['id']}'s session from an earlier driver "
-                    f"(process {alive['pid']}) is still running, so no second session was started; "
-                    f"its log is {alive.get('log')}. Let it end or stop it yourself, then run "
-                    "/plan-run-local again. If that log has stopped growing, the process id may "
-                    "have been reused by another program")
+            # The status file is left as it is, so the next run finds the sessions too.
+            named = "; ".join(f"{a['id']}'s session from an earlier driver (process {a['pid']}), log "
+                              f"{a.get('log')}," for a in alive)
+            many = len(alive) > 1
+            return (f"STATUS: stage-session-alive · {named} {'are' if many else 'is'} still running, so "
+                    f"no second session was started. Let {'them' if many else 'it'} end or stop "
+                    f"{'them' if many else 'it'} yourself, then run /plan-run-local again. If a log has "
+                    "stopped growing, its process id may have been reused by another program")
         self.state = {"state": "running", "plan_branch": self.branch, "started": now(),
-                      "status_file": str(self.status_path), "stages": [], "current": None}
+                      "status_file": str(self.status_path), "stages": [], "in_flight": [],
+                      "waiting": None}
         self.save()
         threading.Thread(target=self.watch, name="watchdog", daemon=True).start()
         try:
@@ -993,6 +1206,7 @@ class Driver:
                                   if k not in ("idle_seconds", "max_wait_seconds")}
         self.state["settings"]["idle_minutes"] = conf["idle_seconds"] / 60
         self.state["settings"]["max_wait_hours"] = conf["max_wait_seconds"] / 3600
+        self.state["settings"]["start_at_once"] = START_AT_ONCE
         self.state["usage"] = {"seeded": self.reading, "seen": False}
         self.note_usage()
         self.step("checking the launcher's version and login")
@@ -1000,142 +1214,203 @@ class Driver:
         if stopped:
             return self.finish(*stopped)
         source = PlanSource(self.repo, self.branch)
-        first = resume
-        after_reset = False   # the stage about to run waited out a reset: no second check
+        first = [sid for item in ([resume] if isinstance(resume, str) else resume or [])
+                 for sid in item.replace(",", " ").split()]
         limit_runs: dict[str, int] = {}
         while True:
+            while True:  # classify every stage that has ended, without blocking
+                try:
+                    sid, ran = self.finished.get_nowait()
+                except queue.Empty:
+                    break
+                self.conclude(sid, ran, source, conf, limit_runs)
+            if self.stops:
+                if self.running:
+                    self.finished.put(self.wait_any())
+                    continue
+                return self.finish_stops()
+            # A limit hit is waited out once nothing is in flight; nothing new starts meanwhile.
+            pending = {sid: t for sid, t in self.retry.items() if t > self.clock()}
+            if pending:
+                if self.running:
+                    self.finished.put(self.wait_any())
+                    continue
+                self.wait_until(max(pending.values()), sorted(pending), "limit")
+                continue
             self.step(f"fetching origin/{self.branch} and reading the plan")
             if current_branch(self.repo) != self.branch:
-                return self.finish("branch-changed",
-                                   f"the clone left {self.branch}; nothing more was run")
+                self.halt("branch-changed", f"the clone left {self.branch}; nothing more was started")
+                continue
             source.refresh()
             try:
                 stages, ledger, blocked = source.load()
             except PlanError as e:
-                return self.finish("no-plan", str(e))
-            if first:
-                stage = next((s for s in stages if s["id"] == first), None)
+                self.halt("no-plan", str(e))
+                continue
+            by_id = {s["id"]: s for s in stages}
+            named: list[dict] = []
+            for sid in [*self.retry, *first]:  # limit retries, then `--resume`, before the runnable set
+                stage = by_id.get(sid)
                 if stage is None:
-                    return self.finish("bad-index", f"--resume {first}: no such stage in the index")
-                if stage["gate"] not in FIRED_GATES:
-                    return self.finish("gated", f"{first} has gate {stage['gate']!r}; run /stage-run {stage_arg(first)} yourself",
-                                       gated=[{"id": first, "gate": stage["gate"]}])
-                first = None
-                pick = {"stage": stage, "gated": [], "waiting": [], "complete": False}
-            else:
-                pick = select(stages, ledger, blocked)
+                    self.halt("bad-index", f"--resume {sid}: no such stage in the index")
+                elif stage["gate"] not in FIRED_GATES:
+                    self.halt("gated", f"{sid} has gate {stage['gate']!r}; run /stage-run {stage_arg(sid)} yourself",
+                              gated=[{"id": sid, "gate": stage["gate"]}])
+                elif stage not in named:
+                    named.append(stage)
+            if self.stops:
+                first = []
+                continue
+            pick = select(stages, ledger, blocked)
             self.state["gated"] = pick["gated"]
-            stage = pick["stage"]
+            skip = {s["id"] for s in named} | self.ended
+            candidates = named + [s for s in pick["runnable"] if s["id"] not in skip]
+            stage = next_to_start(candidates, [e["stage"] for e in self.running.values()])
             if stage is None:
+                if self.running:
+                    self.finished.put(self.wait_any())
+                    continue
                 return self.settle(pick)
             try:
                 cmd = stage_command(self.cmd_prefix, stage, conf)
             except PlanError as e:
-                return self.finish("bad-index", f"{stage['id']}: {e}")
-            if after_reset:
-                after_reset = False
-            else:
-                held = self.gate(stage, conf)
+                self.halt("bad-index", f"{stage['id']}: {e}", stage=stage["id"])
+                continue
+            if self.running:
+                if not self.ramp(stage):
+                    self.finished.put(self.wait_any())
+                    continue
+                if self.last_start is not None and self.clock() < self.last_start + self.stagger:
+                    self.step(f"waiting to start {stage['id']} {self.stagger:g} s after the last start")
+                    self.pause(self.last_start + self.stagger)
+                    continue  # whatever ended meanwhile is read first
+            elif stage["id"] not in self.retry:  # a stage that waited out its limit starts unchecked
+                held, waited = self.gate(stage, conf)
                 if held:
                     return held
-            start = self.current_reading()
-            before = ledger.get(stage["id"], {}).get("status", "todo")
-            record = {"id": stage["id"], "model": stage["model"] or "session default",
-                      "effort": effort_flag(stage["effort"]) or "session default",
-                      "gate": stage["gate"], "started": now(),
-                      "log": str(self.dir / f"{stage['id']}.jsonl")}
-            self.state["current"] = record
-            self.step(f"listing {stage['id']}'s stage branches before it starts")
-            heads = stage_heads(self.repo, self.branch, stage["id"])
+                if waited:
+                    continue  # read the plan again after the wait
+            first = [sid for sid in first if sid != stage["id"]]
+            self.retry.pop(stage["id"], None)
+            self.start(stage, cmd, conf, ledger)
 
-            def started(proc, record=record, sid=stage["id"]):
-                self.proc = proc
-                record["pid"] = proc.pid
-                self.step(f"running {sid}'s session (process {proc.pid})")
+    def start(self, stage: dict, cmd: list[str], conf: dict, ledger: dict) -> None:
+        """Start one stage session and hand its stream to a watching thread."""
+        sid = stage["id"]
+        start = self.current_reading()
+        record = {"id": sid, "model": stage["model"] or "session default",
+                  "effort": effort_flag(stage["effort"]) or "session default",
+                  "gate": stage["gate"], "started": now(),
+                  "log": str(self.dir / f"{sid}.jsonl")}
+        self.step(f"listing {sid}'s stage branches before it starts")
+        heads = stage_heads(self.repo, self.branch, sid)
+        self.doing = f"starting {sid}'s session"
+        log = Path(record["log"])
+        log.parent.mkdir(parents=True, exist_ok=True)
+        proc = spawn_stage(cmd, self.repo)
+        record["pid"] = proc.pid
+        with self.lock:
+            self.running[sid] = {"stage": stage, "record": record, "proc": proc, "heads": heads,
+                                 "before": ledger.get(sid, {}).get("status", "todo"), "start": start}
+            self.state["in_flight"].append(record)
+        self.last_start = self.clock()
+        self.step(self.running_text())
 
-            self.doing = f"starting {stage['id']}'s session"
+        def watch_one():
             try:
-                ran = run_stage(cmd, self.repo, Path(record["log"]), stage, conf, self.save, started)
-            finally:
-                self.proc = None
-            self.step(f"reading {stage['id']}'s result from the pushed plan")
-            record.update({k: ran.get(k) for k in
-                           ("session_id", "exit_code", "killed", "mismatch", "is_error", "result", "usage",
-                            "init", "limit")})
-            record["finished"] = now()
-            self.measure(record, start, ran)
-            if ran["limit"] is None or ran["limit"].get("resets_at") is None:
-                logged = transcript_limit(ran.get("session_id"), self.env)
-                if logged:
-                    ran["limit"] = {k: (ran["limit"] or {}).get(k) or logged[k] for k in logged}
-                    record["limit"] = ran["limit"]
-            if ran["killed"] == "mismatch":
-                record["outcome"] = "launch-mismatch"
-                self.state["stages"].append(record)
-                return self.finish("launch-mismatch",
-                                   f"{stage['id']} started with {'; '.join(ran['mismatch'])}; stopped before any work")
-            source.refresh()
-            after, now_blocked = self.read_row(source, stage["id"])
-            pushed = stage_heads(self.repo, self.branch, stage["id"]) not in ({}, heads)
-            limited = ran["limit"] is not None
-            result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed, limited)
-            if result not in ("done", "stage-blocked") and self.grace:
-                self.step(f"waiting {self.grace:g} s for {stage['id']}'s push to settle")
-                time.sleep(self.grace)
-                self.step(f"reading {stage['id']}'s result from the pushed plan again")
-                source.refresh()
-                after, now_blocked = self.read_row(source, stage["id"])
-                pushed = stage_heads(self.repo, self.branch, stage["id"]) not in ({}, heads)
-                result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed, limited)
-            record["outcome"] = result
-            record["pushed"] = pushed
-            record["row"] = after
+                ran = watch_stage(proc, log, stage, conf, lambda: None, self.saw_window)
+            except Exception as e:  # the stream could not be read or logged
+                stop(proc)
+                ran = {**empty_result(), "killed": "error", "result": f"watching the session failed: {e}"[:500],
+                       "exit_code": proc.returncode}
+            self.finished.put((sid, ran))
+
+        threading.Thread(target=watch_one, name=f"stage-{sid}", daemon=True).start()
+
+    def conclude(self, sid: str, ran: dict, source: PlanSource, conf: dict,
+                 limit_runs: dict[str, int]) -> None:
+        """Classify a stage whose session has ended, from the pushed plan."""
+        with self.lock:
+            entry = self.running.pop(sid)
+        stage, record, heads, before = entry["stage"], entry["record"], entry["heads"], entry["before"]
+        record.update({k: ran.get(k) for k in
+                       ("session_id", "exit_code", "killed", "mismatch", "is_error", "result", "usage",
+                        "init", "limit")})
+        record.update({"finished": now(), "outcome": "unread"})
+        with self.lock:
+            self.state["in_flight"].remove(record)
             self.state["stages"].append(record)
-            self.state["current"] = None
-            self.save()
-            if result == "done":
-                limit_runs.pop(stage["id"], None)
-                continue
-            if result == "stage-limited":
-                held = self.limited(stage, ran["limit"], conf, limit_runs)
-                if held:
-                    return held
-                first, after_reset = stage["id"], True
-                continue
-            _, ledger, blocked = source.load()
-            reason = blocked.get(stage["id"]) or ledger.get(stage["id"], {}).get("result", "")
-            msg = {
-                "stage-blocked": f"{stage['id']} is blocked: {reason or 'see .plan/BLOCKED.md'}",
-                "stage-stopped": f"{stage['id']} stopped short of `done` with no block recorded"
-                                 + (" after pushing its stage branch" if pushed else "")
-                                 + ": most often a merge that did not happen (a permission rule, red checks) "
-                                 "or the breaker; its session's last words are in the status file",
-                "stage-dead": f"{stage['id']} ended with its row still `{after}`"
-                              + (" after going quiet for the idle threshold" if ran["killed"] == "idle" else "")
-                              + "; nothing was written on its behalf",
-            }[result]
-            return self.finish(result, msg, stage=stage["id"])
+        self.step(f"reading {sid}'s result from the pushed plan")
+        self.measure(record, entry["start"], ran)
+        if ran["limit"] is None or ran["limit"].get("resets_at") is None:
+            logged = transcript_limit(ran.get("session_id"), self.env)
+            if logged:
+                ran["limit"] = {k: (ran["limit"] or {}).get(k) or logged[k] for k in logged}
+                record["limit"] = ran["limit"]
+        if ran["killed"] == "mismatch":
+            record["outcome"] = "launch-mismatch"
+            self.ended.add(sid)
+            self.halt("launch-mismatch",
+                      f"{sid} started with {'; '.join(ran['mismatch'])}; stopped before any work", stage=sid)
+            return
+        source.refresh()
+        after, now_blocked = self.read_row(source, sid)
+        pushed = stage_heads(self.repo, self.branch, sid) not in ({}, heads)
+        limited = ran["limit"] is not None
+        result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed, limited)
+        if result not in ("done", "stage-blocked") and self.grace:
+            self.step(f"waiting {self.grace:g} s for {sid}'s push to settle")
+            time.sleep(self.grace)
+            self.step(f"reading {sid}'s result from the pushed plan again")
+            source.refresh()
+            after, now_blocked = self.read_row(source, sid)
+            pushed = stage_heads(self.repo, self.branch, sid) not in ({}, heads)
+            result = outcome(before, after, now_blocked, bool(ran["killed"]), pushed, limited)
+        record.update({"outcome": result, "pushed": pushed, "row": after})
+        self.save()
+        if result == "done":
+            limit_runs.pop(sid, None)
+            self.ended.discard(sid)
+            return
+        self.ended.add(sid)
+        if result == "stage-limited":
+            stopped = self.limited(stage, ran["limit"], conf, limit_runs)
+            if stopped:
+                self.halt("stage-limited", stopped, stage=sid)
+            return
+        _, ledger, blocked = source.load()
+        reason = blocked.get(sid) or ledger.get(sid, {}).get("result", "")
+        msg = {
+            "stage-blocked": f"{sid} is blocked: {reason or 'see .plan/BLOCKED.md'}",
+            "stage-stopped": f"{sid} stopped short of `done` with no block recorded"
+                             + (" after pushing its stage branch" if pushed else "")
+                             + ": most often a merge that did not happen (a permission rule, red checks) "
+                             "or the breaker; its session's last words are in the status file",
+            "stage-dead": f"{sid} ended with its row still `{after}`"
+                          + (" after going quiet for the idle threshold" if ran["killed"] == "idle" else "")
+                          + "; nothing was written on its behalf",
+        }[result]
+        self.halt(result, msg, stage=sid)
 
     def limited(self, stage: dict, limit: dict, conf: dict, runs: dict[str, int]) -> str | None:
-        """A stage ended on the usage limit: wait out its reset (None, run it
-        again) or say why a person is needed (a STATUS line)."""
+        """A stage ended on the usage limit: queue it to run again once its
+        reset is waited out (None), or say why a person is needed."""
         sid = stage["id"]
         kind = f"the {limit['type'].replace('_', '-')} limit" if limit.get("type") else "the usage limit"
-        resume = f"`driver run --resume {sid}` (from /plan-run-local) to pick the stage up"
         if limit.get("resets_at") is None:
-            return self.finish("stage-limited", f"{sid} hit {kind} and no reset time could be read; "
-                               f"once it resets, run {resume}", stage=sid)
+            return f"{sid} hit {kind} and no reset time could be read; once it resets, run {resume_hint(sid)}"
         if runs.get(sid, 0) >= LIMIT_RETRIES:
-            return self.finish("stage-limited", f"{sid} hit {kind} again straight after waiting for "
-                               f"its reset; the limit reads {clock_text(limit['resets_at'])} now. "
-                               f"Run {resume} when it has reset", stage=sid)
+            return (f"{sid} hit {kind} again straight after waiting for its reset; the limit reads "
+                    f"{clock_text(limit['resets_at'])} now. Run {resume_hint(sid)} when it has reset")
         until = max(limit["resets_at"], self.clock()) + RESET_MARGIN_SECONDS
         if until - self.clock() > conf["max_wait_seconds"]:
-            return self.finish("stage-limited", f"{sid} hit {kind}, which resets "
-                               f"{clock_text(limit['resets_at'])}, more than "
-                               f"CLAUDE_STAGE_MAX_WAIT_HOURS away; then run {resume}", stage=sid)
+            return (f"{sid} hit {kind}, which resets {clock_text(limit['resets_at'])}, more than "
+                    f"CLAUDE_STAGE_MAX_WAIT_HOURS away; then run {resume_hint(sid)}")
+        if self.stops:
+            return (f"{sid} hit {kind}, which resets {clock_text(limit['resets_at'])}; the run stopped for "
+                    f"another stage instead of waiting, so after the reset run {resume_hint(sid)}")
         runs[sid] = runs.get(sid, 0) + 1
-        self.wait_until(until, sid, "limit")
+        self.retry[sid] = until
         return None
 
     def read_row(self, source: PlanSource, stage_id: str) -> tuple[str, bool]:
@@ -1146,7 +1421,7 @@ class Driver:
         return ledger.get(stage_id, {}).get("status", "todo"), stage_id in blocked
 
     def settle(self, pick: dict) -> str:
-        ran = [s["id"] for s in self.state["stages"]]
+        ran = list(dict.fromkeys(s["id"] for s in self.state["stages"]))
         done = f"ran {', '.join(ran)}; " if ran else ""
         if pick["complete"]:
             return self.finish("plan-complete", f"{done}every stage is done or skipped; close the plan "
@@ -1156,6 +1431,10 @@ class Driver:
             return self.finish("gated", f"{done}left for a person: {named}")
         named = ", ".join(f"{w['id']} ({w['status']})" for w in pick["waiting"]) or "nothing"
         return self.finish("waiting", f"{done}nothing runnable; the rest waits on {named}")
+
+
+def resume_hint(stage_id: str) -> str:
+    return f"`driver run --resume {stage_id}` (from /plan-run-local) to pick the stage up"
 
 
 # --- commands -----------------------------------------------------------------
@@ -1177,12 +1456,20 @@ def cmd_next(args: argparse.Namespace) -> int:
     if usage and usage["resets_at"] <= time.time():
         usage = {"percent": 0.0, "resets_at": None}
     out = {"plan_branch": branch, "gated": pick["gated"], "waiting": pick["waiting"],
-           "complete": pick["complete"], "stage": None, "command": None, "usage_gate": None}
+           "complete": pick["complete"], "runnable": pick["runnable"],
+           "start_together": [], "stage": None, "command": None, "usage_gate": None}
     if pick["stage"]:
         out["stage"] = pick["stage"]
         out["command"] = stage_command([conf["launcher"]], pick["stage"], conf)
         hold = gate_holds(usage and usage["percent"], None)
         out["usage_gate"] = {"hold": hold, "line": gate_line(pick["stage"]["id"], usage, None, hold)}
+        together: list[dict] = []
+        while not hold:  # nothing is measured before the run, so the ramp-up's opening step
+            stage = next_to_start(pick["runnable"], together)
+            if stage is None or not ramp_allows(usage and usage["percent"], None, len(together)):
+                break
+            together.append(stage)
+        out["start_together"] = [s["id"] for s in together]
     print(json.dumps(out, indent=2, ensure_ascii=False))
     return 0
 
@@ -1206,12 +1493,15 @@ def cmd_status(args: argparse.Namespace) -> int:
     for s in state.get("stages", []):
         lines.append(f"  {s['id']}: {s.get('outcome')} · model {s['model']}, effort {s['effort']} · "
                      f"{s['started']} → {s.get('finished')}")
-    cur = state.get("current")
-    if cur and cur.get("waiting"):
-        why = "the usage gate held it" if cur["waiting"] == "gate" else "it hit the usage limit"
+    waiting = state.get("waiting")
+    legacy = state.get("current")  # a status file from before stages ran side by side
+    if not waiting and isinstance(legacy, dict) and legacy.get("waiting"):
+        waiting = {"ids": [legacy["id"]], "why": legacy["waiting"], "until": legacy.get("until")}
+    if waiting:
+        why = "the usage gate held it" if waiting["why"] == "gate" else "it hit the usage limit"
         then = "; it starts then" if state.get("state") == "running" and not gone else ", when the driver stopped"
-        lines.append(f"  {cur['id']}: waiting until {cur['until']} ({why}){then}")
-    elif cur:
+        lines.append(f"  {', '.join(waiting['ids'])}: waiting until {waiting['until']} ({why}){then}")
+    for cur in recorded_sessions(state):
         lines.append(f"  {cur['id']}: {'running' if not gone else 'was running'} since {cur['started']} · "
                      f"model {cur['model']}, effort {cur['effort']}")
         if cur.get("pid"):
@@ -1243,9 +1533,10 @@ def build_parser() -> argparse.ArgumentParser:
             sp.add_argument("--usage-resets-at", metavar="TIME",
                             help="when that window resets: ISO 8601 or epoch seconds")
         if name == "run":
-            sp.add_argument("--resume", metavar="S<N>",
+            sp.add_argument("--resume", metavar="S<N>", action="append",
                             help="run this stage first: a `doing` row whose PR was merged outside "
-                                 "the run, which the stage's preflight records `done`")
+                                 "the run, which the stage's preflight records `done`. Repeat it, "
+                                 "or separate ids with commas, for several")
     return p
 
 

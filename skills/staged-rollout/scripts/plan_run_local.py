@@ -160,8 +160,10 @@ START_STAGGER_SECONDS = 60  # between two starts while a stage is in flight
 # The room check. STAGE_SESSION_MB is one stage session's measured peak: the
 # `claude` process and every process under it. The margin covers sessions in
 # flight that have not reached their peak yet, since free memory is read as
-# they stand now.
-STAGE_SESSION_MB = 1000  # one stage session's peak memory, measured
+# they stand now. Measured on Windows over six Sonnet stage sessions
+# (#321): private bytes peaked at 529 MB, working set at 423 MB, summed
+# over the process tree; rounded up to 600.
+STAGE_SESSION_MB = 600   # one stage session's peak memory, measured
 MEMORY_MARGIN = 1.5      # free memory needed before a start: STAGE_SESSION_MB × this
 
 

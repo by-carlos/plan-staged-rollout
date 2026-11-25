@@ -10,7 +10,8 @@ remaining stage** of the plan, several side by side where `depends` allows,
 each as its own fresh headless Claude Code session on this machine — not in
 this session. This
 session is the **orchestrator**: it starts a driver script in the background,
-is woken when the driver needs a person, and acts. To run one stage yourself,
+passes on its progress pings, and acts when the driver needs a person. To run
+one stage yourself,
 in this session, use **`/stage-run <N>`**; to run them in the cloud instead,
 **`/plan-run-cloud`**.
 
@@ -22,8 +23,9 @@ substitute a tier of your own):
 
 > **model `sonnet`, effort `low`** — Sonnet-class at low effort.
 
-The orchestrator starts a script, waits, reads one status line when woken and
-asks about merges, so it needs no more than that. Haiku was tried and is not
+The orchestrator starts a script, waits, passes on its progress lines, reads
+one status line when it exits and asks about merges, so it needs no more than
+that. Haiku was tried and is not
 recommended: in an attended trial on a real plan it skipped the usage-limit
 step without saying so (the driver started with no usage flags and the user
 was not told the first stage ran unchecked), and the trial did not reach the
@@ -51,6 +53,9 @@ Before doing anything else, show this notice and stop for a yes/no answer:
 > - **Keep this session open and the machine awake.** The driver is a
 >   background command of this session. You can ask how the plan is going at
 >   any time, here or from your phone through Remote Control.
+> - **Progress pings.** On by default: a short notification as each stage
+>   starts and finishes, and when the run waits for a usage reset (on your
+>   phone when Remote Control is on); each wakes this session briefly.
 > - **Stage sessions need their own login.** A session does not hand its
 >   login to the commands it runs, so the driver checks
 >   `claude auth status` first and stops if stage sessions would not be
@@ -125,11 +130,37 @@ only. Work through these steps **in order**:
 
 5. **Start the driver** with the Bash tool, `run_in_background: true`:
    `driver run` with the usage flags from step 4 (or `driver run --resume
-   S<N>[,S<M>…]`, step 6, with the usage read afresh). Say in one line that it is running, which stages it starts with, and that the user can ask for
-   progress at any time. Then end the turn: the session is woken when the
-   driver exits. A wait for a usage reset happens inside the driver and
-   wakes nobody. Never start a second driver while one runs; the driver
-   refuses that too (`already-running`).
+   S<N>[,S<M>…]`, step 6, with the usage read afresh). Never start a second
+   driver while one runs; the driver refuses that too (`already-running`).
+
+   **Progress pings.** The driver appends one line per event to the file
+   `driver next` names as `events_file` (step 4): a stage started, a stage
+   finished, a wait for a usage reset. Earlier runs' lines stay in it, so
+   **before** starting the driver count the lines it holds (`wc -l`; 0 when
+   it does not exist yet) and keep `K`, that count plus 1: the first line
+   not yet sent. After starting the driver, arm the `Monitor` tool
+   (deferred: load it and `PushNotification` with `ToolSearch` first) with
+   `timeout_ms: 1800000` on
+   `tail -n +<K> -F "<events_file>"`.
+
+   - **Each event:** send each line as it is, one `PushNotification` per
+     line, and add the number of lines received to `K`. Do nothing else on
+     that wake: no `driver status`, no other file. A ping reported as not
+     sent is expected; say nothing about it.
+   - **The monitor expires** while the driver runs: arm it again with the
+     current `K`, so no line is lost or sent twice.
+   - **The driver exits:** run `tail -n +<K> "<events_file>"` once, send any
+     lines it prints the same way, stop the monitor (`TaskStop`) if it is
+     still armed, do not arm it again, then do step 6.
+
+   Where `Monitor` or `PushNotification` is not available, say so in one line
+   and run without pings.
+
+   Say in one line that the driver is running, which stages it starts with,
+   and that the user can ask for progress at any time. Then end the turn: the
+   session is woken by each event and when the driver exits. A wait for a
+   usage reset happens inside the driver; only its event line wakes this
+   session.
 
 6. **When woken, read only the driver's last line,** `STATUS: <status> · <message>`.
    Never open a stage's log or transcript: this session's context stays

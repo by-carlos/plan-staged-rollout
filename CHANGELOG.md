@@ -10,6 +10,16 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Added
+
+- **`/plan-run-local` now sends a progress ping as each stage starts and
+  finishes.** A run of several stages used to be silent until it stopped. You
+  now get a short notification when a stage starts (with its model and
+  effort), when it finishes (with its outcome) and when the run starts waiting
+  for a usage reset; with Remote Control on it reaches your phone. The driver
+  writes these lines to `events.log` beside its status file. Pings are on by
+  default, and how a run that needs you is reported is unchanged.
+
 ### Changed
 
 - **`/plan-run-local` now runs independent stages side by side, ramping up

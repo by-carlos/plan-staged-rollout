@@ -205,12 +205,26 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
   local runner cannot be. Revisit: never. Source: #227, #266
 - **The local runner is a standard-library Python driver started in the
   background by an interactive orchestrator session; the driver holds the
-  loop, and the session reads only its one `STATUS:` line.** — a headless
+  loop, and the session reads only its one `STATUS:` line and its progress
+  event lines.** — a headless
   orchestrator lost its background command when its `-p` run ended (CLI
   2.1.268), only a session can reach the user and pass an ask-rule merge,
   and a script keeps the session's context flat. The cloud runner stays
   model-driven (`remote-driver.md`). Revisit: if Claude Code gives headless
-  runs long-lived background commands. Source: #266
+  runs long-lived background commands. Source: #266, #326
+- **The local runner pings progress by default: the driver appends one line
+  per event (stage started, stage finished, waiting for a usage reset) to an
+  events file beside its status file, and the orchestrator watches it with
+  `Monitor` and sends each line with `PushNotification`. Stopping statuses
+  still arrive by the driver's exit.** — a run takes hours and said nothing
+  between its start and its first stop. Each ping is one short turn, and a
+  notification is skipped when the user is at the terminal. Rejected: the
+  driver exiting after each stage to be restarted (the preflight and a full
+  orchestrator turn every stage); a user-set notify command the driver runs
+  (needs a push route of the user's own; may be added beside this later).
+  Revisit: if the pings cost noticeably in a real run, or if Claude Code
+  gives a background command a way to notify without waking the session.
+  Source: #326
 - **The `/plan-run-local` orchestrator's recommended launch is `sonnet` at
   `low` effort, defined once in the command's *Launch hint*; the opening
   notice points to it and says to switch model before answering yes.** — one

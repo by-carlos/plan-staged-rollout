@@ -382,7 +382,7 @@ background and then waits; it does not run any stage itself, and it never
 reads a stage's output, so it stays cheap all plan long (the command's launch
 hint names the model and effort to start it on).
 
-[![How plan-run-local runs a plan: this session starts a background driver, which runs each runnable stage as a fresh local session at its own model and effort, reads the ledger after each, and wakes the session only when a person is needed.](diagrams/plan-run-local.svg)](diagrams/plan-run-local.svg)
+[![How plan-run-local runs a plan: this session starts a background driver, which runs each runnable stage as a fresh local session at its own model and effort, reads the ledger after each, wakes the session to pass on each progress ping, and again when a person is needed.](diagrams/plan-run-local.svg)](diagrams/plan-run-local.svg)
 
 - **What it runs:** stages whose `gate` is `auto`, absent or `local`, each at
   the model and effort its stage index row books. `human`, `live` and unknown
@@ -400,6 +400,9 @@ hint names the model and effort to start it on).
   nobody to answer, so a rule that asks before `gh pr merge` denies its
   `merge: auto` merge. The orchestrator then offers you that merge in its own
   session, where your rule asks you as usual, and carries on.
+- **Progress pings.** A short notification as each stage starts, as it
+  finishes with its outcome, and when the run starts waiting for a usage
+  reset; on your phone when Remote Control is on.
 - **Ask how it is going at any time.** The orchestrator answers from the
   driver's status file.
 - **What you need:** Claude Code 2.1.268 or later, Python 3, and the

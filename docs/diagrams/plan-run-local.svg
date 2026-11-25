@@ -1,4 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 530" width="1150" height="530" role="img" aria-label="How plan-run-local runs a plan: this session starts a background driver, which runs each runnable stage as a fresh local session at its own model and effort, reads the ledger after each, and wakes the session only when a person is needed.">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1150 530" width="1150" height="530" role="img" aria-label="How plan-run-local runs a plan: this session starts a background driver, which runs each runnable stage as a fresh local session at its own model and effort, reads the ledger after each, wakes the session to pass on each progress ping, and again when a person is needed.">
 <title>How plan-run-local runs a plan</title>
 <desc>You run /plan-run-local in a session, which becomes the orchestrator. It starts a driver in the background. The driver picks the next runnable stage whose gate is auto, absent or local, starts it as a fresh local claude -p session at the stage's own model and effort, and the stage works, opens its PR, merges it under merge: auto and pushes its ledger row. The driver reads the ledger as pushed: done loops to the next stage; anything else ends the driver with one STATUS line. The orchestrator wakes, tells you at the desk or on your phone, offers a merge the stage could not ask for, and starts the driver again. The driver never writes the ledger or BLOCKED.md, never fires human or live stages, and never touches the plan-to-main pull request.</desc>
 
@@ -34,8 +34,8 @@
 <text x="252" y="108" font-size="16" fill="#3B2A1E">The orchestrator</text>
 <g font-size="12.5" fill="#8A7664" font-style="italic">
   <text x="252" y="132">this session · Sonnet, low effort</text>
-  <text x="252" y="158">waits, and wakes only when</text>
-  <text x="252" y="176">the driver exits</text>
+  <text x="252" y="158">passes on progress pings, acts</text>
+  <text x="252" y="176">when the driver exits</text>
   <text x="252" y="202">answers “how is it going?”</text>
   <text x="252" y="220">from the status file</text>
 </g>

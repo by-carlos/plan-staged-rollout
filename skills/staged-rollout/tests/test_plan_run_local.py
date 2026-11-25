@@ -703,6 +703,10 @@ class LoopBase(unittest.TestCase):
     def outcomes(self, state):
         return [(s["id"], s["outcome"]) for s in state["stages"]]
 
+    def events(self):
+        path = prl.state_dir(self.repo, "plan-demo") / prl.EVENTS_FILE
+        return path.read_text(encoding="utf-8").splitlines()
+
 
 class DriverLoop(LoopBase):
     def test_runs_until_a_gated_stage(self):
@@ -807,6 +811,46 @@ class DriverLoop(LoopBase):
         path.write_text(json.dumps({**state, "updated": prl.now()}), encoding="utf-8")
         line, _ = self.drive()
         self.assertTrue(line.startswith("STATUS: already-running"), line)
+
+    # --- the events file ---
+
+    def test_each_stage_writes_a_started_and_a_finished_line(self):
+        self.drive()
+        self.assertEqual(self.events(), [
+            "S0 started (opus, high)", "S0 finished: done",
+            "S1 started (sonnet, medium)", "S1 finished: done"])
+
+    def test_a_later_run_appends_to_the_events_file(self):
+        self.drive({"FAKE_MODE": "no-auto"})
+        first = self.events()
+        self.assertEqual(first[-1], "S0 finished: launch-mismatch")
+        self.drive({"FAKE_MODE": "no-auto"})
+        self.assertEqual(self.events()[:len(first)], first)
+        self.assertGreater(len(self.events()), len(first))
+
+    def test_a_stage_stopped_at_launch_still_writes_its_finished_line(self):
+        self.drive({"FAKE_MODE": "no-auto"})
+        self.assertEqual(self.events()[-1], "S0 finished: launch-mismatch")
+
+    def test_a_usage_wait_writes_the_reset_time(self):
+        clock = FakeClock()
+        reset = clock.now + 3600
+        self.drive({"FAKE_MODE": "limit", "FAKE_STAGE": "S0", "FAKE_RESET": str(int(reset))}, clock=clock)
+        self.assertEqual(self.events()[1:3], [
+            "S0 finished: stage-limited",
+            f"S0 waiting for the usage reset at {prl.clock_text(reset)}"])
+
+    def test_a_gate_hold_writes_a_waiting_line_before_the_stage_starts(self):
+        clock = FakeClock()
+        reset = clock.now + 1800
+        self.drive(usage={"percent": 92.0, "resets_at": reset}, clock=clock)
+        self.assertEqual(self.events()[:2], [
+            f"S0 waiting for the usage reset at {prl.clock_text(reset)}", "S0 started (opus, high)"])
+
+    def test_an_unwritable_events_file_does_not_stop_the_run(self):
+        (prl.state_dir(self.repo, "plan-demo") / prl.EVENTS_FILE).mkdir(parents=True)
+        line, _ = self.drive()
+        self.assertTrue(line.startswith("STATUS: gated"), line)
 
     # --- the usage limit ---
 
@@ -1183,6 +1227,8 @@ class ParallelLoop(LoopBase):
         self.assertTrue(line.startswith("STATUS: git-timeout"), line)
         self.assertIn("S2 ran on to its end unread", line)
         self.assertEqual(sorted(self.outcomes(state)), [("S1", "unread"), ("S2", "unread")])
+        self.assertEqual(sorted(e for e in self.events() if "finished" in e),
+                         ["S1 finished: unread", "S2 finished: unread"])
         self.assertEqual(state["in_flight"], [])
         self.assertEqual({s[0] for s in self.spans()}, {"S1", "S2"})
 
@@ -1214,6 +1260,8 @@ class ParallelLoop(LoopBase):
         self.assertEqual((data["runnable"][2]["model"], data["runnable"][2]["gate"]), ("sonnet", "local"))
         self.assertEqual(data["start_together"], ["S1", "S2"])
         self.assertEqual(data["stage"]["id"], "S1")
+        self.assertEqual(Path(data["events_file"]).resolve(),
+                         (prl.state_dir(self.repo, "plan-demo") / prl.EVENTS_FILE).resolve())
         data = self.next_out("--usage-percent", "92", "--usage-resets-at", str(int(prl.time.time()) + 3600))
         self.assertEqual(data["start_together"], [])
 

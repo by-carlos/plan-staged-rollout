@@ -102,6 +102,20 @@ Settings, from the environment:
 The status file and the logs live outside `.plan/`, in the clone's git
 directory: `<git common dir>/plan-run-local/<plan slug>/`.
 
+The events file. Beside the status file, `events.log` gets one plain-text
+line per progress event, appended and flushed as it happens, for the
+orchestrator to pass on as notifications (`next` names its path as
+`events_file`):
+
+  S1 started (sonnet, low)
+  S1 finished: done
+  S2, S3 waiting for the usage reset at 2026-11-23 14:05 UTC
+
+The outcome after `finished:` is the one the status file records. Runs append
+to the same file, so a reader notes its length before it starts one. A line
+that cannot be written is dropped: the file never stops a run, and nothing in
+the driver reads it.
+
 Invoke as `python <path>/plan_run_local.py <subcommand> [--repo <dir>]`.
 
 Exit codes: 0 a STATUS line was printed (whatever it says), 2 usage/IO failure.
@@ -141,6 +155,7 @@ GRACE_SECONDS = 120     # a finished session's push settling before the dead-run
 INTERRUPT_SECONDS = 30  # SIGINT, then terminate (POSIX)
 HEARTBEAT_SECONDS = 60  # status file refresh while a stage runs
 STALE_SECONDS = 300     # an older heartbeat means the driver that wrote it is gone
+EVENTS_FILE = "events.log"  # progress lines, beside the status file
 WATCH_SECONDS = 15      # how often the watchdog reads the main loop's heartbeat
 GIT_TIMEOUT_SECONDS = 120  # one git command; kept under STALE_SECONDS so a stuck fetch is named
 PLAN_DIR = ".plan"
@@ -1007,6 +1022,7 @@ class Driver:
         self.branch = current_branch(repo)
         self.dir = state_dir(repo, self.branch)
         self.status_path = self.dir / "status.json"
+        self.events_path = self.dir / EVENTS_FILE
         self.state: dict = {}
         self.reading = usage      # the latest 5-hour reading: {"percent", "resets_at"}
         self.max_jump: float | None = None
@@ -1118,6 +1134,15 @@ class Driver:
         extra = {k: v for k, v in first.items() if k not in ("status", "message")}
         return self.finish(first["status"], message, **extra)
 
+    def event(self, line: str) -> None:
+        """Append one progress line to the events file. Best effort."""
+        try:
+            with self.events_path.open("a", encoding="utf-8", newline="\n") as fh:
+                fh.write(line + "\n")
+                fh.flush()
+        except OSError:
+            pass
+
     # preflight
     def launcher(self, conf: dict) -> list[str] | None:
         if self.launcher_argv:
@@ -1193,6 +1218,8 @@ class Driver:
         self.state["waiting"] = {"ids": stage_ids, "why": why, "until": wait["until"]}
         self.step(f"waiting until {wait['until']} for the usage limit to reset before "
                   f"{', '.join(stage_ids)}")
+        self.event(f"{', '.join(stage_ids)} waiting for the usage reset at "
+                   f"{clock_text(until - RESET_MARGIN_SECONDS)}")
         self.pause(until)
         wait["ended"] = now()
         self.state["waiting"] = None
@@ -1297,6 +1324,7 @@ class Driver:
                 record.update({"finished": now(), "outcome": "unread"})
                 self.state["in_flight"].remove(record)
                 self.state["stages"].append(record)
+            self.event(f"{sid} finished: unread")
             unread.append(sid)
         self.save()
         return unread
@@ -1450,6 +1478,7 @@ class Driver:
                                  "before": ledger.get(sid, {}).get("status", "todo"), "start": start}
             self.state["in_flight"].append(record)
         self.last_start = self.clock()
+        self.event(f"{sid} started ({record['model']}, {record['effort']})")
         self.step(self.running_text())
 
         def watch_one():
@@ -1468,7 +1497,7 @@ class Driver:
         """Classify a stage whose session has ended, from the pushed plan."""
         with self.lock:
             entry = self.running.pop(sid)
-        stage, record, heads, before = entry["stage"], entry["record"], entry["heads"], entry["before"]
+        record = entry["record"]
         record.update({k: ran.get(k) for k in
                        ("session_id", "exit_code", "killed", "mismatch", "is_error", "result", "usage",
                         "init", "limit")})
@@ -1476,6 +1505,15 @@ class Driver:
         with self.lock:
             self.state["in_flight"].remove(record)
             self.state["stages"].append(record)
+        try:
+            self.classify(sid, entry, ran, source, conf, limit_runs)
+        finally:  # every way a stage ends, a git timeout while reading it included
+            self.event(f"{sid} finished: {record['outcome']}")
+
+    def classify(self, sid: str, entry: dict, ran: dict, source: PlanSource, conf: dict,
+                 limit_runs: dict[str, int]) -> None:
+        """Read how an ended stage stands and record its outcome."""
+        stage, record, heads, before = entry["stage"], entry["record"], entry["heads"], entry["before"]
         self.step(f"reading {sid}'s result from the pushed plan")
         self.measure(record, entry["start"], ran)
         if ran["limit"] is None or ran["limit"].get("resets_at") is None:
@@ -1594,7 +1632,7 @@ def cmd_next(args: argparse.Namespace) -> int:
     out = {"plan_branch": branch, "gated": pick["gated"], "waiting": pick["waiting"],
            "complete": pick["complete"], "runnable": pick["runnable"],
            "start_together": [], "stage": None, "command": None, "usage_gate": None,
-           "resources": None}
+           "resources": None, "events_file": (state_dir(repo, branch) / EVENTS_FILE).as_posix()}
     if pick["stage"]:
         out["stage"] = pick["stage"]
         out["command"] = stage_command([conf["launcher"]], pick["stage"], conf)

@@ -151,6 +151,15 @@ under `plan-run-local/<plan slug>/`, so nothing is committed.
 `plan_run_local.py status` prints the run so far and every stage in flight,
 and `next` names the stages `run` would start first without starting them.
 
+**Progress pings.** Beside the status file, the driver appends one line to
+`events.log` as each stage starts and finishes and when it starts waiting for
+a usage reset (`next` prints the file's path as `events_file`). The session
+that started the driver watches the file and sends each line as a
+notification, which reaches your phone when Remote Control is on and is
+skipped while you are at the keyboard. Each one wakes that session briefly,
+and so does re-arming the watch, at least every 30 minutes. They are on by
+default.
+
 | `STATUS:` | Meaning |
 |---|---|
 | `plan-complete` | Every stage is `done` or `skipped`; close the plan. |

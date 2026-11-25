@@ -400,6 +400,9 @@ hint names the model and effort to start it on).
   nobody to answer, so a rule that asks before `gh pr merge` denies its
   `merge: auto` merge. The orchestrator then offers you that merge in its own
   session, where your rule asks you as usual, and carries on.
+- **Progress pings.** A short notification as each stage starts, as it
+  finishes with its outcome, and when the run starts waiting for a usage
+  reset; on your phone when Remote Control is on.
 - **Ask how it is going at any time.** The orchestrator answers from the
   driver's status file.
 - **What you need:** Claude Code 2.1.268 or later, Python 3, and the

@@ -113,6 +113,7 @@ exits with one `STATUS:` line when a person is needed. It needs Claude Code
 | `CLAUDE_STAGE_IDLE_MINUTES` | `15` | Minutes without output before a stage session is stopped and reported dead. |
 | `CLAUDE_STAGE_MAX_BUDGET_USD` | unset | Passed to each stage session as `--max-budget-usd`. Unset means no cap. |
 | `CLAUDE_STAGE_MAX_WAIT_HOURS` | `6` | The longest the driver waits on its own for a usage reset; a reset further off stops the run for you. |
+| `CLAUDE_STAGE_MAX_PARALLEL` | half the cores, at least 1 | The most stages in flight at once, a whole number from 1; `1` runs them one at a time. Anything else stops the run with `bad-setting`. |
 
 **The usage gate.** Before each stage the driver reads the share of the
 5-hour usage limit used so far and holds the stage until the limit resets
@@ -135,6 +136,15 @@ starts beside one it depends on, and `live` stages never run. When a stage
 needs you, nothing more starts, the running stages finish, and the
 `STATUS:` line leads with the first stop and adds each further one as
 `· also <status>: <message>`. `run --resume S2,S3` resumes several stages.
+
+**The machine's room.** Beside running stages, one more also starts only
+while fewer than `CLAUDE_STAGE_MAX_PARALLEL` are running and, where free
+memory can be read (Windows, Linux and macOS, with no extra package), at
+least one stage session's measured peak times 1.5 is free. Where it cannot
+be read, the cap alone decides. A held start waits for a stage to end;
+`driver status` shows the last check as a `resources:` line, with the free
+memory read and the cap. The first stage is never held, a running stage is
+never stopped to make room, and CPU load is not read.
 
 The status file and one log per stage live in the clone's git directory,
 under `plan-run-local/<plan slug>/`, so nothing is committed.

@@ -186,7 +186,8 @@ Work through these steps **in order**:
      into a readable PR description;
    - the **usage report**, which you run here before dispatching, because it
      reads `.plan/` and step 4 may delete it:
-     `python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" report --plan-dir .plan`.
+     `python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" report --plan-dir .plan`
+     (here and below, `python` where that is the interpreter's name, Windows).
      It goes in the body as its own **Usage** section, verbatim: estimates
      against actual time and tokens, per stage and for the plan. A plan with
      no `estimate` column (scaffolded before estimates existed) makes the
@@ -260,7 +261,7 @@ Work through these steps **in order**:
    the operator is coming back to, and opening it changes nothing on `main`.
    Pin the base explicitly (`--base main`, or the repo's actual default
    branch) rather than relying on `gh`'s default, and open it with the
-   adapter's `pr-create` — `python "${CLAUDE_PLUGIN_ROOT}/tickets/scripts/github_adapter.py"
+   adapter's `pr-create` — `python3 "${CLAUDE_PLUGIN_ROOT}/tickets/scripts/github_adapter.py"
    pr-create --repo <owner/name> --base main --head plan-<slug> --title
    "<title>" --body-file <file> --confirm` — not `gh pr create --body-file`,
    which corrupts non-ASCII text on native Windows and which the

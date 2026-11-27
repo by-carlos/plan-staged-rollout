@@ -165,14 +165,20 @@ def is_issue_create(seg: str) -> bool:
 # The adapter's real path, not ${CLAUDE_PLUGIN_ROOT}: that variable is set for
 # the hook but not in the Bash tool the model runs the suggestion from.
 ADAPTER = (Path(__file__).resolve().parent / "github_adapter.py").as_posix()
-REPLACEMENT = ('Use the plan-staged-rollout GitHub adapter instead: python '
-               f'"{ADAPTER}" create|comment|pr-create|repair ... -- it posts '
-               "ASCII-escaped JSON through gh api --input and verifies the body that actually landed.")
-PR_REPLACEMENT = ('Open the pull request with the plan-staged-rollout GitHub adapter instead: python '
-                  f'"{ADAPTER}" pr-create --repo <owner/name> --base <base> --head <branch> '
-                  '--title "<title>" --body-file <file> --confirm -- run it without --confirm first to '
-                  "see the payload. It posts ASCII-escaped JSON through gh api --input and reads the "
-                  "title, base, head and body back. Keep the explicit --base.")
+
+
+def replacement(python: str, pr_create: bool) -> str:
+    """The command to run instead. `python` is the interpreter name the hook
+    wrapper found on this machine: Debian has only `python3`."""
+    if pr_create:
+        return (f'Open the pull request with the plan-staged-rollout GitHub adapter instead: {python} '
+                f'"{ADAPTER}" pr-create --repo <owner/name> --base <base> --head <branch> '
+                '--title "<title>" --body-file <file> --confirm -- run it without --confirm first to '
+                "see the payload. It posts ASCII-escaped JSON through gh api --input and reads the "
+                "title, base, head and body back. Keep the explicit --base.")
+    return (f'Use the plan-staged-rollout GitHub adapter instead: {python} '
+            f'"{ADAPTER}" create|comment|pr-create|repair ... -- it posts '
+            "ASCII-escaped JSON through gh api --input and verifies the body that actually landed.")
 
 
 def is_pr_create(seg: str) -> bool:
@@ -186,7 +192,7 @@ def deny(reason: str) -> None:
                                              "permissionDecisionReason": reason}}))
 
 
-def gh_body_guard() -> int:
+def gh_body_guard(python: str) -> int:
     """Deny a corrupting gh body flag; otherwise emit nothing, so the
     harness's own permission rules decide as if no hook ran."""
     try:
@@ -197,7 +203,7 @@ def gh_body_guard() -> int:
     for seg in segments(cmd):
         problem = gh_body_problem(seg)
         if problem:
-            deny(f"{problem} {PR_REPLACEMENT if is_pr_create(seg) else REPLACEMENT}")
+            deny(f"{problem} {replacement(python, is_pr_create(seg))}")
             break
     return 0
 
@@ -207,7 +213,7 @@ def main(argv: list[str] | None = None) -> int:
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     if argv[:1] == ["gh-body-guard"]:
-        return gh_body_guard()
+        return gh_body_guard(argv[1] if len(argv) > 1 else "python3")
     print(__doc__)
     return 2
 

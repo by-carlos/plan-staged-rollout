@@ -116,7 +116,8 @@ ask, never a commit to the default branch, never a force-push.
 `work-issue 124 --after 123` records 124 as blocked by 123, then watches 123
 from this session for up to 24 hours (keep the session open). If 123 closes
 as completed, it works 124; if it closes as not planned, it asks first. After
-24 hours it stops without re-arming.
+24 hours it stops without re-arming. On a GitHub ticket, 30 failed lookups
+in a row (about half an hour) also stop the wait, with the error shown.
 
 - **Both tickets must be on the same tracker.** A GitHub ticket can't wait on
   a Jira one, or the reverse.

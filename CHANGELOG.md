@@ -10,6 +10,20 @@ elsewhere. See 0.4.0 for the split.
 
 ## [Unreleased]
 
+### Fixed
+
+- **`work-issue --after` now works with the `gh` that Debian ships
+  (2.46.0).** The wait asked for a field that release doesn't have and hid
+  the error, so it would have timed out after 24 hours even once the blocking
+  issue closed. Reading the blocker, recording the dependency and the wait
+  now use `gh api`, and after 30 failed lookups in a row (about half an
+  hour) the wait stops and shows the error. Creating an issue's blocked-by
+  links, and reading its links, type and parent, work on that release too.
+- **The plugin no longer tells a session to run `python` where only
+  `python3` exists.** The `gh-body-guard` denial now names the interpreter
+  it found on your machine, and the commands in `/plan-stages`, `/stage-run`,
+  `/plan-close` and new plans say `python3` (`python` on Windows).
+
 ### Added
 
 - **`/plan-run-local` now sends a progress ping as each stage starts and

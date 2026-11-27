@@ -112,7 +112,7 @@ ticket blocks the target", `inward` means "the target blocks this ticket".
 
 ## Operations
 
-Each one is a subcommand: `python scripts/<tracker>_adapter.py <op> ...`.
+Each one is a subcommand: `python3 scripts/<tracker>_adapter.py <op> ...`.
 Input comes as a JSON file path or on stdin; output goes to stdout as JSON.
 
 | Op | Writes? | What it does |
@@ -297,10 +297,14 @@ Implemented in `scripts/github_adapter.py`; tests in `tests/`.
   first and exits 1 if one is missing.
 - **Type** is sent only when the owner has an issue type of that name
   (`orgs/{owner}/issue-types`); otherwise `build` lists it as a proposal.
-- **Links.** `blocks` links use `gh issue edit --add-blocked-by` (`inward`)
-  and `--add-blocking` (`outward`); the first is read back before the rest.
-  A parent uses the sub-issues endpoint. Other kinds exit 1.
-- **`fetch`** returns the Ticket plus `thread` (the comments). Pass `--with-board` to include board fields.
+- **Links.** `blocks` links use the issue-dependencies endpoint, which works
+  on older `gh` releases too: `inward` records the target as blocking this
+  issue, `outward` records this issue as blocking the target. The first is
+  read back before the rest. A target is a number, `#N`, `owner/name#N` or
+  an issue URL. A parent uses the sub-issues endpoint. Other kinds exit 1.
+- **`fetch`** returns the Ticket plus `thread` (the comments). Pass
+  `--with-board` to include board fields. On a `gh` too old for the type,
+  parent and dependency fields, they are read through REST.
 - **`detect`** warns on a public repo and exits 4 when issues are disabled.
 
 ## Not designed out: stage-to-issue linking

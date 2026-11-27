@@ -393,10 +393,14 @@ blocker, ask that one question and nothing else.
 
 ### GitHub
 
-1. **Resolve both:** `gh issue view <n> --repo <owner/repo> --json number,title,state,stateReason`.
+Every call in these steps is `gh api`: older `gh` releases (2.46.0 on
+Debian) lack the `stateReason` field and the `--add-blocked-by` flag. REST
+returns `state` and `state_reason` in lowercase.
+
+1. **Resolve both:** `gh api repos/<owner/repo>/issues/<n> --jq '{number, title, state, state_reason}'`.
    Either lookup failing stops the run.
-2. **Refuse a pull request as the blocker** (a merged one reports `MERGED`,
-   never `CLOSED`, so the watch would never fire):
+2. **Refuse a pull request as the blocker** (it reads `closed` with no
+   reason whether it was merged or abandoned, so the watch could not tell):
    `gh api repos/<owner/repo>/issues/<blocker> --jq 'if .pull_request then "PR" else "ISSUE" end'`.
 3. **Blocker already closed:** go straight to section 1 for the target.
 4. **Check the target now**, because the session that waits is the session
@@ -404,19 +408,30 @@ blocker, ask that one question and nothing else.
    guide-only, run the model check and stop on a mismatch, and stop if its
    board status (`ticket.json`'s `board`) already reads the template's
    `on_start` or `on_pr` status, or it is closed.
-5. **Record the dependency** unless it is there:
-   `gh issue edit <target> --repo <owner/repo> --add-blocked-by <blocker>`.
+5. **Record the dependency** unless the target's `links` already show it.
+   The endpoint takes the blocker's database id, not its number, so read
+   that first:
+   `gh api repos/<owner/repo>/issues/<blocker> --jq .id`, then
+   `gh api repos/<owner/repo>/issues/<target>/dependencies/blocked_by --method POST -F issue_id=<id>`.
    The target's status is left alone while it waits.
 6. **Arm the watch** in the background (`run_in_background`):
 
    ```bash
-   end=$(( $(date +%s) + 86400 ))
+   end=$(( $(date +%s) + 86400 )); fails=0; errlog=$(mktemp)
    while [ "$(date +%s)" -lt "$end" ]; do
-     s=$(gh issue view <blocker> --repo <owner/repo> \
-           --json state,stateReason --jq '.state + " " + (.stateReason // "")' 2>/dev/null) || s=""
-     case "$s" in
-       CLOSED*) echo "blocker #<blocker> closed: $s"; exit 0 ;;
-     esac
+     if s=$(gh api repos/<owner/repo>/issues/<blocker> \
+           --jq '.state + " " + (.state_reason // "")' 2>"$errlog"); then
+       fails=0
+       case "$s" in
+         closed*) echo "blocker #<blocker> closed: $s"; exit 0 ;;
+       esac
+     else
+       fails=$(( fails + 1 ))
+       if [ "$fails" -ge 30 ]; then
+         echo "watch stopped: 30 lookups of blocker #<blocker> failed in a row: $(cat "$errlog")"
+         exit 1
+       fi
+     fi
      sleep 60
    done
    echo "timeout: blocker #<blocker> still open after 24h"
@@ -424,11 +439,12 @@ blocker, ask that one question and nothing else.
 
    One line naming the blocker, the target and this session's model, then
    stop. Do not start the target's work early.
-7. **On fire:** `CLOSED NOT_PLANNED` asks first (header `Proceed?`, options
+7. **On fire:** `closed not_planned` asks first (header `Proceed?`, options
    "Stand down (Recommended)" / "Work #<target> anyway", the abandoned
-   blocker named inside the question). `CLOSED COMPLETED`, or closed with no
-   reason, continues from section 1. A timeout is one line, and the session
-   stands down without re-arming.
+   blocker named inside the question). `closed completed`, or closed with no
+   reason, continues from section 1. A timeout, or a `watch stopped` after
+   repeated lookup failures (quote the error it printed), is one line, and
+   the session stands down without re-arming.
 
 ### Jira
 

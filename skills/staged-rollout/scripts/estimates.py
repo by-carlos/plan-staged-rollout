@@ -25,7 +25,7 @@ Estimates are ranges in hours -- `1-2h`, `0.5–1h` (hyphen or en dash) or a
 bare `2h`. A cell of `—` or `-` means "no estimate" and is counted, not
 guessed at. Actuals include time spent waiting on the user; estimates do not.
 
-Invoke as `python <path>/estimates.py <subcommand> ...`.
+Invoke as `python3 <path>/estimates.py <subcommand> ...`.
 
 Exit codes: 0 printed (for `check`, the stage has its line or a waiver), 1
 `check` found the stage with neither, 2 usage/IO failure or an unreadable plan.

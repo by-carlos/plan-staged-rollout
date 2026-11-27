@@ -414,10 +414,11 @@ structural fact and four rules about timing.
       pinning the base explicitly — `--base plan-uptime-page` — never relying
       on the default, which falls back to the repo's default branch (`main`).
       Open it with the plugin's GitHub adapter, not `gh pr create`:
-      `python <plugin>/tickets/scripts/github_adapter.py pr-create --repo
+      `python3 <plugin>/tickets/scripts/github_adapter.py pr-create --repo
       <owner/name> --base plan-uptime-page --head <stage-branch> --title
       "<title>" --body-file <file> --confirm` (`<plugin>` is the plugin's root;
-      the `gh-body-guard` denial message prints the adapter's full path). It
+      use `python` where that is the interpreter's name, Windows; the
+      `gh-body-guard` denial message prints the adapter's full path). It
       reads the body file as UTF-8, posts it as ASCII-escaped JSON — `gh pr
       create --body-file` corrupts non-ASCII text on native Windows and the
       guard denies it — and reads the title, base, head and body back:

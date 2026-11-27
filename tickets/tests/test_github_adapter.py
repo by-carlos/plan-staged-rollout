@@ -425,8 +425,27 @@ class ReadTests(AdapterCase):
             view.pop(key)
         self.fake.on("blockedBy", rc=1, err="Unknown JSON field: \"issueType\"")
         self.fake.on("issue view 42", view)
+        self.fake.on("issues/42/dependencies/blocked_by", json.dumps([{"number": 41}]))
+        self.fake.on("issues/42/dependencies/blocking", json.dumps([{"number": 43}]))
+        self.fake.on(f"repos/{REPO}/issues/42", {
+            "type": {"name": "Task"},
+            "parent_issue_url": f"https://api.github.com/repos/{REPO}/issues/40"})
         code, out = self.run_op("fetch", "--repo", REPO, "--number", 42)
-        self.assertEqual((code, out["links"], out["type"]), (0, [], None))
+        self.assertEqual((code, out["type"], out["parent"]), (0, "Task", "40"), out)
+        self.assertEqual(out["links"], [
+            {"kind": "blocks", "direction": "inward", "target": "41"},
+            {"kind": "blocks", "direction": "outward", "target": "43"}])
+
+    def test_fetch_on_an_older_gh_with_no_relations(self):
+        view = fixture("issue-view.json")
+        for key in ("issueType", "parent", "blockedBy", "blocking"):
+            view.pop(key)
+        self.fake.on("blockedBy", rc=1, err="Unknown JSON field: \"issueType\"")
+        self.fake.on("issue view 42", view)
+        self.fake.on("dependencies/", "[]")
+        self.fake.on(f"repos/{REPO}/issues/42", {"type": None})
+        code, out = self.run_op("fetch", "--repo", REPO, "--number", 42)
+        self.assertEqual((code, out["links"], out["type"], out["parent"]), (0, [], None, None), out)
 
     def test_readback_then_diff_is_clean(self):
         path = self.payload()
@@ -493,23 +512,59 @@ class LinkCommentDetectTests(AdapterCase):
                          {"kind": "blocks", "direction": "outward", "target": "43"}]
         return self.write("linked.json", data)
 
+    def dependency_routes(self, blocked_by=(), blocking=()):
+        """The REST routes `link` uses. An issue's database id is 1000 + number."""
+        def listed(numbers):  # as JSON text: FakeGh reads a list as a series of replies
+            return json.dumps([{"number": n, "repository_url": f"https://api.github.com/repos/{REPO}"}
+                               for n in numbers])
+        self.fake.on("dependencies/blocked_by --method POST", {})
+        self.fake.on("issues/42/dependencies/blocked_by", listed(blocked_by))
+        self.fake.on("issues/42/dependencies/blocking", listed(blocking))
+        for n in (41, 42, 43):
+            self.fake.on(f"repos/{REPO}/issues/{n}", {"id": 1000 + n, "number": n})
+        self.fake.on("repos/example-org/other/issues/7", {"id": 9007, "number": 7})
+
+    def posted_links(self):
+        return [(args[1], json.loads(body)) for args, body in self.fake.seen("--method POST")]
+
     def test_first_link_is_read_back_before_the_rest(self):
-        self.fake.on("issue edit", "")
-        self.fake.on("issue view", {"blockedBy": {"nodes": [{"number": 41}], "totalCount": 1}, "blocking": {"nodes": [], "totalCount": 0}})
+        self.dependency_routes(blocked_by=[41])
         code, out = self.run_op("link", "--payload", self.link_payload(), "--number", 42, "--confirm")
         self.assertEqual((code, out["status"]), (0, "VERIFIED"), out)
+        self.assertEqual(self.posted_links(), [
+            (f"repos/{REPO}/issues/42/dependencies/blocked_by", {"issue_id": 1041}),
+            (f"repos/{REPO}/issues/43/dependencies/blocked_by", {"issue_id": 1042})])
         order = [" ".join(c[0]) for c in self.fake.calls]
-        self.assertLess(next(i for i, c in enumerate(order) if "--add-blocked-by" in c),
-                        next(i for i, c in enumerate(order) if "issue view" in c))
-        self.assertLess(next(i for i, c in enumerate(order) if "issue view" in c),
-                        next(i for i, c in enumerate(order) if "--add-blocking" in c))
+        posts = [i for i, c in enumerate(order) if "--method POST" in c]
+        read = next(i for i, c in enumerate(order) if "blocked_by?per_page" in c)
+        self.assertTrue(posts[0] < read < posts[1], order)
+        # No subcommand or field that an older gh lacks.
+        self.assertTrue(all(c[0][0] == "api" for c in self.fake.calls), order)
 
     def test_wrong_direction_stops_after_the_first_link(self):
-        self.fake.on("issue edit", "")
-        self.fake.on("issue view", {"blockedBy": {"nodes": [], "totalCount": 0}, "blocking": {"nodes": [{"number": 41}], "totalCount": 1}})
+        self.dependency_routes(blocking=[41])
         code, out = self.run_op("link", "--payload", self.link_payload(), "--number", 42, "--confirm")
         self.assertEqual((code, out["status"]), (2, "FAILED"))
-        self.assertEqual(len(self.fake.seen("issue edit")), 1)
+        self.assertEqual(len(self.posted_links()), 1)
+
+    def test_a_link_target_may_name_another_repo(self):
+        self.dependency_routes()
+        path = self.payload()
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        for target in ("example-org/other#7", "https://github.com/example-org/other/issues/7"):
+            data["links"] = [{"kind": "blocks", "direction": "outward", "target": target}]
+            self.fake.calls.clear()
+            self.run_op("link", "--payload", self.write("p.json", data), "--number", 42, "--confirm")
+            self.assertEqual(self.posted_links(), [
+                ("repos/example-org/other/issues/7/dependencies/blocked_by", {"issue_id": 1042})], target)
+
+    def test_a_link_target_that_is_no_issue_sends_nothing(self):
+        path = self.payload()
+        data = json.loads(Path(path).read_text(encoding="utf-8"))
+        data["links"] = [{"kind": "blocks", "direction": "inward", "target": "WID-41"}]
+        self.fake.calls.clear()
+        code, _ = self.run_op("link", "--payload", self.write("p.json", data), "--number", 42, "--confirm")
+        self.assertEqual((code, self.fake.calls), (1, []))
 
     def test_unsupported_link_kind_is_a_validation_error(self):
         path = self.payload()
@@ -682,7 +737,8 @@ class HookTests(unittest.TestCase):
                               capture_output=True, text=True, encoding="utf-8", check=False)
         reason = json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
         self.assertNotIn("CLAUDE_PLUGIN_ROOT", reason)
-        path = re.search(r'python "([^"]+)"', reason).group(1)
+        python, path = re.search(r'(\S+) "([^"]+)"', reason).groups()
+        self.assertIn(python, ("python3", "python"))
         self.assertTrue(Path(path).is_file(), path)
 
     def reason(self, command: str) -> str:
@@ -696,8 +752,25 @@ class HookTests(unittest.TestCase):
         self.assertIn(" pr-create --repo ", reason)
         for part in ("--base", "--head", "--title", "--body-file", "--confirm"):
             self.assertIn(part, reason)
-        path = re.search(r'python "([^"]+)"', reason).group(1)
+        path = re.search(r'python3? "([^"]+)"', reason).group(1)
         self.assertTrue(Path(path).is_file(), path)
+
+    @unittest.skipIf(os.name == "nt", "builds a PATH out of symlinks")
+    def test_denial_names_the_interpreter_this_machine_has(self):
+        # Debian ships `python3` and no `python`; Windows the other way round.
+        for only in ("python3", "python"):
+            bindir = Path(tempfile.mkdtemp())
+            self.addCleanup(shutil.rmtree, bindir, ignore_errors=True)
+            (bindir / "dirname").symlink_to(shutil.which("dirname"))
+            (bindir / only).symlink_to(sys.executable)
+            for command in ("gh pr comment 3 -F b.md", "gh pr create -F b.md"):
+                proc = subprocess.run([shutil.which("bash"), str(HOOKS / "gh-body-guard")],
+                                      input=json.dumps({"tool_input": {"command": command}}),
+                                      capture_output=True, text=True, encoding="utf-8", check=False,
+                                      env={**os.environ, "PATH": str(bindir)})
+                reason = json.loads(proc.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+                named = re.search(r'(\S+) "[^"]+github_adapter\.py"', reason).group(1)
+                self.assertEqual(named, only, reason)
 
     def test_other_pr_denials_name_the_adapter_and_pr_create(self):
         reason = self.reason("gh pr comment 3 -F b.md")

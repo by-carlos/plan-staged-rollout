@@ -31,7 +31,7 @@ healthy run: blowing one means something has gone wrong, not that the work was
 merely chunky. Nothing here tries to decide whether a model tier was correct --
 that judgement needs many rows and belongs to whatever reads the log later.
 
-Invoke as `python <path>/effortlog.py <subcommand> ...` -- one native command
+Invoke as `python3 <path>/effortlog.py <subcommand> ...` -- one native command
 that behaves identically in PowerShell 5.1, pwsh and git-bash.
 
 Logging is opt-in and silent when off: with `CLAUDE_EFFORT_LOG` unset, `log`

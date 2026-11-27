@@ -8,7 +8,7 @@ each `outside` line against the stage's Goal and the plan's Outcome.
 
 Usage (from the stage worktree):
 
-    python <path>/artifacts_check.py --stage-file .plan/<stage file> --base origin/plan-<slug>
+    python3 <path>/artifacts_check.py --stage-file .plan/<stage file> --base origin/plan-<slug>
 
 It prints one line and exits 0:
 

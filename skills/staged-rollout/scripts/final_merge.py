@@ -8,8 +8,8 @@ that offers neither a merge commit nor a squash is a question for the person.
 
 Usage:
 
-    python <path>/final_merge.py decide --repo-json <file> --rules-json <file>
-    python <path>/final_merge.py line --method merge|squash|unchecked
+    python3 <path>/final_merge.py decide --repo-json <file> --rules-json <file>
+    python3 <path>/final_merge.py line --method merge|squash|unchecked
 
 `--repo-json` is the output of `gh api repos/<owner>/<repo>` (the three
 `allow_*_merge` booleans). `--rules-json` is the output of

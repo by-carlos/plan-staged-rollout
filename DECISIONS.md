@@ -419,7 +419,7 @@ Paths: `commands/stage-run.md`, `commands/plan-run-cloud.md`, `commands/plan-run
 
 ## Tickets
 
-Paths: `skills/create-issue/SKILL.md`, `tickets/references/gap-rubric.md`, `tickets/scripts/ticket_core.py`
+Paths: `skills/create-issue/SKILL.md`, `skills/work-issue/SKILL.md`, `tickets/references/gap-rubric.md`, `tickets/scripts/ticket_core.py`, `tickets/scripts/github_adapter.py`
 
 - **The gap review trims as well as asks, through nits only, and never by a
   word count.** — every earlier check could only add text, which inflated
@@ -433,6 +433,13 @@ Paths: `skills/create-issue/SKILL.md`, `tickets/references/gap-rubric.md`, `tick
   `work-issue` follows no instruction outside the prompt, so a guardrail
   written only in the description never reaches the agent. Revisit: if
   `work-issue` ever reads the description as instructions. Source: same
+
+- **GitHub features newer than `gh` 2.46.0 are reached through `gh api`, not
+  a newer subcommand flag or `--json` field.** — Debian 13 ships 2.46.0,
+  which rejects `stateReason` and `--add-blocked-by`, and a watch that hid
+  that error would only have timed out. Revisit: when supported
+  distributions ship a `gh` that has them. Source: by-carlos/workstation#99,
+  2026-11-27
 
 ## Decisions format
 

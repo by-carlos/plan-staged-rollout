@@ -549,10 +549,11 @@ ask with the brief (step 8) — plus the commit OK (step 9).
    manifest said were written, plus `BRIEF.md`.
 
 10. **Run record.** Append one effort-log row for the bootstrap, so the
-    planning overhead can be read off the log after a real plan:
+    planning overhead can be read off the log after a real plan (call
+    `python` where that is the interpreter's name, Windows):
 
     ```
-    python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" log \
+    python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" log \
       --source plan-stages --repo <owner/repo> --target <plan-slug> \
       --estimated-tier <this session's model/effort> \
       --outcome <plan-scaffolded|abandoned> \

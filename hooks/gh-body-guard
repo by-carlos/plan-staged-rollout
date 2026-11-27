@@ -36,7 +36,8 @@ esac
 script="$(cd "$(dirname "$0")/.." && pwd)/tickets/scripts/shell_cmd.py"
 for py in python3 python; do
   if command -v "$py" >/dev/null 2>&1 && "$py" -c 'import sys; sys.exit(sys.version_info < (3, 11))' 2>/dev/null; then
-    printf '%s' "$input" | "$py" "$script" gh-body-guard
+    # "$py" again as an argument: the denial names an interpreter that exists.
+    printf '%s' "$input" | "$py" "$script" gh-body-guard "$py"
     exit 0
   fi
 done

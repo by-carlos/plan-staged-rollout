@@ -116,7 +116,7 @@ to the same file, so a reader notes its length before it starts one. A line
 that cannot be written is dropped: the file never stops a run, and nothing in
 the driver reads it.
 
-Invoke as `python <path>/plan_run_local.py <subcommand> [--repo <dir>]`.
+Invoke as `python3 <path>/plan_run_local.py <subcommand> [--repo <dir>]`.
 
 Exit codes: 0 a STATUS line was printed (whatever it says), 2 usage/IO failure.
 """

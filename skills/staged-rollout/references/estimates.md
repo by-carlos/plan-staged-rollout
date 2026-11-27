@@ -17,10 +17,11 @@ stage that stops at a gate will run over it.
   bare `2h` when there is no spread. `—` means "not estimated" and is reported
   as such, never counted as zero silently.
 - **The plan total.** The `Plan estimate:` line under the plan flags, computed,
-  never added up by hand:
+  never added up by hand (in every command on this page, call `python` where
+  that is the interpreter's name, Windows):
 
   ```
-  python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" plan --plan-dir .plan
+  python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" plan --plan-dir .plan
   ```
 
   It prints two totals. **Summed** is every stage end to end, the session time
@@ -54,7 +55,7 @@ Each session that works on a stage, whether it finishes, stops `doing` or
 stops `blocked`, adds one line to the stage's notes block in `LEDGER.md`:
 
 ```
-python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" usage
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" usage
 ```
 
 It prints JSON whose `line` is pasted as is:
@@ -86,7 +87,7 @@ Actuals: 2026-07-08T12:41:09Z → 2026-07-08T15:02:44Z · 142 min · tokens in=2
 removed:
 
 ```
-python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" report --plan-dir .plan
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" report --plan-dir .plan
 ```
 
 Per stage: status, estimate, actual hours, tokens in (cache included), tokens
@@ -102,7 +103,7 @@ stage's `estimate`, its measured `elapsed_minutes` and its `tokens`.
 `/plan-stages` runs, before estimating:
 
 ```
-python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" calibrate
+python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/estimates.py" calibrate
 ```
 
 - It groups the `stage-run` rows that carry both an estimate and a measured

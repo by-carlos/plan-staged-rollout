@@ -653,8 +653,33 @@ def op_set_fields(args) -> int:
     return finish(result(status, args.number, url, fields, message, **left))
 
 
-def issue_ref(target: str) -> str:
-    return str(target)
+ISSUE_REF_RE = re.compile(r"^(?:#|([\w.-]+/[\w.-]+)#|https://github\.com/([\w.-]+/[\w.-]+)/issues/)?"
+                          r"(\d+)/?$")
+
+
+def issue_ref(target, repo: str) -> tuple[str, str]:
+    """(owner/name, number) of a link target: `41`, `#41`, `owner/name#41` or
+    an issue URL. A bare number is in `repo`."""
+    m = ISSUE_REF_RE.match(str(target).strip())
+    if not m:
+        raise fail(EXIT_INVALID, f"link target {target!r}: give an issue number, owner/name#N or an issue URL")
+    return m.group(1) or m.group(2) or repo, m.group(3)
+
+
+# Dependencies go through REST: `gh issue edit --add-blocked-by` and the
+# `blockedBy`/`blocking` JSON fields do not exist in older gh (2.46.0 on
+# Debian). GitHub caps an issue's dependencies below one page of 100.
+def dependencies(repo: str, number, kind: str) -> list[dict]:
+    """The issues in `blocked_by` or `blocking` of one issue."""
+    return gh_api(f"repos/{repo}/issues/{number}/dependencies/{kind}?per_page=100")
+
+
+def add_blocked_by(blocked: tuple[str, str], blocker: tuple[str, str]) -> None:
+    """Record that `blocked` is blocked by `blocker`. The endpoint takes the
+    blocker's database id, not its number."""
+    blocker_id = gh_api(f"repos/{blocker[0]}/issues/{blocker[1]}")["id"]
+    gh_api(f"repos/{blocked[0]}/issues/{blocked[1]}/dependencies/blocked_by",
+           method="POST", payload={"issue_id": blocker_id})
 
 
 def op_link(args) -> int:
@@ -669,21 +694,24 @@ def op_link(args) -> int:
         raise fail(EXIT_INVALID, "GitHub supports only `blocks` links and a parent; "
                                  f"got {[lk.get('kind') for lk in unsupported]}.")
     fields: list[dict] = []
-    flags = {"inward": "--add-blocked-by", "outward": "--add-blocking"}
+    kinds = {"inward": "blocked_by", "outward": "blocking"}
+    this = (repo, str(args.number))
     try:
         for index, link in enumerate(links):
-            if link.get("direction") not in flags:
+            if link.get("direction") not in kinds:
                 raise fail(EXIT_INVALID, f"links[{index}]: direction must be inward or outward")
-            gh(["issue", "edit", str(args.number), "--repo", repo, flags[link["direction"]],
-                issue_ref(link["target"])])
+            other = issue_ref(link["target"], repo)
+            if link["direction"] == "inward":
+                add_blocked_by(this, other)
+            else:
+                add_blocked_by(other, this)
             if index == 0:
                 # One link first, read back, then the rest: direction is verified, not assumed.
-                seen = gh_json(["issue", "view", str(args.number), "--repo", repo,
-                                "--json", "blockedBy,blocking"])
-                key = "blockedBy" if link["direction"] == "inward" else "blocking"
-                numbers = {str(x.get("number")) for x in nodes(seen.get(key))}
-                tail = str(link["target"]).rstrip("/").split("/")[-1]
-                ok = tail in numbers
+                seen = dependencies(repo, args.number, kinds[link["direction"]])
+                tail = other[1]
+                ok = any(str(x.get("number")) == tail and
+                         str(x.get("repository_url", "")).lower().endswith(f"/repos/{other[0]}".lower())
+                         for x in seen)
                 fields.append(field_result(f"link.{link['direction']}", tail, tail if ok else None))
                 if not ok:
                     return finish(result("FAILED", args.number, None, fields,
@@ -812,6 +840,17 @@ def nodes(value) -> list:
     return [x for x in value or [] if isinstance(x, dict)]
 
 
+def rest_relations(repo: str, number) -> dict:
+    """EXTRA_FIELDS read through REST, shaped like `gh issue view --json`, for
+    a gh too old to know them."""
+    issue = gh_api(f"repos/{repo}/issues/{number}")
+    parent = str(issue.get("parent_issue_url") or "").rstrip("/").split("/")[-1]
+    return {"issueType": issue.get("type"),
+            "parent": {"number": int(parent)} if parent else None,
+            "blockedBy": dependencies(repo, number, "blocked_by"),
+            "blocking": dependencies(repo, number, "blocking")}
+
+
 def op_fetch(args) -> int:
     try:
         try:
@@ -822,6 +861,7 @@ def op_fetch(args) -> int:
                 raise
             data = gh_json(["issue", "view", str(args.number), "--repo", args.repo,
                             "--json", BASE_FIELDS])
+            data.update(rest_relations(args.repo, args.number))
     except GhError as exc:
         raise fail(EXIT_TRACKER, f"Cannot read {args.repo}#{args.number}: {exc.stderr.strip()[:300]}")
     t = core.load_template(args.template) if args.template else {}

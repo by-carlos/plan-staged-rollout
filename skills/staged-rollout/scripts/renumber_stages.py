@@ -7,7 +7,7 @@ this script puts them right without touching a stage that has started.
 
 Usage (from the repo root, on the stage branch that made the edit):
 
-    python <path>/renumber_stages.py --slug <plan-slug> [--plan-dir .plan]
+    python3 <path>/renumber_stages.py --slug <plan-slug> [--plan-dir .plan]
 
 How the edit is expressed. The caller edits the stage index in `PLAN.md`: the
 row order is the running order. A new stage gets a row, a `LEDGER.md` row and a

@@ -238,7 +238,8 @@ Work through these steps **in order**:
    at start, and a stage stopping `blocked` writes nothing at its PR, which
    holds a block, not work to review. The rules are the `staged-rollout`
    skill's *Linking a stage to its issue*; this is how to apply them. At
-   each moment, in a scratch folder (never the worktree), run:
+   each moment, in a scratch folder (never the worktree), run (in every
+   command here, `python` where that is the interpreter's name, Windows):
 
    ```
    python3 "${CLAUDE_PLUGIN_ROOT}/tickets/scripts/work_core.py" stage-status \
@@ -284,7 +285,7 @@ Work through these steps **in order**:
    of the stage's own Steps — not on a timer — run:
 
    ```
-   python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" check
+   python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" check
    ```
 
    It reads this session's own transcript, so it works the same unattended as
@@ -417,7 +418,7 @@ Work through these steps **in order**:
    the record can never say anything but "go heavier".
 
    ```
-   python "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" log \
+   python3 "${CLAUDE_PLUGIN_ROOT}/skills/staged-rollout/scripts/effortlog.py" log \
      --source stage-run --repo <owner/repo> --target <plan-slug>/S<N> \
      --estimated-tier <the stage's model/effort from the index> \
      --estimate "<the stage's estimate from the index; omit it when —>" \
